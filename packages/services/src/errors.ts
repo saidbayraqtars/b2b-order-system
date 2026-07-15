@@ -6,10 +6,12 @@ export type BusinessErrorCode =
   | "NO_PRICE"
   | "VARIANT_NOT_FOUND"
   | "COMPANY_NOT_FOUND"
+  | "ORDER_NOT_FOUND"
   | "MOQ_NOT_MET"
   | "NOT_CASE_MULTIPLE"
   | "INSUFFICIENT_STOCK"
   | "EMPTY_ORDER"
+  | "FORBIDDEN_APPROVAL"
   | "INVALID_STATE";
 
 export class BusinessError extends Error {

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@repo/database";
-import { requireUser } from "@/lib/guard";
+import { requirePage } from "@/lib/guard";
 import { PortalClient } from "./_components/portal-client";
 
 export default async function PortalPage() {
-  const user = await requireUser([
+  const user = await requirePage([
     "COMPANY_ADMIN",
     "COMPANY_STAFF",
     "SUPER_ADMIN",
@@ -36,6 +36,7 @@ export default async function PortalPage() {
       companyId={user.companyId}
       companyName={company?.name ?? "Firma"}
       userName={user.name}
+      role={user.role}
     />
   );
 }

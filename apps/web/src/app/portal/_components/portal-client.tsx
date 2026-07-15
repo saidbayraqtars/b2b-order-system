@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 import type { CatalogProduct, CategoryNode } from "@repo/services";
+import type { Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
@@ -14,6 +16,7 @@ interface Props {
   companyId: string;
   companyName: string;
   userName: string;
+  role: Role;
 }
 
 /** Flatten the category tree to a single ordered list for filter chips. */
@@ -24,7 +27,7 @@ function flatten(nodes: CategoryNode[], depth = 0): Array<{ id: string; name: st
   ]);
 }
 
-export function PortalClient({ companyId, companyName, userName }: Props) {
+export function PortalClient({ companyId, companyName, userName, role }: Props) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const itemCount = useCart((s) => cartTotals(s.lines).itemCount);
@@ -61,6 +64,11 @@ export function PortalClient({ companyId, companyName, userName }: Props) {
           <p className="text-sm text-neutral-500">{userName} · Katalog</p>
         </div>
         <div className="flex items-center gap-3">
+          {role === "COMPANY_ADMIN" && (
+            <Link href="/portal/approvals" className="text-sm underline">
+              Onaylar
+            </Link>
+          )}
           <span className="rounded-full bg-neutral-900 px-3 py-1 text-sm text-white dark:bg-white dark:text-neutral-900">
             Sepet: {itemCount}
           </span>

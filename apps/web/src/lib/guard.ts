@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { hasRole } from "@repo/auth/rbac";
+import { hasRole, defaultRouteForRole } from "@repo/auth/rbac";
 import { BusinessError, type BusinessErrorCode } from "@repo/services";
 import type { Role, SessionUser } from "@repo/types";
 
@@ -44,15 +45,38 @@ export async function requireUser(allowed?: readonly Role[]): Promise<SessionUse
   };
 }
 
+/**
+ * Page-level guard for Server Components. Unlike requireUser (which throws for
+ * route handlers), this redirects: unauthenticated → /login, wrong role → the
+ * caller's own default landing route. Returns the session user on success.
+ */
+export async function requirePage(
+  allowed: readonly Role[],
+): Promise<SessionUser> {
+  const session = await auth();
+  const user = session?.user;
+  if (!user) redirect("/login");
+  if (!hasRole(user.role, allowed)) redirect(defaultRouteForRole(user.role));
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    name: user.name ?? "",
+    role: user.role,
+    companyId: user.companyId,
+  };
+}
+
 /** HTTP status for each domain error code. */
 const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   NO_PRICE: 409,
   VARIANT_NOT_FOUND: 404,
   COMPANY_NOT_FOUND: 404,
+  ORDER_NOT_FOUND: 404,
   MOQ_NOT_MET: 422,
   NOT_CASE_MULTIPLE: 422,
   INSUFFICIENT_STOCK: 409,
   EMPTY_ORDER: 422,
+  FORBIDDEN_APPROVAL: 403,
   INVALID_STATE: 409,
 };
 

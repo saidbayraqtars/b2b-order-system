@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { Prisma, prisma } from "@repo/database";
 import { createOrder } from "@repo/services";
-import { createOrderSchema } from "@repo/types";
+import { createOrderSchema, OrderStatusEnum } from "@repo/types";
 import { InputError, requireUser, withAuthErrors } from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
 
@@ -39,7 +39,10 @@ export function POST(req: NextRequest) {
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
     const user = await requireUser(ALL_BUYERS);
-    const requested = new URL(req.url).searchParams.get("companyId");
+    const { searchParams } = new URL(req.url);
+    const requested = searchParams.get("companyId");
+    const statusParam = OrderStatusEnum.safeParse(searchParams.get("status"));
+    const statusFilter = statusParam.success ? { status: statusParam.data } : {};
 
     let where: Prisma.OrderWhereInput;
     switch (user.role) {
@@ -56,6 +59,7 @@ export function GET(req: NextRequest) {
         where = requested ? { companyId: requested } : {};
         break;
     }
+    where = { ...where, ...statusFilter };
 
     const orders = await prisma.order.findMany({
       where,
