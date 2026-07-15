@@ -13,6 +13,14 @@ export class AuthError extends Error {
   }
 }
 
+/** 400 — malformed / missing request input (failed Zod parse, missing param). */
+export class InputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InputError";
+  }
+}
+
 /**
  * Server-side guard for route handlers / server actions.
  * Throws AuthError(401) if unauthenticated, AuthError(403) if role not allowed.
@@ -58,6 +66,9 @@ export function withAuthErrors(
   return handler().catch((err) => {
     if (err instanceof AuthError) {
       return Response.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof InputError) {
+      return Response.json({ error: err.message }, { status: 400 });
     }
     if (err instanceof BusinessError) {
       return Response.json(
