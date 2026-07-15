@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "B2B Mobile",
+    "slug": "b2b-mobile",
+    "scheme": "b2bmobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.b2b.mobile"
+    },
+    "android": {
+      "package": "com.b2b.mobile"
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

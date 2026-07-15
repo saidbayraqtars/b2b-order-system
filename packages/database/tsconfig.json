@@ -1,0 +1,8 @@
+{
+  "extends": "@repo/tsconfig/base.json",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
