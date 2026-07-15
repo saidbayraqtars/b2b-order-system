@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { hasRole } from "@repo/auth/rbac";
+import { BusinessError, type BusinessErrorCode } from "@repo/services";
 import type { Role, SessionUser } from "@repo/types";
 
 export class AuthError extends Error {
@@ -35,13 +36,34 @@ export async function requireUser(allowed?: readonly Role[]): Promise<SessionUse
   };
 }
 
-/** Wrap a route handler with error → JSON mapping. */
+/** HTTP status for each domain error code. */
+const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
+  NO_PRICE: 409,
+  VARIANT_NOT_FOUND: 404,
+  COMPANY_NOT_FOUND: 404,
+  MOQ_NOT_MET: 422,
+  NOT_CASE_MULTIPLE: 422,
+  INSUFFICIENT_STOCK: 409,
+  EMPTY_ORDER: 422,
+  INVALID_STATE: 409,
+};
+
+/**
+ * Wrap a route handler with error → JSON mapping.
+ * AuthError → 401/403, BusinessError → typed 4xx with code, else 500.
+ */
 export function withAuthErrors(
   handler: () => Promise<Response>,
 ): Promise<Response> {
   return handler().catch((err) => {
     if (err instanceof AuthError) {
       return Response.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof BusinessError) {
+      return Response.json(
+        { error: err.message, code: err.code, details: err.details },
+        { status: BUSINESS_STATUS[err.code] },
+      );
     }
     console.error(err);
     return Response.json({ error: "Sunucu hatası" }, { status: 500 });
