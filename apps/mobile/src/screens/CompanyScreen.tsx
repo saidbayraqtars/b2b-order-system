@@ -91,6 +91,11 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
           variant="secondary"
           onPress={() => navigation.navigate("Orders", nav)}
         />
+        <Button
+          title="Cari Ekstre"
+          variant="secondary"
+          onPress={() => navigation.navigate("Statement", nav)}
+        />
         {field ? (
           <>
             <Button

@@ -36,7 +36,15 @@ export default async function AdminCompanyPage({
         ← Panel
       </Link>
 
-      <h1 className="text-xl font-bold">{company.name}</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-xl font-bold">{company.name}</h1>
+        <Link
+          href={`/admin/companies/${company.id}/statement`}
+          className="text-sm text-indigo-600 hover:underline"
+        >
+          Cari ekstre →
+        </Link>
+      </div>
       <p className="mb-6 text-sm text-neutral-500">
         Grup: {company.customerGroup?.name ?? "—"} · Plasiyer:{" "}
         {company.salesRep?.name ?? "—"} · Bakiye{" "}

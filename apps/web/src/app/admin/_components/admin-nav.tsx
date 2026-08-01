@@ -5,6 +5,7 @@ const LINKS = [
   { href: "/admin", label: "Panel" },
   { href: "/admin/products", label: "Ürünler" },
   { href: "/admin/categories", label: "Kategoriler" },
+  { href: "/admin/reports", label: "Raporlar" },
 ] as const;
 
 /** Shared header for every admin screen. `current` renders as plain text. */

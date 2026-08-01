@@ -98,6 +98,9 @@ model Company {
   currentBalance Decimal @default(0) @db.Decimal(14, 2) // cache derived from Transaction ledger
   currency       String  @default("TRY")
 
+  /// Vade: days a debit may stay open before it counts as overdue in aging.
+  paymentTermDays Int @default(0)
+
   // If true, COMPANY_STAFF orders go to PENDING_APPROVAL before credit check.
   requiresOrderApproval Boolean @default(false)
 
@@ -385,6 +388,9 @@ model Transaction {
 
   @@index([companyId])
   @@index([orderId])
+  // Statements and aging always read one company's ledger in date order.
+  @@index([companyId, createdAt])
+  @@index([recordedById, createdAt])
 }
 
 // ─────────────────────────────────────────────

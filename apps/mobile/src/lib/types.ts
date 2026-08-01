@@ -153,3 +153,61 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   OPEN_ACCOUNT: "Açık Hesap (Cari)",
   CREDIT_CARD: "Kredi Kartı",
 };
+
+// ── Cari ekstre / yaşlandırma (mirrors @repo/services ledger types) ──
+
+export interface StatementRow {
+  id: string;
+  createdAt: string;
+  type: "DEBIT" | "CREDIT";
+  description: string;
+  paymentMethod: PaymentMethod | null;
+  orderId: string | null;
+  orderNumber: string | null;
+  recordedByName: string | null;
+  debit: string;
+  credit: string;
+  balance: string;
+}
+
+export interface Statement {
+  company: {
+    id: string;
+    name: string;
+    currency: string;
+    creditLimit: string;
+    currentBalance: string;
+    paymentTermDays: number;
+  };
+  from: string | null;
+  to: string | null;
+  openingBalance: string;
+  totalDebit: string;
+  totalCredit: string;
+  closingBalance: string;
+  rows: StatementRow[];
+}
+
+export interface AgingBuckets {
+  current: string;
+  d1_30: string;
+  d31_60: string;
+  d61_90: string;
+  d90_plus: string;
+}
+
+export interface CompanyAging {
+  companyId: string;
+  companyName: string;
+  currency: string;
+  creditLimit: string;
+  balance: string;
+  cachedBalance: string;
+  paymentTermDays: number;
+  buckets: AgingBuckets;
+  overdue: string;
+  unappliedCredit: string;
+  oldestDueDate: string | null;
+  salesRepId: string | null;
+  salesRepName: string | null;
+}

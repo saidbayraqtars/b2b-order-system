@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Cart: { companyId: string; companyName: string };
   Orders: { companyId?: string; companyName?: string } | undefined;
   OrderDetail: { orderId: string; orderNumber: string };
+  Statement: { companyId: string; companyName: string };
   CheckIn: { companyId: string; companyName: string };
   Payment: { companyId: string; companyName: string };
 };

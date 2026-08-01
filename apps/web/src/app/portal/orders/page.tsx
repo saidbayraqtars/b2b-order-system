@@ -24,6 +24,9 @@ export default async function PortalOrdersPage() {
           <Link href="/portal" className="text-sm underline">
             Katalog
           </Link>
+          <Link href="/portal/statement" className="text-sm underline">
+            Ekstre
+          </Link>
           <SignOutButton />
         </div>
       </header>

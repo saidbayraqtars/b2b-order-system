@@ -39,6 +39,7 @@ export function CompaniesTable() {
             <th className="px-3 py-2 text-right">Bakiye</th>
             <th className="px-3 py-2 text-right">Limit</th>
             <th className="px-3 py-2 text-right">Kullanılabilir</th>
+            <th className="px-3 py-2 text-right">Ekstre</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -67,6 +68,14 @@ export function CompaniesTable() {
                   }`}
                 >
                   {formatTRY(available)}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <Link
+                    href={`/admin/companies/${c.id}/statement`}
+                    className="text-indigo-600 hover:underline"
+                  >
+                    Ekstre
+                  </Link>
                 </td>
               </tr>
             );

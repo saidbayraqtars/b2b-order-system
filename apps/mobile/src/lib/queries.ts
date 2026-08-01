@@ -11,10 +11,12 @@ import type {
   CatalogProduct,
   CheckInRecord,
   Company,
+  CompanyAging,
   CreateOrderResult,
   OrderDetail,
   OrderSummary,
   RecordPaymentResult,
+  Statement,
 } from "./types";
 
 // All reads/writes go through the same bearer-token wrapper. Query keys are
@@ -34,6 +36,8 @@ export const keys = {
     ["catalog", companyId, search ?? ""] as const,
   orders: (companyId?: string) => ["orders", companyId ?? "all"] as const,
   checkIns: (companyId?: string) => ["checkins", companyId ?? "all"] as const,
+  statement: (companyId: string) => ["statement", companyId] as const,
+  aging: (companyId: string) => ["aging", companyId] as const,
 };
 
 /** Customers the caller may act on (rep portfolio, or own company). */
@@ -78,6 +82,23 @@ export function useOrder(orderId: string): UseQueryResult<OrderDetail> {
   });
 }
 
+/** Full cari ekstre for a company (no date filter — the app shows all of it). */
+export function useStatement(companyId: string): UseQueryResult<Statement> {
+  return useQuery({
+    queryKey: keys.statement(companyId),
+    queryFn: () => get<Statement>(`/api/companies/${companyId}/statement`),
+    enabled: !!companyId,
+  });
+}
+
+export function useCompanyAging(companyId: string): UseQueryResult<CompanyAging> {
+  return useQuery({
+    queryKey: keys.aging(companyId),
+    queryFn: () => get<CompanyAging>(`/api/companies/${companyId}/aging`),
+    enabled: !!companyId,
+  });
+}
+
 export function useCheckIns(companyId?: string): UseQueryResult<CheckInRecord[]> {
   return useQuery({
     queryKey: keys.checkIns(companyId),
@@ -100,6 +121,8 @@ export function useCreateOrder() {
       // Order debt moves the cari balance shown on the customer list.
       qc.invalidateQueries({ queryKey: keys.companies });
       qc.invalidateQueries({ queryKey: ["catalog", input.companyId] });
+      qc.invalidateQueries({ queryKey: keys.statement(input.companyId) });
+      qc.invalidateQueries({ queryKey: keys.aging(input.companyId) });
     },
   });
 }
@@ -141,6 +164,10 @@ export function useRecordPayment() {
   return useMutation({
     mutationFn: (vars: PaymentVars) =>
       post<RecordPaymentResult>("/api/payments", vars),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.companies }),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: keys.companies });
+      qc.invalidateQueries({ queryKey: keys.statement(vars.companyId) });
+      qc.invalidateQueries({ queryKey: keys.aging(vars.companyId) });
+    },
   });
 }

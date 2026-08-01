@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-01 · Adım 7 sonu
+Son güncelleme: 2026-08-01 · Adım 8 sonu
 
 ---
 
@@ -21,6 +21,7 @@ Son güncelleme: 2026-08-01 · Adım 7 sonu
 | 5 | Mobil (Expo): plasiyer + müşteri, GPS ziyaret, tahsilat | ✅ |
 | 6 | Katalog yönetimi: ürün/varyant/fiyat/kategori/iskonto CRUD | ✅ |
 | 7 | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı | ✅ |
+| 8 | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları | ✅ |
 
 ---
 
@@ -37,7 +38,7 @@ Son güncelleme: 2026-08-01 · Adım 7 sonu
 | Model | İşlev |
 |-------|-------|
 | `User` | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`) |
-| `Company` | Cari hesap: kredi limiti, güncel bakiye, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer |
+| `Company` | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer |
 | `Address` | Firma adresleri, varsayılan adres işareti |
 | `CustomerGroup` | Fiyat kademesi grubu (Bayi, Toptancı, Zincir Market) |
 | `Category` | Ağaç yapılı kategori (self-referans `parentId`) |
@@ -105,6 +106,14 @@ Son güncelleme: 2026-08-01 · Adım 7 sonu
 - Saha tahsilatı: plasiyer/admin tutar + ödeme yöntemi + açıklama girer, bakiye anında düşer.
 - Kullanılabilir limit = kredi limiti − güncel bakiye; katalog ve müşteri listesinde görünür.
 
+### Cari ekstre & yaşlandırma (Adım 8)
+- **Ekstre:** tarih aralığı filtreli hareket listesi; açılış bakiyesi, satır satır yürüyen bakiye, borç/alacak toplamları ve kapanış bakiyesi. Sipariş kaynaklı satırlar sipariş detayına linkli.
+- Ekstre **yalnız defteri okur** — kapanış bakiyesi ile `currentBalance` önbelleği ekranda yan yana durur, sapma olursa görünür.
+- **Yaşlandırma (FIFO):** fatura tablosu olmadığı için açık kalemler DEBIT satırlarının kendisidir; tahsilatlar **en eski borçtan başlayarak** mahsup edilir (Türkiye'deki açık hesap mutabakatı böyle yapılır).
+- Vade = borcun tarihi + firmanın `paymentTermDays` değeri. Kalan borç gecikme gününe göre kovalanır: vadesi gelmemiş · 1-30 · 31-90 arası · 90+.
+- Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
+- **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
+
 ## 7. Katalog Yönetimi (Adım 6)
 
 Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlılık kalktı.
@@ -116,13 +125,26 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 - **Firma iskontosu:** firma detay sayfasında kategori **veya** ürün hedefli, yüzde ya da sabit tutar. Aynı satırda ikisi birden seçilemez (çözümleme ürünü kategoriye tercih eder), yüzde 100'ü aşamaz.
 - **Silme kuralı:** siparişte kullanılan ürün/varyant asla silinmez (`IN_USE`) — pasife alınır, sipariş geçmişi bozulmaz.
 
-## 8. Web Portal (`apps/web`)
+## 8. Raporlama (Adım 8)
+
+Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.
+
+- **Satış:** ciro, sipariş adedi, ortalama sepet, günlük ciro grafiği (bar'lar CSS ile — grafik kütüphanesi yok), duruma göre kırılım, en çok alan firmalar.
+  - Ciro = `CONFIRMED · PROCESSING · SHIPPED · DELIVERED`. Bekleyen siparişler "talep" olarak, iptal/red "kayıp" olarak **ayrı** raporlanır — ciroyu şişirmez.
+- **Ürünler:** varyant bazında satılan adet, ciro ve kaç ayrı siparişte geçtiği. Ürün adı/SKU sipariş anındaki anlık görüntüden okunur, yeniden adlandırma geçmişi bozmaz.
+- **Plasiyer performansı:** portföy büyüklüğü, portföy cirosu, kendi girdiği sipariş sayısı, tahsilat tutarı/adedi, ziyaret sayısı, portföy bakiyesi.
+- **Tahsilat:** ödeme yöntemi ve kaydeden kişi kırılımı + hareket listesi. **İptal ters kayıtları hariç** (onlar da CREDIT satırıdır ama tahsil edilmiş para değildir — `orderId` dolu olanlar elenir).
+- **Alacak yaşlandırma:** tüm firmaların kova kova alacak dağılımı ve toplamları; firma adından ekstresine gidilir.
+- **Kapsam yetkiye göre daraltılır:** plasiyer raporları kendi portföyüne sabitlenir — başkasının `salesRepId`'sini göndermek erişimi genişletmez, kesişimi boşaltır. Plasiyer performansı karşılaştırmalı olduğu için yalnız süper admine açıktır.
+
+## 9. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
 | `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
 | `/portal` | firma yön./personel | Katalog, sepet, sipariş oluşturma |
 | `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
+| `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
 | `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
 | `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları |
 | `/admin` | süper admin | Cari hesap tablosu + tüm siparişler, limit override onayı |
@@ -131,10 +153,12 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 | `/admin/products/[id]` | süper admin | Ürün düzenleme + varyantlar + fiyat kademeleri |
 | `/admin/categories` | süper admin | Kategori ağacı yönetimi |
 | `/admin/companies/[id]` | süper admin | Firma özeti + firmaya özel iskontolar |
-| `/rep` | plasiyer | **Şu an sadece iskelet sayfa** (gerçek işlevi mobilde) |
+| `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
+| `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma |
+| `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 9. Mobil Uygulama (`apps/mobile`)
+## 10. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -145,9 +169,10 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 - **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz.
 - **Tahsilat:** tutar (virgüllü klavye desteği), ödeme yöntemi, açıklama; sonuç bakiyesi sunucudan döner.
 - **Sipariş detayı:** listeden dokunarak açılır — kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi ve durum geçmişi. Salt okunur.
+- **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 10. API Uçları
+## 11. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -157,6 +182,13 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 | GET | `/api/catalog?companyId&categoryId&search` | 4 rol |
 | GET | `/api/categories` | 4 rol |
 | GET | `/api/companies` | kimliği doğrulanmış (role göre kapsam) |
+| GET | `/api/companies/:id/statement?from&to` | kendi firması / portföy / hepsi |
+| GET | `/api/companies/:id/aging` | kendi firması / portföy / hepsi |
+| GET | `/api/reports/sales?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
+| GET | `/api/reports/products?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
+| GET | `/api/reports/collections?from&to&companyId&limit` | süper admin, plasiyer (kendi kaydettikleri) |
+| GET | `/api/reports/receivables` | süper admin, plasiyer (kendi portföyü) |
+| GET | `/api/reports/reps?from&to` | süper admin |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
 | GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
 | POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
@@ -182,14 +214,14 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 ## Bilinen Eksikler
 
-- **Cari ekstre ekranı yok** — `Transaction` kayıtları yazılıyor ama hiçbir yerde listelenmiyor.
 - **İrsaliye/fatura yok** — sevkiyat bilgisi kaydediliyor ama belge numarası üretilmiyor, çıktı alınamıyor.
 - **Sevkiyat kısmi yapılamıyor** — sipariş tek parça sevk edilir, kalem bazlı kısmi sevk yok.
-- Mobil sipariş detayı salt okunur; durum değiştirme yalnızca webde.
+- **Vade tek bir sayı** — `paymentTermDays` firma genelinde; sipariş/fatura bazlı farklı vade tanımlanamıyor. Yaşlandırma da fatura değil, cari hareket bazlı.
+- **Vade süper adminin arayüzünden değiştirilemiyor** — firma CRUD ekranı henüz yok, alan yalnız veritabanından giriliyor.
+- Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
 - **Müşteri grubu ve firma yönetimi arayüzü yok** — grup, firma, kullanıcı, adres kayıtları hâlâ yalnızca seed ile giriliyor (katalog tarafı Adım 6'da çözüldü).
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
-- `/rep` web sayfası iskelet.
 - **ESLint yapılandırılmamış** — `pnpm lint` interaktif kuruluma düşüp hata veriyor.
 - **Otomatik test yok** — doğrulama manuel E2E scriptleri + typecheck + build ile yapılıyor.
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
@@ -199,7 +231,62 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
-- **Adım 8 — Cari ekstre & raporlama:** hesap hareketleri ekranı, yaşlandırma, plasiyer performansı, tahsilat raporu.
+### Yakın plan
 - **Adım 9 — Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
 - **Adım 10 — Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.
 - **Kalite:** ESLint kurulumu, domain katmanı için birim testleri, API için entegrasyon testleri, CI.
+
+### Uzun vadeli backlog
+
+**Operasyon & sipariş**
+- Kısmi sevkiyat: `OrderItem.quantityShipped` / `quantityPending`, parçalı irsaliye-fatura.
+- İade & değişim (RMA): talep → onay → ters cari + ters stok hareketi.
+- Teklif yönetimi: sepeti teklife çevir → plasiyer özel fiyat/vade → müşteri onayı → siparişe dönüşüm.
+- Hızlı & periyodik sipariş: geçmiş siparişi kopyala, SKU+miktar CSV/Excel toplu sipariş, abonelik siparişi.
+
+**Cari & finans**
+- Sanal POS + taksit: iyzico / PayTR / banka VPOS, DBS (doğrudan borçlandırma).
+- Çek/senet takibi: sahadan görselle giriş, vade takibi, risk hesabına işleme.
+- E-Fatura / E-İrsaliye: özel entegratör (EDM, Foriba, Sovos) üzerinden belgelendirme + PDF.
+- Vade farkı & erken ödeme iskontosu motoru: peşin/vadeli fiyat farkı, "10 günde öderse %2".
+- Firma risk skoru + otomatik blokaj: vadesi geçmiş borçlu firmanın siparişi engellenir ya da onaya düşer (Adım 8'in yaşlandırma çıktısına dayanır).
+- Holding/şube konsolidasyonu: şubeler kendi siparişini verir, limit + fatura ana caride birleşir.
+
+**Yönetim**
+- Firma & kullanıcı CRUD: şirket ekleme, kredi limiti + vade tanımı, şirket içi alt kullanıcı yetkileri.
+- Fine-grained RBAC/ABAC: bölge bazlı firma görünürlüğü, kategori bazlı iskonto yetkisi (kural matrisi).
+- Depo/şube bazlı stok + fiyat: carinin bağlı deposundan stok düşümü, bölgeye göre fiyat.
+
+**Satış & pazarlama**
+- Çapraz satış / muadil ürün: stoksuz üründe muadil önerisi, sepette "birlikte alınanlar".
+- Matrix katalog: firma/bölge/anlaşma bazlı ürün-kategori görünürlüğü.
+- Numune talebi: bedelsiz/indirimli numune isteği → onay → sevkiyat akışı.
+
+**Depo & lojistik**
+- Hacim/ağırlık (desi) bazlı sepet: nakliye hesabı, "min 1 palet / 1 tır" kısıtı.
+- Sipariş birleştirme: aynı adrese aynı gün/hafta verilen siparişler tek irsaliyede.
+- Teslimat randevusu: gün + saat aralığı (slot) seçimi.
+
+**Saha satış & mobil**
+- Offline-first: SQLite/WatermelonDB ile sipariş + tahsilat senkronizasyonu.
+- Rota planlama: günlük/haftalık rota, haritada duraklar, ziyaret süresi, rota sapma raporu.
+- Barkod/QR okuyucu: kamerayla sepete ekleme, depo teslimat doğrulama.
+
+**Satış sonrası & bayi portalı**
+- Garanti + yedek parça + patlatılmış şema: teknik çizimde numaralı parçaya tıkla → sepete ekle.
+- Servis/arıza talebi (ticketing): garanti talebi ↔ yedek parça siparişi ilişkisi.
+- Müşteri içi hiyerarşi + bütçe: satınalmacı / departman müdürü rolleri, aylık bütçe limiti.
+- White-label katalog: bayinin kendi logosu + kendi satış fiyatlarıyla katalog modu / PDF.
+
+**Veri & AI**
+- Talep tahminleme + otomatik ikmal önerisi: geçmiş sipariş periyodundan "X ürününüz bitmek üzere".
+- Dinamik fiyatlandırma motoru: maliyet artışına göre kural bazlı fiyat üretimi (Cost + %X marj).
+
+**Platform & entegrasyon**
+- ERP çift yönlü senkron (Logo, Mikro, SAP, Nebim, DIA): stok/fiyat/cari ERP→B2B, sipariş+tahsilat B2B→ERP.
+- Bildirim motoru: FCM push + SendGrid/Twilio; sipariş durumu, onay bekleyen, limit aşımı tetikleyicileri.
+- Çoklu para birimi + çoklu dil: USD/EUR/TRY fiyat listeleri, TCMB kur entegrasyonu.
+- Dışa açık B2B API + Webhook + OpenAPI: büyük bayi kendi ERP'sinden otomatik sipariş geçer.
+- Audit log (KVKK/GDPR): fiyat/limit/yetki değişimi — kim, ne zaman, hangi IP; append-only.
+- Temsilci devir defteri: plasiyer değişince sipariş, çek-senet, ziyaret ve sepet devri.
+- Sunum/maskeleme modu: plasiyer müşteri yanındayken maliyet ve diğer müşteri bakiyeleri gizlenir.
