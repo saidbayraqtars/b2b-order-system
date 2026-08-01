@@ -12,7 +12,9 @@ export type BusinessErrorCode =
   | "INSUFFICIENT_STOCK"
   | "EMPTY_ORDER"
   | "FORBIDDEN_APPROVAL"
-  | "INVALID_STATE";
+  | "INVALID_STATE"
+  | "CHECKIN_NOT_FOUND"
+  | "FORBIDDEN";
 
 export class BusinessError extends Error {
   constructor(

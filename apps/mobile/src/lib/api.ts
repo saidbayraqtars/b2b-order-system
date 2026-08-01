@@ -7,6 +7,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Domain error code from the API (BusinessError.code), when present. */
+    public readonly code?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -34,14 +36,24 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
+    let code: string | undefined;
     try {
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; code?: string };
       if (data.error) message = data.error;
+      code = data.code;
     } catch {
       // non-JSON error body; keep default message
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, code);
   }
 
   return (await res.json()) as T;
+}
+
+/** Build a query string, skipping null/undefined/empty values. */
+export function qs(params: Record<string, string | undefined | null>): string {
+  const entries = Object.entries(params).filter(
+    (e): e is [string, string] => !!e[1],
+  );
+  return entries.length ? `?${new URLSearchParams(entries).toString()}` : "";
 }

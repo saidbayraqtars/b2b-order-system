@@ -1,24 +1,27 @@
 import "./global.css";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import RootNavigator from "@/navigation/RootNavigator";
+import { ApiError } from "@/lib/api";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      // Auth/permission failures never recover by retrying.
+      retry: (count, error) =>
+        error instanceof ApiError && error.status < 500 ? false : count < 2,
+    },
+  },
+});
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <SafeAreaView className="flex-1 bg-white dark:bg-neutral-950">
-          <View className="flex-1 items-center justify-center gap-2 px-6">
-            <Text className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-              B2B Mobile
-            </Text>
-            <Text className="text-neutral-500">Plasiyer &amp; Müşteri uygulaması</Text>
-          </View>
-          <StatusBar style="auto" />
-        </SafeAreaView>
+        <RootNavigator />
+        <StatusBar style="auto" />
       </SafeAreaProvider>
     </QueryClientProvider>
   );

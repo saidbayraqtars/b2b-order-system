@@ -12,6 +12,9 @@ web-build/
 # turbo
 .turbo/
 
+# tsc incremental build artifacts
+*.tsbuildinfo
+
 # env
 .env
 .env.*
@@ -19,6 +22,12 @@ web-build/
 
 # prisma
 packages/database/prisma/migrations/dev.db*
+
+# OSS reference clones kept locally for study — never commit.
+# Vendure is GPL-3.0 and Twenty is AGPL-3.0: vendoring their source here would
+# put this repo under strong copyleft. Study the architecture, reimplement.
+/refine/
+/vendure/
 
 # misc
 .DS_Store

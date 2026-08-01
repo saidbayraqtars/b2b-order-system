@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { hasRole, defaultRouteForRole } from "@repo/auth/rbac";
 import { BusinessError, type BusinessErrorCode } from "@repo/services";
 import type { Role, SessionUser } from "@repo/types";
+import { verifyMobileToken } from "./mobile-token";
 
 export class AuthError extends Error {
   constructor(
@@ -22,27 +24,44 @@ export class InputError extends Error {
   }
 }
 
+/** Read + verify a mobile bearer token from the Authorization header, if present. */
+async function bearerUser(): Promise<SessionUser | null> {
+  const authorization = headers().get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  return verifyMobileToken(authorization.slice("Bearer ".length).trim());
+}
+
 /**
  * Server-side guard for route handlers / server actions.
+ * Accepts either a mobile bearer token (Authorization header) or an Auth.js
+ * cookie session — so the same endpoints serve the web portal and the app.
  * Throws AuthError(401) if unauthenticated, AuthError(403) if role not allowed.
  * Returns the typed session user on success.
  */
 export async function requireUser(allowed?: readonly Role[]): Promise<SessionUser> {
-  const session = await auth();
-  const user = session?.user;
+  let user = await bearerUser();
+
+  if (!user) {
+    const session = await auth();
+    const s = session?.user;
+    if (s) {
+      user = {
+        id: s.id,
+        email: s.email ?? "",
+        name: s.name ?? "",
+        role: s.role,
+        companyId: s.companyId,
+      };
+    }
+  }
+
   if (!user) throw new AuthError(401, "Giriş gerekli");
 
   if (allowed && !hasRole(user.role, allowed)) {
     throw new AuthError(403, "Yetkisiz erişim");
   }
 
-  return {
-    id: user.id,
-    email: user.email ?? "",
-    name: user.name ?? "",
-    role: user.role,
-    companyId: user.companyId,
-  };
+  return user;
 }
 
 /**
@@ -78,6 +97,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   EMPTY_ORDER: 422,
   FORBIDDEN_APPROVAL: 403,
   INVALID_STATE: 409,
+  CHECKIN_NOT_FOUND: 404,
+  FORBIDDEN: 403,
 };
 
 /**

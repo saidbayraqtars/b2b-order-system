@@ -15,8 +15,17 @@
       "bundleIdentifier": "com.b2b.mobile"
     },
     "android": {
-      "package": "com.b2b.mobile"
+      "package": "com.b2b.mobile",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Ziyaret (check-in) kaydınıza müşteri konumunu eklemek için konum izni gerekiyor."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": ""
