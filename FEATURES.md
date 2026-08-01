@@ -232,8 +232,15 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
-- **Adım 9 — Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
-- **Adım 10 — Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.
+- **Rapor tasarımcısı (kullanıcı tanımlı raporlar).** Her rapor türünü tek tek kodlamak ölçeklenmiyor — rapor **kod değil veri** olmalı:
+  - `ReportDefinition` tablosu: ad, sahip, paylaşım, veri kümesi, sütun/filtre/gruplama/sıralama/grafik ayarları JSON.
+  - **Veri kümesi kayıt defteri** (`@repo/services`): SİPARİŞ · SİPARİŞ KALEMİ · CARİ DEFTER · FİRMA · ZİYARET için alan beyaz listesi — etiket, tip, Prisma yolu, gruplanabilir mi, hangi özetler (toplam/adet/ortalama/min/maks). **Güvenlik sınırı burası:** istemciden ham alan adı, Prisma yolu veya SQL asla kabul edilmez.
+  - Derleyici: tanım → Prisma sorgusu; çağıranın rol kapsamı bugün `reportScopeFor()`'un yaptığı gibi zorla enjekte edilir. Kayıtlı rapor erişimi genişletemez.
+  - Arayüz: veri kümesi seç → sütun ekle/sırala/çıkar → filtre kur → grupla + özetle → canlı önizleme → kaydet. Kayıtlı raporlar listesi, paylaş, CSV.
+  - **Dizayn tanımın parçası:** sütun sırası/genişliği/görünürlüğü, sayı biçimi, grafik tipi (tablo/bar/çizgi/pasta). "Rapor dizaynını değiştirmek" = tanımı düzenlemek, kod yazmak değil.
+  - Adım 8'in hazır raporları ayrı bir kod yolu olarak kalmaz, tohum tanım haline gelir.
+- **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
+- **Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.
 - **Kalite:** ESLint kurulumu, domain katmanı için birim testleri, API için entegrasyon testleri, CI.
 
 ### Uzun vadeli backlog
