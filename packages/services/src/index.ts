@@ -6,3 +6,6 @@ export * from "./order";
 export * from "./order-approval";
 export * from "./checkin";
 export * from "./payment";
+export * from "./slug";
+export * from "./catalog-admin";
+export * from "./pricing-admin";

@@ -14,7 +14,21 @@ export type BusinessErrorCode =
   | "FORBIDDEN_APPROVAL"
   | "INVALID_STATE"
   | "CHECKIN_NOT_FOUND"
-  | "FORBIDDEN";
+  | "FORBIDDEN"
+  // ── catalog administration ──
+  | "PRODUCT_NOT_FOUND"
+  | "CATEGORY_NOT_FOUND"
+  | "PRICE_NOT_FOUND"
+  | "DISCOUNT_NOT_FOUND"
+  | "GROUP_NOT_FOUND"
+  | "DUPLICATE_SKU"
+  | "DUPLICATE_BARCODE"
+  | "DUPLICATE_PRICE_TIER"
+  | "CATEGORY_HAS_CHILDREN"
+  | "CATEGORY_IN_USE"
+  | "IN_USE"
+  | "INVALID_DISCOUNT_TARGET"
+  | "CATEGORY_CYCLE";
 
 export class BusinessError extends Error {
   constructor(

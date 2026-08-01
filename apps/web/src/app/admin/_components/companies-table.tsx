@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
@@ -45,7 +46,15 @@ export function CompaniesTable() {
             const available = Number(c.creditLimit) - Number(c.currentBalance);
             return (
               <tr key={c.id}>
-                <td className="px-3 py-2 font-medium">{c.name}</td>
+                <td className="px-3 py-2 font-medium">
+                  <Link
+                    href={`/admin/companies/${c.id}`}
+                    className="hover:underline"
+                    title="Firmaya özel iskontolar"
+                  >
+                    {c.name}
+                  </Link>
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {formatTRY(c.currentBalance)}
                 </td>
