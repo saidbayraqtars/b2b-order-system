@@ -14,6 +14,12 @@ const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = 
   { prefix: "/admin", roles: ["SUPER_ADMIN"] },
   { prefix: "/rep", roles: ["SALES_REP", "SUPER_ADMIN"] },
   { prefix: "/portal", roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SUPER_ADMIN"] },
+  // Order detail is one page for every persona; the data itself is scoped
+  // server-side (own company / rep portfolio / any for super admin).
+  {
+    prefix: "/orders",
+    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+  },
 ];
 
 /** Roles allowed for a pathname, or null if the path is not gated. */

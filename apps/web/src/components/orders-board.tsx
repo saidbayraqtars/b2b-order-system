@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderStatus, PaymentMethod } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
@@ -43,9 +44,12 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
 
 export function OrdersBoard({
   canApproveCredit,
+  canAct = true,
 }: {
   /** SUPER_ADMIN may confirm PENDING_CREDIT orders; company admins may not. */
   canApproveCredit: boolean;
+  /** False for read-only surfaces (company staff), which hide the buttons. */
+  canAct?: boolean;
 }) {
   const qc = useQueryClient();
   const ordersQuery = useQuery({
@@ -99,14 +103,17 @@ export function OrdersBoard({
         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
           {orders.map((o) => {
             const pending =
-              o.status === "PENDING_APPROVAL" || o.status === "PENDING_CREDIT";
+              canAct &&
+              (o.status === "PENDING_APPROVAL" || o.status === "PENDING_CREDIT");
             const canApprove =
               o.status === "PENDING_APPROVAL" ||
               (o.status === "PENDING_CREDIT" && canApproveCredit);
             return (
               <tr key={o.id}>
                 <td className="px-3 py-2 font-medium">
-                  {o.orderNumber}
+                  <Link href={`/orders/${o.id}`} className="hover:underline">
+                    {o.orderNumber}
+                  </Link>
                   <span className="ml-1 text-xs text-neutral-400">
                     ({o._count.items} kalem)
                   </span>

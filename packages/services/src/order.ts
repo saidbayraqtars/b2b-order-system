@@ -3,6 +3,7 @@ import type { CreateOrderInput, OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
 import { resolvePrice } from "./pricing";
+import { recordStatusChange } from "./order-lifecycle";
 
 export interface CreateOrderContext {
   createdById: string;
@@ -228,7 +229,15 @@ async function buildOrder(
     select: { id: true, orderNumber: true, status: true },
   });
 
-  // 8. Cari DEBIT only when the order is immediately CONFIRMED on open account.
+  // 8. Open the status timeline with the status the order was born in.
+  await recordStatusChange(tx, {
+    orderId: order.id,
+    fromStatus: null,
+    toStatus: status,
+    changedById: ctx.createdById,
+  });
+
+  // 9. Cari DEBIT only when the order is immediately CONFIRMED on open account.
   //    Pending orders get their debit at approval/confirmation time.
   if (status === "CONFIRMED" && input.paymentMethod === "OPEN_ACCOUNT") {
     await tx.transaction.create({

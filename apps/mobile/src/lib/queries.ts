@@ -12,6 +12,7 @@ import type {
   CheckInRecord,
   Company,
   CreateOrderResult,
+  OrderDetail,
   OrderSummary,
   RecordPaymentResult,
 } from "./types";
@@ -66,6 +67,14 @@ export function useOrders(companyId?: string): UseQueryResult<OrderSummary[]> {
     queryFn: async () =>
       (await get<{ orders: OrderSummary[] }>(`/api/orders${qs({ companyId })}`))
         .orders,
+  });
+}
+
+export function useOrder(orderId: string): UseQueryResult<OrderDetail> {
+  return useQuery({
+    queryKey: ["order", orderId],
+    queryFn: async () =>
+      (await get<{ order: OrderDetail }>(`/api/orders/${orderId}`)).order,
   });
 }
 

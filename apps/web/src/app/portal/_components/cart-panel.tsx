@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import type { CreateOrderResult } from "@repo/services";
 import { useCart, cartTotals } from "@/store/cart";
@@ -38,7 +39,11 @@ export function CartPanel({ companyId }: { companyId: string }) {
 
       {result && (
         <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-          <p className="font-medium">Sipariş #{result.orderNumber}</p>
+          <p className="font-medium">
+            <Link href={`/orders/${result.orderId}`} className="underline">
+              Sipariş #{result.orderNumber}
+            </Link>
+          </p>
           <p>{STATUS_MESSAGE[result.status] ?? result.status}</p>
         </div>
       )}

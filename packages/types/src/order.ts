@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PaymentMethodEnum } from "./enums";
+import { OrderStatusEnum, PaymentMethodEnum } from "./enums";
 
 export const cartItemInputSchema = z.object({
   variantId: z.string().cuid(),
@@ -23,6 +23,14 @@ export const recordPaymentSchema = z.object({
   description: z.string().max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+export const changeOrderStatusSchema = z.object({
+  status: OrderStatusEnum,
+  note: z.string().max(500).optional(),
+  carrier: z.string().max(120).optional(),
+  trackingNumber: z.string().max(120).optional(),
+});
+export type ChangeOrderStatusInput = z.infer<typeof changeOrderStatusSchema>;
 
 export const checkInSchema = z.object({
   companyId: z.string().cuid(),

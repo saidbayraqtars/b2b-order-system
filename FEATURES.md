@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-01 · Adım 6 sonu
+Son güncelleme: 2026-08-01 · Adım 7 sonu
 
 ---
 
@@ -20,6 +20,7 @@ Son güncelleme: 2026-08-01 · Adım 6 sonu
 | 4 | Web portal: fiyatlama, katalog, sepet, sipariş, onay akışı, admin panel | ✅ |
 | 5 | Mobil (Expo): plasiyer + müşteri, GPS ziyaret, tahsilat | ✅ |
 | 6 | Katalog yönetimi: ürün/varyant/fiyat/kategori/iskonto CRUD | ✅ |
+| 7 | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı | ✅ |
 
 ---
 
@@ -43,7 +44,8 @@ Son güncelleme: 2026-08-01 · Adım 6 sonu
 | `Product` / `ProductVariant` | Ürün + varyant (SKU, barkod, renk, beden, koli adedi, min sipariş, stok) |
 | `Price` | Varyant × müşteri grubu × miktar kademesi fiyatı |
 | `CompanyDiscount` | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) |
-| `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile |
+| `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; kargo/takip no ve sevk/teslim/iptal zaman damgaları |
+| `OrderStatusHistory` | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only) |
 | `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı |
 | `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) |
 | `Cart` / `CartItem` | Taslak sepet (şema hazır — şu an sepet istemci tarafında tutuluyor) |
@@ -87,6 +89,15 @@ Son güncelleme: 2026-08-01 · Adım 6 sonu
 - `PENDING_CREDIT` → **sadece süper admin** onaylayabilir (limit aşımı override).
 - Red → `REJECTED` + stok iadesi.
 
+### Sevkiyat akışı (Adım 7)
+- Geçiş haritası: `CONFIRMED → PROCESSING → SHIPPED → DELIVERED`. `CONFIRMED` ve `PROCESSING` iptal edilebilir; **sevk edildikten sonra iptal yok**. `DELIVERED`, `CANCELLED`, `REJECTED` uçtur.
+- `DRAFT` buradan `CONFIRMED` yapılamaz — onay kredi kontrolü gerektirir, o da sipariş/onay servisinde.
+- **Yetki:** sevkiyat durumlarını yalnızca süper admin değiştirir. İptali süper admin ya da siparişi veren firmanın yöneticisi (sadece sevkten önce) yapabilir.
+- **İptal geri alır:** tüm kalemler stoğa iade edilir ve cari borç yazılmışsa ters kayıt (CREDIT) ile bakiye eski haline döner. Kredi kartı siparişinde cariye dokunulmaz — ters kayıt varsayımla değil, gerçek DEBIT satırı aranarak yazılır.
+- `SHIPPED` geçişinde kargo firması + takip numarası kaydedilir; `shippedAt` / `deliveredAt` / `cancelledAt` damgalanır.
+- **Durum geçmişi** (`OrderStatusHistory`): oluşturma anı dahil her geçiş, kim ve ne zaman yaptığı ve opsiyonel notuyla append-only tutulur.
+- API sipariş detayında `availableTransitions` döner — arayüz butonları buna göre çizer, yetkisiz seçenek hiç görünmez.
+
 ## 6. Cari & Tahsilat
 
 - Firma bazlı cari defter: sipariş borcu (DEBIT) ve tahsilat (CREDIT) kayıtları.
@@ -111,7 +122,9 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 |-------|-----|--------|
 | `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
 | `/portal` | firma yön./personel | Katalog, sepet, sipariş oluşturma |
+| `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
 | `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
+| `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları |
 | `/admin` | süper admin | Cari hesap tablosu + tüm siparişler, limit override onayı |
 | `/admin/products` | süper admin | Ürün listesi: arama, kategori filtresi, stok/varyant/fiyatsız uyarısı |
 | `/admin/products/new` | süper admin | Yeni ürün formu |
@@ -121,7 +134,7 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 | `/rep` | plasiyer | **Şu an sadece iskelet sayfa** (gerçek işlevi mobilde) |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 8. Mobil Uygulama (`apps/mobile`)
+## 9. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -131,6 +144,7 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 - **Sepet:** koli katına yuvarlayan adet kontrolü, KDV'li toplam önizlemesi, ödeme yöntemi seçimi. **Firma bazlı** — müşteri değişince sıfırlanır (fiyat firmaya özeldir).
 - **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz.
 - **Tahsilat:** tutar (virgüllü klavye desteği), ödeme yöntemi, açıklama; sonuç bakiyesi sunucudan döner.
+- **Sipariş detayı:** listeden dokunarak açılır — kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi ve durum geçmişi. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
 ## 10. API Uçları
@@ -144,6 +158,8 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 | GET | `/api/categories` | 4 rol |
 | GET | `/api/companies` | kimliği doğrulanmış (role göre kapsam) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
+| GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
+| POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
 | POST | `/api/orders/:id/approve` | firma yöneticisi, süper admin |
 | POST | `/api/orders/:id/reject` | firma yöneticisi, süper admin |
 | POST · GET | `/api/checkins` | plasiyer, süper admin |
@@ -166,8 +182,10 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 ## Bilinen Eksikler
 
-- **Sipariş sonrası akış yok** — `PROCESSING` / `SHIPPED` / `DELIVERED` durumları şemada var ama geçişleri yapan kod yok.
 - **Cari ekstre ekranı yok** — `Transaction` kayıtları yazılıyor ama hiçbir yerde listelenmiyor.
+- **İrsaliye/fatura yok** — sevkiyat bilgisi kaydediliyor ama belge numarası üretilmiyor, çıktı alınamıyor.
+- **Sevkiyat kısmi yapılamıyor** — sipariş tek parça sevk edilir, kalem bazlı kısmi sevk yok.
+- Mobil sipariş detayı salt okunur; durum değiştirme yalnızca webde.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
 - **Müşteri grubu ve firma yönetimi arayüzü yok** — grup, firma, kullanıcı, adres kayıtları hâlâ yalnızca seed ile giriliyor (katalog tarafı Adım 6'da çözüldü).
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
@@ -181,7 +199,6 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
-- **Adım 7 — Sipariş yaşam döngüsü:** hazırlama → sevk → teslim durum geçişleri, sipariş detay ekranı, irsaliye/fatura numaralandırma.
 - **Adım 8 — Cari ekstre & raporlama:** hesap hareketleri ekranı, yaşlandırma, plasiyer performansı, tahsilat raporu.
 - **Adım 9 — Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
 - **Adım 10 — Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.

@@ -4,6 +4,7 @@ export * from "./pricing";
 export * from "./catalog";
 export * from "./order";
 export * from "./order-approval";
+export * from "./order-lifecycle";
 export * from "./checkin";
 export * from "./payment";
 export * from "./slug";

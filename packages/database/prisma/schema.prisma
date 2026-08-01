@@ -72,6 +72,7 @@ model User {
   ordersApproved Order[]       @relation("OrderApprovedBy")
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
+  statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -296,8 +297,16 @@ model Order {
 
   note String?
 
-  items        OrderItem[]
-  transactions Transaction[]
+  // Fulfillment (set as the order moves through PROCESSING → SHIPPED → DELIVERED)
+  carrier        String?
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  cancelledAt    DateTime?
+
+  items         OrderItem[]
+  transactions  Transaction[]
+  statusHistory OrderStatusHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -305,6 +314,27 @@ model Order {
   @@index([companyId])
   @@index([createdById])
   @@index([status])
+}
+
+// Audit trail of every status change, including the initial one at creation.
+// Kept append-only: the current status lives on Order, this is the "how it got there".
+model OrderStatusHistory {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// null for the row written when the order is first created.
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+
+  changedById String
+  changedBy   User   @relation("OrderStatusChangedBy", fields: [changedById], references: [id])
+
+  note String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
 }
 
 model OrderItem {

@@ -64,6 +64,9 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
           <p className="text-sm text-neutral-500">{userName} · Katalog</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/portal/orders" className="text-sm underline">
+            Siparişlerim
+          </Link>
           {role === "COMPANY_ADMIN" && (
             <Link href="/portal/approvals" className="text-sm underline">
               Onaylar

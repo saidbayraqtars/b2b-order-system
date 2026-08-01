@@ -10,6 +10,7 @@ import CompanyScreen from "@/screens/CompanyScreen";
 import CatalogScreen from "@/screens/CatalogScreen";
 import CartScreen from "@/screens/CartScreen";
 import OrdersScreen from "@/screens/OrdersScreen";
+import OrderDetailScreen from "@/screens/OrderDetailScreen";
 import CheckInScreen from "@/screens/CheckInScreen";
 import PaymentScreen from "@/screens/PaymentScreen";
 
@@ -63,6 +64,11 @@ export default function RootNavigator() {
               name="Orders"
               component={OrdersScreen}
               options={{ title: "Siparişler" }}
+            />
+            <Stack.Screen
+              name="OrderDetail"
+              component={OrderDetailScreen}
+              options={{ title: "Sipariş" }}
             />
             <Stack.Screen
               name="CheckIn"

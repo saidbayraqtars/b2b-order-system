@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
+import { recordStatusChange } from "./order-lifecycle";
 
 export interface ApprovalContext {
   approverId: string;
@@ -54,6 +55,12 @@ export async function approveOrder(
             where: { id: order.id },
             data: { status: "PENDING_CREDIT", approvedById: ctx.approverId },
             select: { orderNumber: true },
+          });
+          await recordStatusChange(tx, {
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: "PENDING_CREDIT",
+            changedById: ctx.approverId,
           });
           return {
             orderId: order.id,
@@ -117,6 +124,12 @@ export async function rejectOrder(
       data: { status: "REJECTED", approvedById: ctx.approverId },
       select: { orderNumber: true },
     });
+    await recordStatusChange(tx, {
+      orderId: order.id,
+      fromStatus: order.status,
+      toStatus: "REJECTED",
+      changedById: ctx.approverId,
+    });
     return {
       orderId: order.id,
       orderNumber: updated.orderNumber,
@@ -170,6 +183,12 @@ async function confirmAndDebit(
     where: { id: order.id },
     data: { status: "CONFIRMED", approvedById: ctx.approverId },
     select: { orderNumber: true },
+  });
+  await recordStatusChange(tx, {
+    orderId: order.id,
+    fromStatus: order.status,
+    toStatus: "CONFIRMED",
+    changedById: ctx.approverId,
   });
 
   if (order.paymentMethod === "OPEN_ACCOUNT") {

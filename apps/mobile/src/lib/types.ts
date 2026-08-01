@@ -61,6 +61,57 @@ export interface OrderSummary {
   _count: { items: number };
 }
 
+export interface OrderDetailItem {
+  id: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPrice: string;
+  discount: string;
+  vatRate: number;
+  lineTotal: string;
+}
+
+export interface OrderStatusEvent {
+  id: string;
+  fromStatus: OrderStatus | null;
+  toStatus: OrderStatus;
+  changedByName: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface OrderDetail {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  paymentMethod: PaymentMethod;
+  subtotal: string;
+  discountTotal: string;
+  taxTotal: string;
+  grandTotal: string;
+  currency: string;
+  note: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  createdAt: string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  company: { id: string; name: string };
+  createdByName: string;
+  approvedByName: string | null;
+  shippingAddress: {
+    label: string;
+    line1: string;
+    city: string;
+    district: string | null;
+  } | null;
+  items: OrderDetailItem[];
+  history: OrderStatusEvent[];
+  availableTransitions: OrderStatus[];
+}
+
 export interface CheckInRecord {
   id: string;
   companyId: string;
