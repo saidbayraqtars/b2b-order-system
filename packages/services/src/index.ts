@@ -12,3 +12,6 @@ export * from "./catalog-admin";
 export * from "./pricing-admin";
 export * from "./ledger";
 export * from "./reports";
+export * from "./report-registry";
+export * from "./report-engine";
+export * from "./report-definition";

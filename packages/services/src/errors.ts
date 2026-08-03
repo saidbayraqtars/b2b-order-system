@@ -28,7 +28,10 @@ export type BusinessErrorCode =
   | "CATEGORY_IN_USE"
   | "IN_USE"
   | "INVALID_DISCOUNT_TARGET"
-  | "CATEGORY_CYCLE";
+  | "CATEGORY_CYCLE"
+  // ── user-defined reports ──
+  | "REPORT_NOT_FOUND"
+  | "INVALID_REPORT";
 
 export class BusinessError extends Error {
   constructor(

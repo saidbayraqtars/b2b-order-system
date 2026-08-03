@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-01 · Adım 8 sonu
+Son güncelleme: 2026-08-03 · Adım 9 sonu
 
 ---
 
@@ -22,6 +22,7 @@ Son güncelleme: 2026-08-01 · Adım 8 sonu
 | 6 | Katalog yönetimi: ürün/varyant/fiyat/kategori/iskonto CRUD | ✅ |
 | 7 | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı | ✅ |
 | 8 | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları | ✅ |
+| 9 | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması | ✅ |
 
 ---
 
@@ -49,6 +50,7 @@ Son güncelleme: 2026-08-01 · Adım 8 sonu
 | `OrderStatusHistory` | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only) |
 | `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı |
 | `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) |
+| `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
 | `Cart` / `CartItem` | Taslak sepet (şema hazır — şu an sepet istemci tarafında tutuluyor) |
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
@@ -137,7 +139,25 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 - **Alacak yaşlandırma:** tüm firmaların kova kova alacak dağılımı ve toplamları; firma adından ekstresine gidilir.
 - **Kapsam yetkiye göre daraltılır:** plasiyer raporları kendi portföyüne sabitlenir — başkasının `salesRepId`'sini göndermek erişimi genişletmez, kesişimi boşaltır. Plasiyer performansı karşılaştırmalı olduğu için yalnız süper admine açıktır.
 
-## 9. Web Portal (`apps/web`)
+## 9. Rapor Tasarımcısı (Adım 9)
+
+Her rapor türünü tek tek kodlamak yerine **rapor tanımı veri olarak** saklanıyor: kullanıcı
+istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını değiştiriyor.
+
+- **Veri kümeleri:** Siparişler · Sipariş kalemleri · Cari defter · Firmalar · Ziyaretler.
+- **Alan kayıt defteri (`report-registry.ts`) tek gerçek kaynak ve güvenlik sınırı.** Her alanın etiketi, tipi, veritabanı yolu, gruplanabilirliği ve alabileceği özet fonksiyonları burada tanımlı. İstemciden gelen bir alan adı önce burada aranır — listede yoksa **yok**. Ham alan adı, Prisma yolu veya SQL hiçbir zaman doğrudan sorguya geçmez. Katalog uçtan istemciye verilirken **veritabanı yolu çıkarılır**; arayüzün alanın nereye karşılık geldiğini bilmesine gerek yok.
+- **Sütunlar:** ekle/çıkar/sırala, başlık değiştir, genişlik ver, gizle, biçim seç (metin/sayı/para/yüzde/tarih).
+- **Özet fonksiyonları:** toplam, adet, benzersiz adet, ortalama, en küçük, en büyük — alanın tipine göre kısıtlı (metne toplam uygulanamaz). `Adet` gruptaki satır sayısıdır (SQL'in `COUNT(*)`'ı), `benzersiz adet` ise boş olmayan farklı değer sayısı.
+- **Gruplama:** gruplanabilir alanlara göre; gruplarken her sütun ya gruplama alanı olmalı ya da bir özet almalı — belirsiz çıktı üretilemez. Gruplama alanı sütun listesinde yoksa otomatik başa eklenir. Tarihler gün/ay/yıl olarak da gruplanabilir.
+- **Filtreler:** alanın tipine göre operatör listesi (paraya `içerir` uygulanamaz). **Son N gün** filtresi kayan pencere — kaydedilmiş rapor tarihe çakılıp kalmaz.
+- **Dizayn tanımın parçası:** sütun sırası/genişliği/görünürlüğü, sayı biçimi ve grafik tipi (tablo/sütun/çizgi/pasta) kayıtla birlikte saklanır. Grafikler CSS/SVG ile çiziliyor — grafik kütüphanesi yok.
+- **Canlı önizleme** (kaydetmeden çalıştırma) + CSV dışa aktarım.
+- **Paylaşım:** rapor paylaşılabilir. Paylaşılan rapor **çalıştıranın** yetkisiyle çalışır — plasiyer, adminin paylaştığı raporu açtığında yalnız kendi portföyünü görür. Sahibi (ve süper admin) düzenleyip silebilir, diğerleri salt okur.
+- **Satır kapsamı zorunlu:** kullanıcının filtreleri ile rolünün kapsamı **VE**'lenir. Portföy dışı bir firmayı adıyla filtrelemek sonucu açmaz, boşaltır.
+- **Kaydedilmiş tanım da doğrulanır:** JSON sütunundaki config her çalıştırmada yeniden şema + kayıt defteri kontrolünden geçer — veritabanından elle düzenlenmiş bir satır motoru atlatamaz.
+- Seed 4 örnek rapor kuruyor (Aylık ciro · En çok satan ürünler · Firma bakiyeleri · Plasiyere göre tahsilat) — ayrıcalıklı değiller, sıradan tanımlar, aynı zamanda çalışan örnek.
+
+## 10. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -154,11 +174,13 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 | `/admin/categories` | süper admin | Kategori ağacı yönetimi |
 | `/admin/companies/[id]` | süper admin | Firma özeti + firmaya özel iskontolar |
 | `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
-| `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma |
+| `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
+| `/reports` | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar |
+| `/reports/new` · `/reports/[id]` | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme |
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 10. Mobil Uygulama (`apps/mobile`)
+## 11. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -172,7 +194,7 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 11. API Uçları
+## 12. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -189,6 +211,11 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 | GET | `/api/reports/collections?from&to&companyId&limit` | süper admin, plasiyer (kendi kaydettikleri) |
 | GET | `/api/reports/receivables` | süper admin, plasiyer (kendi portföyü) |
 | GET | `/api/reports/reps?from&to` | süper admin |
+| GET | `/api/reports/datasets` | süper admin, plasiyer, firma yöneticisi |
+| POST | `/api/reports/run` | süper admin, plasiyer, firma yöneticisi (kaydetmeden çalıştır) |
+| GET · POST | `/api/reports/definitions` | süper admin, plasiyer, firma yöneticisi |
+| GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
+| GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
 | GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
 | POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
@@ -217,6 +244,9 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 - **İrsaliye/fatura yok** — sevkiyat bilgisi kaydediliyor ama belge numarası üretilmiyor, çıktı alınamıyor.
 - **Sevkiyat kısmi yapılamıyor** — sipariş tek parça sevk edilir, kalem bazlı kısmi sevk yok.
 - **Vade tek bir sayı** — `paymentTermDays` firma genelinde; sipariş/fatura bazlı farklı vade tanımlanamıyor. Yaşlandırma da fatura değil, cari hareket bazlı.
+- **Rapor tasarımcısının sınırları:** gruplama/özet bellekte yapılıyor (Prisma ilişki sütununa göre gruplayamıyor), bu yüzden özetli raporlar en fazla **20.000 satır** tarıyor; sınıra çarpınca sonuç `truncated` işaretiyle dönüyor ve arayüz uyarı gösteriyor. Detay listeleri sıralama ve limiti veritabanına ittiği için bu sınırdan etkilenmiyor.
+- **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
+- **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
 - **Vade süper adminin arayüzünden değiştirilemiyor** — firma CRUD ekranı henüz yok, alan yalnız veritabanından giriliyor.
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
@@ -232,15 +262,9 @@ Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi deği�
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
-- **Rapor tasarımcısı (kullanıcı tanımlı raporlar).** Her rapor türünü tek tek kodlamak ölçeklenmiyor — rapor **kod değil veri** olmalı:
-  - `ReportDefinition` tablosu: ad, sahip, paylaşım, veri kümesi, sütun/filtre/gruplama/sıralama/grafik ayarları JSON.
-  - **Veri kümesi kayıt defteri** (`@repo/services`): SİPARİŞ · SİPARİŞ KALEMİ · CARİ DEFTER · FİRMA · ZİYARET için alan beyaz listesi — etiket, tip, Prisma yolu, gruplanabilir mi, hangi özetler (toplam/adet/ortalama/min/maks). **Güvenlik sınırı burası:** istemciden ham alan adı, Prisma yolu veya SQL asla kabul edilmez.
-  - Derleyici: tanım → Prisma sorgusu; çağıranın rol kapsamı bugün `reportScopeFor()`'un yaptığı gibi zorla enjekte edilir. Kayıtlı rapor erişimi genişletemez.
-  - Arayüz: veri kümesi seç → sütun ekle/sırala/çıkar → filtre kur → grupla + özetle → canlı önizleme → kaydet. Kayıtlı raporlar listesi, paylaş, CSV.
-  - **Dizayn tanımın parçası:** sütun sırası/genişliği/görünürlüğü, sayı biçimi, grafik tipi (tablo/bar/çizgi/pasta). "Rapor dizaynını değiştirmek" = tanımı düzenlemek, kod yazmak değil.
-  - Adım 8'in hazır raporları ayrı bir kod yolu olarak kalmaz, tohum tanım haline gelir.
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
 - **Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.
+- **Rapor tasarımcısı v2:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), veri kümeleri arası birleştirme, veritabanı tarafında gruplama (20.000 satır tarama sınırını kaldırmak için).
 - **Kalite:** ESLint kurulumu, domain katmanı için birim testleri, API için entegrasyon testleri, CI.
 
 ### Uzun vadeli backlog

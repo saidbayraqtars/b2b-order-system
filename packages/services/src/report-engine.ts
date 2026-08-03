@@ -1,0 +1,585 @@
+import { Prisma, prisma } from "@repo/database";
+import type {
+  Aggregate,
+  ColumnFormat,
+  ReportColumn,
+  ReportConfig,
+  ReportDataset,
+  ReportFilter,
+} from "@repo/types";
+import { BusinessError } from "./errors";
+import { Dec, ZERO } from "./money";
+import {
+  DATASETS,
+  allowedAggregates,
+  allowedOperators,
+  buildSelect,
+  defaultFormat,
+  readPath,
+  type ReportContext,
+  type ReportFieldDef,
+} from "./report-registry";
+
+// Compiles a user-defined report into a Prisma query and runs it.
+//
+// Nothing from the config reaches the database by name: every field is resolved
+// through the registry first, so an unknown field is an error rather than a
+// lookup. The caller's row scope is ANDed on top of their filters, which is why
+// running someone else's shared report is safe.
+
+/**
+ * Aggregating happens in JS (Prisma cannot group by a relation column), so an
+ * aggregate report reads rows before folding them. The cap keeps one report
+ * from pulling an unbounded table into memory; hitting it is reported rather
+ * than hidden, because a silently partial total is worse than no total.
+ */
+const MAX_SCAN_ROWS = 20_000;
+const DEFAULT_DETAIL_LIMIT = 500;
+
+export interface ReportColumnOut {
+  key: string;
+  label: string;
+  type: string;
+  format: ColumnFormat;
+  aggregate: Aggregate | null;
+  width: number | null;
+}
+
+export type ReportCellValue = string | number | boolean | null;
+
+export interface ReportRunResult {
+  dataset: ReportDataset;
+  columns: ReportColumnOut[];
+  rows: Record<string, ReportCellValue>[];
+  rowCount: number;
+  /** Rows read from the database before aggregation. */
+  scannedRows: number;
+  /** True when the scan cap was hit — aggregates cover only what was read. */
+  truncated: boolean;
+  grouped: boolean;
+  chart: ReportConfig["chart"] | null;
+  generatedAt: string;
+}
+
+// ─────────────────────────────────────────────
+// VALIDATION
+// ─────────────────────────────────────────────
+
+function invalid(message: string, details?: Record<string, unknown>): never {
+  throw new BusinessError("INVALID_REPORT", message, details);
+}
+
+/**
+ * Check a config against the registry and return a normalised copy.
+ * Runs on save AND on execution — a config edited directly in the database gets
+ * the same treatment as one that just arrived over HTTP.
+ */
+export function normalizeConfig(
+  dataset: ReportDataset,
+  config: ReportConfig,
+): ReportConfig {
+  const ds = DATASETS[dataset];
+  if (!ds) invalid("Bilinmeyen veri kümesi", { dataset });
+
+  const field = (key: string, where: string): ReportFieldDef => {
+    const f = ds.fields[key];
+    if (!f) invalid(`${where}: "${key}" alanı bu veri kümesinde yok`, { key });
+    return f;
+  };
+
+  // ── columns ──
+  const columns: ReportColumn[] = config.columns.map((c) => {
+    const f = field(c.field, "Sütun");
+    if (c.aggregate && !allowedAggregates(f).includes(c.aggregate)) {
+      invalid(`"${f.label}" alanına ${c.aggregate} özeti uygulanamaz`, {
+        field: c.field,
+        aggregate: c.aggregate,
+      });
+    }
+    return { ...c, format: c.format ?? defaultFormat(f) };
+  });
+
+  // ── groupBy ──
+  for (const key of config.groupBy) {
+    const f = field(key, "Gruplama");
+    if (!f.groupable) {
+      invalid(`"${f.label}" alanına göre gruplanamaz`, { field: key });
+    }
+  }
+
+  const hasAggregate = columns.some((c) => c.aggregate);
+  const grouped = config.groupBy.length > 0;
+
+  // A grouped report must say what to do with every non-key column, and an
+  // ungrouped one cannot mix a total with a detail row.
+  const plainColumns = columns.filter(
+    (c) => !c.aggregate && !config.groupBy.includes(c.field),
+  );
+  if ((grouped || hasAggregate) && plainColumns.length > 0) {
+    invalid(
+      `"${field(plainColumns[0]!.field, "Sütun").label}" ya gruplama alanı olmalı ya da bir özet fonksiyonu almalı`,
+      { field: plainColumns[0]!.field },
+    );
+  }
+
+  // Group keys always come out as columns, prepended, so the output is readable
+  // even if the user only picked aggregates.
+  const missingKeys = config.groupBy.filter(
+    (key) => !columns.some((c) => c.field === key && !c.aggregate),
+  );
+  const finalColumns: ReportColumn[] = [
+    ...missingKeys.map((key) => ({
+      field: key,
+      format: defaultFormat(field(key, "Gruplama")),
+    })),
+    ...columns,
+  ];
+
+  // ── filters ──
+  const filters = config.filters.map((f) => {
+    const def = field(f.field, "Filtre");
+    if (!allowedOperators(def).includes(f.operator)) {
+      invalid(`"${def.label}" alanına "${f.operator}" filtresi uygulanamaz`, {
+        field: f.field,
+        operator: f.operator,
+      });
+    }
+    assertFilterValue(def, f);
+    return f;
+  });
+
+  // ── sort ──
+  // Hidden columns are kept in the definition (so the builder can toggle them
+  // back) but never appear in the output, so nothing may reference them.
+  const outKeys = new Set(
+    finalColumns.filter((c) => !c.hidden).map(columnKey),
+  );
+  const sort = config.sort.filter((s) => {
+    if (!outKeys.has(s.field)) {
+      invalid(`Sıralama alanı "${s.field}" çıktı sütunları arasında değil`, {
+        field: s.field,
+      });
+    }
+    return true;
+  });
+
+  // ── chart ──
+  let chart = config.chart;
+  if (chart && chart.type !== "table") {
+    if (!chart.categoryField || !outKeys.has(chart.categoryField)) {
+      invalid("Grafik için geçerli bir etiket sütunu seçin");
+    }
+    if (!chart.valueField || !outKeys.has(chart.valueField)) {
+      invalid("Grafik için geçerli bir değer sütunu seçin");
+    }
+  }
+  if (chart?.type === "table") chart = { type: "table" };
+
+  return {
+    columns: finalColumns,
+    filters,
+    groupBy: config.groupBy,
+    sort,
+    limit: config.limit,
+    chart,
+  };
+}
+
+function assertFilterValue(def: ReportFieldDef, filter: ReportFilter): void {
+  const { operator, value } = filter;
+  if (operator === "isNull" || operator === "notNull") return;
+
+  if (operator === "in" || operator === "notIn") {
+    if (!Array.isArray(value) || value.length === 0) {
+      invalid(`"${def.label}" için en az bir değer seçin`, { field: filter.field });
+    }
+    if (def.enumValues) {
+      for (const v of value) {
+        if (!def.enumValues.includes(String(v))) {
+          invalid(`"${def.label}" için geçersiz değer: ${String(v)}`, {
+            field: filter.field,
+          });
+        }
+      }
+    }
+    return;
+  }
+
+  if (operator === "between") {
+    if (!Array.isArray(value) || value.length !== 2) {
+      invalid(`"${def.label}" için iki değer girin`, { field: filter.field });
+    }
+    return;
+  }
+
+  if (value === undefined || value === null || value === "") {
+    invalid(`"${def.label}" için bir değer girin`, { field: filter.field });
+  }
+
+  if (operator === "lastNDays") {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > 3650) {
+      invalid(`"${def.label}" için 1-3650 arası gün sayısı girin`, {
+        field: filter.field,
+      });
+    }
+    return;
+  }
+
+  if (def.type === "enum" && def.enumValues && !def.enumValues.includes(String(value))) {
+    invalid(`"${def.label}" için geçersiz değer: ${String(value)}`, {
+      field: filter.field,
+    });
+  }
+
+  if ((def.type === "number" || def.type === "money") && Number.isNaN(Number(value))) {
+    invalid(`"${def.label}" sayısal bir değer bekliyor`, { field: filter.field });
+  }
+
+  if (def.type === "date" && Number.isNaN(Date.parse(String(value)))) {
+    invalid(`"${def.label}" geçerli bir tarih bekliyor`, { field: filter.field });
+  }
+}
+
+/** Output key for a column: aggregated columns get suffixed so both can coexist. */
+export function columnKey(c: ReportColumn): string {
+  return c.aggregate ? `${c.field}__${c.aggregate.toLowerCase()}` : c.field;
+}
+
+// ─────────────────────────────────────────────
+// FILTER → PRISMA WHERE
+// ─────────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function leafCondition(def: ReportFieldDef, filter: ReportFilter): unknown {
+  const { operator, value } = filter;
+  const asDate = (v: unknown) => new Date(String(v));
+  const asNum = (v: unknown) => Number(v);
+  const typed = (v: unknown) =>
+    def.type === "date"
+      ? asDate(v)
+      : def.type === "number" || def.type === "money"
+        ? asNum(v)
+        : def.type === "boolean"
+          ? v === true || v === "true"
+          : String(v);
+
+  switch (operator) {
+    case "eq":
+      return { equals: typed(value) };
+    case "neq":
+      return { not: typed(value) };
+    case "contains":
+      return { contains: String(value), mode: "insensitive" };
+    case "startsWith":
+      return { startsWith: String(value), mode: "insensitive" };
+    case "in":
+      return { in: (value as unknown[]).map(typed) };
+    case "notIn":
+      return { notIn: (value as unknown[]).map(typed) };
+    case "gt":
+      return { gt: typed(value) };
+    case "gte":
+      return { gte: typed(value) };
+    case "lt":
+      return { lt: typed(value) };
+    case "lte":
+      return { lte: typed(value) };
+    case "between": {
+      const [a, b] = value as [unknown, unknown];
+      return { gte: typed(a), lte: typed(b) };
+    }
+    case "isNull":
+      return { equals: null };
+    case "notNull":
+      return { not: null };
+    case "lastNDays": {
+      // Rolling window from the start of the day N-1 days ago, so "son 7 gün"
+      // means seven calendar days including today.
+      const start = new Date(Date.now() - (Number(value) - 1) * DAY_MS);
+      start.setHours(0, 0, 0, 0);
+      return { gte: start };
+    }
+    default:
+      return invalid(`Desteklenmeyen filtre: ${operator}`);
+  }
+}
+
+/** Nest a leaf condition down the field's relation path. */
+function nest(path: string, condition: unknown): Record<string, unknown> {
+  const parts = path.split(".");
+  let node: unknown = condition;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    node = { [parts[i]!]: node };
+  }
+  return node as Record<string, unknown>;
+}
+
+export function compileWhere(
+  dataset: ReportDataset,
+  filters: ReportFilter[],
+  ctx: ReportContext,
+): Record<string, unknown> {
+  const ds = DATASETS[dataset];
+  const clauses: Record<string, unknown>[] = filters.map((f) => {
+    const def = ds.fields[f.field];
+    if (!def) invalid(`Bilinmeyen filtre alanı: ${f.field}`);
+    return nest(def.path, leafCondition(def, f));
+  });
+
+  const scope = ds.scope(ctx);
+  // Scope last and always ANDed — a user filter can narrow it, never replace it.
+  return { AND: [...clauses, scope] };
+}
+
+// ─────────────────────────────────────────────
+// EXECUTION
+// ─────────────────────────────────────────────
+
+export async function runReport(
+  dataset: ReportDataset,
+  rawConfig: ReportConfig,
+  ctx: ReportContext,
+): Promise<ReportRunResult> {
+  const config = normalizeConfig(dataset, rawConfig);
+  const ds = DATASETS[dataset];
+  const columns = config.columns.filter((c) => !c.hidden);
+
+  const where = compileWhere(dataset, config.filters, ctx);
+  const paths = [...new Set(columns.map((c) => ds.fields[c.field]!.path))];
+  const select = buildSelect(paths);
+
+  const grouped = config.groupBy.length > 0;
+  const hasAggregate = columns.some((c) => c.aggregate);
+  const detail = !grouped && !hasAggregate;
+
+  // Detail listings can be ordered and limited by the database, so they never
+  // hit the scan cap. Aggregations have to read the matching set.
+  const take = detail
+    ? (config.limit ?? DEFAULT_DETAIL_LIMIT)
+    : MAX_SCAN_ROWS;
+
+  const orderBy = detail ? detailOrderBy(dataset, config) : undefined;
+
+  const delegate = prisma[ds.model] as {
+    findMany: (args: unknown) => Promise<unknown[]>;
+  };
+  const raw = await delegate.findMany({
+    where,
+    select,
+    take,
+    ...(orderBy ? { orderBy } : {}),
+  });
+
+  const flat = raw.map((row) => flattenRow(dataset, columns, row));
+
+  let rows: Record<string, ReportCellValue>[];
+  if (detail) {
+    rows = flat.map((r) => emit(columns, r));
+  } else {
+    rows = aggregate(config, columns, flat);
+    rows = sortRows(rows, config);
+    if (config.limit) rows = rows.slice(0, config.limit);
+  }
+
+  return {
+    dataset,
+    columns: columns.map((c) => {
+      const def = ds.fields[c.field]!;
+      return {
+        key: columnKey(c),
+        label: c.label ?? labelFor(def, c.aggregate),
+        type: def.type,
+        format: c.aggregate === "COUNT" || c.aggregate === "COUNT_DISTINCT"
+          ? "number"
+          : (c.format ?? defaultFormat(def)),
+        aggregate: c.aggregate ?? null,
+        width: c.width ?? null,
+      };
+    }),
+    rows,
+    rowCount: rows.length,
+    scannedRows: raw.length,
+    truncated: !detail && raw.length >= MAX_SCAN_ROWS,
+    grouped,
+    chart: config.chart ?? null,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function labelFor(def: ReportFieldDef, aggregate?: Aggregate): string {
+  if (!aggregate) return def.label;
+  const suffix: Record<Aggregate, string> = {
+    SUM: "toplam",
+    COUNT: "adet",
+    COUNT_DISTINCT: "benzersiz",
+    AVG: "ortalama",
+    MIN: "en küçük",
+    MAX: "en büyük",
+  };
+  return `${def.label} (${suffix[aggregate]})`;
+}
+
+/** Push ordering into the database for detail listings. */
+function detailOrderBy(
+  dataset: ReportDataset,
+  config: ReportConfig,
+): Record<string, unknown> | undefined {
+  const ds = DATASETS[dataset];
+  const first = config.sort[0];
+  if (first) {
+    const column = config.columns.find((c) => columnKey(c) === first.field);
+    const def = column ? ds.fields[column.field] : undefined;
+    if (def) return nest(def.path, first.direction);
+  }
+  const fallback = ds.fields[ds.defaultSort.field];
+  return fallback ? nest(fallback.path, ds.defaultSort.direction) : undefined;
+}
+
+/** Read every referenced field out of a Prisma row, applying date truncation. */
+function flattenRow(
+  dataset: ReportDataset,
+  columns: ReportColumn[],
+  row: unknown,
+): Record<string, unknown> {
+  const ds = DATASETS[dataset];
+  const out: Record<string, unknown> = {};
+  for (const c of columns) {
+    if (c.field in out) continue;
+    const def = ds.fields[c.field]!;
+    const value = readPath(row, def.path);
+    out[c.field] = def.trunc ? truncateDate(value, def.trunc) : value;
+  }
+  return out;
+}
+
+function truncateDate(value: unknown, unit: "day" | "month" | "year"): string | null {
+  if (!(value instanceof Date)) return null;
+  const y = value.getFullYear();
+  const m = `${value.getMonth() + 1}`.padStart(2, "0");
+  const d = `${value.getDate()}`.padStart(2, "0");
+  if (unit === "year") return `${y}`;
+  if (unit === "month") return `${y}-${m}`;
+  return `${y}-${m}-${d}`;
+}
+
+/** Detail row → wire values. */
+function emit(
+  columns: ReportColumn[],
+  flat: Record<string, unknown>,
+): Record<string, ReportCellValue> {
+  const out: Record<string, ReportCellValue> = {};
+  for (const c of columns) {
+    out[columnKey(c)] = toCell(flat[c.field]);
+  }
+  return out;
+}
+
+function toCell(value: unknown): ReportCellValue {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Prisma.Decimal) return Number(value.toFixed(2));
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  return String(value);
+}
+
+/**
+ * Fold flat rows into groups.
+ *
+ * COUNT is the number of rows in the group (SQL's COUNT(*)), which is what
+ * people mean by "adet"; COUNT_DISTINCT counts distinct non-null values of the
+ * chosen field. Sums run through Decimal so money stays exact until the last
+ * step.
+ */
+function aggregate(
+  config: ReportConfig,
+  columns: ReportColumn[],
+  flat: Record<string, unknown>[],
+): Record<string, ReportCellValue>[] {
+  const keyOf = (row: Record<string, unknown>) =>
+    config.groupBy.map((g) => String(row[g] ?? "")).join(" ");
+
+  const groups = new Map<
+    string,
+    { keyValues: Record<string, unknown>; rows: Record<string, unknown>[] }
+  >();
+
+  // No grouping but aggregates present → one grand-total row.
+  if (config.groupBy.length === 0) {
+    groups.set("", { keyValues: {}, rows: flat });
+  } else {
+    for (const row of flat) {
+      const k = keyOf(row);
+      const g = groups.get(k);
+      if (g) g.rows.push(row);
+      else {
+        const keyValues: Record<string, unknown> = {};
+        for (const field of config.groupBy) keyValues[field] = row[field];
+        groups.set(k, { keyValues, rows: [row] });
+      }
+    }
+  }
+
+  return [...groups.values()].map((group) => {
+    const out: Record<string, ReportCellValue> = {};
+    for (const c of columns) {
+      const key = columnKey(c);
+      if (!c.aggregate) {
+        out[key] = toCell(group.keyValues[c.field]);
+        continue;
+      }
+      out[key] = applyAggregate(
+        c.aggregate,
+        group.rows.map((r) => r[c.field]),
+      );
+    }
+    return out;
+  });
+}
+
+function applyAggregate(aggregateFn: Aggregate, values: unknown[]): ReportCellValue {
+  if (aggregateFn === "COUNT") return values.length;
+
+  const present = values.filter((v) => v !== null && v !== undefined);
+
+  if (aggregateFn === "COUNT_DISTINCT") {
+    return new Set(present.map((v) => (v instanceof Date ? v.getTime() : String(v))))
+      .size;
+  }
+  if (present.length === 0) return null;
+
+  if (aggregateFn === "MIN" || aggregateFn === "MAX") {
+    const sorted = [...present].sort(compareValues);
+    return toCell(aggregateFn === "MIN" ? sorted[0] : sorted[sorted.length - 1]);
+  }
+
+  let sum = ZERO;
+  for (const v of present) sum = sum.plus(new Dec(String(v)));
+  if (aggregateFn === "SUM") return Number(sum.toFixed(2));
+  return Number(sum.dividedBy(present.length).toFixed(2));
+}
+
+function compareValues(a: unknown, b: unknown): number {
+  const av = a instanceof Date ? a.getTime() : a;
+  const bv = b instanceof Date ? b.getTime() : b;
+  if (typeof av === "number" && typeof bv === "number") return av - bv;
+  const an = Number(av);
+  const bn = Number(bv);
+  if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+  return String(av).localeCompare(String(bv), "tr");
+}
+
+function sortRows(
+  rows: Record<string, ReportCellValue>[],
+  config: ReportConfig,
+): Record<string, ReportCellValue>[] {
+  if (config.sort.length === 0) return rows;
+  return [...rows].sort((a, b) => {
+    for (const s of config.sort) {
+      const cmp = compareValues(a[s.field], b[s.field]);
+      if (cmp !== 0) return s.direction === "desc" ? -cmp : cmp;
+    }
+    return 0;
+  });
+}

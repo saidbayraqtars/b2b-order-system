@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePage } from "@/lib/guard";
 import { SignOutButton } from "@/components/sign-out-button";
 import { RepDashboard } from "./_components/rep-dashboard";
@@ -14,7 +15,12 @@ export default async function RepDashboardPage() {
           <h1 className="text-xl font-bold">Plasiyer Paneli</h1>
           <p className="text-sm text-neutral-500">{user.name}</p>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-3">
+          <Link href="/reports" className="text-sm underline">
+            Raporlarım
+          </Link>
+          <SignOutButton />
+        </div>
       </header>
 
       <RepDashboard />

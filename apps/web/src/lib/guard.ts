@@ -113,6 +113,9 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   IN_USE: 409,
   INVALID_DISCOUNT_TARGET: 422,
   CATEGORY_CYCLE: 422,
+  // user-defined reports
+  REPORT_NOT_FOUND: 404,
+  INVALID_REPORT: 422,
 };
 
 /**

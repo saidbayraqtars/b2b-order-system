@@ -73,6 +73,7 @@ model User {
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
+  reports        ReportDefinition[]   @relation("ReportOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -445,4 +446,43 @@ model CartItem {
   quantity  Int
 
   @@unique([cartId, variantId])
+}
+
+// ─────────────────────────────────────────────
+// USER-DEFINED REPORTS
+// ─────────────────────────────────────────────
+
+/// Which table a report reads. Each value maps to an entry in the services-side
+/// dataset registry, which is the only place a field name may come from.
+enum ReportDataset {
+  ORDERS
+  ORDER_ITEMS
+  LEDGER
+  COMPANIES
+  CHECKINS
+}
+
+model ReportDefinition {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  dataset     ReportDataset
+
+  ownerId String
+  owner   User   @relation("ReportOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /// Visible to every user who may run reports, not just the owner.
+  isShared Boolean @default(false)
+
+  /// Columns, filters, grouping, sorting and layout.
+  /// Re-validated against the dataset registry on every write AND every run —
+  /// a stored config is never trusted, so a row edited in the database cannot
+  /// widen what the report reads.
+  config Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([dataset])
 }

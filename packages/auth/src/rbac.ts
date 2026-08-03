@@ -14,6 +14,9 @@ const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = 
   { prefix: "/admin", roles: ["SUPER_ADMIN"] },
   { prefix: "/rep", roles: ["SALES_REP", "SUPER_ADMIN"] },
   { prefix: "/portal", roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SUPER_ADMIN"] },
+  // Report designer. Company staff are order-entry only; everyone else builds
+  // reports, and the engine scopes each one's rows to what they may already see.
+  { prefix: "/reports", roles: ["SUPER_ADMIN", "SALES_REP", "COMPANY_ADMIN"] },
   // Order detail is one page for every persona; the data itself is scoped
   // server-side (own company / rep portfolio / any for super admin).
   {

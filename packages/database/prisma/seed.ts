@@ -38,8 +38,12 @@ async function main() {
   });
 
   // ── Company (cari) ──
-  const company = await prisma.company.create({
-    data: {
+  // Upsert, not create: the rest of the seed is idempotent, and re-running it to
+  // pick up new fixtures must not duplicate the company or reset its balance.
+  const company = await prisma.company.upsert({
+    where: { taxNumber: "1234567890" },
+    update: {},
+    create: {
       name: "Örnek Ticaret A.Ş.",
       taxNumber: "1234567890",
       taxOffice: "Kadıköy",
@@ -129,7 +133,128 @@ async function main() {
     });
   }
 
+  await seedReports(admin.id);
+
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
+}
+
+/**
+ * Starter report definitions, owned by the admin and shared.
+ *
+ * They are ordinary definitions — nothing about them is privileged — so they
+ * double as worked examples of what the designer can express. Anyone who opens
+ * one sees it through their own row scope.
+ */
+async function seedReports(ownerId: string) {
+  const reports = [
+    {
+      name: "Aylık ciro",
+      description: "Onaylanmış siparişlerin aya göre toplamı",
+      dataset: "ORDERS" as const,
+      config: {
+        columns: [
+          { field: "createdAt_month", label: "Ay" },
+          { field: "grandTotal", aggregate: "SUM", format: "money" },
+          { field: "orderNumber", aggregate: "COUNT", label: "Sipariş adedi" },
+        ],
+        filters: [
+          {
+            field: "status",
+            operator: "in",
+            value: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"],
+          },
+        ],
+        groupBy: ["createdAt_month"],
+        sort: [{ field: "createdAt_month", direction: "desc" }],
+        chart: {
+          type: "bar",
+          categoryField: "createdAt_month",
+          valueField: "grandTotal__sum",
+        },
+      },
+    },
+    {
+      name: "En çok satan ürünler",
+      description: "Son 90 günde adet ve ciro bazında ürün sıralaması",
+      dataset: "ORDER_ITEMS" as const,
+      config: {
+        columns: [
+          { field: "productName", label: "Ürün" },
+          { field: "quantity", aggregate: "SUM", label: "Adet", format: "number" },
+          { field: "lineTotal", aggregate: "SUM", label: "Ciro", format: "money" },
+        ],
+        filters: [
+          { field: "order_createdAt", operator: "lastNDays", value: 90 },
+          {
+            field: "orderStatus",
+            operator: "in",
+            value: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"],
+          },
+        ],
+        groupBy: ["productName"],
+        sort: [{ field: "lineTotal__sum", direction: "desc" }],
+        limit: 25,
+      },
+    },
+    {
+      name: "Firma bakiyeleri",
+      description: "Aktif firmaların limit ve bakiye dökümü",
+      dataset: "COMPANIES" as const,
+      config: {
+        columns: [
+          { field: "name" },
+          { field: "salesRepName" },
+          { field: "creditLimit" },
+          { field: "currentBalance" },
+          { field: "paymentTermDays" },
+        ],
+        filters: [{ field: "isActive", operator: "eq", value: true }],
+        groupBy: [],
+        sort: [{ field: "currentBalance", direction: "desc" }],
+      },
+    },
+    {
+      name: "Plasiyere göre tahsilat",
+      description: "Son 30 günde kaydeden kişiye göre tahsilat toplamı",
+      dataset: "LEDGER" as const,
+      config: {
+        columns: [
+          { field: "recordedByName", label: "Kaydeden" },
+          { field: "amount", aggregate: "SUM", label: "Tahsilat", format: "money" },
+          { field: "amount", aggregate: "COUNT", label: "Kayıt" },
+        ],
+        filters: [
+          { field: "type", operator: "eq", value: "CREDIT" },
+          { field: "createdAt", operator: "lastNDays", value: 30 },
+        ],
+        groupBy: ["recordedByName"],
+        sort: [{ field: "amount__sum", direction: "desc" }],
+        chart: {
+          type: "pie",
+          categoryField: "recordedByName",
+          valueField: "amount__sum",
+        },
+      },
+    },
+  ];
+
+  for (const r of reports) {
+    const existing = await prisma.reportDefinition.findFirst({
+      where: { name: r.name, ownerId },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.reportDefinition.create({
+      data: {
+        name: r.name,
+        description: r.description,
+        dataset: r.dataset,
+        ownerId,
+        isShared: true,
+        config: r.config,
+      },
+    });
+  }
 }
 
 main()
