@@ -16,7 +16,7 @@ import {
   Panel,
   Select,
   TextInput,
-} from "../../../_components/form";
+} from "@/components/form";
 
 type Target = "category" | "product";
 

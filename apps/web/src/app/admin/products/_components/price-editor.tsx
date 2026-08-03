@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminPriceRow, CustomerGroupRow } from "@repo/services";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Button, ErrorLine, Select, TextInput } from "../../_components/form";
+import { Button, ErrorLine, Select, TextInput } from "@/components/form";
 
 /**
  * Price tiers for one variant: (customer group × minimum quantity) → price.

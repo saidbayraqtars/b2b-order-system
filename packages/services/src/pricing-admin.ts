@@ -1,7 +1,9 @@
 import { prisma } from "@repo/database";
 import type {
   CreateCompanyDiscountInput,
+  CreateCustomerGroupInput,
   DiscountType,
+  UpdateCustomerGroupInput,
   UpsertPriceInput,
 } from "@repo/types";
 import { BusinessError } from "./errors";
@@ -18,6 +20,7 @@ export interface CustomerGroupRow {
   name: string;
   description: string | null;
   companyCount: number;
+  priceCount: number;
 }
 
 export async function listCustomerGroups(): Promise<CustomerGroupRow[]> {
@@ -26,7 +29,7 @@ export async function listCustomerGroups(): Promise<CustomerGroupRow[]> {
       id: true,
       name: true,
       description: true,
-      _count: { select: { companies: true } },
+      _count: { select: { companies: true, prices: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -35,6 +38,7 @@ export async function listCustomerGroups(): Promise<CustomerGroupRow[]> {
     name: g.name,
     description: g.description,
     companyCount: g._count.companies,
+    priceCount: g._count.prices,
   }));
 }
 
@@ -80,6 +84,67 @@ export async function listVariantPrices(
  * unique index instead. That means the null case needs its own findFirst path
  * rather than an upsert on the compound key.
  */
+async function assertGroupNameFree(name: string, exceptId?: string): Promise<void> {
+  const existing = await prisma.customerGroup.findUnique({
+    where: { name },
+    select: { id: true },
+  });
+  if (existing && existing.id !== exceptId) {
+    throw new BusinessError("DUPLICATE_GROUP", "Bu isimde bir müşteri grubu zaten var");
+  }
+}
+
+export async function createCustomerGroup(
+  input: CreateCustomerGroupInput,
+): Promise<{ id: string }> {
+  await assertGroupNameFree(input.name);
+  return prisma.customerGroup.create({
+    data: { name: input.name, description: input.description ?? null },
+    select: { id: true },
+  });
+}
+
+export async function updateCustomerGroup(
+  id: string,
+  input: UpdateCustomerGroupInput,
+): Promise<{ id: string }> {
+  const existing = await prisma.customerGroup.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) throw new BusinessError("GROUP_NOT_FOUND", "Müşteri grubu bulunamadı");
+  if (input.name) await assertGroupNameFree(input.name, id);
+
+  return prisma.customerGroup.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description ?? null }
+        : {}),
+    },
+    select: { id: true },
+  });
+}
+
+/** A group with companies or price tiers still attached is never removed. */
+export async function deleteCustomerGroup(id: string): Promise<void> {
+  const group = await prisma.customerGroup.findUnique({
+    where: { id },
+    select: { _count: { select: { companies: true, prices: true } } },
+  });
+  if (!group) throw new BusinessError("GROUP_NOT_FOUND", "Müşteri grubu bulunamadı");
+  if (group._count.companies > 0 || group._count.prices > 0) {
+    throw new BusinessError(
+      "IN_USE",
+      "Firması veya fiyat kademesi olan müşteri grubu silinemez",
+      group._count,
+    );
+  }
+  await prisma.customerGroup.delete({ where: { id } });
+}
+
+
 export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
   const variant = await prisma.productVariant.findUnique({
     where: { id: variantId },

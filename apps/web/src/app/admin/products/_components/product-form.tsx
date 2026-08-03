@@ -14,7 +14,7 @@ import {
   Select,
   TextArea,
   TextInput,
-} from "../../_components/form";
+} from "@/components/form";
 
 interface FormState {
   name: string;

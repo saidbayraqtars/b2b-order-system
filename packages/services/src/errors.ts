@@ -31,7 +31,16 @@ export type BusinessErrorCode =
   | "CATEGORY_CYCLE"
   // ── user-defined reports ──
   | "REPORT_NOT_FOUND"
-  | "INVALID_REPORT";
+  | "INVALID_REPORT"
+  // ── company / user administration ──
+  | "USER_NOT_FOUND"
+  | "ADDRESS_NOT_FOUND"
+  | "DUPLICATE_EMAIL"
+  | "DUPLICATE_TAX_NUMBER"
+  | "DUPLICATE_GROUP"
+  | "INVALID_ROLE"
+  | "LAST_SUPER_ADMIN"
+  | "SELF_TARGET";
 
 export class BusinessError extends Error {
   constructor(

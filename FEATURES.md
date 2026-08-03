@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-03 · Adım 9 sonu
+Son güncelleme: 2026-08-03 · Adım 10 sonu
 
 ---
 
@@ -23,6 +23,7 @@ Son güncelleme: 2026-08-03 · Adım 9 sonu
 | 7 | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı | ✅ |
 | 8 | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları | ✅ |
 | 9 | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması | ✅ |
+| 10 | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti) | ✅ |
 
 ---
 
@@ -55,7 +56,7 @@ Son güncelleme: 2026-08-03 · Adım 9 sonu
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
 - `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration.
-- Seed: 4 rol için demo kullanıcı, 1 firma, kategoriler, ürün + varyantlar, grup fiyatları.
+- Seed: 4 rol için demo kullanıcı, 1 firma, kategoriler, ürün + varyantlar, grup fiyatları, 4 örnek rapor tanımı. Tümü upsert — yeniden çalıştırılabilir.
 
 ## 3. Kimlik Doğrulama & Yetkilendirme
 
@@ -157,7 +158,27 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 - **Kaydedilmiş tanım da doğrulanır:** JSON sütunundaki config her çalıştırmada yeniden şema + kayıt defteri kontrolünden geçer — veritabanından elle düzenlenmiş bir satır motoru atlatamaz.
 - Seed 4 örnek rapor kuruyor (Aylık ciro · En çok satan ürünler · Firma bakiyeleri · Plasiyere göre tahsilat) — ayrıcalıklı değiller, sıradan tanımlar, aynı zamanda çalışan örnek.
 
-## 10. Web Portal (`apps/web`)
+## 10. Firma & Kullanıcı Yönetimi (Adım 10)
+
+Firma, adres, kullanıcı ve müşteri grubu artık uygulama içinden yönetiliyor — sistem
+seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerekmiyor.
+
+- **Firma:** ad, vergi/TC no (10-11 hane, benzersiz), vergi dairesi, iletişim, kredi limiti, **vade günü**, para birimi, onay zorunluluğu, müşteri grubu, plasiyer, aktif/pasif. Arama + pasifleri gösterme filtresi.
+- **Plasiyer ataması denetleniyor:** yalnızca `SALES_REP` (veya süper admin) rolündeki kullanıcı bir firmaya atanabilir — aksi halde o hesabın okuma kapsamı sessizce genişlerdi.
+- **Adres:** firma başına çok adres; **her zaman tam olarak bir varsayılan**. İlk adres otomatik varsayılan olur, başkası varsayılan yapılınca diğerleri düşer, varsayılan silinince kalanlardan biri devralır. Sevk edilmiş siparişi olan adres silinemez.
+- **Kullanıcı:** e-posta (benzersiz), ad, telefon, rol, firma, aktif/pasif. Şifre bcrypt ile saklanıyor, **hiçbir yanıtta hash dönmüyor**. Şifre belirleme ayrı uçta — form kaydederken yan etki olarak değişemiyor. Şifre kuralı: en az 8 karakter, harf + rakam.
+- **Firma yöneticisi kendi personelini yönetiyor** (`/portal/users`): kendi firmasında `COMPANY_STAFF` ve `COMPANY_ADMIN` açabilir/düzenleyebilir. Yapamadıkları sunucuda kilitli:
+  - süper admin veya plasiyer rolü **atayamaz**,
+  - başka firmaya kullanıcı **ekleyemez**, başka firmanın kullanıcısını okuyamaz/düzenleyemez,
+  - kullanıcıyı firmalar arasında **taşıyamaz**,
+  - listeye başka firmanın `companyId`'sini vermek listeyi genişletmez.
+- **Kendini kilitleme koruması:** kimse kendi hesabını pasife alamaz, kendi rolünü değiştiremez, kendini silemez. Ayrıca son aktif süper adminin rolü/durumu değiştirilemez (bugünkü kurallarla ulaşılması zor bir emniyet kemeri — pratikte önce "kendi hesabınız" kuralı devreye giriyor).
+- **Rol ⇄ firma değişmezi:** `COMPANY_ADMIN`/`COMPANY_STAFF` bir firmaya bağlı olmak zorunda; `SUPER_ADMIN`/`SALES_REP` ise firmasız. Rol veya firma değiştiğinde bu yeniden hesaplanıyor, tutarsız kayıt oluşamıyor.
+- **Portföylü plasiyerin rolü değiştirilemez** — önce portföyün devri gerekir, aksi halde firmalar sessizce plasiyersiz kalırdı.
+- **Silme yerine pasife alma:** siparişi, cari hareketi, ziyareti, onayı ya da durum değişikliği olan kullanıcı silinemez (denetim izi bozulur). Siparişi, cari hareketi, kullanıcısı veya **sıfırdan farklı bakiyesi** olan firma da silinemez.
+- **Müşteri grubu:** ad benzersiz; firması veya fiyat kademesi olan grup silinemez.
+
+## 11. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -165,6 +186,7 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 | `/portal` | firma yön./personel | Katalog, sepet, sipariş oluşturma |
 | `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
 | `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
+| `/portal/users` | firma yöneticisi | Kendi firmasının kullanıcıları |
 | `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
 | `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları |
 | `/admin` | süper admin | Cari hesap tablosu + tüm siparişler, limit override onayı |
@@ -172,7 +194,11 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 | `/admin/products/new` | süper admin | Yeni ürün formu |
 | `/admin/products/[id]` | süper admin | Ürün düzenleme + varyantlar + fiyat kademeleri |
 | `/admin/categories` | süper admin | Kategori ağacı yönetimi |
-| `/admin/companies/[id]` | süper admin | Firma özeti + firmaya özel iskontolar |
+| `/admin/companies` | süper admin | Firma listesi: arama, pasif filtresi, bakiye/limit/vade |
+| `/admin/companies/new` | süper admin | Yeni firma formu |
+| `/admin/companies/[id]` | süper admin | Firma düzenleme + adresler + kullanıcılar + iskontolar |
+| `/admin/users` | süper admin | Tüm kullanıcılar: oluştur, düzenle, şifre, pasife al, sil |
+| `/admin/customer-groups` | süper admin | Müşteri grubu CRUD |
 | `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
 | `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
 | `/reports` | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar |
@@ -180,7 +206,7 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 11. Mobil Uygulama (`apps/mobile`)
+## 12. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -194,7 +220,7 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 12. API Uçları
+## 13. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -224,7 +250,14 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 | POST · GET | `/api/checkins` | plasiyer, süper admin |
 | POST | `/api/checkins/:id/checkout` | plasiyer, süper admin (yalnız açan kapatır) |
 | POST | `/api/payments` | plasiyer, süper admin |
-| GET | `/api/admin/companies` | süper admin |
+| GET · POST | `/api/admin/companies?search&includeInactive` | süper admin |
+| GET · PATCH · DELETE | `/api/admin/companies/:id` | süper admin |
+| POST | `/api/admin/companies/:id/addresses` | süper admin |
+| PATCH · DELETE | `/api/admin/addresses/:id` | süper admin |
+| GET · POST | `/api/admin/users?search&companyId&includeInactive` | süper admin, firma yöneticisi (kendi firması) |
+| GET · PATCH · DELETE | `/api/admin/users/:id` | süper admin, firma yöneticisi (kendi firması) |
+| POST | `/api/admin/users/:id/password` | süper admin, firma yöneticisi (kendi firması) |
+| GET | `/api/admin/sales-reps` | süper admin |
 | GET · POST | `/api/admin/categories` | süper admin |
 | PATCH · DELETE | `/api/admin/categories/:id` | süper admin |
 | GET · POST | `/api/admin/products` | süper admin |
@@ -233,7 +266,8 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 | PATCH · DELETE | `/api/admin/variants/:id` | süper admin |
 | GET · POST | `/api/admin/variants/:id/prices` | süper admin |
 | DELETE | `/api/admin/prices/:id` | süper admin |
-| GET | `/api/admin/customer-groups` | süper admin |
+| GET · POST | `/api/admin/customer-groups` | süper admin |
+| PATCH · DELETE | `/api/admin/customer-groups/:id` | süper admin |
 | GET · POST | `/api/admin/companies/:id/discounts` | süper admin |
 | DELETE | `/api/admin/discounts/:id` | süper admin |
 
@@ -250,7 +284,7 @@ istediği alanları seçip kendi raporunu kuruyor, kaydediyor, dizaynını deği
 - **Vade süper adminin arayüzünden değiştirilemiyor** — firma CRUD ekranı henüz yok, alan yalnız veritabanından giriliyor.
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
-- **Müşteri grubu ve firma yönetimi arayüzü yok** — grup, firma, kullanıcı, adres kayıtları hâlâ yalnızca seed ile giriliyor (katalog tarafı Adım 6'da çözüldü).
+- **Kullanıcı kendi şifresini değiştiremiyor** — şifre sıfırlama yalnızca yöneticiden geçiyor, self-servis "şifremi unuttum" akışı yok.
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
 - **ESLint yapılandırılmamış** — `pnpm lint` interaktif kuruluma düşüp hata veriyor.
 - **Otomatik test yok** — doğrulama manuel E2E scriptleri + typecheck + build ile yapılıyor.

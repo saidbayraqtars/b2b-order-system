@@ -11,7 +11,7 @@ import {
   Panel,
   Select,
   TextInput,
-} from "../../_components/form";
+} from "@/components/form";
 
 interface TreeNode extends AdminCategoryRow {
   depth: number;

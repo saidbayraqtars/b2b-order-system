@@ -13,10 +13,12 @@
   "dependencies": {
     "@prisma/client": "^5.20.0",
     "@repo/database": "workspace:*",
-    "@repo/types": "workspace:*"
+    "@repo/types": "workspace:*",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "@repo/tsconfig": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
     "typescript": "^5.6.3"
   }
 }

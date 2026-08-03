@@ -1,22 +1,28 @@
-import { prisma } from "@repo/database";
+import { createCompany, listCompanies } from "@repo/services";
+import { createCompanySchema } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
+import { parseBody } from "@/lib/validate";
 
-// Example RBAC-protected endpoint: only SUPER_ADMIN may list all companies.
-export function GET() {
+// GET  /api/admin/companies?search&includeInactive — cari list for the admin panel.
+// POST /api/admin/companies — onboard a new customer.
+export function GET(req: Request) {
   return withAuthErrors(async () => {
     await requireUser(["SUPER_ADMIN"]);
+    const params = new URL(req.url).searchParams;
 
-    const companies = await prisma.company.findMany({
-      select: {
-        id: true,
-        name: true,
-        creditLimit: true,
-        currentBalance: true,
-        isActive: true,
-      },
-      orderBy: { name: "asc" },
+    const companies = await listCompanies({
+      search: params.get("search") ?? undefined,
+      includeInactive: params.get("includeInactive") === "1",
     });
-
     return Response.json({ companies });
+  });
+}
+
+export function POST(req: Request) {
+  return withAuthErrors(async () => {
+    await requireUser(["SUPER_ADMIN"]);
+    const input = await parseBody(req, createCompanySchema);
+
+    return Response.json({ company: await createCompany(input) }, { status: 201 });
   });
 }

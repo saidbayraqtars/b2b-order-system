@@ -10,7 +10,7 @@ import {
   Label,
   Panel,
   TextInput,
-} from "../../_components/form";
+} from "@/components/form";
 import { PriceEditor } from "./price-editor";
 
 const EMPTY_VARIANT = {

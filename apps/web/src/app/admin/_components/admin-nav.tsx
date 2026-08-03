@@ -3,10 +3,13 @@ import { SignOutButton } from "@/components/sign-out-button";
 
 const LINKS = [
   { href: "/admin", label: "Panel" },
+  { href: "/admin/companies", label: "Firmalar" },
+  { href: "/admin/users", label: "Kullanıcılar" },
   { href: "/admin/products", label: "Ürünler" },
   { href: "/admin/categories", label: "Kategoriler" },
+  { href: "/admin/customer-groups", label: "Gruplar" },
   { href: "/admin/reports", label: "Raporlar" },
-  { href: "/reports", label: "Rapor tasarımcısı" },
+  { href: "/reports", label: "Tasarımcı" },
 ] as const;
 
 /** Shared header for every admin screen. `current` renders as plain text. */

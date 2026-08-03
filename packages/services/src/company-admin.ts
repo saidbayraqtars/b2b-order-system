@@ -1,0 +1,418 @@
+import { Prisma, prisma } from "@repo/database";
+import type {
+  CreateAddressInput,
+  CreateCompanyInput,
+  UpdateAddressInput,
+  UpdateCompanyInput,
+} from "@repo/types";
+import { BusinessError } from "./errors";
+
+// Company and address administration (SUPER_ADMIN). Customer groups live in
+// pricing-admin.ts, next to the price tiers that use them.
+//
+// Deactivation, not deletion, is the rule for anything with history: a company
+// with orders or ledger rows can never be removed without destroying the record
+// those documents depend on.
+
+export interface CompanyRow {
+  id: string;
+  name: string;
+  taxNumber: string | null;
+  phone: string | null;
+  email: string | null;
+  creditLimit: string;
+  currentBalance: string;
+  availableCredit: string;
+  paymentTermDays: number;
+  currency: string;
+  requiresOrderApproval: boolean;
+  isActive: boolean;
+  customerGroup: { id: string; name: string } | null;
+  salesRep: { id: string; name: string } | null;
+  counts: { orders: number; users: number; addresses: number };
+}
+
+export interface CompanyDetail extends CompanyRow {
+  taxOffice: string | null;
+  addresses: AddressRow[];
+  users: { id: string; name: string; email: string; role: string; isActive: boolean }[];
+  createdAt: string;
+}
+
+export interface AddressRow {
+  id: string;
+  label: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  district: string | null;
+  postalCode: string | null;
+  isDefault: boolean;
+}
+
+const companySelect = {
+  id: true,
+  name: true,
+  taxNumber: true,
+  taxOffice: true,
+  phone: true,
+  email: true,
+  creditLimit: true,
+  currentBalance: true,
+  paymentTermDays: true,
+  currency: true,
+  requiresOrderApproval: true,
+  isActive: true,
+  createdAt: true,
+  customerGroup: { select: { id: true, name: true } },
+  salesRep: { select: { id: true, name: true } },
+  _count: { select: { orders: true, members: true, addresses: true } },
+} satisfies Prisma.CompanySelect;
+
+type CompanyPayload = Prisma.CompanyGetPayload<{ select: typeof companySelect }>;
+
+function toRow(c: CompanyPayload): CompanyRow {
+  return {
+    id: c.id,
+    name: c.name,
+    taxNumber: c.taxNumber,
+    phone: c.phone,
+    email: c.email,
+    creditLimit: c.creditLimit.toFixed(2),
+    currentBalance: c.currentBalance.toFixed(2),
+    availableCredit: c.creditLimit.minus(c.currentBalance).toFixed(2),
+    paymentTermDays: c.paymentTermDays,
+    currency: c.currency,
+    requiresOrderApproval: c.requiresOrderApproval,
+    isActive: c.isActive,
+    customerGroup: c.customerGroup,
+    salesRep: c.salesRep,
+    counts: {
+      orders: c._count.orders,
+      users: c._count.members,
+      addresses: c._count.addresses,
+    },
+  };
+}
+
+export async function listCompanies(opts: {
+  search?: string;
+  includeInactive?: boolean;
+} = {}): Promise<CompanyRow[]> {
+  const rows = await prisma.company.findMany({
+    where: {
+      ...(opts.includeInactive ? {} : { isActive: true }),
+      ...(opts.search
+        ? {
+            OR: [
+              { name: { contains: opts.search, mode: "insensitive" } },
+              { taxNumber: { contains: opts.search } },
+            ],
+          }
+        : {}),
+    },
+    select: companySelect,
+    orderBy: { name: "asc" },
+  });
+  return rows.map(toRow);
+}
+
+export async function getCompany(id: string): Promise<CompanyDetail> {
+  const c = await prisma.company.findUnique({
+    where: { id },
+    select: {
+      ...companySelect,
+      addresses: {
+        select: {
+          id: true,
+          label: true,
+          line1: true,
+          line2: true,
+          city: true,
+          district: true,
+          postalCode: true,
+          isDefault: true,
+        },
+        orderBy: [{ isDefault: "desc" }, { label: "asc" }],
+      },
+      members: {
+        select: { id: true, name: true, email: true, role: true, isActive: true },
+        orderBy: { name: "asc" },
+      },
+    },
+  });
+  if (!c) throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", { id });
+
+  return {
+    ...toRow(c),
+    taxOffice: c.taxOffice,
+    addresses: c.addresses,
+    users: c.members,
+    createdAt: c.createdAt.toISOString(),
+  };
+}
+
+async function assertReferences(input: {
+  customerGroupId?: string | null;
+  salesRepId?: string | null;
+}): Promise<void> {
+  if (input.customerGroupId) {
+    const group = await prisma.customerGroup.findUnique({
+      where: { id: input.customerGroupId },
+      select: { id: true },
+    });
+    if (!group) throw new BusinessError("GROUP_NOT_FOUND", "Müşteri grubu bulunamadı");
+  }
+  if (input.salesRepId) {
+    // Only an actual sales rep may hold a portfolio; assigning a company user
+    // here would quietly widen what that account can read.
+    const rep = await prisma.user.findUnique({
+      where: { id: input.salesRepId },
+      select: { role: true },
+    });
+    if (!rep) throw new BusinessError("USER_NOT_FOUND", "Plasiyer bulunamadı");
+    if (rep.role !== "SALES_REP" && rep.role !== "SUPER_ADMIN") {
+      throw new BusinessError(
+        "INVALID_ROLE",
+        "Yalnızca plasiyer rolündeki kullanıcı firmaya atanabilir",
+      );
+    }
+  }
+}
+
+async function assertTaxNumberFree(taxNumber: string, exceptId?: string): Promise<void> {
+  const existing = await prisma.company.findUnique({
+    where: { taxNumber },
+    select: { id: true },
+  });
+  if (existing && existing.id !== exceptId) {
+    throw new BusinessError("DUPLICATE_TAX_NUMBER", "Bu vergi numarası zaten kayıtlı");
+  }
+}
+
+export async function createCompany(input: CreateCompanyInput): Promise<CompanyRow> {
+  await assertReferences(input);
+  if (input.taxNumber) await assertTaxNumberFree(input.taxNumber);
+
+  const created = await prisma.company.create({
+    data: {
+      name: input.name,
+      taxNumber: input.taxNumber ?? null,
+      taxOffice: input.taxOffice ?? null,
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      creditLimit: input.creditLimit,
+      paymentTermDays: input.paymentTermDays,
+      currency: input.currency,
+      requiresOrderApproval: input.requiresOrderApproval,
+      isActive: input.isActive,
+      customerGroupId: input.customerGroupId ?? null,
+      salesRepId: input.salesRepId ?? null,
+    },
+    select: companySelect,
+  });
+  return toRow(created);
+}
+
+export async function updateCompany(
+  id: string,
+  input: UpdateCompanyInput,
+): Promise<CompanyRow> {
+  const existing = await prisma.company.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", { id });
+
+  await assertReferences(input);
+  if (input.taxNumber) await assertTaxNumberFree(input.taxNumber, id);
+
+  const updated = await prisma.company.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.taxNumber !== undefined ? { taxNumber: input.taxNumber ?? null } : {}),
+      ...(input.taxOffice !== undefined ? { taxOffice: input.taxOffice ?? null } : {}),
+      ...(input.email !== undefined ? { email: input.email ?? null } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone ?? null } : {}),
+      ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
+      ...(input.paymentTermDays !== undefined
+        ? { paymentTermDays: input.paymentTermDays }
+        : {}),
+      ...(input.currency !== undefined ? { currency: input.currency } : {}),
+      ...(input.requiresOrderApproval !== undefined
+        ? { requiresOrderApproval: input.requiresOrderApproval }
+        : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.customerGroupId !== undefined
+        ? { customerGroupId: input.customerGroupId }
+        : {}),
+      ...(input.salesRepId !== undefined ? { salesRepId: input.salesRepId } : {}),
+    },
+    select: companySelect,
+  });
+  return toRow(updated);
+}
+
+/**
+ * Delete a company — refused as soon as anything depends on it. `currentBalance`
+ * is checked too: a zero-order company can still carry an opening balance, and
+ * dropping it would silently write off money.
+ */
+export async function deleteCompany(id: string): Promise<void> {
+  const c = await prisma.company.findUnique({
+    where: { id },
+    select: {
+      currentBalance: true,
+      _count: {
+        select: { orders: true, transactions: true, members: true, checkIns: true },
+      },
+    },
+  });
+  if (!c) throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", { id });
+
+  const blockers = c._count;
+  if (
+    blockers.orders > 0 ||
+    blockers.transactions > 0 ||
+    blockers.members > 0 ||
+    blockers.checkIns > 0 ||
+    !c.currentBalance.isZero()
+  ) {
+    throw new BusinessError(
+      "IN_USE",
+      "Siparişi, cari hareketi, kullanıcısı veya bakiyesi olan firma silinemez — pasife alın",
+      blockers,
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.companyDiscount.deleteMany({ where: { companyId: id } });
+    await tx.address.deleteMany({ where: { companyId: id } });
+    await tx.company.delete({ where: { id } });
+  });
+}
+
+// ─────────────────────────────────────────────
+// ADDRESSES
+// ─────────────────────────────────────────────
+
+/** Exactly one default per company: promoting one demotes the rest. */
+async function clearOtherDefaults(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+  exceptId?: string,
+): Promise<void> {
+  await tx.address.updateMany({
+    where: { companyId, isDefault: true, ...(exceptId ? { id: { not: exceptId } } : {}) },
+    data: { isDefault: false },
+  });
+}
+
+export async function createAddress(
+  companyId: string,
+  input: CreateAddressInput,
+): Promise<AddressRow> {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { _count: { select: { addresses: true } } },
+  });
+  if (!company) {
+    throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", { companyId });
+  }
+
+  // The first address is the default whether or not the caller said so.
+  const isDefault = input.isDefault || company._count.addresses === 0;
+
+  return prisma.$transaction(async (tx) => {
+    if (isDefault) await clearOtherDefaults(tx, companyId);
+    return tx.address.create({
+      data: {
+        companyId,
+        label: input.label,
+        line1: input.line1,
+        line2: input.line2 ?? null,
+        city: input.city,
+        district: input.district ?? null,
+        postalCode: input.postalCode ?? null,
+        isDefault,
+      },
+      select: {
+        id: true,
+        label: true,
+        line1: true,
+        line2: true,
+        city: true,
+        district: true,
+        postalCode: true,
+        isDefault: true,
+      },
+    });
+  });
+}
+
+export async function updateAddress(
+  id: string,
+  input: UpdateAddressInput,
+): Promise<AddressRow> {
+  const existing = await prisma.address.findUnique({
+    where: { id },
+    select: { companyId: true },
+  });
+  if (!existing) throw new BusinessError("ADDRESS_NOT_FOUND", "Adres bulunamadı", { id });
+
+  return prisma.$transaction(async (tx) => {
+    if (input.isDefault) await clearOtherDefaults(tx, existing.companyId, id);
+    return tx.address.update({
+      where: { id },
+      data: {
+        ...(input.label !== undefined ? { label: input.label } : {}),
+        ...(input.line1 !== undefined ? { line1: input.line1 } : {}),
+        ...(input.line2 !== undefined ? { line2: input.line2 ?? null } : {}),
+        ...(input.city !== undefined ? { city: input.city } : {}),
+        ...(input.district !== undefined ? { district: input.district ?? null } : {}),
+        ...(input.postalCode !== undefined ? { postalCode: input.postalCode ?? null } : {}),
+        ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+      },
+      select: {
+        id: true,
+        label: true,
+        line1: true,
+        line2: true,
+        city: true,
+        district: true,
+        postalCode: true,
+        isDefault: true,
+      },
+    });
+  });
+}
+
+export async function deleteAddress(id: string): Promise<void> {
+  const address = await prisma.address.findUnique({
+    where: { id },
+    select: { companyId: true, isDefault: true, _count: { select: { shippedOrders: true } } },
+  });
+  if (!address) throw new BusinessError("ADDRESS_NOT_FOUND", "Adres bulunamadı", { id });
+  if (address._count.shippedOrders > 0) {
+    throw new BusinessError(
+      "IN_USE",
+      "Bu adrese sevk edilmiş sipariş var, adres silinemez",
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.address.delete({ where: { id } });
+    // Never leave a company without a default while it still has addresses.
+    if (address.isDefault) {
+      const next = await tx.address.findFirst({
+        where: { companyId: address.companyId },
+        select: { id: true },
+        orderBy: { label: "asc" },
+      });
+      if (next) {
+        await tx.address.update({ where: { id: next.id }, data: { isDefault: true } });
+      }
+    }
+  });
+}

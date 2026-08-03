@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminCategoryRow, AdminProductRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
-import { Button, Select, TextInput } from "../../_components/form";
+import { Button, Select, TextInput } from "@/components/form";
 
 export function ProductsTable() {
   const [search, setSearch] = useState("");

@@ -116,6 +116,15 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // user-defined reports
   REPORT_NOT_FOUND: 404,
   INVALID_REPORT: 422,
+  // company / user administration
+  USER_NOT_FOUND: 404,
+  ADDRESS_NOT_FOUND: 404,
+  DUPLICATE_EMAIL: 409,
+  DUPLICATE_TAX_NUMBER: 409,
+  DUPLICATE_GROUP: 409,
+  INVALID_ROLE: 422,
+  LAST_SUPER_ADMIN: 409,
+  SELF_TARGET: 409,
 };
 
 /**

@@ -75,6 +75,9 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
               <Link href="/portal/approvals" className="text-sm underline">
                 Onaylar
               </Link>
+              <Link href="/portal/users" className="text-sm underline">
+                Kullanıcılar
+              </Link>
               <Link href="/reports" className="text-sm underline">
                 Raporlar
               </Link>
