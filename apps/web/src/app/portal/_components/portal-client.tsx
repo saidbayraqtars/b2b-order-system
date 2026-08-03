@@ -83,6 +83,9 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
               </Link>
             </>
           )}
+          <Link href="/hesabim" className="text-sm underline">
+            Hesabım
+          </Link>
           <span className="rounded-full bg-neutral-900 px-3 py-1 text-sm text-white dark:bg-white dark:text-neutral-900">
             Sepet: {itemCount}
           </span>

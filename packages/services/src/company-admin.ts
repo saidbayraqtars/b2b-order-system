@@ -5,6 +5,7 @@ import type {
   UpdateAddressInput,
   UpdateCompanyInput,
 } from "@repo/types";
+import { auditActor, recordAudit, type AuditContext } from "./audit";
 import { BusinessError } from "./errors";
 
 // Company and address administration (SUPER_ADMIN). Customer groups live in
@@ -190,7 +191,10 @@ async function assertTaxNumberFree(taxNumber: string, exceptId?: string): Promis
   }
 }
 
-export async function createCompany(input: CreateCompanyInput): Promise<CompanyRow> {
+export async function createCompany(
+  input: CreateCompanyInput,
+  ctx?: AuditContext,
+): Promise<CompanyRow> {
   await assertReferences(input);
   if (input.taxNumber) await assertTaxNumberFree(input.taxNumber);
 
@@ -211,12 +215,15 @@ export async function createCompany(input: CreateCompanyInput): Promise<CompanyR
     },
     select: companySelect,
   });
+
+  await logCompany(ctx, "COMPANY_CREATED", created.id, `Firma açıldı: ${created.name}`);
   return toRow(created);
 }
 
 export async function updateCompany(
   id: string,
   input: UpdateCompanyInput,
+  ctx?: AuditContext,
 ): Promise<CompanyRow> {
   const existing = await prisma.company.findUnique({
     where: { id },
@@ -251,6 +258,13 @@ export async function updateCompany(
     },
     select: companySelect,
   });
+
+  // Credit limit, payment term and approval requirement decide how much money a
+  // customer can move without anyone signing off, so the changed field names go
+  // into the trail even though the values stay out of the summary line.
+  await logCompany(ctx, "COMPANY_UPDATED", id, `Firma güncellendi: ${updated.name}`, {
+    fields: Object.keys(input),
+  });
   return toRow(updated);
 }
 
@@ -259,10 +273,11 @@ export async function updateCompany(
  * is checked too: a zero-order company can still carry an opening balance, and
  * dropping it would silently write off money.
  */
-export async function deleteCompany(id: string): Promise<void> {
+export async function deleteCompany(id: string, ctx?: AuditContext): Promise<void> {
   const c = await prisma.company.findUnique({
     where: { id },
     select: {
+      name: true,
       currentBalance: true,
       _count: {
         select: { orders: true, transactions: true, members: true, checkIns: true },
@@ -290,6 +305,29 @@ export async function deleteCompany(id: string): Promise<void> {
     await tx.companyDiscount.deleteMany({ where: { companyId: id } });
     await tx.address.deleteMany({ where: { companyId: id } });
     await tx.company.delete({ where: { id } });
+  });
+
+  await logCompany(ctx, "COMPANY_DELETED", id, `Firma silindi: ${c.name}`);
+}
+
+/** Audit helper — a no-op when the caller did not pass an identity. */
+async function logCompany(
+  ctx: AuditContext | undefined,
+  action: "COMPANY_CREATED" | "COMPANY_UPDATED" | "COMPANY_DELETED",
+  id: string,
+  summary: string,
+  meta?: Record<string, unknown>,
+): Promise<void> {
+  if (!ctx) return;
+  await recordAudit({
+    actor: auditActor(ctx),
+    action,
+    summary,
+    entity: "Company",
+    entityId: id,
+    ip: ctx.meta?.ip,
+    userAgent: ctx.meta?.userAgent,
+    meta,
   });
 }
 

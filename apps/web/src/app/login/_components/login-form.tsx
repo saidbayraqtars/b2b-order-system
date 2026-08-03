@@ -5,10 +5,22 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginSchema } from "@repo/types";
 
+/**
+ * Why the page guard sent the user back here. A session can die between two
+ * clicks — the account is deactivated, demoted or has its password reset — and
+ * without this the user just sees the login form again with no explanation.
+ */
+const REASONS: Record<string, string> = {
+  SESSION_REVOKED: "Yetkileriniz değişti. Lütfen yeniden giriş yapın.",
+  ACCOUNT_DISABLED: "Hesabınız pasife alınmış. Yöneticinizle görüşün.",
+  ACCOUNT_MISSING: "Hesabınız bulunamadı. Yöneticinizle görüşün.",
+};
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") ?? "/";
+  const reason = REASONS[params.get("reason") ?? ""];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +55,11 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      {reason && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          {reason}
+        </p>
+      )}
       <input
         type="email"
         placeholder="E-posta"

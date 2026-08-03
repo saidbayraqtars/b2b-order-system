@@ -61,6 +61,21 @@ model User {
   role         Role    @default(COMPANY_STAFF)
   isActive     Boolean @default(true)
 
+  /// Bumped whenever the account's privileges or password change. Every issued
+  /// session (web cookie JWT and mobile bearer token) carries the value it was
+  /// minted with; a mismatch invalidates it on the next request. Without this,
+  /// a demoted or deactivated user would keep their old role until the token
+  /// expired — up to 30 days for mobile.
+  tokenVersion Int @default(0)
+
+  /// Login telemetry + brute-force brake. `lockedUntil` is set once
+  /// `failedLoginCount` crosses the threshold and cleared on any success.
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  passwordChangedAt DateTime?
+
   // Company staff/admin belong to a company. Super admin & sales rep are null.
   companyId String?
   company   Company? @relation("CompanyMembers", fields: [companyId], references: [id])
@@ -74,6 +89,7 @@ model User {
   transactions   Transaction[] @relation("TransactionRecordedBy")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
   reports        ReportDefinition[]   @relation("ReportOwner")
+  auditLogs      AuditLog[]           @relation("AuditActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -485,4 +501,67 @@ model ReportDefinition {
 
   @@index([ownerId])
   @@index([dataset])
+}
+
+// ─────────────────────────────────────────────
+// AUDIT TRAIL
+// ─────────────────────────────────────────────
+
+/// What happened. Kept as an enum so the log cannot fill up with typo'd action
+/// names, and so the viewer can offer a closed filter list.
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGIN_LOCKED
+  LOGOUT
+  PASSWORD_CHANGED // by the account owner
+  PASSWORD_RESET // by an administrator
+  PROFILE_UPDATED
+  SESSION_REVOKED // stale/disabled principal turned away mid-session
+  ACCESS_DENIED // authenticated but not allowed here
+  USER_CREATED
+  USER_UPDATED
+  USER_ROLE_CHANGED
+  USER_DEACTIVATED
+  USER_ACTIVATED
+  USER_DELETED
+  COMPANY_CREATED
+  COMPANY_UPDATED
+  COMPANY_DELETED
+}
+
+/// Append-only record of security-relevant events. Nothing in the application
+/// updates or deletes a row here.
+model AuditLog {
+  id String @id @default(cuid())
+
+  /// Null when the actor is unknown (failed login for an unregistered e-mail)
+  /// or was deleted afterwards — which is why the e-mail is denormalised.
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  actorEmail String
+  actorRole  Role?
+
+  action AuditAction
+
+  /// Which record the action touched, e.g. entity "User", entityId <cuid>.
+  entity   String?
+  entityId String?
+
+  /// Human-readable one-liner shown in the viewer.
+  summary String
+
+  /// Extra detail (changed fields, denied path, …). Never store secrets here.
+  meta Json?
+
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([entity, entityId])
 }

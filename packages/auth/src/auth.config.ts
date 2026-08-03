@@ -13,11 +13,15 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
-    // Propagate role + companyId into the JWT on sign-in.
+    // Propagate role + companyId + tokenVersion into the JWT on sign-in.
+    // These are a snapshot of the account at that moment; they are never
+    // refreshed here, which is exactly why the server-side guard re-reads the
+    // account on every request instead of believing them.
     jwt({ token, user }) {
       if (user) {
         token.role = user.role;
         token.companyId = user.companyId ?? null;
+        token.tokenVersion = user.tokenVersion ?? 0;
       }
       return token;
     },
@@ -29,6 +33,7 @@ export const authConfig = {
         session.user.id = token.sub ?? session.user.id;
         session.user.role = token.role as Role;
         session.user.companyId = (token.companyId as string | null) ?? null;
+        session.user.tokenVersion = (token.tokenVersion as number | undefined) ?? 0;
       }
       return session;
     },

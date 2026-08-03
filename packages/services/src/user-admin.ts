@@ -1,6 +1,7 @@
 import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import type { CreateUserInput, Role, UpdateUserInput } from "@repo/types";
+import { recordAudit, type RequestMeta } from "./audit";
 import { BusinessError } from "./errors";
 
 // User administration.
@@ -22,8 +23,36 @@ const COMPANY_ROLES: readonly Role[] = ["COMPANY_ADMIN", "COMPANY_STAFF"];
 
 export interface UserAdminContext {
   userId: string;
+  email: string;
   role: Role;
   companyId: string | null;
+  /** Client IP / user agent, recorded with every mutation. */
+  meta?: RequestMeta;
+}
+
+/** The acting identity, as the audit trail records it. */
+function actorOf(ctx: UserAdminContext) {
+  return { id: ctx.userId, email: ctx.email, role: ctx.role };
+}
+
+/**
+ * Changes that alter what a session is allowed to do. Any of them must kill the
+ * target's existing sessions — otherwise a demoted or deactivated user keeps
+ * their old privileges until their token expires.
+ */
+function privilegeChanged(
+  input: UpdateUserInput,
+  existing: { role: Role; isActive: boolean; companyId: string | null },
+  nextCompanyId: string | null | undefined,
+): boolean {
+  if (input.role !== undefined && input.role !== existing.role) return true;
+  if (input.isActive !== undefined && input.isActive !== existing.isActive) {
+    return true;
+  }
+  if (nextCompanyId !== undefined && nextCompanyId !== existing.companyId) {
+    return true;
+  }
+  return false;
 }
 
 export interface UserRow {
@@ -258,9 +287,22 @@ export async function createUser(
       isActive: input.isActive,
       companyId,
       passwordHash: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
+      passwordChangedAt: new Date(),
     },
     select: userSelect,
   });
+
+  await recordAudit({
+    actor: actorOf(ctx),
+    action: "USER_CREATED",
+    summary: `Kullanıcı oluşturuldu: ${created.email} (${created.role})`,
+    entity: "User",
+    entityId: created.id,
+    ip: ctx.meta?.ip,
+    userAgent: ctx.meta?.userAgent,
+    meta: { role: created.role, companyId },
+  });
+
   return toRow(created);
 }
 
@@ -317,6 +359,10 @@ export async function updateUser(
     }
   }
 
+  // Role, company and activation decide what a session may do, so any of them
+  // changing has to invalidate the sessions already issued to this account.
+  const revoke = privilegeChanged(input, existing, companyId);
+
   const updated = await prisma.user.update({
     where: { id },
     data: {
@@ -326,21 +372,79 @@ export async function updateUser(
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       ...(companyId !== undefined ? { companyId } : {}),
+      ...(revoke ? { tokenVersion: { increment: 1 } } : {}),
+      // Re-enabling an account also clears whatever brute-force lock it carried.
+      ...(input.isActive === true ? { failedLoginCount: 0, lockedUntil: null } : {}),
     },
     select: userSelect,
   });
+
+  const audit = {
+    actor: actorOf(ctx),
+    entity: "User",
+    entityId: id,
+    ip: ctx.meta?.ip,
+    userAgent: ctx.meta?.userAgent,
+  } as const;
+
+  if (input.role !== undefined && input.role !== existing.role) {
+    await recordAudit({
+      ...audit,
+      action: "USER_ROLE_CHANGED",
+      summary: `${updated.email}: rol ${existing.role} → ${input.role}`,
+      meta: { from: existing.role, to: input.role },
+    });
+  }
+  if (input.isActive !== undefined && input.isActive !== existing.isActive) {
+    await recordAudit({
+      ...audit,
+      action: input.isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+      summary: `${updated.email} ${input.isActive ? "aktifleştirildi" : "pasife alındı"}`,
+    });
+  }
+  await recordAudit({
+    ...audit,
+    action: "USER_UPDATED",
+    summary: `Kullanıcı güncellendi: ${updated.email}`,
+    meta: {
+      fields: Object.keys(input),
+      sessionsRevoked: revoke,
+    },
+  });
+
   return toRow(updated);
 }
 
+/**
+ * Administrator-set password. Revokes the target's sessions: whoever knew the
+ * old password (including whoever the reset is protecting against) is signed
+ * out immediately rather than at token expiry.
+ */
 export async function setUserPassword(
   id: string,
   password: string,
   ctx: UserAdminContext,
 ): Promise<void> {
-  await load(id, ctx);
+  const target = await load(id, ctx);
   await prisma.user.update({
     where: { id },
-    data: { passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) },
+    data: {
+      passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+      passwordChangedAt: new Date(),
+      tokenVersion: { increment: 1 },
+      failedLoginCount: 0,
+      lockedUntil: null,
+    },
+  });
+
+  await recordAudit({
+    actor: actorOf(ctx),
+    action: "PASSWORD_RESET",
+    summary: `${target.email} için şifre sıfırlandı — oturumları sonlandırıldı`,
+    entity: "User",
+    entityId: id,
+    ip: ctx.meta?.ip,
+    userAgent: ctx.meta?.userAgent,
   });
 }
 
@@ -350,7 +454,7 @@ export async function setUserPassword(
  * would falsify the audit trail. Deactivate instead.
  */
 export async function deleteUser(id: string, ctx: UserAdminContext): Promise<void> {
-  await load(id, ctx);
+  const target = await load(id, ctx);
   if (id === ctx.userId) {
     throw new BusinessError("SELF_TARGET", "Kendi hesabınızı silemezsiniz");
   }
@@ -392,5 +496,18 @@ export async function deleteUser(id: string, ctx: UserAdminContext): Promise<voi
   await prisma.$transaction(async (tx) => {
     await tx.reportDefinition.deleteMany({ where: { ownerId: id } });
     await tx.user.delete({ where: { id } });
+  });
+
+  // The deleted account's own log entries survive with actorId nulled out —
+  // the denormalised e-mail on each row is what keeps them readable.
+  await recordAudit({
+    actor: actorOf(ctx),
+    action: "USER_DELETED",
+    summary: `Kullanıcı silindi: ${target.email} (${target.role})`,
+    entity: "User",
+    entityId: id,
+    ip: ctx.meta?.ip,
+    userAgent: ctx.meta?.userAgent,
+    meta: { email: target.email, role: target.role },
   });
 }

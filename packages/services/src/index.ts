@@ -17,3 +17,6 @@ export * from "./report-engine";
 export * from "./report-definition";
 export * from "./company-admin";
 export * from "./user-admin";
+export * from "./audit";
+export * from "./security";
+export * from "./account";

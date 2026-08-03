@@ -21,6 +21,28 @@ type RequestOptions = {
   token?: string | null;
 };
 
+/**
+ * Called when the server rejects our bearer token — the account was
+ * deactivated, its role changed, or its password was reset. The token is
+ * signed and unexpired, so nothing on the device can detect this; only the
+ * server can, and it tells us with a 401. The auth store registers a handler
+ * that drops the token and returns the app to the login screen.
+ */
+type SessionExpiredHandler = (reason: string) => void;
+let onSessionExpired: SessionExpiredHandler | null = null;
+
+export function setSessionExpiredHandler(fn: SessionExpiredHandler | null): void {
+  onSessionExpired = fn;
+}
+
+/** 401 codes that mean "this token will never work again" — see apps/web guard. */
+const DEAD_SESSION_CODES = new Set([
+  "SESSION_REVOKED",
+  "ACCOUNT_DISABLED",
+  "ACCOUNT_MISSING",
+  "NO_SESSION",
+]);
+
 export async function apiFetch<T>(
   path: string,
   { method = "GET", body, token }: RequestOptions = {},
@@ -44,6 +66,13 @@ export async function apiFetch<T>(
     } catch {
       // non-JSON error body; keep default message
     }
+
+    // Only for requests that actually carried a token: a 401 from the login
+    // endpoint is a wrong password, not a dead session.
+    if (res.status === 401 && token && DEAD_SESSION_CODES.has(code ?? "")) {
+      onSessionExpired?.(code ?? "SESSION_REVOKED");
+    }
+
     throw new ApiError(res.status, message, code);
   }
 

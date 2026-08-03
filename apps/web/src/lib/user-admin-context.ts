@@ -1,5 +1,6 @@
 import type { UserAdminContext } from "@repo/services";
 import type { Role, SessionUser } from "@repo/types";
+import { requestMeta } from "./request-meta";
 
 /** Roles allowed to reach the user-administration endpoints at all. */
 export const USER_ADMIN_ROLES: readonly Role[] = ["SUPER_ADMIN", "COMPANY_ADMIN"];
@@ -10,5 +11,11 @@ export const USER_ADMIN_ROLES: readonly Role[] = ["SUPER_ADMIN", "COMPANY_ADMIN"
  * are acting as.
  */
 export function userAdminContext(user: SessionUser): UserAdminContext {
-  return { userId: user.id, role: user.role, companyId: user.companyId };
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    companyId: user.companyId,
+    meta: requestMeta(),
+  };
 }

@@ -19,6 +19,9 @@ export default async function RepDashboardPage() {
           <Link href="/reports" className="text-sm underline">
             Raporlarım
           </Link>
+          <Link href="/hesabim" className="text-sm underline">
+            Hesabım
+          </Link>
           <SignOutButton />
         </div>
       </header>

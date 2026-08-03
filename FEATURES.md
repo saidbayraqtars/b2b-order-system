@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-03 · Adım 10 sonu
+Son güncelleme: 2026-08-03 · Adım 11 sonu
 
 ---
 
@@ -24,6 +24,7 @@ Son güncelleme: 2026-08-03 · Adım 10 sonu
 | 8 | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları | ✅ |
 | 9 | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması | ✅ |
 | 10 | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti) | ✅ |
+| 11 | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı | ✅ |
 
 ---
 
@@ -39,7 +40,8 @@ Son güncelleme: 2026-08-03 · Adım 10 sonu
 
 | Model | İşlev |
 |-------|-------|
-| `User` | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`) |
+| `User` | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`), oturum sürümü (`tokenVersion`), giriş telemetrisi ve kilit alanları |
+| `AuditLog` | Salt-ekleme güvenlik kaydı: kim, ne yaptı, hangi kayda, IP + tarayıcı. Kullanıcı silinse de e-posta denormalize saklandığı için okunabilir kalır |
 | `Company` | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer |
 | `Address` | Firma adresleri, varsayılan adres işareti |
 | `CustomerGroup` | Fiyat kademesi grubu (Bayi, Toptancı, Zincir Market) |
@@ -65,11 +67,12 @@ Son güncelleme: 2026-08-03 · Adım 10 sonu
 - `requireUser()` **her ikisini de** kabul ediyor → tek endpoint seti hem portalı hem uygulamayı besliyor.
 - **4 rol:** `SUPER_ADMIN`, `COMPANY_ADMIN`, `COMPANY_STAFF`, `SALES_REP`.
 - **3 katmanlı savunma:**
-  1. Edge middleware — sayfa öneklerini role göre kapatır, `/login`'e ya da `/403`'e yönlendirir.
-  2. `requirePage()` — Server Component'lerde rol kontrolü (yönlendirir).
-  3. `requireUser()` — route handler'larda rol kontrolü (JSON 401/403 döner).
+  1. Edge middleware — sayfa öneklerini role göre kapatır, `/login`'e ya da `/403`'e yönlendirir. **Ön filtredir, karar mercii değildir:** edge'de veritabanı yok, elindeki tek şey imzalı çerez.
+  2. `requirePage()` — Server Component'lerde canlı hesap + rol kontrolü (yönlendirir).
+  3. `requireUser()` — route handler'larda canlı hesap + rol kontrolü (JSON 401/403 döner).
+- **Her istekte hesap yeniden okunuyor (Adım 11).** Oturum jetonu geçmişte bir kez giriş yapıldığının kanıtıdır; hesabın hâlâ var olduğunun, açık olduğunun ya da aynı role sahip olduğunun değil. Rol ve firma **veritabanından** okunur, jetondan değil. `react/cache` ile istek başına tek sorgu.
 - `resolveCompanyId()` — istenen firmayı role göre yetkilendirir: kendi firması / plasiyer portföyü / admin herhangi biri.
-- `BusinessError` kodları → HTTP durumlarına merkezî eşleme (`withAuthErrors`).
+- `BusinessError` kodları → HTTP durumlarına merkezî eşleme (`withAuthErrors`). 401'ler makine okunur kod taşır (`SESSION_REVOKED`, `ACCOUNT_DISABLED`, `ACCOUNT_MISSING`) — mobil istemci jetonu buna bakarak siliyor.
 
 ## 4. Fiyatlandırma
 
@@ -178,7 +181,46 @@ seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerek
 - **Silme yerine pasife alma:** siparişi, cari hareketi, ziyareti, onayı ya da durum değişikliği olan kullanıcı silinemez (denetim izi bozulur). Siparişi, cari hareketi, kullanıcısı veya **sıfırdan farklı bakiyesi** olan firma da silinemez.
 - **Müşteri grubu:** ad benzersiz; firması veya fiyat kademesi olan grup silinemez.
 
-## 11. Web Portal (`apps/web`)
+## 11. Güvenlik & Hesap (Adım 11)
+
+Adım 10'a kadar yetki kararı oturum jetonundaki role bakıyordu. Jeton web'de haftalarca,
+mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü düşürmek ya da
+şifresini sıfırlamak pratikte hiçbir şey yapmıyordu: eski jeton eski yetkileriyle
+çalışmaya devam ediyordu. Bu adım o boşluğu kapatıyor.
+
+### Canlı yetki kontrolü — her istekte
+
+- `requireUser()` / `requirePage()` önce jetonun **imzasını** doğruluyor, sonra hesabı **veritabanından** okuyor. Döndürdüğü rol ve firma DB'den geliyor; jetondaki değerler yalnızca iddia sayılıyor.
+- Hesap silinmişse → 401 `ACCOUNT_MISSING`. Pasifse → 401 `ACCOUNT_DISABLED`.
+- **`tokenVersion`:** her hesapta bir oturum sürümü var. Rol, firma, aktiflik veya şifre değiştiğinde artıyor; o hesabın **tüm** açık oturumları (web çerezi + mobil jeton) anında geçersizleşiyor.
+- Reddedilen her oturum ve her yetkisiz istek denetim kaydına yazılıyor (`SESSION_REVOKED`, `ACCESS_DENIED`).
+- Web'de ölü oturum `/login?reason=…` adresine düşüyor ve sebebini yazan bir uyarı gösteriyor; mobilde 401 kodunu gören istemci jetonu keychain'den siliyor ve giriş ekranına dönüyor.
+
+### Giriş sertleştirme
+
+- Kimlik doğrulama tek yerde (`attemptLogin`) — web formu ve mobil uç aynı kodu kullanıyor, ayrışamıyorlar.
+- **5 hatalı denemede hesap 15 dakika kilitleniyor.** Kilitliyken doğru şifre de girmiyor. Yönetici şifre sıfırlayınca kilit açılıyor.
+- **Hata mesajı e-posta sızdırmıyor:** yanlış şifre ile kayıtsız e-posta aynı yanıtı veriyor, kayıtsız e-postada da bcrypt karşılaştırması kadar zaman harcanıyor (zamanlama farkı da cevap vermesin diye). Kilit mesajı ayrı — bekleyerek çözülebileceğini kullanıcının bilmesi gerekiyor ve zaten yalnızca gerçek bir hesap kilitlenebiliyor.
+- Pasif hesap kontrolü şifre karşılaştırmasından **sonra** yapılıyor, yanıt süresi normal girişten ayırt edilemesin diye.
+- Her hesapta son giriş zamanı ve IP'si tutuluyor.
+
+### Hesap self-servis (`/hesabim`)
+
+- Kullanıcı kendi adını ve telefonunu değiştirebiliyor. **E-posta, rol ve firma yönetici işi** — profil ucu bunları kabul etmiyor, gövdeye yazmak da bir işe yaramıyor.
+- **Kendi şifresini değiştirebiliyor** (Adım 10'un açık kalan eksiği). Mevcut şifre zorunlu — sahipsiz açık bir oturum hesabı ele geçirmeye yetmesin diye. Başarılı olunca tüm oturumlar (isteği yapan dahil) sonlanıyor: şifre sızdığı için değiştiriliyorsa hırsızın oturumu da onunla birlikte ölüyor.
+- Kendi güvenlik durumunu görüyor: son giriş, son giriş IP'si, şifre son değişim tarihi.
+- Kendi denetim kayıtlarını görüyor. Kapsam oturumdan geliyor — `actorId` parametresi vermek başkasının geçmişini açmıyor.
+
+### Denetim kaydı (`/admin/audit`)
+
+- Salt-ekleme. Uygulamada bu tabloyu güncelleyen ya da silen tek bir kod yolu yok; uçta yalnızca `GET` var (POST/PATCH/DELETE → 405).
+- Kaydedilenler: giriş / başarısız giriş / kilit, şifre değişimi ve sıfırlama, profil güncelleme, kullanıcı oluşturma-güncelleme-silme, rol değişimi, aktif/pasif, firma oluşturma-güncelleme-silme, geçersiz oturum reddi, yetkisiz erişim denemesi.
+- Her satırda kim (e-posta + rol), ne, hangi kayıt, açıklama, IP ve tarayıcı var. **Kullanıcı silinse bile satır okunabilir kalıyor** — e-posta denormalize saklanıyor, ilişki `SetNull`.
+- Kayıt yazımı asıl işlemi bozmuyor: log insert'i patlarsa yutuluyor ve stderr'e düşüyor. Bir satır kaybetmek kötü, tamamlanmış bir şifre değişimini geri almak daha kötü.
+- IP `x-forwarded-for`'dan okunuyor — **yalnızca kayıt için**; istemci uydurabildiği için hiçbir yetki kararında kullanılmıyor.
+- Görüntüleyici süper admine özel: olay türü, serbest metin, tarih aralığı ve "sadece güvenlik olayları" filtresi + imleç tabanlı sayfalama.
+
+## 12. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -203,13 +245,16 @@ seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerek
 | `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
 | `/reports` | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar |
 | `/reports/new` · `/reports/[id]` | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme |
+| `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama |
+| `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 12. Mobil Uygulama (`apps/mobile`)
+## 13. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
+- **Oturum ortada ölebilir:** hesap pasife alınır, rolü değişir ya da şifresi sıfırlanırsa jeton hâlâ imzalı ve süresi dolmamış olduğu için cihaz bunu kendi başına anlayamaz. İlk 401 (`SESSION_REVOKED` / `ACCOUNT_DISABLED` / `ACCOUNT_MISSING`) jetonu keychain'den siliyor ve giriş ekranına sebebini yazarak dönüyor.
 - **Plasiyer akışı:** Müşterilerim (portföy, arama, bakiye + kullanılabilir limit) → Firma → Katalog / Sepet / Siparişler / Ziyaret / Tahsilat.
 - **Firma kullanıcısı akışı:** doğrudan kendi firmasına düşer, plasiyer ekranları gizlidir.
 - **Katalog:** firmaya çözülmüş fiyat, iskontolu fiyat üstü çizili gösterim, stok/koli/min bilgisi, stoksuz ve fiyatsız varyant sipariş edilemez.
@@ -220,7 +265,7 @@ seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerek
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 13. API Uçları
+## 14. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -270,6 +315,10 @@ seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerek
 | PATCH · DELETE | `/api/admin/customer-groups/:id` | süper admin |
 | GET · POST | `/api/admin/companies/:id/discounts` | süper admin |
 | DELETE | `/api/admin/discounts/:id` | süper admin |
+| GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
+| POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
+| GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
+| GET | `/api/admin/audit` | süper admin (yalnız GET — POST/PATCH/DELETE 405) |
 
 ---
 
@@ -281,10 +330,13 @@ seed'e bağımlı değil, yeni müşteri açmak için veritabanına girmek gerek
 - **Rapor tasarımcısının sınırları:** gruplama/özet bellekte yapılıyor (Prisma ilişki sütununa göre gruplayamıyor), bu yüzden özetli raporlar en fazla **20.000 satır** tarıyor; sınıra çarpınca sonuç `truncated` işaretiyle dönüyor ve arayüz uyarı gösteriyor. Detay listeleri sıralama ve limiti veritabanına ittiği için bu sınırdan etkilenmiyor.
 - **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
 - **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
-- **Vade süper adminin arayüzünden değiştirilemiyor** — firma CRUD ekranı henüz yok, alan yalnız veritabanından giriliyor.
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
-- **Kullanıcı kendi şifresini değiştiremiyor** — şifre sıfırlama yalnızca yöneticiden geçiyor, self-servis "şifremi unuttum" akışı yok.
+- **"Şifremi unuttum" yok** — kullanıcı kendi şifresini değiştirebiliyor (Adım 11) ama unuttuysa hâlâ yöneticiden sıfırlatması gerekiyor; e-posta ile sıfırlama akışı yok (e-posta altyapısı da yok).
+- **Denetim kaydında saklama/arşivleme politikası yok** — tablo sınırsız büyüyor, otomatik temizlik ya da dışa aktarma yok.
+- **Denetim kapsamı yönetim işlemleriyle sınırlı** — kullanıcı/firma/oturum olayları kaydediliyor; sipariş ve cari hareketleri kendi geçmiş tablolarında (`OrderStatusHistory`, `Transaction`) duruyor, tek bir akışta birleşmiyorlar.
+- **Kilitleme e-posta bazlı** — aynı IP'den farklı hesaplara yapılan denemeler ayrı ayrı sayılıyor, IP başına hız sınırı yok.
+- **`tokenVersion` kontrolü her istekte bir sorgu** — istek başına `react/cache` ile tekil, ama Redis benzeri bir önbellek yok.
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
 - **ESLint yapılandırılmamış** — `pnpm lint` interaktif kuruluma düşüp hata veriyor.
 - **Otomatik test yok** — doğrulama manuel E2E scriptleri + typecheck + build ile yapılıyor.

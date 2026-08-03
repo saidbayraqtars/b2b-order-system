@@ -23,6 +23,12 @@ const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = 
     prefix: "/orders",
     roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
   },
+  // Own account. Listed so an anonymous visitor is sent to /login rather than
+  // treated as public; every authenticated role owns an account.
+  {
+    prefix: "/hesabim",
+    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+  },
 ];
 
 /** Roles allowed for a pathname, or null if the path is not gated. */

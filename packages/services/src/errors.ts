@@ -40,7 +40,9 @@ export type BusinessErrorCode =
   | "DUPLICATE_GROUP"
   | "INVALID_ROLE"
   | "LAST_SUPER_ADMIN"
-  | "SELF_TARGET";
+  | "SELF_TARGET"
+  // ── account self-service ──
+  | "INVALID_PASSWORD";
 
 export class BusinessError extends Error {
   constructor(

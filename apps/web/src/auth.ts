@@ -1,11 +1,13 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 import { authConfig } from "@repo/auth/config";
-import { prisma } from "@repo/database";
+import { attemptLogin } from "@repo/services";
 import { loginSchema } from "@repo/types";
+import { requestMetaFrom } from "@/lib/request-meta";
 
-// Node-runtime Auth.js instance: full config + Credentials provider (needs Prisma + bcrypt).
+// Node-runtime Auth.js instance: full config + Credentials provider.
+// Credential checking, the brute-force counter and the audit entries all live
+// in attemptLogin so the web form and the mobile endpoint cannot drift apart.
 export const {
   handlers,
   auth,
@@ -19,24 +21,21 @@ export const {
         email: { label: "E-posta", type: "email" },
         password: { label: "Şifre", type: "password" },
       },
-      authorize: async (raw) => {
+      authorize: async (raw, request) => {
         const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.isActive) return null;
+        const result = await attemptLogin(
+          email,
+          password,
+          requestMetaFrom(request as Request | undefined, "web"),
+        );
+        // Auth.js has no channel for a reason code here, so every failure looks
+        // the same to the form. The audit trail keeps the distinction.
+        if (!result.ok) return null;
 
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          companyId: user.companyId,
-        };
+        return { ...result.user, tokenVersion: result.tokenVersion };
       },
     }),
   ],

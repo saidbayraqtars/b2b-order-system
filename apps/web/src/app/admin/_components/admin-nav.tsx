@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/customer-groups", label: "Gruplar" },
   { href: "/admin/reports", label: "Raporlar" },
   { href: "/reports", label: "Tasarımcı" },
+  { href: "/admin/audit", label: "Güvenlik" },
 ] as const;
 
 /** Shared header for every admin screen. `current` renders as plain text. */
@@ -40,7 +41,12 @@ export function AdminNav({
         )}
       </nav>
       <div className="flex items-center gap-3">
-        <span className="text-sm text-neutral-500">{email}</span>
+        <Link
+          href="/hesabim"
+          className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
+        >
+          {email}
+        </Link>
         <SignOutButton />
       </div>
     </header>

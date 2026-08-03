@@ -5,6 +5,9 @@ import { Button, Field } from "@/components/ui";
 
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
+  // Set when the server ended an active session (deactivated, demoted, password
+  // reset). Without it the app would just bounce to login with no explanation.
+  const endedReason = useAuthStore((s) => s.sessionEndedReason);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +38,12 @@ export default function LoginScreen() {
           </Text>
           <Text className="text-neutral-500">Plasiyer & Müşteri uygulaması</Text>
         </View>
+
+        {endedReason ? (
+          <View className="rounded-lg bg-amber-100 p-3 dark:bg-amber-950">
+            <Text className="text-amber-800 dark:text-amber-300">{endedReason}</Text>
+          </View>
+        ) : null}
 
         <View className="gap-4">
           <Field
