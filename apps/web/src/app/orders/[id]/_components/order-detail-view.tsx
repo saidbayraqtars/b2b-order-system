@@ -108,6 +108,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               <th className="px-3 py-2 text-right">Adet</th>
               <th className="px-3 py-2 text-right">Birim</th>
               <th className="px-3 py-2 text-right">İskonto</th>
+              <th className="px-3 py-2 text-right">Kampanya</th>
               <th className="px-3 py-2 text-right">Tutar</th>
             </tr>
           </thead>
@@ -123,6 +124,11 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                 <td className="px-3 py-2 text-right tabular-nums">
                   {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}
                 </td>
+                <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                  {Number(i.promotionDiscount) > 0
+                    ? `− ${formatTRY(i.promotionDiscount)}`
+                    : "—"}
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {formatTRY(i.lineTotal)}
                 </td>
@@ -136,6 +142,13 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         <div className="space-y-1 text-sm">
           <Row label="Ara toplam" value={formatTRY(o.subtotal)} />
           <Row label="İskonto" value={formatTRY(o.discountTotal)} />
+          {o.promotions.map((p) => (
+            <Row
+              key={p.promotionId}
+              label={`Kampanya: ${p.name}${p.code ? ` (${p.code})` : ""}`}
+              value={`− ${formatTRY(p.amount)}`}
+            />
+          ))}
           <Row label="KDV" value={formatTRY(o.taxTotal)} />
           <Row label="Genel toplam" value={formatTRY(o.grandTotal)} strong />
           <Row

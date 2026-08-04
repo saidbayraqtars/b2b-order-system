@@ -134,8 +134,61 @@ async function main() {
   }
 
   await seedReports(admin.id);
+  await seedPromotions(group.id);
 
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
+}
+
+/**
+ * Two starter campaigns — one automatic, one coupon — so the engine has
+ * something to chew on right after a fresh install. They use nothing the admin
+ * screen cannot also produce: a campaign is just conditions + actions.
+ */
+async function seedPromotions(customerGroupId: string) {
+  const promotions = [
+    {
+      name: "10.000 ₺ üzeri %5",
+      description: "Bayi grubunda 10.000 ₺ ve üzeri sepetlere otomatik %5.",
+      code: null,
+      priority: 10,
+      conditions: [
+        { type: "MIN_ORDER_SUBTOTAL", params: { amount: 10000 } },
+        { type: "CUSTOMER_GROUP_IN", params: { customerGroupIds: [customerGroupId] } },
+      ],
+      actions: [{ type: "PERCENT_OFF", params: { percent: 5 } }],
+    },
+    {
+      name: "İlk sipariş kuponu",
+      description: "Firmanın ilk siparişinde 250 ₺ indirim; firma başına bir kez.",
+      code: "ILKSIPARIS",
+      priority: 20,
+      perCompanyLimit: 1,
+      conditions: [
+        { type: "FIRST_ORDER", params: {} },
+        { type: "MIN_ORDER_SUBTOTAL", params: { amount: 1000 } },
+      ],
+      actions: [{ type: "FIXED_OFF_ORDER", params: { amount: 250 } }],
+    },
+  ];
+
+  for (const p of promotions) {
+    const existing = await prisma.promotion.findFirst({
+      where: { name: p.name },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.promotion.create({
+      data: {
+        name: p.name,
+        description: p.description,
+        code: p.code,
+        priority: p.priority,
+        perCompanyLimit: p.perCompanyLimit ?? null,
+        conditions: p.conditions,
+        actions: p.actions,
+      },
+    });
+  }
 }
 
 /**

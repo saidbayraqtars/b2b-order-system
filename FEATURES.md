@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-03 · Adım 11 sonu
+Son güncelleme: 2026-08-04 · Adım 12 sonu
 
 ---
 
@@ -25,6 +25,7 @@ Son güncelleme: 2026-08-03 · Adım 11 sonu
 | 9 | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması | ✅ |
 | 10 | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti) | ✅ |
 | 11 | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı | ✅ |
+| 12 | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması | ✅ |
 
 ---
 
@@ -54,11 +55,14 @@ Son güncelleme: 2026-08-03 · Adım 11 sonu
 | `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı |
 | `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
+| `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
+| `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
 | `Cart` / `CartItem` | Taslak sepet (şema hazır — şu an sepet istemci tarafında tutuluyor) |
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
 - `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration.
-- Seed: 4 rol için demo kullanıcı, 1 firma, kategoriler, ürün + varyantlar, grup fiyatları, 4 örnek rapor tanımı. Tümü upsert — yeniden çalıştırılabilir.
+- `Order.promotionTotal` + `Order.couponCode` ve `OrderItem.promotionDiscount`: kampanya indirimi de fiyat gibi sipariş anında donuyor.
+- Seed: 4 rol için demo kullanıcı, 1 firma, kategoriler, ürün + varyantlar, grup fiyatları, 4 örnek rapor tanımı, 2 örnek kampanya. Tümü upsert — yeniden çalıştırılabilir.
 
 ## 3. Kimlik Doğrulama & Yetkilendirme
 
@@ -80,11 +84,13 @@ Son güncelleme: 2026-08-03 · Adım 11 sonu
 - **Firmaya özel iskonto:** ürün bazlı iskonto kategori bazlıyı ezer. Yüzde veya sabit tutar, birim başına, 0'ın altına inmez.
 - Katalog fiyatları sunucuda firmaya göre çözülür — istemci hiç fiyat hesaplamaz.
 - Fiyatı tanımsız varyant sipariş edilemez (katalogta "Fiyat tanımsız" olarak işaretlenir).
+- **Kampanya indirimi** (Adım 12) bu ikisinin üzerine, satır bazında uygulanır — ayrıntı için bölüm 12.
 
 ## 5. Sipariş
 
 - **Satır doğrulama:** minimum sipariş miktarı, koli katı olma zorunluluğu, stok yeterliliği — her biri ayrı hata kodu döner.
-- **Toplamlar:** ara toplam, iskonto toplamı, KDV, genel toplam — hepsi Decimal.
+- **Toplamlar:** ara toplam, iskonto toplamı, kampanya toplamı, KDV, genel toplam — hepsi Decimal. KDV kampanya sonrası net üzerinden hesaplanır.
+- **Fiyatlama tek yerde:** doğrulama + fiyat + kampanya + KDV hesabı `buildQuote` içinde; hem sepet önizlemesi hem sipariş oluşturma onu çağırır, sipariş anında transaction içinde yeniden çalışır.
 - **Durum akışı:** firma onay istiyorsa + oluşturan personelse → `PENDING_APPROVAL`; açık hesap + limit aşımı → `PENDING_CREDIT`; aksi halde `CONFIRMED`. Kredi kartı cari borç yazmaz.
 - **Stok** tüm reddedilmemiş siparişlerde (bekleyenler dahil) oluşturma anında düşülür; red halinde iade edilir.
 - **Cari borç** yalnızca `CONFIRMED` + açık hesapta yazılır — bekleyen siparişler onay anında borçlanır.
@@ -220,7 +226,59 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 - IP `x-forwarded-for`'dan okunuyor — **yalnızca kayıt için**; istemci uydurabildiği için hiçbir yetki kararında kullanılmıyor.
 - Görüntüleyici süper admine özel: olay türü, serbest metin, tarih aralığı ve "sadece güvenlik olayları" filtresi + imleç tabanlı sayfalama.
 
-## 12. Web Portal (`apps/web`)
+## 12. Promosyon Motoru (Adım 12)
+
+Kampanya **kod değil veri**: her kampanya bir koşul listesi (hepsi sağlanmalı) ve bir
+aksiyon listesidir (indirimi üretir). Her ikisi de `{ type, params }` JSON'u olarak
+saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir.
+
+### Kural kayıt defteri — güvenlik sınırı
+
+- `promotion-registry.ts` tanımlı olmayan bir kuralı **yok sayar**: tür bilinmiyorsa kampanya kaydedilmez, çalışma anında da atlanır.
+- Her kuralın parametreleri kendi Zod şemasından geçer. İstemciden gelen hiçbir şey kod, Prisma yolu ya da ham SQL olarak yorumlanmaz — rapor tasarımcısındaki veri kümesi kayıt defteriyle aynı desen.
+- Doğrulama **hem yazarken hem her çalıştırmada** yapılır: veritabanında elle düzenlenmiş bir satır kural uyduramaz. Derlenemeyen kampanya sipariş akışını bozmaz, atlanır ve loglanır.
+
+### Koşullar
+
+`MIN_ORDER_SUBTOTAL` (sepet net tutarı) · `MIN_ITEM_QUANTITY` (kategori/ürün filtresiyle adet) ·
+`CUSTOMER_GROUP_IN` · `COMPANY_IN` · `PAYMENT_METHOD_IS` · `FIRST_ORDER` (firmanın ilk siparişi).
+
+### Aksiyonlar
+
+`PERCENT_OFF` (eşleşen satırlara yüzde) · `FIXED_OFF_UNIT` (adet başına tutar) ·
+`FIXED_OFF_ORDER` (sabit tutarı satırlara net oranında dağıtır).
+
+### Uygulama sırası ve para matematiği
+
+- Kampanyalar **öncelik** sırasıyla (küçük önce) çalışır; her kampanya bir öncekinin bıraktığı net tutarı görür, yani üst üste binen kampanyalar bileşik davranır.
+- `stopFurther` işaretli kampanya uygulandığında sonrakiler çalışmaz — "tekil kampanya" böyle ifade edilir.
+- Hiçbir satır sıfırın altına inmez; indirimi olmayan kampanya "uygulandı" sayılmaz.
+- Sabit tutar dağıtımında yuvarlama artığı en büyük satıra verilir — toplam kuruşu kuruşuna tutar.
+- **KDV kampanya sonrası net üzerinden** hesaplanır. `grandTotal = ara toplam − iskonto − kampanya + KDV`.
+- Kampanya indirimi grup fiyatı ve firma iskontosunun **üzerine** uygulanır, onların yerine geçmez.
+
+### Kupon, tarih ve kota
+
+- Kodsuz kampanya otomatiktir; kodlu kampanya yalnızca müşteri kuponu yazınca değerlendirilir (kod büyük harfe normalize edilir, karşılaştırma harf duyarsız).
+- `startsAt` / `endsAt` penceresi; `usageLimit` (toplam) ve `perCompanyLimit` (firma başına) kotaları.
+- Kota `PromotionRedemption` satırlarından sayılır ve **iptal/red edilen siparişler sayılmaz** — iptal kotayı geri verir, ama satır silinmediği için siparişin hangi kampanyadan ne aldığı kaydı kalır.
+- Kupon yazıldığı halde uygulanamıyorsa hata döner ve iki durumu ayırır: kod geçersiz/süresi dolmuş, ya da sepet koşulu sağlamıyor.
+
+### Sunucu tarafı sepet fiyatlaması
+
+- `POST /api/orders/quote` sepeti sipariş vermeden fiyatlar: satır bazında indirim, uygulanan kampanyalar, KDV, genel toplam.
+- Sipariş oluşturma **aynı hesabı** (`buildQuote`) transaction içinde yeniden çalıştırır — önizlemeden sonra fiyat, stok veya kota değişmiş olabilir; istemcinin gönderdiği tutara asla güvenilmez.
+- Sepet paneli artık toplamı kendi hesaplamıyor; teklif ucundan geliyor. Teklif hata verirse (MOQ, stok, geçersiz kupon) sipariş butonu kapanır — önizlemede gizlenip checkout'ta patlayan bir hata kalmaz.
+- Sipariş kalemine `promotionDiscount`, siparişe `promotionTotal` + `couponCode` yazılır; sipariş detayında hem satır kırılımı hem kampanya adları görünür.
+
+### Yönetim (`/admin/promotions`)
+
+- Kampanya listesi: kod, aktiflik, öncelik, tekillik, tarih penceresi, kotalar, kaç siparişte kullanıldığı ve toplam ne kadar indirim verdiği.
+- Kampanya formu koşul/aksiyon kataloğunu `GET /api/admin/promotions/rules` ucundan alır — sunucuya kural eklendiğinde ekran kendiliğinden öğrenir.
+- Kategori/ürün/grup/firma parametreleri çoklu seçim listesinden seçilir, elle id yazılmaz.
+- Siparişte kullanılmış kampanya **silinemez** (pasife alınır) — siparişler neden ucuzladığının kaydını kaybetmesin diye.
+
+## 13. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -250,7 +308,7 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 13. Mobil Uygulama (`apps/mobile`)
+## 14. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -265,7 +323,7 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 14. API Uçları
+## 15. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -288,6 +346,7 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 | GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
 | GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
+| POST | `/api/orders/quote` | 4 rol (sepeti fiyatlar, sipariş oluşturmaz) |
 | GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
 | POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
 | POST | `/api/orders/:id/approve` | firma yöneticisi, süper admin |
@@ -315,6 +374,9 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 | PATCH · DELETE | `/api/admin/customer-groups/:id` | süper admin |
 | GET · POST | `/api/admin/companies/:id/discounts` | süper admin |
 | DELETE | `/api/admin/discounts/:id` | süper admin |
+| GET · POST | `/api/admin/promotions` | süper admin |
+| GET · PATCH · DELETE | `/api/admin/promotions/:id` | süper admin |
+| GET | `/api/admin/promotions/rules` | süper admin (kural kataloğu) |
 | GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
@@ -331,7 +393,10 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 - **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
 - **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
-- **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde.
+- **Kupon yalnızca web portalında** — mobil sipariş ekranında kupon alanı yok; otomatik kampanyalar mobilde de uygulanır çünkü hesap sunucuda.
+- **Kampanya "hediye ürün" veremez** — aksiyonlar yalnızca tutar düşer; sepete satır ekleyen (X alana Y bedava) kampanya yok. Kargo indirimi de yok, çünkü nakliye ücreti modeli henüz yok.
+- **Kampanya kuralları arasında VEYA yok** — bir kampanyanın koşulları VE ile bağlanır; alternatif koşul için ikinci kampanya tanımlanır.
+- **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde. Fiyat artık sunucudan geliyor (teklif ucu), ama sepetin kendisi hâlâ tarayıcıda.
 - **"Şifremi unuttum" yok** — kullanıcı kendi şifresini değiştirebiliyor (Adım 11) ama unuttuysa hâlâ yöneticiden sıfırlatması gerekiyor; e-posta ile sıfırlama akışı yok (e-posta altyapısı da yok).
 - **Denetim kaydında saklama/arşivleme politikası yok** — tablo sınırsız büyüyor, otomatik temizlik ya da dışa aktarma yok.
 - **Denetim kapsamı yönetim işlemleriyle sınırlı** — kullanıcı/firma/oturum olayları kaydediliyor; sipariş ve cari hareketleri kendi geçmiş tablolarında (`OrderStatusHistory`, `Transaction`) duruyor, tek bir akışta birleşmiyorlar.
@@ -349,7 +414,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
-- **Promosyon motoru:** kural tabanlı (koşul + aksiyon + kupon) kampanya yapısı.
+- **Promosyon motoru v2:** hediye ürün (X alana Y bedava), kargo/nakliye indirimi, kampanya koşullarında VEYA, mobilde kupon alanı, kampanya performans raporu.
 - **Rapor tasarımcısı v2:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), veri kümeleri arası birleştirme, veritabanı tarafında gruplama (20.000 satır tarama sınırını kaldırmak için).
 - **Kalite:** ESLint kurulumu, domain katmanı için birim testleri, API için entegrasyon testleri, CI.
 

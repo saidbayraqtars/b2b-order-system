@@ -136,6 +136,7 @@ model Company {
   discounts    CompanyDiscount[]
   checkIns     CheckIn[]
   carts        Cart[]
+  promotionRedemptions PromotionRedemption[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -285,6 +286,81 @@ model CompanyDiscount {
 }
 
 // ─────────────────────────────────────────────
+// PROMOTION (rule engine)
+// ─────────────────────────────────────────────
+
+/// A campaign expressed as data: a list of conditions that must all hold and a
+/// list of actions that produce the discount. Both are JSON arrays of
+/// `{ type, params }`, where `type` must name an entry in the promotion rule
+/// registry in @repo/services — the registry is the security boundary, so a row
+/// edited directly in the database still cannot invent a rule or reach a field
+/// the registry does not expose.
+///
+/// Promotions apply on top of the resolved group price and the company discount,
+/// never instead of them.
+model Promotion {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  /// null = automatic (applies whenever its conditions hold).
+  /// Otherwise the coupon code the buyer has to type; stored upper-case.
+  code String? @unique
+
+  enabled  Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  /// Lower runs first. Each promotion sees the line totals left by the ones
+  /// before it, so order decides how stacked campaigns compound.
+  priority Int @default(0)
+
+  /// Stop evaluating the remaining promotions once this one has applied —
+  /// how an "exclusive" campaign is expressed.
+  stopFurther Boolean @default(false)
+
+  /// Redemption caps; null = unlimited. Counted from PromotionRedemption, so a
+  /// cancelled order gives its redemption back.
+  usageLimit      Int?
+  perCompanyLimit Int?
+
+  conditions Json @default("[]")
+  actions    Json @default("[]")
+
+  redemptions PromotionRedemption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, priority])
+}
+
+/// One promotion applied to one order. Doubles as the usage counter: the caps on
+/// Promotion are checked against these rows, and cancelling an order deletes its
+/// rows so the quota is released.
+model PromotionRedemption {
+  id String @id @default(cuid())
+
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Discount this promotion granted on that order, excl. VAT. Always positive.
+  amount Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  @@unique([promotionId, orderId])
+  @@index([companyId])
+  @@index([orderId])
+}
+
+// ─────────────────────────────────────────────
 // ORDER
 // ─────────────────────────────────────────────
 
@@ -309,11 +385,18 @@ model Order {
   shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id])
 
   // Totals — computed from item snapshots (price frozen at order time).
+  // grandTotal = subtotal − discountTotal − promotionTotal + taxTotal, and the
+  // tax is charged on the net *after* promotions.
   subtotal      Decimal @default(0) @db.Decimal(14, 2)
   discountTotal Decimal @default(0) @db.Decimal(14, 2)
+  /// Sum of every promotion applied to this order, excl. VAT.
+  promotionTotal Decimal @default(0) @db.Decimal(14, 2)
   taxTotal      Decimal @default(0) @db.Decimal(14, 2)
   grandTotal    Decimal @default(0) @db.Decimal(14, 2)
   currency      String  @default("TRY")
+
+  /// The coupon the buyer typed, kept for the record even after the campaign ends.
+  couponCode String?
 
   note String?
 
@@ -327,6 +410,7 @@ model Order {
   items         OrderItem[]
   transactions  Transaction[]
   statusHistory OrderStatusHistory[]
+  promotions    PromotionRedemption[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -371,9 +455,12 @@ model OrderItem {
   quantity    Int // total units
   caseCount   Int? // number of cases (if case-based)
   unitPrice   Decimal @db.Decimal(12, 2)
-  discount    Decimal @default(0) @db.Decimal(12, 2)
+  discount    Decimal @default(0) @db.Decimal(12, 2) // company discount, per unit
+  /// Promotion discount for the whole line (not per unit) — promotions are
+  /// allocated to lines, so this is what the campaign took off this line.
+  promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
   vatRate     Int     @default(20) // snapshot of Product.vatRate
-  lineTotal   Decimal @db.Decimal(14, 2) // net of discount, excl. VAT
+  lineTotal   Decimal @db.Decimal(14, 2) // net of both discounts, excl. VAT
 
   @@index([orderId])
   @@index([variantId])

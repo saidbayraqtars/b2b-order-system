@@ -42,7 +42,12 @@ export type BusinessErrorCode =
   | "LAST_SUPER_ADMIN"
   | "SELF_TARGET"
   // ── account self-service ──
-  | "INVALID_PASSWORD";
+  | "INVALID_PASSWORD"
+  // ── promotions ──
+  | "PROMOTION_NOT_FOUND"
+  | "INVALID_PROMOTION"
+  | "DUPLICATE_PROMOTION_CODE"
+  | "COUPON_INVALID";
 
 export class BusinessError extends Error {
   constructor(

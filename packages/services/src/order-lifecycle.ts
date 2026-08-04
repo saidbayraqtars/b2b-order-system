@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
+import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
 
 // What happens to an order after it is confirmed. Approval (PENDING_* → CONFIRMED
 // / REJECTED) stays in order-approval.ts; this file owns the fulfilment path and
@@ -82,6 +83,9 @@ export async function changeOrderStatus(
     assertTransitionAllowed(order.status, input.status);
     assertActorMay(order, input.status, ctx);
 
+    // Cancelling also hands the campaign quota back, but nothing is written for
+    // it: usage is counted from redemptions whose order is still alive, so the
+    // record of what this order was granted survives the cancellation.
     if (input.status === "CANCELLED") {
       await restock(tx, order.id);
       await reverseDebit(tx, order, ctx.userId);
@@ -258,6 +262,8 @@ export interface OrderDetailItem {
   quantity: number;
   unitPrice: string;
   discount: string;
+  /** Campaign discount allocated to this line (whole line, excl. VAT). */
+  promotionDiscount: string;
   vatRate: number;
   lineTotal: string;
 }
@@ -278,9 +284,13 @@ export interface OrderDetail {
   paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
   subtotal: string;
   discountTotal: string;
+  promotionTotal: string;
   taxTotal: string;
   grandTotal: string;
   currency: string;
+  couponCode: string | null;
+  /** Campaigns that were applied when the order was placed. */
+  promotions: OrderPromotionRow[];
   note: string | null;
   carrier: string | null;
   trackingNumber: string | null;
@@ -316,9 +326,11 @@ export async function getOrderDetail(
       paymentMethod: true,
       subtotal: true,
       discountTotal: true,
+      promotionTotal: true,
       taxTotal: true,
       grandTotal: true,
       currency: true,
+      couponCode: true,
       note: true,
       carrier: true,
       trackingNumber: true,
@@ -341,6 +353,7 @@ export async function getOrderDetail(
           quantity: true,
           unitPrice: true,
           discount: true,
+          promotionDiscount: true,
           vatRate: true,
           lineTotal: true,
         },
@@ -363,6 +376,8 @@ export async function getOrderDetail(
     throw new BusinessError("ORDER_NOT_FOUND", "Sipariş bulunamadı", { orderId });
   }
 
+  const promotions = await listOrderPromotions(o.id);
+
   return {
     id: o.id,
     orderNumber: o.orderNumber,
@@ -370,9 +385,12 @@ export async function getOrderDetail(
     paymentMethod: o.paymentMethod,
     subtotal: o.subtotal.toFixed(2),
     discountTotal: o.discountTotal.toFixed(2),
+    promotionTotal: o.promotionTotal.toFixed(2),
     taxTotal: o.taxTotal.toFixed(2),
     grandTotal: o.grandTotal.toFixed(2),
     currency: o.currency,
+    couponCode: o.couponCode,
+    promotions,
     note: o.note,
     carrier: o.carrier,
     trackingNumber: o.trackingNumber,
@@ -391,6 +409,7 @@ export async function getOrderDetail(
       quantity: i.quantity,
       unitPrice: i.unitPrice.toFixed(2),
       discount: i.discount.toFixed(2),
+      promotionDiscount: i.promotionDiscount.toFixed(2),
       vatRate: i.vatRate,
       lineTotal: i.lineTotal.toFixed(2),
     })),

@@ -1,9 +1,10 @@
 import { Prisma, prisma } from "@repo/database";
 import type { CreateOrderInput, OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
-import { Dec, ZERO, round2 } from "./money";
-import { resolvePrice } from "./pricing";
+import { Dec } from "./money";
+import { buildQuote } from "./order-quote";
 import { recordStatusChange } from "./order-lifecycle";
+import { recordRedemptions } from "./promotion";
 
 export interface CreateOrderContext {
   createdById: string;
@@ -15,6 +16,10 @@ export interface CreateOrderResult {
   orderNumber: string;
   status: OrderStatus;
   grandTotal: string;
+  /** Total the campaigns took off, excl. VAT — 0.00 when none applied. */
+  promotionTotal: string;
+  /** Which campaigns applied, so the confirmation can name them. */
+  promotions: Array<{ name: string; code: string | null; amount: string }>;
   /** Human hint for the UI about why it isn't CONFIRMED. */
   reason: "APPROVAL_REQUIRED" | "CREDIT_EXCEEDED" | null;
 }
@@ -23,11 +28,14 @@ type Tx = Prisma.TransactionClient;
 
 /**
  * Create an order atomically:
- *  - validates MOQ / case-multiple / stock per line
- *  - resolves company-specific pricing + VAT
+ *  - prices the cart through buildQuote (MOQ / case / stock checks, company
+ *    pricing, campaigns, VAT) — the very calculation the portal previewed
  *  - decides status (approval flow → credit check → confirmed)
- *  - reserves stock, and on CONFIRMED+OPEN_ACCOUNT writes the cari DEBIT
- *    and bumps Company.currentBalance in the same transaction.
+ *  - reserves stock, records promotion redemptions, and on CONFIRMED+OPEN_ACCOUNT
+ *    writes the cari DEBIT and bumps Company.currentBalance in the same transaction.
+ *
+ * The quote is re-run here inside the transaction rather than trusted from the
+ * client: prices, stock and campaign quotas can all have moved since the preview.
  *
  * Retries once on an orderNumber collision (P2002) under concurrency.
  */
@@ -60,122 +68,34 @@ async function buildOrder(
   input: CreateOrderInput,
   ctx: CreateOrderContext,
 ): Promise<CreateOrderResult> {
-  // 1. Company + its discounts
-  const company = await tx.company.findUnique({
-    where: { id: input.companyId },
-    select: {
-      id: true,
-      creditLimit: true,
-      currentBalance: true,
-      requiresOrderApproval: true,
-      customerGroupId: true,
-      discounts: {
-        select: {
-          categoryId: true,
-          productId: true,
-          discountType: true,
-          value: true,
-        },
-      },
-    },
+  // 1-3. Validate, price, discount, promote, total — shared with the preview.
+  const quote = await buildQuote(tx, {
+    companyId: input.companyId,
+    paymentMethod: input.paymentMethod,
+    couponCode: input.couponCode,
+    items: input.items,
   });
-  if (!company) {
-    throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", {
-      companyId: input.companyId,
-    });
-  }
+  const { company, subtotal, discountTotal, promotionTotal, taxTotal, grandTotal } =
+    quote;
 
-  // 2. Variants (+ product for VAT / name / category)
-  const variantIds = input.items.map((i) => i.variantId);
-  const variants = await tx.productVariant.findMany({
-    where: { id: { in: variantIds } },
-    select: {
-      id: true,
-      sku: true,
-      stock: true,
-      unitsPerCase: true,
-      moqUnits: true,
-      product: {
-        select: { id: true, name: true, vatRate: true, categoryId: true },
-      },
-      prices: {
-        select: { customerGroupId: true, minQuantity: true, price: true },
-      },
-    },
-  });
-  const vmap = new Map(variants.map((v) => [v.id, v]));
-
-  // 3. Build line snapshots + running totals
-  let subtotal = ZERO;
-  let discountTotal = ZERO;
-  let taxTotal = ZERO;
-  const itemsData: Prisma.OrderItemCreateWithoutOrderInput[] = [];
-  const stockUpdates: Array<{ id: string; qty: number }> = [];
-
-  for (const item of input.items) {
-    const v = vmap.get(item.variantId);
-    if (!v) {
-      throw new BusinessError("VARIANT_NOT_FOUND", "Ürün bulunamadı", {
-        variantId: item.variantId,
-      });
-    }
-    if (item.quantity < v.moqUnits) {
-      throw new BusinessError(
-        "MOQ_NOT_MET",
-        `${v.sku}: minimum sipariş ${v.moqUnits} adet`,
-        { sku: v.sku, moqUnits: v.moqUnits },
-      );
-    }
-    if (v.unitsPerCase > 1 && item.quantity % v.unitsPerCase !== 0) {
-      throw new BusinessError(
-        "NOT_CASE_MULTIPLE",
-        `${v.sku}: koli katı olmalı (${v.unitsPerCase} adet/koli)`,
-        { sku: v.sku, unitsPerCase: v.unitsPerCase },
-      );
-    }
-    if (item.quantity > v.stock) {
-      throw new BusinessError(
-        "INSUFFICIENT_STOCK",
-        `${v.sku}: yetersiz stok (${v.stock} adet)`,
-        { sku: v.sku, stock: v.stock },
-      );
-    }
-
-    const r = resolvePrice({
-      prices: v.prices,
-      customerGroupId: company.customerGroupId,
-      quantity: item.quantity,
-      productId: v.product.id,
-      categoryId: v.product.categoryId,
-      discounts: company.discounts,
-    });
-
-    const lineGross = r.unitPrice.mul(item.quantity);
-    const lineDiscount = r.discountPerUnit.mul(item.quantity);
-    const lineTax = r.lineNet.mul(v.product.vatRate).div(100);
-
-    subtotal = subtotal.add(lineGross);
-    discountTotal = discountTotal.add(lineDiscount);
-    taxTotal = taxTotal.add(lineTax);
-
-    itemsData.push({
-      variant: { connect: { id: v.id } },
-      productName: v.product.name,
-      sku: v.sku,
-      quantity: item.quantity,
-      caseCount: v.unitsPerCase > 1 ? item.quantity / v.unitsPerCase : null,
-      unitPrice: r.unitPrice,
-      discount: r.discountPerUnit,
-      vatRate: v.product.vatRate,
-      lineTotal: r.lineNet,
-    });
-    stockUpdates.push({ id: v.id, qty: item.quantity });
-  }
-
-  subtotal = round2(subtotal);
-  discountTotal = round2(discountTotal);
-  taxTotal = round2(taxTotal);
-  const grandTotal = round2(subtotal.sub(discountTotal).add(taxTotal));
+  const itemsData: Prisma.OrderItemCreateWithoutOrderInput[] = quote.lines.map(
+    (l) => ({
+      variant: { connect: { id: l.variantId } },
+      productName: l.productName,
+      sku: l.sku,
+      quantity: l.quantity,
+      caseCount: l.caseCount,
+      unitPrice: l.unitPrice,
+      discount: l.discountPerUnit,
+      promotionDiscount: l.promotionDiscount,
+      vatRate: l.vatRate,
+      lineTotal: l.lineNet,
+    }),
+  );
+  const stockUpdates = quote.lines.map((l) => ({
+    id: l.variantId,
+    qty: l.quantity,
+  }));
 
   // 4. Status decision
   const isStaff = ctx.createdByRole === "COMPANY_STAFF";
@@ -220,8 +140,10 @@ async function buildOrder(
         ? { shippingAddress: { connect: { id: input.shippingAddressId } } }
         : {}),
       note: input.note ?? null,
+      couponCode: quote.coupon,
       subtotal,
       discountTotal,
+      promotionTotal,
       taxTotal,
       grandTotal,
       items: { create: itemsData },
@@ -237,7 +159,15 @@ async function buildOrder(
     changedById: ctx.createdById,
   });
 
-  // 9. Cari DEBIT only when the order is immediately CONFIRMED on open account.
+  // 9. Book the campaign usage. Counted from these rows, so an order that is
+  //    later cancelled hands its quota back (see releaseRedemptions).
+  await recordRedemptions(tx, {
+    orderId: order.id,
+    companyId: company.id,
+    applied: quote.appliedPromotions,
+  });
+
+  // 10. Cari DEBIT only when the order is immediately CONFIRMED on open account.
   //    Pending orders get their debit at approval/confirmation time.
   if (status === "CONFIRMED" && input.paymentMethod === "OPEN_ACCOUNT") {
     await tx.transaction.create({
@@ -262,6 +192,12 @@ async function buildOrder(
     orderNumber: order.orderNumber,
     status: order.status,
     grandTotal: grandTotal.toFixed(2),
+    promotionTotal: promotionTotal.toFixed(2),
+    promotions: quote.appliedPromotions.map((p) => ({
+      name: p.name,
+      code: p.code,
+      amount: p.amount.toFixed(2),
+    })),
     reason,
   };
 }

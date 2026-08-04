@@ -247,6 +247,11 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   SELF_TARGET: 409,
   // account self-service
   INVALID_PASSWORD: 403,
+  // promotions
+  PROMOTION_NOT_FOUND: 404,
+  INVALID_PROMOTION: 422,
+  DUPLICATE_PROMOTION_CODE: 409,
+  COUPON_INVALID: 422,
 };
 
 /**

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OrderStatusEnum, PaymentMethodEnum } from "./enums";
+import { couponCodeSchema } from "./promotion";
 
 export const cartItemInputSchema = z.object({
   variantId: z.string().cuid(),
@@ -12,6 +13,8 @@ export const createOrderSchema = z.object({
   paymentMethod: PaymentMethodEnum.default("OPEN_ACCOUNT"),
   shippingAddressId: z.string().cuid().optional(),
   note: z.string().max(1000).optional(),
+  /** Optional coupon; automatic promotions apply with or without it. */
+  couponCode: couponCodeSchema.optional(),
   items: z.array(cartItemInputSchema).min(1, "Sepet boş olamaz"),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

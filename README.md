@@ -97,3 +97,28 @@ mobile bearer token alike. Rejected sessions and denied requests land in the aud
 API routes are deliberately absent from the middleware map: they are guarded by
 `requireUser()` so they answer with JSON instead of an HTML redirect, which is what the
 mobile client needs.
+
+## Pricing a cart
+
+One calculation, used twice. `buildQuote()` in `packages/services/src/order-quote.ts`
+validates the lines (MOQ, case multiple, stock), resolves the company's group price and
+discount, runs the promotion engine and totals it up. `POST /api/orders/quote` returns
+that to the portal; `createOrder()` runs the very same function inside its transaction
+before writing the snapshot. The browser never computes a total, and the server never
+trusts one it was handed — a preview and an order cannot disagree, and a stale preview
+cannot lock in a price that has since moved.
+
+## Promotions as data
+
+A campaign is a row: a list of conditions that must all hold, and a list of actions that
+produce the discount, both stored as `{ type, params }` JSON. The catalogue of rule types
+lives in `packages/services/src/promotion-registry.ts`, which is also the **security
+boundary** — an unknown type does not exist, and every parameter is parsed by the Zod
+schema declared next to its rule, on write *and* on every evaluation. Nothing from a
+client (or from a row edited straight in the database) is ever run as code.
+
+`promotion-engine.ts` is pure: it takes priced lines plus compiled rules and returns the
+per-line allocation. Campaigns run in priority order, each seeing what the previous one
+left, and VAT is charged on the net after promotions. Usage caps count redemption rows
+whose order is still alive, so a cancellation returns the quota while the order keeps its
+record of what it was granted.

@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin/products", label: "Ürünler" },
   { href: "/admin/categories", label: "Kategoriler" },
   { href: "/admin/customer-groups", label: "Gruplar" },
+  { href: "/admin/promotions", label: "Kampanyalar" },
   { href: "/admin/reports", label: "Raporlar" },
   { href: "/reports", label: "Tasarımcı" },
   { href: "/admin/audit", label: "Güvenlik" },
