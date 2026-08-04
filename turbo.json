@@ -1,11 +1,25 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".env", ".env.*"],
-  "globalEnv": ["DATABASE_URL", "AUTH_SECRET", "NODE_ENV"],
+  "globalDependencies": [
+    ".env",
+    ".env.*"
+  ],
+  "globalEnv": [
+    "AUTH_SECRET",
+    "DATABASE_URL",
+    "NODE_ENV"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "^db:generate"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": [
+        "^build",
+        "^db:generate"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
     },
     "dev": {
       "cache": false,
@@ -13,10 +27,18 @@
     },
     "lint": {},
     "typecheck": {
-      "dependsOn": ["^db:generate"]
+      "dependsOn": [
+        "^db:generate"
+      ]
     },
     "db:generate": {
       "cache": false
+    },
+    "test": {
+      "dependsOn": [
+        "^db:generate"
+      ],
+      "outputs": []
     }
   }
 }

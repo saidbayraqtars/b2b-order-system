@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A push that lands while an older run is still going makes that run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: b2b
+          POSTGRES_PASSWORD: b2b
+          POSTGRES_DB: b2b_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U b2b"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://b2b:b2b@localhost:5432/b2b_test?schema=public
+      # Not a secret: CI never issues a session anyone can use.
+      AUTH_SECRET: ci-only-not-a-real-secret-000000000000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prisma client + schema
+        run: |
+          pnpm db:generate
+          pnpm db:deploy
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      # Unit suite plus the integration suite, which runs because DATABASE_URL is set.
+      - run: pnpm test
+      - run: pnpm build

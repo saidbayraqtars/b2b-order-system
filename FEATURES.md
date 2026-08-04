@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-04 · Adım 12 sonu
+Son güncelleme: 2026-08-04 · Adım 13 sonu
 
 ---
 
@@ -26,6 +26,7 @@ Son güncelleme: 2026-08-04 · Adım 12 sonu
 | 10 | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti) | ✅ |
 | 11 | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı | ✅ |
 | 12 | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması | ✅ |
+| 13 | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI | ✅ |
 
 ---
 
@@ -278,7 +279,18 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Kategori/ürün/grup/firma parametreleri çoklu seçim listesinden seçilir, elle id yazılmaz.
 - Siparişte kullanılmış kampanya **silinemez** (pasife alınır) — siparişler neden ucuzladığının kaydını kaybetmesin diye.
 
-## 13. Web Portal (`apps/web`)
+## 13. Kalite Altyapısı (Adım 13)
+
+- **ESLint** her pakette çalışıyor (`pnpm lint`, 6 paket, sıfır uyarı toleransı). Ortak yapılandırma `@repo/eslint-config`: `base` (TS), `next` (web), `react-native` (mobil).
+  - Bilerek **tip-farkındalıklı değil** — tip hataları zaten `pnpm typecheck`'te yakalanıyor, tip-farkındalıklı lint ise üretilmiş Prisma client'ına bağımlı olurdu. Geriye tsc'nin söylemediği sınıf kalıyor: ölü kod, kaçak `any`, konsol gürültüsü.
+  - Mobilde `eslint-config-expo` kullanılmıyor: o preset @typescript-eslint v8'de kaldırılmış kurallara atıf yapıyor, workspace ise v8 kullanıyor.
+- **Vitest** iki ayrı takım hâlinde (`pnpm test`):
+  - **Birim (27 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, kayıt defteri doğrulaması.
+  - **Entegrasyon (15 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
+  - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
+
+## 14. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -308,7 +320,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 14. Mobil Uygulama (`apps/mobile`)
+## 15. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -323,7 +335,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 15. API Uçları
+## 16. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -403,8 +415,6 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Kilitleme e-posta bazlı** — aynı IP'den farklı hesaplara yapılan denemeler ayrı ayrı sayılıyor, IP başına hız sınırı yok.
 - **`tokenVersion` kontrolü her istekte bir sorgu** — istek başına `react/cache` ile tekil, ama Redis benzeri bir önbellek yok.
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
-- **ESLint yapılandırılmamış** — `pnpm lint` interaktif kuruluma düşüp hata veriyor.
-- **Otomatik test yok** — doğrulama manuel E2E scriptleri + typecheck + build ile yapılıyor.
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
 - Şifre sıfırlama, e-posta/bildirim yok.
 

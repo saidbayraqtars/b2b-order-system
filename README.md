@@ -50,8 +50,21 @@ pnpm --filter web dev       # web on http://localhost:3000
 pnpm --filter mobile start  # expo
 ```
 
-> No test suite yet, and ESLint is not configured — `pnpm lint` fails. Verification
-> so far is `pnpm typecheck`, `next build`, `expo export` and manual E2E scripts.
+## Verification
+
+```bash
+pnpm typecheck   # tsc across every package
+pnpm lint        # ESLint, zero-warning budget
+pnpm test        # Vitest: unit suite + integration suite
+pnpm build       # next build + package builds
+```
+
+`pnpm test` runs two suites. The unit suite is pure domain maths and needs nothing.
+The integration suite talks to a real Postgres, builds its own fixture (group, company,
+product, price tiers, campaigns) and touches only its own rows — so it is safe against a
+database that already has seed data. Without `DATABASE_URL` it is skipped rather than
+failed. CI (`.github/workflows/ci.yml`) runs all four against a Postgres service
+container.
 
 ## Seed accounts (password: `Password123!`)
 

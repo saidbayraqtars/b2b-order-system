@@ -10,7 +10,8 @@
     "./rbac": "./src/rbac.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts --max-warnings 0"
   },
   "dependencies": {
     "@repo/database": "workspace:*",
@@ -19,8 +20,10 @@
     "next-auth": "5.0.0-beta.22"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:^",
     "@repo/tsconfig": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
+    "eslint": "^8.57.1",
     "typescript": "^5.6.3"
   }
 }

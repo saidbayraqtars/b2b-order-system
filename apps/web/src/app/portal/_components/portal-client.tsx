@@ -8,7 +8,6 @@ import type { CatalogProduct, CategoryNode } from "@repo/services";
 import type { Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { useCart, cartTotals } from "@/store/cart";
-import { formatTRY } from "@/lib/format";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
 

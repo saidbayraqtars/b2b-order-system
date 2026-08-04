@@ -63,7 +63,7 @@ export function ReportsList() {
           {definitions.length === 0 && (
             <tr>
               <td className="px-3 py-6 text-center text-neutral-500" colSpan={4}>
-                Henüz kayıtlı rapor yok. "Yeni rapor" ile başlayın.
+                Henüz kayıtlı rapor yok. &quot;Yeni rapor&quot; ile başlayın.
               </td>
             </tr>
           )}
