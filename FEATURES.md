@@ -29,6 +29,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | 13 | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI | ✅ |
 | 14 | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli | ✅ |
 | 15 | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri | ✅ |
+| 16 | Sunucu tarafı sepet + ürün görseli yükleme | ✅ |
 
 ---
 
@@ -363,7 +364,29 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Alıcılar **veriden çözülür**, parametre olarak geçilmez — yanlış kutuya sipariş sızdırmak çağıranın elinde değil.
 - Bildirim **işlem (transaction) dışında**, iş tamamlandıktan sonra gönderilir: SMTP gidiş-dönüşü boyunca veritabanı bağlantısı tutulmaz, geri alınabilecek bir durum duyurulmaz.
 
-## 16. Web Portal (`apps/web`)
+## 16. Sepet & Görseller (Adım 16)
+
+### Sepet artık sunucuda
+
+- `Cart` satırı **(firma, sahip)** çifti başına tek: telefonda kurulan sepet masaüstünde de açık, sekme kapanınca kaybolmuyor. Plasiyer üç müşteri için üç sepet taşıyabiliyor.
+- Satır yalnızca **niyeti** tutuyor: varyant + adet. Fiyat, kampanya ve KDV **okurken** çözülüyor — geçen haftanın fiyatını hatırlayan bir sepet, fiyat listesi değiştiği anda yalan söylerdi.
+- **MOQ / koli katı / stok sepette dayatılmıyor.** Sepet bir taslak; hâlâ düzenlediğiniz adet için azarlanmak can sıkıcı olur. Kurallar teklif ve sipariş anında zaten uygulanıyor; sepet okuması arayüzün kullanıcıyı doğru adede yönlendirmesi için gereken sayıları (`moqUnits`, `unitsPerCase`, `stock`) veriyor.
+- Kataloğdan çıkmış (pasif) ürünün satırı yanıttan **ve satırdan** düşüyor — ödeme adımında elinden bir şey gelmeyen alıcıya hata göstermek yerine.
+- Firmanın fiyatı olmayan satır **silinmiyor**, `netUnitPrice: null` ile gösteriliyor: alıcı neden sipariş veremediğini görüyor.
+- Sipariş oluşunca sepet **sunucuda** boşaltılıyor (tarayıcıda değil) — ikinci sekmeden aynı siparişin tekrar verilmesini engelliyor, mobil için de geçerli.
+- İstemci tarafı iyimser yazıyor: buton anında tepki veriyor, sunucunun döndürdüğü sepet son sözü söylüyor.
+
+### Görsel yükleme
+
+- `POST /api/admin/uploads` (multipart, yalnızca süper admin) → `GET /api/media/<klasör>/<dosya>`.
+- Dosyalar `public/` içine değil, `UPLOAD_DIR` (varsayılan `./uploads`) altına yazılıyor ve bir uç üzerinden servis ediliyor: `public/` derleme zamanı bir dizin, çalışırken içine yazmak paketlenmiş/konteynerli kurulumda çalışmaz.
+- **Türü içerik belirliyor, ad değil**: yalnızca JPEG/PNG/WebP/AVIF/GIF imzası taşıyan dosya kabul ediliyor; `photo.png` adlı bir PHP dosyası reddediliyor.
+- İstemcinin dosya adı diske **hiç yazılmıyor** — ad rastgele üretiliyor: geçilecek yol, üzerine yazılacak dosya ve tahmin edilecek URL yok.
+- Okuma yolu çözümlendikten sonra kökün içinde kalıp kalmadığı kontrol ediliyor; `../` ile dışarı çıkılamıyor.
+- Sınır 5 MB. Yükleme denetim kaydına `MEDIA_UPLOADED` olarak düşüyor.
+- `/api/media` **kimlik doğrulaması istemiyor**: bunlar katalog fotoğrafı, belge değil; mobilde `<Image>` bearer token ekleyemez. Adlar rastgele olduğu için URL tahmin edilemiyor.
+
+## 17. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -395,7 +418,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 17. Mobil Uygulama (`apps/mobile`)
+## 18. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -410,7 +433,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 18. API Uçları
+## 19. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -434,6 +457,10 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | GET · POST | `/api/reports/definitions` | süper admin, plasiyer, firma yöneticisi |
 | GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
 | GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
+| GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
+| POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
+| POST | `/api/admin/uploads` | süper admin (multipart görsel) |
+| GET | `/api/media/<klasör>/<dosya>` | herkes (katalog görseli) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
 | POST | `/api/orders/quote` | 4 rol (sepeti fiyatlar, sipariş oluşturmaz) |
 | GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
@@ -490,14 +517,15 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Kupon yalnızca web portalında** — mobil sipariş ekranında kupon alanı yok; otomatik kampanyalar mobilde de uygulanır çünkü hesap sunucuda.
 - **Kampanya "hediye ürün" veremez** — aksiyonlar yalnızca tutar düşer; sepete satır ekleyen (X alana Y bedava) kampanya yok. Kargo indirimi de yok, çünkü nakliye ücreti modeli henüz yok.
 - **Kampanya kuralları arasında VEYA yok** — bir kampanyanın koşulları VE ile bağlanır; alternatif koşul için ikinci kampanya tanımlanır.
-- **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde. Fiyat artık sunucudan geliyor (teklif ucu), ama sepetin kendisi hâlâ tarayıcıda.
+- **Mobil sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
 - **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
 - **Zamanlayıcı yok** — süresi geçmiş sıfırlama biletlerini silen `purgePasswordResetTokens()` var ama onu çağıran bir cron/job runner yok; şimdilik elle çağrılıyor.
 - **Denetim kaydında saklama/arşivleme politikası yok** — tablo sınırsız büyüyor, otomatik temizlik ya da dışa aktarma yok.
 - **Denetim kapsamı yönetim işlemleriyle sınırlı** — kullanıcı/firma/oturum olayları kaydediliyor; sipariş ve cari hareketleri kendi geçmiş tablolarında (`OrderStatusHistory`, `Transaction`) duruyor, tek bir akışta birleşmiyorlar.
 - **Kilitleme e-posta bazlı** — aynı IP'den farklı hesaplara yapılan denemeler ayrı ayrı sayılıyor, IP başına hız sınırı yok.
 - **`tokenVersion` kontrolü her istekte bir sorgu** — istek başına `react/cache` ile tekil, ama Redis benzeri bir önbellek yok.
-- **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
+- **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
+- **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok).
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
 
 ## Sonraki Adımlar (planlanan)

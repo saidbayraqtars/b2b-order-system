@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { Prisma, prisma } from "@repo/database";
-import { createOrder, notifyOrderPlaced } from "@repo/services";
+import { clearCart, createOrder, notifyOrderPlaced } from "@repo/services";
 import { createOrderSchema, OrderStatusEnum } from "@repo/types";
 import { InputError, requireUser, withAuthErrors } from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
@@ -31,6 +31,11 @@ export function POST(req: NextRequest) {
       createdById: user.id,
       createdByRole: user.role,
     });
+    // The basket has become an order; leaving it full invites the same order
+    // twice from the second tab. Cleared here rather than in the browser so it
+    // holds for the mobile app too.
+    await clearCart(input.companyId, user.id);
+
     // After the transaction: the order exists whether or not the mail goes out.
     await notifyOrderPlaced(result.orderId);
     return Response.json(result, { status: 201 });

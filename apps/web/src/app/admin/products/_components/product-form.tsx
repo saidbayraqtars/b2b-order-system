@@ -15,6 +15,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/form";
+import { ImagePicker } from "./image-picker";
 
 interface FormState {
   name: string;
@@ -169,11 +170,10 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
         </div>
 
         <div className="sm:col-span-2">
-          <Label hint="(her satıra bir URL)">Görseller</Label>
-          <TextArea
+          <Label hint="(ilk görsel kapak olarak kullanılır)">Görseller</Label>
+          <ImagePicker
             value={form.images}
-            onChange={(e) => setForm({ ...form, images: e.target.value })}
-            placeholder="https://…"
+            onChange={(images) => setForm({ ...form, images })}
           />
         </div>
       </div>

@@ -9,16 +9,34 @@ function variantLabel(v: CatalogVariant): string {
   return parts.length ? parts.join(" · ") : v.sku;
 }
 
-export function ProductCard({ product }: { product: CatalogProduct }) {
-  const add = useCart((s) => s.add);
+export function ProductCard({
+  product,
+  companyId,
+}: {
+  product: CatalogProduct;
+  companyId: string;
+}) {
+  const { add } = useCart(companyId);
 
   return (
     <div className="flex flex-col rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="mb-3">
-        <h3 className="font-semibold leading-tight">{product.name}</h3>
-        <p className="text-xs text-neutral-500">
-          {product.brand ? `${product.brand} · ` : ""}KDV %{product.vatRate}
-        </p>
+      <div className="mb-3 flex items-start gap-3">
+        {product.images[0] && (
+          // Uploads are served from our own route, immutable and same-origin;
+          // next/image would want a loader configured for no gain here.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.images[0]}
+            alt={product.name}
+            className="h-14 w-14 shrink-0 rounded-md object-cover"
+          />
+        )}
+        <div className="min-w-0">
+          <h3 className="font-semibold leading-tight">{product.name}</h3>
+          <p className="text-xs text-neutral-500">
+            {product.brand ? `${product.brand} · ` : ""}KDV %{product.vatRate}
+          </p>
+        </div>
       </div>
 
       <ul className="flex flex-col gap-2">
@@ -46,15 +64,9 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
                   onClick={() =>
                     add({
                       variantId: v.id,
-                      sku: v.sku,
-                      productName: product.name,
-                      color: v.color,
-                      size: v.size,
                       unitsPerCase: v.unitsPerCase,
                       moqUnits: v.moqUnits,
                       stock: v.stock,
-                      netUnitPrice: Number(v.netUnitPrice),
-                      vatRate: product.vatRate,
                     })
                   }
                   className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-900"

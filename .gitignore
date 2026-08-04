@@ -29,6 +29,9 @@ packages/database/prisma/migrations/dev.db*
 /refine/
 /vendure/
 
+# uploaded files (UPLOAD_DIR) — user content, never source
+uploads/
+
 # misc
 .DS_Store
 *.log

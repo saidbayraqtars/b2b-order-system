@@ -734,6 +734,10 @@ model Cart {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// One open cart per person per customer. A sales rep building carts for
+  /// three different customers keeps three; the same person on phone and
+  /// laptop shares one, which is the whole point of storing it here.
+  @@unique([companyId, ownerId])
   @@index([companyId])
   @@index([ownerId])
 }
@@ -846,6 +850,7 @@ enum AuditAction {
   COMPANY_CREATED
   COMPANY_UPDATED
   COMPANY_DELETED
+  MEDIA_UPLOADED // a file landed on the server's disk
 }
 
 /// Append-only record of security-relevant events. Nothing in the application

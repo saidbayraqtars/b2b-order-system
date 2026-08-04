@@ -176,3 +176,18 @@ attempt lands in the audit trail as `NOTIFICATION_SENT` or `NOTIFICATION_FAILED`
 The reset flow stores only the SHA-256 of its token, expires it in 60 minutes, spends it
 once, and answers identically whether or not the address belongs to an account — anything
 else would turn the form into a customer-list oracle.
+
+## The cart is a row, not a browser tab
+
+One `Cart` per (company, owner). It stores what the person chose — variant and quantity —
+and nothing about money: price, campaign and VAT are resolved every time it is read, so a
+cart cannot quietly hold last week's price. MOQ, case multiples and stock are *not*
+enforced here; a cart is a draft, and those rules already stop an invalid order at the
+quote and at checkout. Placing an order empties the cart server-side, so a second tab
+cannot replay it.
+
+Uploaded images land in `UPLOAD_DIR` and come back through `/api/media/...`, never out of
+`public/` — that directory is a build input, and writing into it at runtime stops working
+the moment the app is containerised. The upload path trusts the bytes, not the name: only
+files carrying a real image signature are accepted, and the stored name is random, so
+there is no path to traverse and no URL to guess.

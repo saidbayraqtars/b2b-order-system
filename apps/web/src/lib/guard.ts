@@ -268,6 +268,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   ALREADY_INVOICED: 409,
   // password reset
   RESET_TOKEN_INVALID: 422,
+  // uploads
+  INVALID_UPLOAD: 422,
 };
 
 /**

@@ -63,7 +63,9 @@ export type BusinessErrorCode =
   | "OVER_INVOICE"
   | "ALREADY_INVOICED"
   // ── password reset ──
-  | "RESET_TOKEN_INVALID";
+  | "RESET_TOKEN_INVALID"
+  // ── uploads ──
+  | "INVALID_UPLOAD";
 
 export class BusinessError extends Error {
   constructor(

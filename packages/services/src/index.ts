@@ -32,3 +32,5 @@ export * from "./mail";
 export * from "./mail-templates";
 export * from "./password-reset";
 export * from "./notification";
+export * from "./cart";
+export * from "./media";

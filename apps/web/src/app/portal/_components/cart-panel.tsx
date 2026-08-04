@@ -15,11 +15,7 @@ const STATUS_MESSAGE: Record<string, string> = {
 };
 
 export function CartPanel({ companyId }: { companyId: string }) {
-  const lines = useCart((s) => s.lines);
-  const inc = useCart((s) => s.inc);
-  const dec = useCart((s) => s.dec);
-  const remove = useCart((s) => s.remove);
-  const clear = useCart((s) => s.clear);
+  const { lines, inc, dec, remove, clear, isLoading } = useCart(companyId);
   const localTotals = cartTotals(lines);
 
   const [couponDraft, setCouponDraft] = useState("");
@@ -90,7 +86,9 @@ export function CartPanel({ companyId }: { companyId: string }) {
         </p>
       )}
 
-      {lines.length === 0 ? (
+      {isLoading ? (
+        <p className="text-sm text-neutral-500">Sepet yükleniyor…</p>
+      ) : lines.length === 0 ? (
         <p className="text-sm text-neutral-500">Sepetiniz boş.</p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -128,7 +126,9 @@ export function CartPanel({ companyId }: { companyId: string }) {
                   </button>
                 </div>
                 <span className="tabular-nums font-medium">
-                  {formatTRY(l.netUnitPrice * l.quantity)}
+                  {l.netUnitPrice === null
+                    ? "fiyat yok"
+                    : formatTRY(Number(l.netUnitPrice) * l.quantity)}
                 </span>
               </div>
             </li>

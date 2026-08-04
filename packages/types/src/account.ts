@@ -69,6 +69,7 @@ export const AuditActionEnum = z.enum([
   "COMPANY_CREATED",
   "COMPANY_UPDATED",
   "COMPANY_DELETED",
+  "MEDIA_UPLOADED",
 ]);
 export type AuditAction = z.infer<typeof AuditActionEnum>;
 
@@ -95,6 +96,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   COMPANY_CREATED: "Firma oluşturuldu",
   COMPANY_UPDATED: "Firma güncellendi",
   COMPANY_DELETED: "Firma silindi",
+  MEDIA_UPLOADED: "Görsel yüklendi",
 };
 
 /** Actions worth surfacing as "security events" by default in the viewer. */

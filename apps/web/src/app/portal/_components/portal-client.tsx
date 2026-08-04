@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import type { CatalogProduct, CategoryNode } from "@repo/services";
 import type { Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
-import { useCart, cartTotals } from "@/store/cart";
+import { useCart } from "@/store/cart";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
 
@@ -29,7 +29,7 @@ function flatten(nodes: CategoryNode[], depth = 0): Array<{ id: string; name: st
 export function PortalClient({ companyId, companyName, userName, role }: Props) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const itemCount = useCart((s) => cartTotals(s.lines).itemCount);
+  const { itemCount } = useCart(companyId);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
@@ -138,7 +138,7 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {products.map((p) => (
-                <ProductCard key={p.id} product={p} />
+                <ProductCard key={p.id} product={p} companyId={companyId} />
               ))}
             </div>
           )}
