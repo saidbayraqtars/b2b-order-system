@@ -47,7 +47,21 @@ export type BusinessErrorCode =
   | "PROMOTION_NOT_FOUND"
   | "INVALID_PROMOTION"
   | "DUPLICATE_PROMOTION_CODE"
-  | "COUPON_INVALID";
+  | "COUPON_INVALID"
+  // ── documents: series, despatch, invoice ──
+  | "DOCUMENT_SERIES_MISSING"
+  | "EXTERNAL_NUMBER_REQUIRED"
+  | "SERIES_NOT_FOUND"
+  | "DUPLICATE_SERIES"
+  | "INVALID_SERIES_COUNTER"
+  | "SHIPMENT_NOT_FOUND"
+  | "ORDER_ITEM_NOT_FOUND"
+  | "EMPTY_SHIPMENT"
+  | "OVER_SHIPMENT"
+  | "INVOICE_NOT_FOUND"
+  | "NOTHING_TO_INVOICE"
+  | "OVER_INVOICE"
+  | "ALREADY_INVOICED";
 
 export class BusinessError extends Error {
   constructor(

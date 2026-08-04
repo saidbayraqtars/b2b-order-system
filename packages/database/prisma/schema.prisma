@@ -48,6 +48,17 @@ enum DiscountType {
   FIXED
 }
 
+/// Which serial a document draws from. Waybill = irsaliye, invoice = fatura.
+enum DocumentType {
+  WAYBILL
+  INVOICE
+}
+
+enum InvoiceStatus {
+  ISSUED
+  CANCELLED
+}
+
 // ─────────────────────────────────────────────
 // AUTH & RBAC
 // ─────────────────────────────────────────────
@@ -85,6 +96,8 @@ model User {
 
   ordersCreated  Order[]       @relation("OrderCreatedBy")
   ordersApproved Order[]       @relation("OrderApprovedBy")
+  shipments      Shipment[]    @relation("ShipmentShippedBy")
+  invoicesIssued Invoice[]     @relation("InvoiceCreatedBy")
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
@@ -109,6 +122,11 @@ model Company {
   taxOffice String?
   email     String?
   phone     String?
+
+  /// This customer's cari code in the ERP (VegaWin A5 / VegaDB and the like).
+  /// Nothing in the app depends on it yet; it is the join key an ERP sync needs,
+  /// and adding it now costs nothing.
+  externalCode String? @unique
 
   // Cari / limit
   creditLimit    Decimal @default(0) @db.Decimal(14, 2)
@@ -137,6 +155,7 @@ model Company {
   checkIns     CheckIn[]
   carts        Cart[]
   promotionRedemptions PromotionRedemption[]
+  invoices     Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -224,6 +243,10 @@ model ProductVariant {
   color   String?
   size    String?
 
+  /// The stock code this variant has in the ERP — the join key for a future
+  /// stock/price sync. Unused by the app itself.
+  externalCode String? @unique
+
   unitsPerCase Int  @default(1) // koli içi adet
   moqUnits     Int  @default(1) // minimum order quantity
   stock        Int  @default(0)
@@ -283,6 +306,157 @@ model CompanyDiscount {
   @@index([companyId])
   @@index([categoryId])
   @@index([productId])
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENTS (irsaliye / fatura)
+// ─────────────────────────────────────────────
+
+/// A numbering serial. Numbers are handed out by incrementing `lastNumber` inside
+/// the caller's transaction, so two concurrent shipments can never take the same
+/// one — the row lock serialises them.
+///
+/// `externalOnly` exists because this system is meant to run next to an ERP
+/// (VegaWin A5 / VegaDB and the like): when the ERP owns the serial, this app
+/// must not invent numbers, and refuses to allocate until one is supplied.
+model DocumentSeries {
+  id   String       @id @default(cuid())
+  type DocumentType
+
+  /// Printed in front of the number, e.g. "IRS" → IRS000042.
+  prefix String
+  /// Zero-padded width of the numeric part.
+  padding Int @default(6)
+  /// Last number handed out. Never decreases; a cancelled document burns its number.
+  lastNumber Int @default(0)
+
+  /// The serial new documents of this type are drawn from. One per type.
+  isDefault Boolean @default(false)
+  /// Numbers come from the ERP — the app will not allocate, it demands one.
+  externalOnly Boolean @default(false)
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, prefix])
+  @@index([type, isDefault])
+}
+
+/// One despatch (irsaliye). An order can have several: partial shipment is the
+/// normal case, not the exception.
+model Shipment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// İrsaliye numarası, from a DocumentSeries. Unique for the life of the system.
+  documentNumber String @unique
+  /// The ERP's own number when it owns the serial.
+  externalNumber String?
+
+  shippedAt      DateTime @default(now())
+  carrier        String?
+  trackingNumber String?
+  note           String?
+
+  shippedById String
+  shippedBy   User   @relation("ShipmentShippedBy", fields: [shippedById], references: [id])
+
+  /// Set once this despatch has been invoiced.
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  items ShipmentItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([invoiceId])
+}
+
+model ShipmentItem {
+  id         String   @id @default(cuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  /// Units despatched in this shipment — never more than the line has left.
+  quantity Int
+
+  @@unique([shipmentId, orderItemId])
+  @@index([orderItemId])
+}
+
+/// A fatura. Issued for whatever of the order has not been invoiced yet, either
+/// from selected shipments or from the order's remaining quantities.
+model Invoice {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  documentNumber String  @unique
+  externalNumber String?
+
+  status InvoiceStatus @default(ISSUED)
+
+  issuedAt DateTime @default(now())
+  /// Vade. Defaults to issue date + the order's own term, falling back to the
+  /// company's. This is the date aging buckets by — not the order date.
+  dueDate DateTime
+
+  subtotal       Decimal @default(0) @db.Decimal(14, 2)
+  discountTotal  Decimal @default(0) @db.Decimal(14, 2)
+  promotionTotal Decimal @default(0) @db.Decimal(14, 2)
+  /// Charged once per order, on its first invoice.
+  shippingFee Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal    Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal  Decimal @default(0) @db.Decimal(14, 2)
+  currency    String  @default("TRY")
+
+  note String?
+
+  createdById String
+  createdBy   User   @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+
+  items     InvoiceItem[]
+  shipments Shipment[]
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([companyId, issuedAt])
+  @@index([status, dueDate])
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// Kept so an invoice can be traced back to the line it billed. Null only if
+  /// the order line was removed, which nothing in the app does today.
+  orderItemId String?
+  orderItem   OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(12, 2)
+  discount    Decimal @default(0) @db.Decimal(12, 2)
+  /// This invoice's share of the line's campaign discount, allocated by quantity.
+  promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
+  vatRate           Int     @default(20)
+  lineTotal         Decimal @db.Decimal(14, 2)
+
+  @@index([invoiceId])
+  @@index([orderItemId])
 }
 
 // ─────────────────────────────────────────────
@@ -385,15 +559,22 @@ model Order {
   shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id])
 
   // Totals — computed from item snapshots (price frozen at order time).
-  // grandTotal = subtotal − discountTotal − promotionTotal + taxTotal, and the
-  // tax is charged on the net *after* promotions.
+  // grandTotal = subtotal − discountTotal − promotionTotal + shippingFee + taxTotal,
+  // and the tax is charged on the net *after* promotions (goods VAT + shipping VAT).
   subtotal      Decimal @default(0) @db.Decimal(14, 2)
   discountTotal Decimal @default(0) @db.Decimal(14, 2)
   /// Sum of every promotion applied to this order, excl. VAT.
   promotionTotal Decimal @default(0) @db.Decimal(14, 2)
+  /// Freight charged to the buyer, excl. VAT. Only the seller side may set it.
+  shippingFee    Decimal @default(0) @db.Decimal(14, 2)
+  shippingVatRate Int    @default(20)
   taxTotal      Decimal @default(0) @db.Decimal(14, 2)
   grandTotal    Decimal @default(0) @db.Decimal(14, 2)
   currency      String  @default("TRY")
+
+  /// Vade for this order specifically; falls back to Company.paymentTermDays.
+  /// An invoice takes its due date from here.
+  paymentTermDays Int?
 
   /// The coupon the buyer typed, kept for the record even after the campaign ends.
   couponCode String?
@@ -411,6 +592,8 @@ model Order {
   transactions  Transaction[]
   statusHistory OrderStatusHistory[]
   promotions    PromotionRedemption[]
+  shipments     Shipment[]
+  invoices      Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -462,6 +645,14 @@ model OrderItem {
   vatRate     Int     @default(20) // snapshot of Product.vatRate
   lineTotal   Decimal @db.Decimal(14, 2) // net of both discounts, excl. VAT
 
+  /// Running totals for partial fulfilment. Both are <= quantity, and invoiced
+  /// never exceeds shipped when the invoice was raised from a despatch.
+  quantityShipped   Int @default(0)
+  quantityInvoiced  Int @default(0)
+
+  shipmentItems ShipmentItem[]
+  invoiceItems  InvoiceItem[]
+
   @@index([orderId])
   @@index([variantId])
 }
@@ -480,6 +671,12 @@ model Transaction {
   paymentMethod PaymentMethod? // set for payments/collections
   description   String?
 
+  /// When this debt falls due. Written at order time from the company's term and
+  /// re-stamped by the invoice once one is issued, because the invoice is what
+  /// actually starts the clock. Aging reads this; rows without it fall back to
+  /// createdAt + Company.paymentTermDays (pre-invoicing history).
+  dueDate DateTime?
+
   // Linked order if this debt originates from an order
   orderId String?
   order   Order?  @relation(fields: [orderId], references: [id])
@@ -495,6 +692,7 @@ model Transaction {
   // Statements and aging always read one company's ledger in date order.
   @@index([companyId, createdAt])
   @@index([recordedById, createdAt])
+  @@index([companyId, dueDate])
 }
 
 // ─────────────────────────────────────────────

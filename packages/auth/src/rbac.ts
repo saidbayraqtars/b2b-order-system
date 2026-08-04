@@ -29,6 +29,12 @@ const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = 
     prefix: "/hesabim",
     roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
   },
+  // Printable waybills and invoices. Same shape as /orders: one page per role,
+  // and the document itself is authorized against its company server-side.
+  {
+    prefix: "/documents",
+    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+  },
 ];
 
 /** Roles allowed for a pathname, or null if the path is not gated. */

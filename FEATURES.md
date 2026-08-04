@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-04 · Adım 13 sonu
+Son güncelleme: 2026-08-04 · Adım 14 sonu
 
 ---
 
@@ -27,6 +27,7 @@ Son güncelleme: 2026-08-04 · Adım 13 sonu
 | 11 | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı | ✅ |
 | 12 | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması | ✅ |
 | 13 | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI | ✅ |
+| 14 | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli | ✅ |
 
 ---
 
@@ -290,7 +291,49 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
   - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması.
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
 
-## 14. Web Portal (`apps/web`)
+## 14. Belgeler & Sevkiyat (Adım 14)
+
+### Numaralandırma — ERP ile yan yana çalışacak şekilde
+
+- `DocumentSeries` bir satır: tür (irsaliye/fatura), ön ek, basamak genişliği, son verilen numara, varsayılan mı, ERP'ye mi ait.
+- Numara, belgeyi oluşturan **transaction içinde tek bir `UPDATE ... RETURNING`** ile alınıyor. Postgres satır kilidi tuttuğu için aynı anda iki sevkiyat aynı numarayı alamıyor — sıraya giriyorlar.
+- **İptal edilen belge numarasını geri vermiyor.** Numarayı yeniden dağıtmak seriyi yalancı yapar.
+- **`externalOnly`:** numarayı ERP (VegaWin A5 / VegaDB gibi) veriyorsa sistem numara üretmiyor, belge oluşturulurken numaranın girilmesini şart koşuyor (`EXTERNAL_NUMBER_REQUIRED`). Dışarıdan numara verildiğinde kendi sayacımız ilerlemiyor — kendi serimizde boşluk açmamak için.
+- `Company.externalCode` ve `ProductVariant.externalCode`: ERP eşlemesi için ayrılmış alanlar (uygulama henüz kullanmıyor, senkron gelince join anahtarı olacak).
+
+### Kısmi sevkiyat (irsaliye)
+
+- `Shipment` + `ShipmentItem`; `OrderItem.quantityShipped` ile satır bazında kalan takip ediliyor.
+- Sipariş durumu **elle değil, sevkiyattan türetiliyor**: bir şey çıktıysa `PROCESSING`, hepsi çıktıysa `SHIPPED`. İrsaliye iptal edilince durum aynı yoldan geri yürüyor.
+- Satırın kalanından fazlası sevk edilemiyor (`OVER_SHIPMENT`).
+- **İrsaliye kesilmiş sipariş iptal edilemiyor** — çıkmış mal kaydı silinerek stoğa dönmez; önce irsaliyenin iptal edilmesi gerekiyor (bu da faturalanmışsa reddediliyor).
+- İrsaliye çıktısı fiyat içermiyor: irsaliye malı taşır, parayı fatura taşır.
+
+### Kısmi faturalama
+
+- Fatura **miktar faturalar, sipariş değil**: seçilen irsaliyeler faturalanabilir ya da siparişin faturalanmamış tüm kalanı.
+- **Para yeniden hesaplanmıyor.** Fiyat, iskonto ve kampanya payı sipariş satırında donmuştu; fatura bunların miktara göre **payını** alıyor. Satırı kapatan fatura yuvarlamadan artanı da alıyor — böylece bir siparişin faturaları toplandığında kuruşu kuruşuna siparişe eşit oluyor (test bunu doğruluyor).
+- Nakliye bedeli siparişin **ilk** faturasında bir kez tahsil ediliyor.
+- Fatura iptali: durum `CANCELLED`, miktarlar yeniden faturalanabilir hale geliyor, bağlı irsaliyeler serbest kalıyor; numara yakılıyor.
+
+### Vade ve yaşlandırma
+
+- Vade sırası: **faturanın vadesi** → yoksa `Order.paymentTermDays` (siparişe özel vade) → yoksa `Company.paymentTermDays`.
+- Cari borç hâlâ sipariş onaylandığında yazılıyor (kredi limitini ölçen şey o), ama **vade tarihi boş bırakılıyor**. Fatura kesildiğinde borcun `dueDate` alanı damgalanıyor; birden çok fatura varsa en geç vade kazanıyor.
+- Yaşlandırma artık `dueDate` üzerinden kovalıyor; vadesi damgalanmamış borçlar eskisi gibi `sipariş tarihi + firma vadesi` ile yaşlanıyor.
+
+### Nakliye bedeli
+
+- `Order.shippingFee` + `shippingVatRate`. **Yalnızca satıcı tarafı** (süper admin, plasiyer) girebiliyor — alıcı kendi navlununu fiyatlayamaz, alan yok sayılıyor.
+- Toplam: `genel toplam = ara toplam − iskonto − kampanya + nakliye + KDV`; nakliye KDV'si de `taxTotal` içinde.
+
+### Ekranlar
+
+- Sipariş detayında **İrsaliyeler / Faturalar** paneli: belgeler herkese görünür, form yalnızca süper adminde. Sevk formu kalan miktarlarla dolu geliyor.
+- `/documents/shipments/[id]` ve `/documents/invoices/[id]` — yazdırılabilir belge (beyaz zemin, koyu tema yok, araç çubuğu baskıda gizli). Erişim belgenin firması üzerinden yetkilendiriliyor.
+- `/admin/documents` — seri yönetimi. Sayaç ileri alınabiliyor (ERP serisine devam etmek için), **geri alınamıyor**.
+
+## 15. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -320,7 +363,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 15. Mobil Uygulama (`apps/mobile`)
+## 16. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -335,7 +378,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 16. API Uçları
+## 17. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -363,6 +406,12 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
 | POST | `/api/orders/:id/approve` | firma yöneticisi, süper admin |
 | POST | `/api/orders/:id/reject` | firma yöneticisi, süper admin |
+| GET · POST | `/api/orders/:id/shipments` | okuma 4 rol (kendi kapsamı), yazma süper admin |
+| DELETE | `/api/shipments/:id` | süper admin (faturalanmamışsa) |
+| GET · POST | `/api/orders/:id/invoices` | okuma 4 rol (kendi kapsamı), yazma süper admin |
+| GET · DELETE | `/api/invoices/:id` | okuma 4 rol (kendi kapsamı), iptal süper admin |
+| GET · POST | `/api/admin/document-series` | süper admin |
+| PATCH · DELETE | `/api/admin/document-series/:id` | süper admin |
 | POST · GET | `/api/checkins` | plasiyer, süper admin |
 | POST | `/api/checkins/:id/checkout` | plasiyer, süper admin (yalnız açan kapatır) |
 | POST | `/api/payments` | plasiyer, süper admin |
@@ -398,9 +447,8 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 
 ## Bilinen Eksikler
 
-- **İrsaliye/fatura yok** — sevkiyat bilgisi kaydediliyor ama belge numarası üretilmiyor, çıktı alınamıyor.
-- **Sevkiyat kısmi yapılamıyor** — sipariş tek parça sevk edilir, kalem bazlı kısmi sevk yok.
-- **Vade tek bir sayı** — `paymentTermDays` firma genelinde; sipariş/fatura bazlı farklı vade tanımlanamıyor. Yaşlandırma da fatura değil, cari hareket bazlı.
+- **E-Fatura/E-İrsaliye entegrasyonu yok** — belge üretiliyor ve yazdırılıyor, ancak GİB entegratörüne (EDM, Foriba, Sovos) gönderim yok. Çıktı tarayıcıdan yazdırma ile alınıyor; sunucu tarafı PDF üretimi yok.
+- **Faturada tek cari borç** — kısmi faturalar tek bir sipariş borcunu paylaşıyor; borç fatura başına parçalanmıyor (kredi limiti sipariş anında ölçüldüğü için borç da sipariş anında doğuyor). Vade en geç faturanın vadesine göre işliyor.
 - **Rapor tasarımcısının sınırları:** gruplama/özet bellekte yapılıyor (Prisma ilişki sütununa göre gruplayamıyor), bu yüzden özetli raporlar en fazla **20.000 satır** tarıyor; sınıra çarpınca sonuç `truncated` işaretiyle dönüyor ve arayüz uyarı gösteriyor. Detay listeleri sıralama ve limiti veritabanına ittiği için bu sınırdan etkilenmiyor.
 - **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
 - **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).

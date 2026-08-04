@@ -121,6 +121,31 @@ before writing the snapshot. The browser never computes a total, and the server 
 trusts one it was handed — a preview and an order cannot disagree, and a stale preview
 cannot lock in a price that has since moved.
 
+## Documents, and the ERP next door
+
+This system is meant to run beside an ERP (VegaWin A5 / VegaDB and the like), so
+numbering is a row rather than a constant: `DocumentSeries` holds the prefix,
+width and last number issued for waybills and invoices. Allocation is one
+`UPDATE ... RETURNING` inside the caller's transaction, so two despatches racing
+for the next number queue behind a row lock instead of both reading the same
+value. A cancelled document keeps its number. Mark a serial `externalOnly` and
+the app stops inventing numbers altogether — it then demands the ERP's, and
+leaves its own counter untouched.
+
+Fulfilment is quantity-based, not order-based. `Shipment`/`ShipmentItem` record
+what actually left, `OrderItem.quantityShipped` tracks what is outstanding, and
+the order's status is *derived* from that — PROCESSING while anything remains,
+SHIPPED when nothing does. Invoices bill quantities the same way, either from
+selected despatches or from whatever is left. They never recompute money: prices
+and the campaign allocation were frozen on the order line, so an invoice takes a
+proportional share and the one that closes a line takes the rounding remainder,
+which keeps the invoices of an order summing exactly back to it.
+
+The vade starts with the invoice. The cari debit is still written when the order
+is confirmed (that is what the credit limit meters) but with no due date; the
+first invoice stamps one, later invoices only push it out. Aging buckets by that
+date, falling back to order date + the company's term for debts not yet invoiced.
+
 ## Promotions as data
 
 A campaign is a row: a list of conditions that must all hold, and a list of actions that

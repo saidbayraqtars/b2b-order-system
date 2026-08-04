@@ -135,8 +135,29 @@ async function main() {
 
   await seedReports(admin.id);
   await seedPromotions(group.id);
+  await seedDocumentSeries();
 
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
+}
+
+/**
+ * Without a serial there is nothing to number a waybill or an invoice with, so
+ * a fresh install would be unable to despatch. One default each, both internal.
+ */
+async function seedDocumentSeries() {
+  for (const s of [
+    { type: "WAYBILL" as const, prefix: "IRS" },
+    { type: "INVOICE" as const, prefix: "FTR" },
+  ]) {
+    const existing = await prisma.documentSeries.findFirst({
+      where: { type: s.type, prefix: s.prefix },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.documentSeries.create({
+      data: { type: s.type, prefix: s.prefix, padding: 6, isDefault: true },
+    });
+  }
 }
 
 /**

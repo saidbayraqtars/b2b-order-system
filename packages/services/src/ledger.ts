@@ -212,11 +212,14 @@ export interface ReceivablesReport {
 /**
  * Age a single company's open debt.
  *
- * There is no invoice table, so open items are the DEBIT rows themselves and
- * payments are applied **FIFO** — the oldest debt is settled first, which is how
- * an open-account cari is normally reconciled in Turkish practice. A debit falls
- * due `paymentTermDays` after it was written; anything still open past that is
- * overdue and lands in a bucket by how many days late it is.
+ * Open items are the DEBIT rows and payments are applied **FIFO** — the oldest
+ * debt is settled first, which is how an open-account cari is normally reconciled
+ * in Turkish practice.
+ *
+ * A debit falls due on its own `dueDate`, which the invoice stamps: the vade
+ * starts with the fatura, not with the order. Rows written before invoicing
+ * existed (and orders not yet invoiced) have no date of their own, so they fall
+ * back to createdAt + the company's term — the behaviour this had before.
  */
 export async function getCompanyAging(
   companyId: string,
@@ -240,7 +243,7 @@ export async function getCompanyAging(
 
   const rows = await prisma.transaction.findMany({
     where: { companyId, createdAt: { lte: asOf } },
-    select: { type: true, amount: true, createdAt: true },
+    select: { type: true, amount: true, createdAt: true, dueDate: true },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 
@@ -294,7 +297,13 @@ export async function getReceivables(
           companyId: { in: companies.map((c) => c.id) },
           createdAt: { lte: asOf },
         },
-        select: { companyId: true, type: true, amount: true, createdAt: true },
+        select: {
+          companyId: true,
+          type: true,
+          amount: true,
+          createdAt: true,
+          dueDate: true,
+        },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       })
     : [];
@@ -370,7 +379,13 @@ type AgingCompany = {
   salesRepName: string | null;
 };
 
-type LedgerRow = { type: TransactionType; amount: Prisma.Decimal; createdAt: Date };
+type LedgerRow = {
+  type: TransactionType;
+  amount: Prisma.Decimal;
+  createdAt: Date;
+  /** Set by the invoice; null for debts that have not been invoiced yet. */
+  dueDate: Date | null;
+};
 
 /** FIFO settlement, then bucket whatever debt is left by days past due. */
 function ageRows(
@@ -384,7 +399,7 @@ function ageRows(
   for (const row of rows) {
     if (row.type === "DEBIT") {
       open.push({
-        due: addDays(row.createdAt, company.paymentTermDays),
+        due: row.dueDate ?? addDays(row.createdAt, company.paymentTermDays),
         remaining: new Dec(row.amount),
       });
       continue;

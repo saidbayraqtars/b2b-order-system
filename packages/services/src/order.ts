@@ -69,10 +69,18 @@ async function buildOrder(
   ctx: CreateOrderContext,
 ): Promise<CreateOrderResult> {
   // 1-3. Validate, price, discount, promote, total — shared with the preview.
+  //
+  // Freight is a seller-side figure: a buyer placing its own order cannot price
+  // its delivery, so the field is ignored unless the caller sells.
+  const isSeller =
+    ctx.createdByRole === "SUPER_ADMIN" || ctx.createdByRole === "SALES_REP";
+  const shippingFee = isSeller ? (input.shippingFee ?? 0) : 0;
+
   const quote = await buildQuote(tx, {
     companyId: input.companyId,
     paymentMethod: input.paymentMethod,
     couponCode: input.couponCode,
+    shippingFee,
     items: input.items,
   });
   const { company, subtotal, discountTotal, promotionTotal, taxTotal, grandTotal } =
@@ -144,8 +152,12 @@ async function buildOrder(
       subtotal,
       discountTotal,
       promotionTotal,
+      shippingFee: quote.shippingFee,
+      shippingVatRate: quote.shippingVatRate,
       taxTotal,
       grandTotal,
+      // Per-order vade override; null falls back to the company's term.
+      paymentTermDays: isSeller ? (input.paymentTermDays ?? null) : null,
       items: { create: itemsData },
     },
     select: { id: true, orderNumber: true, status: true },
@@ -159,8 +171,8 @@ async function buildOrder(
     changedById: ctx.createdById,
   });
 
-  // 9. Book the campaign usage. Counted from these rows, so an order that is
-  //    later cancelled hands its quota back (see releaseRedemptions).
+  // 9. Book the campaign usage. Counted from these rows, and only counted while
+  //    the order is alive, so a cancellation hands the quota back by itself.
   await recordRedemptions(tx, {
     orderId: order.id,
     companyId: company.id,
@@ -177,6 +189,10 @@ async function buildOrder(
         amount: grandTotal,
         paymentMethod: "OPEN_ACCOUNT",
         description: `Sipariş ${orderNumber}`,
+        // No due date yet, deliberately. The vade starts with the invoice, so
+        // until one is issued this debt ages from the order date plus the
+        // company's term (see ledger.ts) — and writing a provisional date here
+        // would fight the invoice when it eventually sets the real one.
         order: { connect: { id: order.id } },
         recordedBy: { connect: { id: ctx.createdById } },
       },

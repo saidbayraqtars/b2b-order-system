@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderDetail } from "@repo/services";
-import type { OrderStatus } from "@repo/types";
+import type { OrderStatus, Role } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { FulfilmentPanel } from "./fulfilment-panel";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   DRAFT: "Taslak",
@@ -41,7 +42,13 @@ function dateTime(iso: string) {
   });
 }
 
-export function OrderDetailView({ orderId }: { orderId: string }) {
+export function OrderDetailView({
+  orderId,
+  role,
+}: {
+  orderId: string;
+  role: Role;
+}) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
   const [carrier, setCarrier] = useState("");
@@ -149,8 +156,12 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               value={`− ${formatTRY(p.amount)}`}
             />
           ))}
+          {Number(o.shippingFee) > 0 && (
+            <Row label="Nakliye" value={formatTRY(o.shippingFee)} />
+          )}
           <Row label="KDV" value={formatTRY(o.taxTotal)} />
           <Row label="Genel toplam" value={formatTRY(o.grandTotal)} strong />
+          <Row label="Vade" value={`${o.paymentTermDays} gün`} />
           <Row
             label="Ödeme"
             value={o.paymentMethod === "OPEN_ACCOUNT" ? "Açık hesap" : "Kredi kartı"}
@@ -182,6 +193,12 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
           )}
         </div>
       </section>
+
+      <FulfilmentPanel
+        orderId={orderId}
+        role={role}
+        canShip={o.status === "CONFIRMED" || o.status === "PROCESSING"}
+      />
 
       {o.availableTransitions.length > 0 && (
         <section className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">

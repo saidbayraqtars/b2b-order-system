@@ -26,7 +26,13 @@ type PendingOrder = {
   paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
   grandTotal: Prisma.Decimal;
   companyId: string;
-  company: { creditLimit: Prisma.Decimal; currentBalance: Prisma.Decimal };
+  /** Order-level vade override; null falls back to the company's term. */
+  paymentTermDays: number | null;
+  company: {
+    creditLimit: Prisma.Decimal;
+    currentBalance: Prisma.Decimal;
+    paymentTermDays: number;
+  };
 };
 
 /**
@@ -148,7 +154,10 @@ async function loadPending(tx: Tx, orderId: string): Promise<PendingOrder> {
       paymentMethod: true,
       grandTotal: true,
       companyId: true,
-      company: { select: { creditLimit: true, currentBalance: true } },
+      paymentTermDays: true,
+      company: {
+        select: { creditLimit: true, currentBalance: true, paymentTermDays: true },
+      },
     },
   });
   if (!order) {
@@ -199,6 +208,7 @@ async function confirmAndDebit(
         amount: order.grandTotal,
         paymentMethod: "OPEN_ACCOUNT",
         description: `Sipariş ${order.orderNumber}`,
+        // Due date comes from the invoice, not from here — see order.ts.
         order: { connect: { id: order.id } },
         recordedBy: { connect: { id: ctx.approverId } },
       },

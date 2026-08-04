@@ -87,6 +87,7 @@ export async function changeOrderStatus(
     // it: usage is counted from redemptions whose order is still alive, so the
     // record of what this order was granted survives the cancellation.
     if (input.status === "CANCELLED") {
+      await assertNothingDespatched(tx, order.id);
       await restock(tx, order.id);
       await reverseDebit(tx, order, ctx.userId);
     }
@@ -205,6 +206,23 @@ function assertActorMay(
   throw new BusinessError("FORBIDDEN", "Bu siparişi iptal etme yetkiniz yok");
 }
 
+/**
+ * Partial despatch reopened a hole the status check alone no longer covers: an
+ * order can sit in PROCESSING with half of it already on a lorry. Goods that
+ * have left cannot be restocked by cancelling a record, so the despatch has to
+ * be cancelled first — which is a decision for a human, not a side effect.
+ */
+async function assertNothingDespatched(tx: Tx, orderId: string): Promise<void> {
+  const shipped = await tx.shipment.count({ where: { orderId } });
+  if (shipped > 0) {
+    throw new BusinessError(
+      "INVALID_STATE",
+      "İrsaliye kesilmiş sipariş iptal edilemez — önce irsaliyeleri iptal edin",
+      { shipments: shipped },
+    );
+  }
+}
+
 async function restock(tx: Tx, orderId: string): Promise<void> {
   const items = await tx.orderItem.findMany({
     where: { orderId },
@@ -266,6 +284,9 @@ export interface OrderDetailItem {
   promotionDiscount: string;
   vatRate: number;
   lineTotal: string;
+  /** Partial fulfilment progress. */
+  quantityShipped: number;
+  quantityInvoiced: number;
 }
 
 export interface OrderStatusEvent {
@@ -285,9 +306,12 @@ export interface OrderDetail {
   subtotal: string;
   discountTotal: string;
   promotionTotal: string;
+  shippingFee: string;
   taxTotal: string;
   grandTotal: string;
   currency: string;
+  /** Vade in days: the order's own override, else the company's. */
+  paymentTermDays: number;
   couponCode: string | null;
   /** Campaigns that were applied when the order was placed. */
   promotions: OrderPromotionRow[];
@@ -327,9 +351,11 @@ export async function getOrderDetail(
       subtotal: true,
       discountTotal: true,
       promotionTotal: true,
+      shippingFee: true,
       taxTotal: true,
       grandTotal: true,
       currency: true,
+      paymentTermDays: true,
       couponCode: true,
       note: true,
       carrier: true,
@@ -339,7 +365,7 @@ export async function getOrderDetail(
       deliveredAt: true,
       cancelledAt: true,
       companyId: true,
-      company: { select: { id: true, name: true } },
+      company: { select: { id: true, name: true, paymentTermDays: true } },
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
       shippingAddress: {
@@ -356,6 +382,8 @@ export async function getOrderDetail(
           promotionDiscount: true,
           vatRate: true,
           lineTotal: true,
+          quantityShipped: true,
+          quantityInvoiced: true,
         },
         orderBy: { productName: "asc" },
       },
@@ -386,9 +414,11 @@ export async function getOrderDetail(
     subtotal: o.subtotal.toFixed(2),
     discountTotal: o.discountTotal.toFixed(2),
     promotionTotal: o.promotionTotal.toFixed(2),
+    shippingFee: o.shippingFee.toFixed(2),
     taxTotal: o.taxTotal.toFixed(2),
     grandTotal: o.grandTotal.toFixed(2),
     currency: o.currency,
+    paymentTermDays: o.paymentTermDays ?? o.company.paymentTermDays,
     couponCode: o.couponCode,
     promotions,
     note: o.note,
@@ -398,7 +428,7 @@ export async function getOrderDetail(
     shippedAt: o.shippedAt?.toISOString() ?? null,
     deliveredAt: o.deliveredAt?.toISOString() ?? null,
     cancelledAt: o.cancelledAt?.toISOString() ?? null,
-    company: o.company,
+    company: { id: o.company.id, name: o.company.name },
     createdByName: o.createdBy.name,
     approvedByName: o.approvedBy?.name ?? null,
     shippingAddress: o.shippingAddress,
@@ -412,6 +442,8 @@ export async function getOrderDetail(
       promotionDiscount: i.promotionDiscount.toFixed(2),
       vatRate: i.vatRate,
       lineTotal: i.lineTotal.toFixed(2),
+      quantityShipped: i.quantityShipped,
+      quantityInvoiced: i.quantityInvoiced,
     })),
     history: o.statusHistory.map((h) => ({
       id: h.id,

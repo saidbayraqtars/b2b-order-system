@@ -7,3 +7,4 @@ export * from "./report-builder";
 export * from "./admin";
 export * from "./account";
 export * from "./promotion";
+export * from "./document";

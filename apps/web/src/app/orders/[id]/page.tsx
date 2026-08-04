@@ -23,7 +23,7 @@ export default async function OrderDetailPage({
       >
         ← Geri
       </Link>
-      <OrderDetailView orderId={params.id} />
+      <OrderDetailView orderId={params.id} role={user.role} />
     </main>
   );
 }

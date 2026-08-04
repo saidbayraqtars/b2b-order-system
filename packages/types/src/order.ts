@@ -15,6 +15,10 @@ export const createOrderSchema = z.object({
   note: z.string().max(1000).optional(),
   /** Optional coupon; automatic promotions apply with or without it. */
   couponCode: couponCodeSchema.optional(),
+  /** Freight excl. VAT. Ignored unless the caller is on the selling side. */
+  shippingFee: z.number().min(0).max(1_000_000).optional(),
+  /** Vade override for this order; falls back to the company's term. */
+  paymentTermDays: z.number().int().min(0).max(365).optional(),
   items: z.array(cartItemInputSchema).min(1, "Sepet boş olamaz"),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

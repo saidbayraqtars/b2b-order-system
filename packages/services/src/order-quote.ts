@@ -1,7 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
-import { ZERO, round2 } from "./money";
+import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
 import { resolvePrice } from "./pricing";
 import { applyPromotions, type AppliedPromotion } from "./promotion-engine";
@@ -24,6 +24,9 @@ export interface QuoteInput {
   companyId: string;
   paymentMethod: PaymentMethod;
   couponCode?: string;
+  /** Freight, excl. VAT. Seller-side only — a buyer cannot price its own delivery. */
+  shippingFee?: number | string;
+  shippingVatRate?: number;
   items: Array<{ variantId: string; quantity: number }>;
 }
 
@@ -58,6 +61,7 @@ export interface QuoteCompany {
   currentBalance: Money;
   requiresOrderApproval: boolean;
   customerGroupId: string | null;
+  paymentTermDays: number;
 }
 
 export interface OrderQuote {
@@ -65,6 +69,10 @@ export interface OrderQuote {
   subtotal: Money;
   discountTotal: Money;
   promotionTotal: Money;
+  /** Freight after any campaign discount on it, excl. VAT. */
+  shippingFee: Money;
+  shippingVatRate: number;
+  /** Goods VAT plus freight VAT. */
   taxTotal: Money;
   grandTotal: Money;
   appliedPromotions: AppliedPromotion[];
@@ -95,6 +103,7 @@ export async function buildQuote(
       currentBalance: true,
       requiresOrderApproval: true,
       customerGroupId: true,
+      paymentTermDays: true,
       discounts: {
         select: {
           categoryId: true,
@@ -236,11 +245,22 @@ export async function buildQuote(
     taxTotal = taxTotal.add(line.lineTax);
   }
 
+  // 4. Freight is its own taxed line, outside the goods subtotal.
+  const shippingVatRate = input.shippingVatRate ?? 20;
+  const shippingFee = round2(new Dec(input.shippingFee ?? 0));
+  if (shippingFee.gt(ZERO)) {
+    taxTotal = taxTotal.add(round2(shippingFee.mul(shippingVatRate).div(100)));
+  }
+
   subtotal = round2(subtotal);
   discountTotal = round2(discountTotal);
   taxTotal = round2(taxTotal);
   const grandTotal = round2(
-    subtotal.sub(discountTotal).sub(promotionTotal).add(taxTotal),
+    subtotal
+      .sub(discountTotal)
+      .sub(promotionTotal)
+      .add(shippingFee)
+      .add(taxTotal),
   );
 
   return {
@@ -248,6 +268,8 @@ export async function buildQuote(
     subtotal,
     discountTotal,
     promotionTotal,
+    shippingFee,
+    shippingVatRate,
     taxTotal,
     grandTotal,
     appliedPromotions,
@@ -258,6 +280,7 @@ export async function buildQuote(
       currentBalance: company.currentBalance,
       requiresOrderApproval: company.requiresOrderApproval,
       customerGroupId: company.customerGroupId,
+      paymentTermDays: company.paymentTermDays,
     },
   };
 }
@@ -281,6 +304,7 @@ export interface OrderQuoteView {
   subtotal: string;
   discountTotal: string;
   promotionTotal: string;
+  shippingFee: string;
   taxTotal: string;
   grandTotal: string;
   promotions: Array<{
@@ -311,6 +335,7 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
     subtotal: quote.subtotal.toFixed(2),
     discountTotal: quote.discountTotal.toFixed(2),
     promotionTotal: quote.promotionTotal.toFixed(2),
+    shippingFee: quote.shippingFee.toFixed(2),
     taxTotal: quote.taxTotal.toFixed(2),
     grandTotal: quote.grandTotal.toFixed(2),
     promotions: quote.appliedPromotions.map((p) => ({
