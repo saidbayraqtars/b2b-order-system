@@ -28,6 +28,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | 12 | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması | ✅ |
 | 13 | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI | ✅ |
 | 14 | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli | ✅ |
+| 15 | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri | ✅ |
 
 ---
 
@@ -333,11 +334,42 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - `/documents/shipments/[id]` ve `/documents/invoices/[id]` — yazdırılabilir belge (beyaz zemin, koyu tema yok, araç çubuğu baskıda gizli). Erişim belgenin firması üzerinden yetkilendiriliyor.
 - `/admin/documents` — seri yönetimi. Sayaç ileri alınabiliyor (ERP serisine devam etmek için), **geri alınamıyor**.
 
-## 15. Web Portal (`apps/web`)
+## 15. E-posta & Bildirimler (Adım 15)
+
+### Taşıyıcı — ortama göre seçilir, bayrakla değil
+
+- `SMTP_HOST` doluysa **SMTP**, boşsa **konsol taşıyıcısı**: mesaj gönderilmez, sunucu günlüğüne tam metniyle basılır.
+- Konsol taşıyıcısı bir taslak değil, geliştirmenin normal hâli — mail hesabı olmadan "şifremi unuttum" akışı baştan sona yürütülebiliyor, sıfırlama bağlantısı terminalde çıkıyor.
+- Gönderim **çağıranın hatasına dönüşmez**: mail sunucusu düşükse sipariş yine oluşur. Sonuç denetim kaydına `NOTIFICATION_SENT` / `NOTIFICATION_FAILED` olarak yazılır.
+- Şablonlar tek dosyada (`mail-templates.ts`) ve her biri **hem düz metin hem HTML** üretir; düz metin sonradan eklenmiş bir yedek değil, HTML'i engelleyen istemcinin gördüğü şey.
+
+### "Şifremi unuttum" (`/sifremi-unuttum`)
+
+- İstek ucu **hiçbir zaman** e-postanın kayıtlı olup olmadığını söylemez: bilinmeyen adres, pasif hesap ve gerçek hesap aynı yanıtı alır. Aksi hâlde bu uç müşteri listesi çıkarmanın yolu olurdu.
+- Veritabanında **yalnızca token'ın SHA-256'sı** durur; düz metin sadece e-postada.
+- Bağlantı **60 dakika** geçerli, **tek kullanımlık**, ve yeni bağlantı istendiğinde eskiler anında geçersizleşir.
+- Hesap başına **15 dakikada 3 istek**; sınıra takılan istek sessizce gönderimsiz kalır, yanıt yine aynıdır.
+- Sıfırlama başarılı olduğunda `tokenVersion` artar (tüm oturumlar kapanır) ve **giriş kilidi temizlenir** — posta kutusunu kanıtlayan kişi hesabın sahibidir.
+- `purgePasswordResetTokens()` süresi geçmiş/harcanmış kayıtları siler; henüz bir zamanlayıcıya bağlı değil.
+
+### Bildirimler
+
+| Olay | Kime | Not |
+|------|------|-----|
+| Sipariş oluştu | firma yöneticileri + siparişi giren + (onay beklemiyorsa) firmanın plasiyeri | Onay bekleyen siparişte metin "onayınızı bekliyor" olur |
+| Durum değişti | firma yöneticileri + siparişi giren | Yalnızca `CONFIRMED`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `REJECTED`; ara durumlar sessiz |
+| Fatura kesildi | firma yöneticileri + siparişi giren | Vade tarihi ve fatura no ile |
+
+- Alıcılar **veriden çözülür**, parametre olarak geçilmez — yanlış kutuya sipariş sızdırmak çağıranın elinde değil.
+- Bildirim **işlem (transaction) dışında**, iş tamamlandıktan sonra gönderilir: SMTP gidiş-dönüşü boyunca veritabanı bağlantısı tutulmaz, geri alınabilecek bir durum duyurulmaz.
+
+## 16. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
 | `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
+| `/sifremi-unuttum` | herkes | Sıfırlama bağlantısı talebi (yanıt her zaman aynı) |
+| `/sifremi-unuttum/yenile` | bağlantı sahibi | Yeni şifre; kaydedince tüm oturumlar kapanır |
 | `/portal` | firma yön./personel | Katalog, sepet, sipariş oluşturma |
 | `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
 | `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
@@ -363,7 +395,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 16. Mobil Uygulama (`apps/mobile`)
+## 17. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -378,11 +410,13 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 17. API Uçları
+## 18. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
 | POST | `/api/auth/[...nextauth]` | herkes (web cookie oturumu) |
+| POST | `/api/auth/forgot-password` | herkes (yanıt her zaman aynı — hesap ifşa etmez) |
+| POST | `/api/auth/reset-password` | bağlantı sahibi (token'ın kendisi kimlik) |
 | POST | `/api/mobile/login` | herkes (bearer token üretir) |
 | GET | `/api/mobile/me` | kimliği doğrulanmış |
 | GET | `/api/catalog?companyId&categoryId&search` | 4 rol |
@@ -457,14 +491,14 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Kampanya "hediye ürün" veremez** — aksiyonlar yalnızca tutar düşer; sepete satır ekleyen (X alana Y bedava) kampanya yok. Kargo indirimi de yok, çünkü nakliye ücreti modeli henüz yok.
 - **Kampanya kuralları arasında VEYA yok** — bir kampanyanın koşulları VE ile bağlanır; alternatif koşul için ikinci kampanya tanımlanır.
 - **Sepet sunucuda tutulmuyor** — `Cart`/`CartItem` modelleri boş duruyor, sepet istemci belleğinde. Fiyat artık sunucudan geliyor (teklif ucu), ama sepetin kendisi hâlâ tarayıcıda.
-- **"Şifremi unuttum" yok** — kullanıcı kendi şifresini değiştirebiliyor (Adım 11) ama unuttuysa hâlâ yöneticiden sıfırlatması gerekiyor; e-posta ile sıfırlama akışı yok (e-posta altyapısı da yok).
+- **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
+- **Zamanlayıcı yok** — süresi geçmiş sıfırlama biletlerini silen `purgePasswordResetTokens()` var ama onu çağıran bir cron/job runner yok; şimdilik elle çağrılıyor.
 - **Denetim kaydında saklama/arşivleme politikası yok** — tablo sınırsız büyüyor, otomatik temizlik ya da dışa aktarma yok.
 - **Denetim kapsamı yönetim işlemleriyle sınırlı** — kullanıcı/firma/oturum olayları kaydediliyor; sipariş ve cari hareketleri kendi geçmiş tablolarında (`OrderStatusHistory`, `Transaction`) duruyor, tek bir akışta birleşmiyorlar.
 - **Kilitleme e-posta bazlı** — aynı IP'den farklı hesaplara yapılan denemeler ayrı ayrı sayılıyor, IP başına hız sınırı yok.
 - **`tokenVersion` kontrolü her istekte bir sorgu** — istek başına `react/cache` ile tekil, ama Redis benzeri bir önbellek yok.
 - **Görsel yükleme yok** — ürün görselleri elle URL olarak giriliyor.
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
-- Şifre sıfırlama, e-posta/bildirim yok.
 
 ## Sonraki Adımlar (planlanan)
 

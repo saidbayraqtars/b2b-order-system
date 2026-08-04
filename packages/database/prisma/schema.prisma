@@ -103,6 +103,7 @@ model User {
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
   reports        ReportDefinition[]   @relation("ReportOwner")
   auditLogs      AuditLog[]           @relation("AuditActor")
+  passwordResets PasswordResetToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -789,6 +790,34 @@ model ReportDefinition {
 }
 
 // ─────────────────────────────────────────────
+// PASSWORD RESET
+// ─────────────────────────────────────────────
+
+/// A "forgot password" ticket.
+///
+/// Only the SHA-256 of the token is stored: the plaintext exists in the e-mail
+/// and nowhere else, so a database dump does not hand out reset links. Rows are
+/// single-use (`usedAt`) and short-lived, and asking for a new one invalidates
+/// the outstanding ones for that account.
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  /// Where the request came from, for the audit trail.
+  requestedIp String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────
 // AUDIT TRAIL
 // ─────────────────────────────────────────────
 
@@ -801,6 +830,10 @@ enum AuditAction {
   LOGOUT
   PASSWORD_CHANGED // by the account owner
   PASSWORD_RESET // by an administrator
+  PASSWORD_RESET_REQUESTED // "forgot password" e-mail asked for
+  PASSWORD_RESET_COMPLETED // set through a reset link
+  NOTIFICATION_SENT
+  NOTIFICATION_FAILED
   PROFILE_UPDATED
   SESSION_REVOKED // stale/disabled principal turned away mid-session
   ACCESS_DENIED // authenticated but not allowed here

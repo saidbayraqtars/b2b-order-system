@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { changeOrderStatus } from "@repo/services";
+import { changeOrderStatus, notifyOrderStatusChanged } from "@repo/services";
 import { changeOrderStatusSchema } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { parseBody } from "@/lib/validate";
@@ -17,6 +17,7 @@ export function POST(req: NextRequest, { params }: { params: { id: string } }) {
       role: user.role,
       companyId: user.companyId,
     });
+    await notifyOrderStatusChanged(result.orderId, result.status, input.note);
     return Response.json(result);
   });
 }

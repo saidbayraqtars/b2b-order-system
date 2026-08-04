@@ -1,4 +1,4 @@
-import { rejectOrder } from "@repo/services";
+import { notifyOrderStatusChanged, rejectOrder } from "@repo/services";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 
 // POST /api/orders/:id/reject — COMPANY_ADMIN (own company) or SUPER_ADMIN.
@@ -10,6 +10,7 @@ export function POST(_req: Request, { params }: { params: { id: string } }) {
       approverRole: user.role,
       approverCompanyId: user.companyId,
     });
+    await notifyOrderStatusChanged(result.orderId, result.status);
     return Response.json(result);
   });
 }

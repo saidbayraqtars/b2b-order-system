@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginSchema } from "@repo/types";
@@ -84,6 +85,12 @@ export function LoginForm() {
       >
         {loading ? "Giriş yapılıyor…" : "Giriş yap"}
       </button>
+      <Link
+        href="/sifremi-unuttum"
+        className="text-center text-sm text-neutral-500 underline"
+      >
+        Şifremi unuttum
+      </Link>
     </form>
   );
 }

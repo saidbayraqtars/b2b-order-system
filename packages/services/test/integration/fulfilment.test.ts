@@ -5,6 +5,7 @@ import { changeOrderStatus, getOrderDetail } from "../../src/order-lifecycle";
 import { cancelShipment, createShipment, getOpenLines, listShipments } from "../../src/shipment";
 import { cancelInvoice, createInvoice, listInvoices } from "../../src/invoice";
 import { getCompanyAging } from "../../src/ledger";
+import { useOwnDefaultSeries, type SeriesFixture } from "./series-fixture";
 
 // Partial despatch and partial invoicing, which is where the arithmetic gets
 // interesting: an order split across documents must still add up to the order.
@@ -24,6 +25,7 @@ let productId: string;
 let variantA: string;
 let variantB: string;
 let promotionId: string;
+let series: SeriesFixture;
 let waybillSeriesId: string;
 let invoiceSeriesId: string;
 
@@ -93,14 +95,9 @@ suite("shipment + invoice integration", () => {
 
     // Own serials, so the assertions do not depend on what the seed's counters
     // are at when the suite runs.
-    const waybill = await prisma.documentSeries.create({
-      data: { type: "WAYBILL", prefix: `WT${TAG}`.slice(0, 10), padding: 4 },
-    });
-    waybillSeriesId = waybill.id;
-    const invoiceSeries = await prisma.documentSeries.create({
-      data: { type: "INVOICE", prefix: `IT${TAG}`.slice(0, 10), padding: 4 },
-    });
-    invoiceSeriesId = invoiceSeries.id;
+    series = await useOwnDefaultSeries(TAG);
+    waybillSeriesId = series.waybillSeriesId;
+    invoiceSeriesId = series.invoiceSeriesId;
 
     const promo = await prisma.promotion.create({
       data: {
@@ -123,9 +120,7 @@ suite("shipment + invoice integration", () => {
     await prisma.transaction.deleteMany({ where: { companyId } });
     await prisma.order.deleteMany({ where: { id: { in: ids } } });
     await prisma.promotion.deleteMany({ where: { id: promotionId } });
-    await prisma.documentSeries.deleteMany({
-      where: { id: { in: [waybillSeriesId, invoiceSeriesId] } },
-    });
+    await series.restore();
     await prisma.price.deleteMany({ where: { variantId: { in: [variantA, variantB] } } });
     await prisma.product.deleteMany({ where: { id: productId } });
     await prisma.category.deleteMany({ where: { id: categoryId } });

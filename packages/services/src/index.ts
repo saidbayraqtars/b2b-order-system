@@ -28,3 +28,7 @@ export * from "./user-admin";
 export * from "./audit";
 export * from "./security";
 export * from "./account";
+export * from "./mail";
+export * from "./mail-templates";
+export * from "./password-reset";
+export * from "./notification";

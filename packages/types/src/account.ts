@@ -53,6 +53,10 @@ export const AuditActionEnum = z.enum([
   "LOGOUT",
   "PASSWORD_CHANGED",
   "PASSWORD_RESET",
+  "PASSWORD_RESET_REQUESTED",
+  "PASSWORD_RESET_COMPLETED",
+  "NOTIFICATION_SENT",
+  "NOTIFICATION_FAILED",
   "PROFILE_UPDATED",
   "SESSION_REVOKED",
   "ACCESS_DENIED",
@@ -75,6 +79,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   LOGOUT: "Çıkış",
   PASSWORD_CHANGED: "Şifre değiştirildi",
   PASSWORD_RESET: "Şifre sıfırlandı (yönetici)",
+  PASSWORD_RESET_REQUESTED: "Şifre sıfırlama istendi",
+  PASSWORD_RESET_COMPLETED: "Şifre bağlantı ile sıfırlandı",
+  NOTIFICATION_SENT: "Bildirim gönderildi",
+  NOTIFICATION_FAILED: "Bildirim gönderilemedi",
   PROFILE_UPDATED: "Profil güncellendi",
   SESSION_REVOKED: "Oturum geçersiz kılındı",
   ACCESS_DENIED: "Yetkisiz erişim denemesi",
@@ -97,6 +105,7 @@ export const SECURITY_ACTIONS: readonly AuditAction[] = [
   "ACCESS_DENIED",
   "USER_ROLE_CHANGED",
   "PASSWORD_RESET",
+  "PASSWORD_RESET_COMPLETED",
   "USER_DELETED",
 ];
 
@@ -142,3 +151,21 @@ export const auditEntrySchema = z.object({
   createdAt: z.string(),
 });
 export type AuditEntry = z.infer<typeof auditEntrySchema>;
+
+// ── "Şifremi unuttum" ──
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta girin").max(200),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(32).max(128),
+  password: z
+    .string()
+    .min(8, "Şifre en az 8 karakter olmalı")
+    .max(100)
+    .regex(/[A-Za-z]/, "Şifre en az bir harf içermeli")
+    .regex(/[0-9]/, "Şifre en az bir rakam içermeli"),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

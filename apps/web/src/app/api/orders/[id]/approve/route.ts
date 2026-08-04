@@ -1,4 +1,4 @@
-import { approveOrder } from "@repo/services";
+import { approveOrder, notifyOrderStatusChanged } from "@repo/services";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 
 // POST /api/orders/:id/approve — COMPANY_ADMIN (own company) or SUPER_ADMIN.
@@ -10,6 +10,9 @@ export function POST(_req: Request, { params }: { params: { id: string } }) {
       approverRole: user.role,
       approverCompanyId: user.companyId,
     });
+    // A company approval can leave the order at PENDING_CREDIT; the notifier
+    // only announces states worth announcing, so passing the result is safe.
+    await notifyOrderStatusChanged(result.orderId, result.status);
     return Response.json(result);
   });
 }

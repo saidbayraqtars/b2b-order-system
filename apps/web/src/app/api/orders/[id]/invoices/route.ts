@@ -1,4 +1,4 @@
-import { createInvoice, listInvoices } from "@repo/services";
+import { createInvoice, listInvoices, notifyInvoiceIssued } from "@repo/services";
 import { createInvoiceSchema } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { assertOrderVisible } from "@/lib/order-access";
@@ -22,9 +22,11 @@ export function POST(req: Request, { params }: Params) {
     const user = await requireUser(["SUPER_ADMIN"]);
     const input = await parseBody(req, createInvoiceSchema);
 
-    return Response.json(
-      await createInvoice(params.id, input, { userId: user.id, role: user.role }),
-      { status: 201 },
-    );
+    const invoice = await createInvoice(params.id, input, {
+      userId: user.id,
+      role: user.role,
+    });
+    await notifyInvoiceIssued(invoice.invoiceId);
+    return Response.json(invoice, { status: 201 });
   });
 }

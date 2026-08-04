@@ -36,6 +36,7 @@ cp packages/database/.env.example packages/database/.env
 cp apps/mobile/.env.example apps/mobile/.env
 #   Generate an auth secret:
 cd apps/web && npx auth secret && cd ../..
+#   Leave SMTP_HOST empty for local work: mail is printed to the log, not sent.
 
 # 4) Postgres (Docker) — host port 5433, so it can't collide with a local 5432
 docker compose up -d
@@ -160,3 +161,18 @@ per-line allocation. Campaigns run in priority order, each seeing what the previ
 left, and VAT is charged on the net after promotions. Usage caps count redemption rows
 whose order is still alive, so a cancellation returns the quota while the order keeps its
 record of what it was granted.
+
+## Mail without a mail server
+
+Leave `SMTP_HOST` empty and every message is printed to the server log instead of being
+sent — including the password-reset link, which is how you walk `/sifremi-unuttum` end to
+end locally with no mail account. Set `SMTP_HOST` and the same code sends over SMTP; there
+is no flag to remember and no separate "dev mode" path to drift out of sync.
+
+Sending never throws at the caller: a notification announces work that is already
+committed, so a dead mail server must not roll back the order it was announcing. Each
+attempt lands in the audit trail as `NOTIFICATION_SENT` or `NOTIFICATION_FAILED`.
+
+The reset flow stores only the SHA-256 of its token, expires it in 60 minutes, spends it
+once, and answers identically whether or not the address belongs to an account — anything
+else would turn the form into a customer-list oracle.

@@ -134,7 +134,7 @@ importers:
         version: 14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       next-auth:
         specifier: 5.0.0-beta.22
-        version: 5.0.0-beta.22(next@14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0)
+        version: 5.0.0-beta.22(next@14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.10.1)(react@18.2.0)
       react:
         specifier: 18.2.0
         version: 18.2.0
@@ -201,7 +201,7 @@ importers:
         version: 2.4.3
       next-auth:
         specifier: 5.0.0-beta.22
-        version: 5.0.0-beta.22(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.22(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@6.10.1)(react@18.3.1)
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:^
@@ -282,6 +282,9 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      nodemailer:
+        specifier: ^6.9.15
+        version: 6.10.1
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:^
@@ -292,6 +295,9 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
+      '@types/nodemailer':
+        specifier: ^6.4.16
+        version: 6.4.24
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -2055,6 +2061,9 @@ packages:
 
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
+
+  '@types/nodemailer@6.4.24':
+    resolution: {integrity: sha512-Ww4u0rT9wQNXh4JiQaIwx3QWdcOFXzOjQA2zc+jtFYNmQiT4mIUqcDin51bDFdkzKubFnQCZNK7FIHlPKQ/q9w==}
 
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -4536,6 +4545,10 @@ packages:
     resolution: {integrity: sha512-LN4fydt9TqhZhThkZIVQnF9cwjU3qmUH9h78Mx/K7d3VvfRqqwthLwJEUOEL0QPZ0XQmNN7be5Ggit5+4dq3Bw==}
     engines: {node: '>=0.12.0'}
 
+  nodemailer@6.10.1:
+    resolution: {integrity: sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA==}
+    engines: {node: '>=6.0.0'}
+
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
@@ -6092,7 +6105,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@auth/core@0.35.3':
+  '@auth/core@0.35.3(nodemailer@6.10.1)':
     dependencies:
       '@panva/hkdf': 1.2.1
       '@types/cookie': 0.6.0
@@ -6101,6 +6114,8 @@ snapshots:
       oauth4webapi: 2.17.0
       preact: 10.11.3
       preact-render-to-string: 5.2.3(preact@10.11.3)
+    optionalDependencies:
+      nodemailer: 6.10.1
 
   '@babel/code-frame@7.10.4':
     dependencies:
@@ -8220,6 +8235,10 @@ snapshots:
   '@types/node@22.20.1':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/nodemailer@6.4.24':
+    dependencies:
+      '@types/node': 22.20.1
 
   '@types/prop-types@15.7.15': {}
 
@@ -11003,17 +11022,21 @@ snapshots:
 
   nested-error-stacks@2.0.1: {}
 
-  next-auth@5.0.0-beta.22(next@14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0):
+  next-auth@5.0.0-beta.22(next@14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.10.1)(react@18.2.0):
     dependencies:
-      '@auth/core': 0.35.3
+      '@auth/core': 0.35.3(nodemailer@6.10.1)
       next: 14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
+    optionalDependencies:
+      nodemailer: 6.10.1
 
-  next-auth@5.0.0-beta.22(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-auth@5.0.0-beta.22(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@6.10.1)(react@18.3.1):
     dependencies:
-      '@auth/core': 0.35.3
+      '@auth/core': 0.35.3(nodemailer@6.10.1)
       next: 14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
+    optionalDependencies:
+      nodemailer: 6.10.1
 
   next@14.2.15(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
@@ -11093,6 +11116,8 @@ snapshots:
   node-releases@2.0.51: {}
 
   node-stream-zip@1.15.0: {}
+
+  nodemailer@6.10.1: {}
 
   normalize-path@3.0.0: {}
 

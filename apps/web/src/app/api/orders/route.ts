@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { Prisma, prisma } from "@repo/database";
-import { createOrder } from "@repo/services";
+import { createOrder, notifyOrderPlaced } from "@repo/services";
 import { createOrderSchema, OrderStatusEnum } from "@repo/types";
 import { InputError, requireUser, withAuthErrors } from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
@@ -31,6 +31,8 @@ export function POST(req: NextRequest) {
       createdById: user.id,
       createdByRole: user.role,
     });
+    // After the transaction: the order exists whether or not the mail goes out.
+    await notifyOrderPlaced(result.orderId);
     return Response.json(result, { status: 201 });
   });
 }
