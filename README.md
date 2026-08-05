@@ -1,266 +1,257 @@
-# B2B Platform (Monorepo)
+# B2B Platformu (Monorepo)
 
-Turborepo + pnpm. Backend = Next.js Route Handlers (in `apps/web`), consumed by the Expo mobile app.
+Turborepo + pnpm. Sunucu tarafı Next.js Route Handler'ları (`apps/web` içinde); aynı uçları
+Expo mobil uygulaması da kullanıyor.
 
-## Layout
+## Dizin yapısı
 
 ```
 apps/
   web/        Next.js App Router — Admin panel + B2B portal + API
-  mobile/     Expo React Native — Plasiyer + Müşteri app
+  mobile/     Expo React Native — Plasiyer + Müşteri uygulaması
 packages/
-  database/       Prisma schema, client singleton, seed
-  types/          Zod schemas + inferred TS types (edge-safe single source)
-  auth/           Auth.js v5 edge-safe config + RBAC helpers
-  services/       Domain layer — pricing, orders, documents, ledger, promotions,
-                  cart, reports, mail, admin, security
-  eslint-config/  Shared ESLint presets (base / next / react-native)
-  tsconfig/       Shared TS base configs
+  database/       Prisma şeması, client singleton, seed
+  types/          Zod şemaları + türetilmiş TS tipleri (edge-safe tek kaynak)
+  auth/           Auth.js v5 edge-safe yapılandırma + RBAC yardımcıları
+  services/       Domain katmanı — fiyatlama, sipariş, belgeler, cari, kampanya,
+                  sepet, raporlar, e-posta, yönetim, güvenlik
+  eslint-config/  Ortak ESLint önayarları (base / next / react-native)
+  tsconfig/       Ortak TS temel yapılandırmaları
 ```
 
-**`FEATURES.md` is the feature inventory** — what actually works today, the design
-decisions behind each area, and the known gaps. Start there.
+**`FEATURES.md` özellik envanteridir** — bugün gerçekten ne çalışıyor, her alanın arkasındaki
+tasarım kararları ve bilinen eksikler orada. Önce oradan başlayın.
 
-## Bootstrap
+## Kurulum
 
 ```bash
-# 1) Enable pnpm (Node 20/22 recommended; Node 24 works but is untested by Expo SDK 51)
+# 1) pnpm'i etkinleştir (Node 20/22 önerilir; Node 24 çalışıyor ama Expo SDK 51 ile denenmedi)
 corepack enable
 corepack prepare pnpm@9.12.2 --activate
 
-# 2) Install
+# 2) Bağımlılıklar
 pnpm install
 
-# 3) Env — copy examples and fill in
+# 3) Ortam değişkenleri — örnekleri kopyala ve doldur
 cp .env.example .env
 cp apps/web/.env.example apps/web/.env
 cp packages/database/.env.example packages/database/.env
 cp apps/mobile/.env.example apps/mobile/.env
-#   Generate an auth secret:
+#   Auth secret üret:
 cd apps/web && npx auth secret && cd ../..
-#   Leave SMTP_HOST empty for local work: mail is printed to the log, not sent.
-#   UPLOAD_DIR defaults to ./uploads — product images are written there, not into public/.
+#   Yerelde SMTP_HOST boş kalsın: e-posta gönderilmez, günlüğe basılır.
+#   UPLOAD_DIR varsayılanı ./uploads — ürün görselleri oraya yazılır, public/ içine değil.
 
-# 4) Postgres (Docker) — host port 5433, so it can't collide with a local 5432
+# 4) Postgres (Docker) — host portu 5433, yereldeki 5432 ile çakışmasın diye
 docker compose up -d
 
-# 5) Database
+# 5) Veritabanı
 pnpm db:generate        # prisma generate
-pnpm db:migrate         # apply migrations
-pnpm db:seed            # seed admin + demo data (idempotent, safe to re-run)
+pnpm db:migrate         # migration'ları uygula
+pnpm db:seed            # admin + demo veri (idempotent, tekrar çalıştırılabilir)
 
-# 6) Run
-pnpm --filter web dev       # web on http://localhost:3000
+# 6) Çalıştır
+pnpm --filter web dev       # web: http://localhost:3000
 pnpm --filter mobile start  # expo
 ```
 
-## Verification
+## Doğrulama
 
 ```bash
-pnpm typecheck   # tsc across every package
-pnpm lint        # ESLint, zero-warning budget
-pnpm test        # Vitest: unit suite + integration suite
-pnpm build       # next build + package builds
+pnpm typecheck   # her pakette tsc
+pnpm lint        # ESLint, sıfır uyarı toleransı
+pnpm test        # Vitest: birim takımı + entegrasyon takımı
+pnpm build       # next build + paket derlemeleri
 ```
 
-`pnpm test` runs two suites, 151 tests over 11 files today. The unit suite (70) is pure
-domain maths and needs nothing. The integration suite (81) talks to a real Postgres,
-builds its own fixture (group, company, product, price tiers, campaigns, document series)
-and touches only its own rows — so it is safe against a database that already has seed
-data. Without `DATABASE_URL` it is skipped rather than failed. CI
-(`.github/workflows/ci.yml`) runs all four commands against a Postgres service container.
+`pnpm test` iki takım çalıştırıyor; bugün 11 dosyada 151 test. **Birim takımı (70)** saf domain
+matematiği, hiçbir şeye ihtiyacı yok. **Entegrasyon takımı (81)** gerçek bir Postgres ile
+konuşuyor, kendi fixture'ını kuruyor (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge
+serileri) ve yalnızca kendi kayıtlarına dokunuyor — bu yüzden seed verisi olan bir veritabanında
+da güvenle çalışıyor. `DATABASE_URL` yoksa takım başarısız olmuyor, **atlanıyor**. CI
+(`.github/workflows/ci.yml`) dört komutu da Postgres servis konteyneri üzerinde koşturuyor.
 
-One fixture is worth knowing about: a test that asserts on document numbers must call
-`useOwnDefaultSeries()`, because a series only issues numbers while it is the *default*
-one. Creating a series and forgetting to promote it leaves the test drawing from the
-seeded counter, which passes exactly once — on a database where that counter is still
-zero.
+Bilinmesi gereken bir fixture var: belge numarası üzerine iddiada bulunan bir test
+`useOwnDefaultSeries()` çağırmak zorunda, çünkü bir seri yalnızca **varsayılan** olduğu sürece
+numara veriyor. Kendi serisini kurup varsayılan yapmayı unutan test seed'deki sayaçtan çekmeye
+devam eder ve tam olarak bir kez geçer — o sayacın hâlâ sıfır olduğu veritabanında.
 
-## Seed accounts (password: `Password123!`)
+## Seed hesapları (şifre: `Password123!`)
 
-| Email                | Role          |
+| E-posta              | Rol           |
 | -------------------- | ------------- |
 | admin@b2b.local      | SUPER_ADMIN   |
 | rep@b2b.local        | SALES_REP     |
 | manager@ornek.local  | COMPANY_ADMIN |
 | staff@ornek.local    | COMPANY_STAFF |
 
-## RBAC route map
+## RBAC yol haritası
 
-Source of truth: `packages/auth/src/rbac.ts`.
+Tek gerçek kaynak: `packages/auth/src/rbac.ts`.
 
-| Prefix       | Allowed roles                                      |
-| ------------ | -------------------------------------------------- |
-| `/admin`     | SUPER_ADMIN                                        |
-| `/rep`       | SALES_REP, SUPER_ADMIN                             |
-| `/portal`    | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN          |
-| `/reports`   | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN              |
-| `/orders`    | all four (rows scoped server-side)                 |
-| `/documents` | all four (document authorized against its company) |
-| `/hesabim`   | all four (own account only)                        |
+| Ön ek        | İzinli roller                                          |
+| ------------ | ------------------------------------------------------ |
+| `/admin`     | SUPER_ADMIN                                            |
+| `/rep`       | SALES_REP, SUPER_ADMIN                                 |
+| `/portal`    | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN              |
+| `/reports`   | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN                  |
+| `/orders`    | dört rol de (satırlar sunucuda kapsamlanır)            |
+| `/documents` | dört rol de (belge, kendi firması üzerinden yetkilenir)|
+| `/hesabim`   | dört rol de (yalnızca kendi hesabı)                    |
 
-## Authorization model
+## Yetkilendirme modeli
 
-Three layers, and the order matters:
+Üç katman, ve sıra önemli:
 
-1. **Edge `middleware.ts`** — role check from the signed cookie, redirects to
-   `/login` or `/403`. A *pre-filter*: the edge runtime has no database access.
-2. **`requirePage()`** — Server Components. Redirects.
-3. **`requireUser()`** — route handlers. Returns JSON 401/403.
+1. **Edge `middleware.ts`** — imzalı çerezden rol kontrolü, `/login` ya da `/403`'e yönlendirir.
+   Bir *ön filtre*: edge runtime'ın veritabanı erişimi yok.
+2. **`requirePage()`** — Server Component'ler. Yönlendirir.
+3. **`requireUser()`** — route handler'lar. JSON 401/403 döner.
 
-Both (2) and (3) go through `apps/web/src/lib/guard.ts`, which **re-reads the account
-from the database on every request**. A session token proves someone logged in once —
-not that the account still exists, is still enabled, or still has that role. Role and
-`companyId` used in a decision come from the database row, never from the token claims.
+(2) ve (3) `apps/web/src/lib/guard.ts` üzerinden geçiyor; orası hesabı **her istekte
+veritabanından yeniden okuyor**. Oturum jetonu birinin bir kez giriş yaptığının kanıtıdır —
+hesabın hâlâ var olduğunun, açık olduğunun ya da aynı role sahip olduğunun değil. Karara giren
+rol ve `companyId` veritabanı satırından gelir, jetonun iddialarından değil.
 
-`User.tokenVersion` is bumped whenever role, company, active flag or password changes,
-which invalidates every session already issued to that account — web cookie and 30-day
-mobile bearer token alike. Rejected sessions and denied requests land in the audit log
-(`/admin/audit`).
+`User.tokenVersion` rol, firma, aktiflik ya da şifre değiştiğinde artar; o hesaba daha önce
+verilmiş **tüm** oturumları geçersiz kılar — web çerezi de, 30 günlük mobil bearer jetonu da.
+Reddedilen oturumlar ve engellenen istekler denetim kaydına düşer (`/admin/audit`).
 
-API routes are deliberately absent from the middleware map: they are guarded by
-`requireUser()` so they answer with JSON instead of an HTML redirect, which is what the
-mobile client needs.
+API yolları middleware haritasında bilerek yok: onları `requireUser()` koruyor, böylece HTML
+yönlendirmesi yerine JSON dönüyorlar — mobil istemcinin ihtiyacı olan da bu.
 
-## Pricing a cart
+## Sepetin fiyatlanması
 
-One calculation, used twice. `buildQuote()` in `packages/services/src/order-quote.ts`
-validates the lines (MOQ, case multiple, stock), resolves the company's group price and
-discount, runs the promotion engine and totals it up. `POST /api/orders/quote` returns
-that to the portal; `createOrder()` runs the very same function inside its transaction
-before writing the snapshot. The browser never computes a total, and the server never
-trusts one it was handed — a preview and an order cannot disagree, and a stale preview
-cannot lock in a price that has since moved.
+Tek hesap, iki yerde kullanılıyor. `packages/services/src/order-quote.ts` içindeki
+`buildQuote()` satırları doğruluyor (minimum sipariş, koli katı, stok), firmanın grup fiyatını
+ve iskontosunu çözüyor, kampanya motorunu çalıştırıyor ve toplamı çıkarıyor.
+`POST /api/orders/quote` bunu portala döndürüyor; `createOrder()` anlık görüntüyü yazmadan önce
+**aynı fonksiyonu** kendi transaction'ı içinde yeniden çalıştırıyor. Tarayıcı hiçbir zaman
+toplam hesaplamıyor, sunucu da eline verilen toplama hiçbir zaman güvenmiyor — önizleme ile
+sipariş ayrışamıyor, bayat bir önizleme de o zamandan beri değişmiş bir fiyatı çivileyemiyor.
 
-## Documents, and the ERP next door
+## Belgeler ve yandaki ERP
 
-This system is meant to run beside an ERP (VegaWin A5 / VegaDB and the like), so
-numbering is a row rather than a constant: `DocumentSeries` holds the prefix,
-width and last number issued for waybills and invoices. Allocation is one
-`UPDATE ... RETURNING` inside the caller's transaction, so two despatches racing
-for the next number queue behind a row lock instead of both reading the same
-value. A cancelled document keeps its number. Mark a serial `externalOnly` and
-the app stops inventing numbers altogether — it then demands the ERP's, and
-leaves its own counter untouched.
+Bu sistem bir ERP'nin (VegaWin A5 / VegaDB ve benzerleri) yanında çalışmak üzere tasarlandı; bu
+yüzden numaralandırma bir sabit değil, bir satır: `DocumentSeries` irsaliye ve faturalar için ön
+eki, basamak genişliğini ve verilen son numarayı tutuyor. Numara tahsisi, çağıranın transaction'ı
+içinde tek bir `UPDATE ... RETURNING` — böylece sıradaki numara için yarışan iki sevkiyat aynı
+değeri okumak yerine satır kilidinin arkasında sıraya giriyor. İptal edilen belge numarasını
+koruyor. Bir seriyi `externalOnly` olarak işaretlediğinizde uygulama numara üretmeyi tamamen
+bırakıyor: ERP'nin numarasını şart koşuyor ve kendi sayacına dokunmuyor.
 
-Fulfilment is quantity-based, not order-based. `Shipment`/`ShipmentItem` record
-what actually left, `OrderItem.quantityShipped` tracks what is outstanding, and
-the order's status is *derived* from that — PROCESSING while anything remains,
-SHIPPED when nothing does. Invoices bill quantities the same way, either from
-selected despatches or from whatever is left. They never recompute money: prices
-and the campaign allocation were frozen on the order line, so an invoice takes a
-proportional share and the one that closes a line takes the rounding remainder,
-which keeps the invoices of an order summing exactly back to it.
+Sevkiyat sipariş bazlı değil, **miktar bazlı**. `Shipment`/`ShipmentItem` gerçekte neyin çıktığını
+kaydediyor, `OrderItem.quantityShipped` kalanı takip ediyor ve siparişin durumu bundan
+**türetiliyor** — bir şey kaldıysa PROCESSING, kalmadıysa SHIPPED. Faturalar da miktarı aynı
+şekilde faturalıyor: ya seçilen irsaliyelerden ya da kalan her şeyden. Parayı asla yeniden
+hesaplamıyorlar: fiyatlar ve kampanya payı sipariş satırında donmuştu, fatura oransal payını
+alıyor, satırı kapatan fatura da yuvarlama artığını alıyor — bir siparişin faturaları
+toplandığında kuruşu kuruşuna siparişe eşit oluyor.
 
-The vade starts with the invoice. The cari debit is still written when the order
-is confirmed (that is what the credit limit meters) but with no due date; the
-first invoice stamps one, later invoices only push it out. Aging buckets by that
-date, falling back to order date + the company's term for debts not yet invoiced.
+Vade faturayla başlıyor. Cari borç hâlâ sipariş onaylandığında yazılıyor (kredi limitini ölçen
+şey o) ama vade tarihi boş; ilk fatura vadeyi damgalıyor, sonraki faturalar yalnızca ileri
+itiyor. Yaşlandırma bu tarihe göre kovalıyor, henüz faturalanmamış borçlar için sipariş tarihi +
+firmanın vadesine düşüyor.
 
-## Promotions as data
+## Kampanya = veri
 
-A campaign is a row: a list of conditions that must all hold, and a list of actions that
-produce the discount, both stored as `{ type, params }` JSON. The catalogue of rule types
-lives in `packages/services/src/promotion-registry.ts`, which is also the **security
-boundary** — an unknown type does not exist, and every parameter is parsed by the Zod
-schema declared next to its rule, on write *and* on every evaluation. Nothing from a
-client (or from a row edited straight in the database) is ever run as code.
+Bir kampanya bir satırdır: hepsi sağlanması gereken bir koşul listesi ve indirimi üreten bir
+aksiyon listesi, ikisi de `{ type, params }` JSON'u olarak saklanır. Kural türlerinin kataloğu
+`packages/services/src/promotion-registry.ts` içinde; orası aynı zamanda **güvenlik sınırı** —
+tanımsız bir tür yoktur ve her parametre, kuralın yanında bildirilen Zod şemasından geçer, hem
+yazarken *hem de* her çalıştırmada. İstemciden gelen (ya da doğrudan veritabanında düzenlenmiş
+bir satırdan gelen) hiçbir şey kod olarak çalıştırılmaz.
 
-`promotion-engine.ts` is pure: it takes priced lines plus compiled rules and returns the
-per-line allocation. Campaigns run in priority order, each seeing what the previous one
-left, and VAT is charged on the net after promotions. Usage caps count redemption rows
-whose order is still alive, so a cancellation returns the quota while the order keeps its
-record of what it was granted.
+`promotion-engine.ts` saftır: fiyatlanmış satırları ve derlenmiş kuralları alır, satır bazında
+dağıtımı döner. Kampanyalar öncelik sırasıyla çalışır, her biri bir öncekinin bıraktığını görür
+ve KDV kampanya sonrası net üzerinden alınır. Kullanım kotaları, siparişi hâlâ ayakta olan
+kullanım satırlarını sayar; iptal kotayı geri verir ama sipariş neyi kazandığının kaydını
+korur.
 
-### Where a campaign discount lands
+### Kampanya indirimi nereye düşer
 
-Three places, and they are kept apart on purpose. Line discounts go into
-`promotionTotal`, which always equals the sum of the lines — invoicing splits that
-figure across them, so nothing else may hide in it. A freight discount is taken off
-`shippingFee` at source and recorded in `shippingDiscount`; it takes no part in the grand
-total, because subtracting it again would discount the delivery twice. A gift is a line
-carrying its own list value and an equal discount, so it nets to zero without pretending
-the goods were worthless — which is what an invoice has to show.
+Üç ayrı yere, ve bilerek ayrı tutuluyorlar. Satır indirimleri `promotionTotal`'a gider ve bu
+tutar **her zaman** satırların toplamına eşittir — faturalama o rakamı satırlara paylaştırdığı
+için içinde başka hiçbir şey saklanamaz. Navlun indirimi kaynağında `shippingFee`'den düşülür ve
+`shippingDiscount` sütununa yazılır; **genel toplam hesabına girmez**, çünkü bir kez daha
+çıkarmak nakliyeyi iki kez indirmek olurdu. Hediye ise kendi liste değerini ve ona eşit bir
+indirimi taşıyan bir satırdır: sıfıra iner ama malın değersiz olduğunu iddia etmez — faturanın
+göstermek zorunda olduğu şey de budur.
 
-The engine reports all three separately and never prices anything: it knows *what* to give
-and *how many*, and `buildQuote` values it against the catalogue. A gift that cannot be
-given — out of stock, or no price this company could be charged — is skipped, not fatal. A
-campaign misconfigured months ago must not block today's checkout.
+Motor üçünü ayrı ayrı raporlar ve hiçbir şeyi fiyatlamaz: *ne* verileceğini ve *kaç tane*
+olduğunu bilir, değerlemeyi katalog üzerinden `buildQuote` yapar. Verilemeyen bir hediye —
+stok bitmişse ya da bu firmaya uygulanabilir bir fiyatı yoksa — ölümcül değildir, atlanır.
+Aylar önce yanlış kurulmuş bir kampanya bugünkü ödemeyi bloklamamalı.
 
-## Mail without a mail server
+## Mail sunucusu olmadan e-posta
 
-Leave `SMTP_HOST` empty and every message is printed to the server log instead of being
-sent — including the password-reset link, which is how you walk `/sifremi-unuttum` end to
-end locally with no mail account. Set `SMTP_HOST` and the same code sends over SMTP; there
-is no flag to remember and no separate "dev mode" path to drift out of sync.
+`SMTP_HOST` boş bırakıldığında her mesaj gönderilmek yerine sunucu günlüğüne basılır — şifre
+sıfırlama bağlantısı dahil; `/sifremi-unuttum` akışını yerelde mail hesabı olmadan baştan sona
+yürütmenin yolu budur. `SMTP_HOST` verildiğinde aynı kod SMTP üzerinden gönderir; hatırlanması
+gereken bir bayrak ve zamanla ayrışacak ayrı bir "geliştirme modu" yolu yoktur.
 
-Sending never throws at the caller: a notification announces work that is already
-committed, so a dead mail server must not roll back the order it was announcing. Each
-attempt lands in the audit trail as `NOTIFICATION_SENT` or `NOTIFICATION_FAILED`.
+Gönderim çağırana hata fırlatmaz: bir bildirim zaten tamamlanmış bir işi duyurur, bu yüzden ölü
+bir mail sunucusu duyurduğu siparişi geri almamalıdır. Her deneme denetim kaydına
+`NOTIFICATION_SENT` ya da `NOTIFICATION_FAILED` olarak düşer.
 
-The reset flow stores only the SHA-256 of its token, expires it in 60 minutes, spends it
-once, and answers identically whether or not the address belongs to an account — anything
-else would turn the form into a customer-list oracle.
+Sıfırlama akışı yalnızca token'ın SHA-256'sını saklar, 60 dakikada süresini doldurur, tek
+kullanımda harcar ve adresin bir hesaba ait olup olmadığına bakmaksızın aynı yanıtı verir —
+aksi hâlde bu form müşteri listesi çıkarmanın yolu olurdu.
 
-## The cart is a row, not a browser tab
+## Sepet bir satırdır, tarayıcı sekmesi değil
 
-One `Cart` per (company, owner). It stores what the person chose — variant and quantity —
-and nothing about money: price, campaign and VAT are resolved every time it is read, so a
-cart cannot quietly hold last week's price. MOQ, case multiples and stock are *not*
-enforced here; a cart is a draft, and those rules already stop an invalid order at the
-quote and at checkout. Placing an order empties the cart server-side, so a second tab
-cannot replay it.
+(firma, sahip) başına tek `Cart`. Kişinin ne seçtiğini tutar — varyant ve adet — ve para
+hakkında hiçbir şey tutmaz: fiyat, kampanya ve KDV her okumada yeniden çözülür, böylece bir
+sepet sessizce geçen haftanın fiyatını taşıyamaz. Minimum sipariş, koli katı ve stok burada
+dayatılmaz; sepet bir taslaktır ve o kurallar geçersiz bir siparişi zaten teklifte ve ödeme
+adımında durdurur. Sipariş verildiğinde sepet sunucu tarafında boşalır, ikinci bir sekme aynı
+siparişi tekrarlayamaz.
 
-Uploaded images land in `UPLOAD_DIR` and come back through `/api/media/...`, never out of
-`public/` — that directory is a build input, and writing into it at runtime stops working
-the moment the app is containerised. The upload path trusts the bytes, not the name: only
-files carrying a real image signature are accepted, and the stored name is random, so
-there is no path to traverse and no URL to guess.
+Yüklenen görseller `UPLOAD_DIR` altına iner ve `/api/media/...` üzerinden geri gelir, hiçbir
+zaman `public/` içinden değil — o dizin bir derleme girdisidir ve çalışma anında içine yazmak,
+uygulama konteynerlendiği anda çalışmayı bırakır. Yükleme yolu ada değil **baytlara** güvenir:
+yalnızca gerçek bir görsel imzası taşıyan dosyalar kabul edilir ve saklanan ad rastgeledir —
+kaçılacak bir yol ve tahmin edilecek bir URL yoktur.
 
-## Reports are a registry, not a query language
+## Raporlar bir kayıt defteridir, sorgu dili değil
 
-A saved report is user data: it arrives over HTTP, it is stored as JSON, and it
-can be edited straight in the database. So no name in it ever reaches the
-database. A field is resolved through the dataset registry first, and what comes
-out is a definition *we* wrote — its path, its type, what may be aggregated, and
-which relations it travels through.
+Kaydedilmiş bir rapor kullanıcı verisidir: HTTP üzerinden gelir, JSON olarak saklanır ve
+doğrudan veritabanında düzenlenebilir. Bu yüzden içindeki hiçbir ad veritabanına ulaşmaz. Bir
+alan önce veri kümesi kayıt defterinden çözülür ve çıkan şey **bizim** yazdığımız bir tanımdır:
+yolu, tipi, neyin özetlenebileceği ve hangi ilişkilerden geçtiği.
 
-Aggregation runs as `GROUP BY` in Postgres, which is why there is no longer a
-row-scan cap: the database returns one row per group however many it read. That
-requires building SQL by hand, and it is safe here for one reason — every
-identifier in the statement comes from the registry, and every value travels as
-a bound parameter. A field that is not in the registry does not exist, so there
-is no route from input to an identifier.
+Özetleme Postgres'te `GROUP BY` olarak çalışıyor; satır tarama sınırının kalkmasının sebebi de
+bu: veritabanı kaç satır okursa okusun grup başına tek satır döndürüyor. Bu, SQL'i elle kurmayı
+gerektiriyor ve burada güvenli olmasının tek bir sebebi var — ifadedeki her tanımlayıcı kayıt
+defterinden geliyor, her değer bağlı parametre olarak taşınıyor. Kayıt defterinde olmayan bir
+alan yoktur, dolayısıyla girdiden bir tanımlayıcıya giden yol da yoktur.
 
-The row scope is written once, as a Prisma filter, and translated for the SQL
-path. Two scope declarations would be a hole waiting for the day someone pressed
-"group by"; the integration tests check that a sales rep grouping a report still
-sees only their own portfolio.
+Satır kapsamı bir kez, Prisma filtresi olarak yazılıyor ve SQL yoluna çevriliyor. İki ayrı
+kapsam tanımı, birinin "grupla" düğmesine bastığı gün açılacak bir delik olurdu; entegrasyon
+testleri, rapor gruplandığında da plasiyerin yalnızca kendi portföyünü gördüğünü doğruluyor.
 
-Users cannot write their own joins, on purpose. Relations are declared in the
-registry and surfaced as fields grouped by source table, so the builder offers
-"Firma → Müşteri grubu" without anyone composing a query. Adding a relation is
-one line there, and the UI picks it up on its own.
+Kullanıcı kendi JOIN'ini yazamıyor — tasarım gereği. İlişkiler kayıt defterinde bildiriliyor ve
+kaynak tabloya göre gruplanmış alanlar olarak sunuluyor; böylece tasarımcı, kimse sorgu
+kurmadan "Firma → Müşteri grubu"nu teklif ediyor. Yeni bir ilişki eklemek orada tek satır, ve
+arayüz onu kendiliğinden görüyor.
 
-## Caching an authorization input
+## Bir yetki girdisini önbelleğe almak
 
-`loadPrincipal` sits behind a five-second, in-process cache. That is caching an
-input to an access decision, so the design is deliberately narrow: the cache
-stores the account row and never a verdict — `checkPrincipal` still decides on
-every request — and every write that changes what an account may do evicts the
-entry *after* the write lands, so a revocation bites on the next request rather
-than at the end of the TTL. Evicting before the write would let a concurrent
-read repopulate the cache from the row about to be replaced.
+`loadPrincipal` beş saniyelik, süreç içi bir önbelleğin arkasında. Bu, bir erişim kararının
+**girdisini** önbelleğe almak demek; o yüzden tasarım bilerek dar tutuldu: önbellek hesap
+satırını saklar, asla bir hüküm saklamaz — kararı hâlâ her istekte `checkPrincipal` verir — ve
+bir hesabın ne yapabileceğini değiştiren her yazma, girdiyi yazma tamamlandıktan **sonra**
+düşürür; böylece bir iptal, TTL'in sonunda değil bir sonraki istekte ısırır. Yazmadan önce
+düşürmek, eşzamanlı bir okumanın önbelleği tam da değiştirilmek üzere olan satırdan yeniden
+doldurmasına izin verirdi.
 
-The remaining exposure is stated rather than hidden: across several processes an
-eviction in one does not reach the others, so a revocation can take up to the
-TTL to be seen elsewhere. Behind a load balancer that matters, the fix is a
-shared eviction signal — not a longer TTL.
+Kalan açık saklanmıyor, yazılıyor: birden çok süreçte birindeki tahliye diğerlerine ulaşmaz, bu
+yüzden bir iptalin başka yerde görülmesi TTL kadar sürebilir. Yük dengeleyici arkasında bu önemli
+hâle gelir; çözümü paylaşılan bir tahliye sinyalidir — daha uzun bir TTL değil.
 
-Account lockout counts per e-mail, which is exactly what password spraying
-avoids: one attempt against each of a hundred addresses trips nothing. So failed
-logins are also counted per source address, using the audit log itself as the
-counter rather than a second table free to disagree with the one an auditor
-reads. `x-forwarded-for` is client-controlled unless a trusted proxy overwrites
-it, so this raises the cost of spraying; it is not access control, and nothing
-in it decides authorization.
+Hesap kilidi e-posta başına sayar, ki password spraying'in kaçındığı şey tam olarak budur: yüz
+ayrı adrese birer deneme hiçbir şeyi tetiklemez. Bu yüzden başarısız girişler kaynak adres
+başına da sayılıyor ve sayaç olarak, denetçinin okuduğu tabloyla çelişmekte özgür ikinci bir
+tablo yerine **denetim kaydının kendisi** kullanılıyor. Güvenilen bir vekil üzerine yazmadığı
+sürece `x-forwarded-for` istemci kontrolündedir; dolayısıyla bu, spraying'in maliyetini artırır
+— erişim denetimi değildir ve içindeki hiçbir şey yetki kararı vermez.
