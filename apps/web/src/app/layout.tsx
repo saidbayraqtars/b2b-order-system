@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -20,6 +20,15 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+// Ölçen sayılar (SKU, stok, koli, fiyat) için. Vitrinin teknik karakteri
+// büyük ölçüde bu yazı tipinden geliyor — bkz. tailwind `font-mono`.
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "B2B Portal",
   description: "B2B Order & Management System",
@@ -27,7 +36,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="tr" className={`${inter.variable} ${jakarta.variable}`}>
+    <html
+      lang="tr"
+      className={`${inter.variable} ${jakarta.variable} ${mono.variable}`}
+    >
       <head>
         {/* Boyanmadan önce çalışır — tema `dark:` sınıflarının tersine dönüp
             geri dönmesini (FOUC) engeller. Bkz. lib/theme.ts. */}

@@ -62,11 +62,18 @@ export function CartPanel({ companyId }: { companyId: string }) {
   const priced = q !== undefined;
 
   return (
-    <aside className="sticky top-4 flex h-fit flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <h2 className="text-lg font-semibold">Sepet</h2>
+    <aside className="sticky top-20 flex h-fit flex-col gap-4 border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+      <div className="flex items-baseline justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
+        <h2 className="tech-label text-neutral-900 dark:text-neutral-100">
+          Sepet
+        </h2>
+        <span className="tech-num text-xs text-neutral-500">
+          {lines.length} kalem
+        </span>
+      </div>
 
       {result && (
-        <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <div className="bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
           <p className="font-medium">
             <Link href={`/orders/${result.orderId}`} className="underline">
               Sipariş #{result.orderNumber}
@@ -108,24 +115,28 @@ export function CartPanel({ companyId }: { companyId: string }) {
                 </button>
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center">
                   <button
                     type="button"
                     onClick={() => dec(l.variantId)}
-                    className="h-6 w-6 rounded border border-neutral-300 dark:border-neutral-700"
+                    aria-label="Azalt"
+                    className="h-6 w-6 border border-neutral-300 font-mono text-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   >
                     −
                   </button>
-                  <span className="w-12 text-center tabular-nums">{l.quantity}</span>
+                  <span className="tech-num w-12 border-y border-neutral-300 py-0.5 text-center text-xs dark:border-neutral-700">
+                    {l.quantity}
+                  </span>
                   <button
                     type="button"
                     onClick={() => inc(l.variantId)}
-                    className="h-6 w-6 rounded border border-neutral-300 dark:border-neutral-700"
+                    aria-label="Artır"
+                    className="h-6 w-6 border border-neutral-300 font-mono text-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   >
                     +
                   </button>
                 </div>
-                <span className="tabular-nums font-medium">
+                <span className="tech-num text-xs font-semibold">
                   {l.netUnitPrice === null
                     ? "fiyat yok"
                     : formatTRY(Number(l.netUnitPrice) * l.quantity)}
@@ -140,13 +151,13 @@ export function CartPanel({ companyId }: { companyId: string }) {
         <div className="flex flex-col gap-3 border-t border-neutral-200 pt-3 text-sm dark:border-neutral-800">
           <div className="flex items-end gap-2">
             <label className="flex-1">
-              <span className="mb-1 block text-xs text-neutral-500">Kupon kodu</span>
+              <span className="tech-label mb-1 block">Kupon kodu</span>
               <input
                 value={couponDraft}
                 onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
                 placeholder="KUPON25"
                 disabled={coupon !== null}
-                className="h-8 w-full rounded-md border border-neutral-300 px-2 text-sm disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900"
+                className="tech-num h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900"
               />
             </label>
             {coupon === null ? (
@@ -154,7 +165,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
                 type="button"
                 disabled={couponDraft.trim().length < 3}
                 onClick={() => setCoupon(couponDraft.trim())}
-                className="h-8 rounded-md border border-neutral-300 px-3 text-xs font-medium disabled:opacity-50 dark:border-neutral-700"
+                className="h-8 border border-neutral-300 px-3 font-mono text-[11px] font-medium uppercase tracking-wider transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
               >
                 Uygula
               </button>
@@ -165,7 +176,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
                   setCoupon(null);
                   setCouponDraft("");
                 }}
-                className="h-8 rounded-md border border-neutral-300 px-3 text-xs font-medium dark:border-neutral-700"
+                className="h-8 border border-neutral-300 px-3 font-mono text-[11px] font-medium uppercase tracking-wider transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
               >
                 Kaldır
               </button>
@@ -173,7 +184,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
           </div>
 
           {quote.isError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
               {(quote.error as Error).message}
             </p>
           )}
@@ -214,7 +225,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
             type="button"
             disabled={mutation.isPending || quote.isError || quote.isLoading}
             onClick={() => mutation.mutate()}
-            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
+            className="bg-brand-600 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
           >
             {mutation.isPending ? "Gönderiliyor…" : "Siparişi oluştur"}
           </button>
@@ -236,7 +247,9 @@ function Row({
   accent?: boolean;
 }) {
   return (
-    <div className={`flex justify-between gap-2 ${bold ? "font-semibold" : ""}`}>
+    <div
+      className={`flex justify-between gap-2 text-xs ${bold ? "border-t border-neutral-200 pt-1.5 text-sm font-bold dark:border-neutral-800" : ""}`}
+    >
       <span
         className={
           accent
@@ -249,7 +262,7 @@ function Row({
         {label}
       </span>
       <span
-        className={`tabular-nums ${accent ? "text-emerald-700 dark:text-emerald-400" : ""}`}
+        className={`tech-num ${accent ? "text-emerald-700 dark:text-emerald-400" : ""}`}
       >
         {value}
       </span>

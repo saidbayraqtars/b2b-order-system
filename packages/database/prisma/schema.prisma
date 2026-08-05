@@ -917,3 +917,54 @@ model AuditLog {
   /// table rather than keeping a second one that could disagree with it.
   @@index([ip, action, createdAt])
 }
+
+// ─────────────────────────────────────────────
+// VİTRİN DUYURULARI (kampanya bandı / açılış duyurusu)
+// ─────────────────────────────────────────────
+
+enum AnnouncementPlacement {
+  /// Sayfanın en üstünde, kayan şerit. Birden fazlası yan yana akar.
+  TICKER
+  /// Katalogun üstünde duran, çarpıyla kapatılabilen kart.
+  BANNER
+  /// Girişte bir kez açılan, çarpıyla kapatılan pencere.
+  MODAL
+}
+
+/// Bir vitrin duyurusu. Promotion (fiyatı değiştiren kural) ile bilerek ayrı:
+/// bu yalnızca *gösterim*tir, hiçbir tutarı etkilemez. Bir kampanyayı
+/// duyurmak için `promotionId` bağlanabilir ama zorunlu değil — "yılbaşında
+/// kapalıyız" da bir duyurudur.
+model Announcement {
+  id String @id @default(cuid())
+
+  title String
+  body  String?
+
+  /// Tıklanınca gidilecek yer (kategori, ürün, dış bağlantı). Null = tıklanamaz.
+  linkUrl   String?
+  linkLabel String?
+
+  placement AnnouncementPlacement @default(BANNER)
+
+  /// Görsel vurgu tonu — arayüzdeki Badge tonlarıyla aynı sözlük.
+  tone String @default("brand")
+
+  /// Kapatılabilir mi? Kapatılırsa tarayıcıda hatırlanır (id bazlı).
+  dismissible Boolean @default(true)
+
+  enabled  Boolean @default(true)
+  priority Int     @default(0)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  /// Boş = herkese. Doluysa yalnızca bu müşteri gruplarına gösterilir —
+  /// "yalnızca bayilere" tipi duyuru bu yüzden var.
+  customerGroupIds String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, placement, priority])
+}

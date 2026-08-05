@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-05 · Adım 19 + arayüz yenilemesi Faz 1 sonu
+Son güncelleme: 2026-08-05 · Adım 21 (vitrin Faz 2) sonu
 
 ---
 
@@ -34,6 +34,7 @@ Son güncelleme: 2026-08-05 · Adım 19 + arayüz yenilemesi Faz 1 sonu
 | 18 | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları | ✅ |
 | 19 | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği | ✅ |
 | 20 | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu | ✅ |
+| 21 | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları | ✅ |
 
 ---
 
@@ -504,14 +505,63 @@ tabi (beyaz kâğıt, koyu tema yok, araç çubuğu baskıda kaybolur).
 
 Kalanı Faz 2'de — bkz. Bilinen Eksikler.
 
-## 21. Web Portal (`apps/web`)
+## 21. Vitrin — Endüstriyel Kimlik (Adım 21 — Faz 2)
+
+Müşteriye bakan katalog artık bir **vitrin**: e-ticaretin gezinme alışkanlıkları
+(kategori, arama, sıralama, ürün detayı) var, ama görünüm bilerek pazaryerine
+benzemiyor. Seçilen yön **endüstriyel/teknik**: ölçekli kâğıt zemini, keskin
+köşeler, ölçen her sayının monospace dizilmesi. Toptan işinde ekranda SKU, stok
+ve koli sayısı okunur — kimlik oradan çıkıyor.
+
+### Kimliğin kuralları
+
+- **`tech-num`** — SKU, stok, koli, adet ve fiyat. Monospace + sekmeli rakam: alt alta gelen fiyatların basamakları hizalanır.
+- **`tech-label`** — bölüm etiketleri: küçük, harf aralıklı, büyük harf. Her başlığın üstündeki "levha numarası".
+- **`tech-paper`** — 32px'lik çok soluk ızgara; kartların arkasında ölçekli kâğıt hissi.
+- Yalnızca **müşteri yüzeyinde** kullanılır. Yönetim ekranları Faz 1'in nötr dilinde kalır — orada veri girişi var, vitrin karakteri değil.
+
+### Vitrin düzeni (`/portal`)
+
+- Sol: **kategori kenar çubuğu** (ağaç, girintili, seçili olan marka renginde şeritli).
+- Üst: **arama** — artık yalnızca ürün adı değil, **marka, SKU ve barkod** da aranıyor (`listCatalog` içinde `OR`). Müşteri elindeki kutunun barkodunu yazıp bulabiliyor.
+- **Sıralama** (ad / fiyat ↑↓ / stok) ve **"yalnızca stokta"** filtresi istemcide çalışıyor: katalog tek istekte geldiği için her sıralamada sunucuya gitmek gereksiz gecikme olurdu.
+- Sağ: sepet paneli, sayfa kaydıkça yapışkan.
+
+### Ürün kartı ve detay sayfası
+
+- Kart: görsel, marka/KDV künyesi, **"…'den başlayan"** fiyat, ilk 3 varyant satırı (SKU · STK · KOL) ve her satırda tek tıkla sepete ekleme. 3'ten fazlaysa detaya bağlanıyor.
+- **`/portal/urun/[id]` — yeni sayfa.** Önceden ürün detayı yoktu; varyantlar yalnızca kart içinde görünüyordu. Sayfada: görsel galerisi, künye ızgarası (varyant/stok/KDV) ve **varyant tablosu**. Tablo perakende sitelerindeki gibi gizlenmiyor — toptan siparişte asıl iş orada dönüyor, her satırın kendi adet kutusu ve satır toplamı var.
+- Fiyat her iki yüzeyde de **sunucuda, firmaya göre** çözülüyor; istemci ham fiyat listesini hiç görmüyor.
+- `getCatalogProduct` ile `listCatalog` aynı `CATALOG_SELECT` ve aynı eşleme fonksiyonunu kullanıyor — liste ile detayın aynı varyant için farklı alan göstermesi mümkün değil.
+
+### Vitrin duyuruları (`Announcement`)
+
+Kampanya motorundan **bilerek ayrı** bir model: buradaki hiçbir kayıt bir tutarı
+değiştirmez. Fiyatı değiştiren tek yer promosyon motorudur; bu katman yalnızca
+"ne yazsın, nerede dursun, kime görünsün" sorusunu cevaplar. İkisi tek modelde
+olsaydı bir metin düzeltmesi fiyat mantığına dokunan bir yazma hâline gelirdi.
+
+| Konum | Görünüm |
+|-------|---------|
+| `TICKER` | Üstte kayan şerit; birden fazlası arka arkaya akar, fare üzerine gelince durur |
+| `BANNER` | Katalog üstünde duran kart, çarpıyla kapatılır |
+| `MODAL` | Girişte bir kez açılan pencere; Escape ve arka plan tıklaması da kapatır |
+
+- **Kapatma tarayıcıda hatırlanır**, sunucuya yazılmaz. Bu bir tercih değil "gördüm" işareti: kullanıcı başka bir cihazda duyuruyu tekrar görsün — kaçırılmış bir kampanya duyurusu, iki kez gösterilmiş olandan pahalıdır.
+- **Kapsam veritabanında uygulanır:** "yalnızca bayilere" işaretli duyuru başka gruptaki firmaya hiç gönderilmez, istemcide gizlenmez.
+- Zaman penceresi (`startsAt`/`endsAt`), öncelik, ton ve kapatılabilirlik ayarlanabilir.
+- Yönetimi: **`/admin/announcements`**.
+- `prefers-reduced-motion` açıksa kayan şerit durur.
+
+## 22. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
 | `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
 | `/sifremi-unuttum` | herkes | Sıfırlama bağlantısı talebi (yanıt her zaman aynı) |
 | `/sifremi-unuttum/yenile` | bağlantı sahibi | Yeni şifre; kaydedince tüm oturumlar kapanır |
-| `/portal` | firma yön./personel | Katalog, sepet, sipariş oluşturma |
+| `/portal` | firma yön./personel | **Vitrin:** kategori kenar çubuğu, arama (ad/marka/SKU/barkod), sıralama, stok filtresi, duyurular, sepet |
+| `/portal/urun/[id]` | firma yön./personel | Ürün detayı: görsel galerisi, künye, varyant tablosu (adet + satır toplamı) |
 | `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
 | `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
 | `/portal/users` | firma yöneticisi | Kendi firmasının kullanıcıları |
@@ -530,6 +580,7 @@ Kalanı Faz 2'de — bkz. Bilinen Eksikler.
 | `/admin/users` | süper admin | Tüm kullanıcılar: oluştur, düzenle, şifre, pasife al, sil |
 | `/admin/customer-groups` | süper admin | Müşteri grubu CRUD |
 | `/admin/promotions` | süper admin | Kampanya listesi + kural tabanlı kampanya formu, kullanım/indirim özeti |
+| `/admin/announcements` | süper admin | Vitrin duyuruları: şerit/bant/pencere, ton, öncelik, gruba özel hedefleme |
 | `/admin/documents` | süper admin | Belge serileri: ön ek, basamak, sayaç, varsayılan, ERP serisi |
 | `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
 | `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
@@ -541,7 +592,7 @@ Kalanı Faz 2'de — bkz. Bilinen Eksikler.
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 22. Mobil Uygulama (`apps/mobile`)
+## 23. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -556,7 +607,7 @@ Kalanı Faz 2'de — bkz. Bilinen Eksikler.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 23. API Uçları
+## 24. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -626,6 +677,10 @@ Kalanı Faz 2'de — bkz. Bilinen Eksikler.
 | GET · POST | `/api/admin/promotions` | süper admin |
 | GET · PATCH · DELETE | `/api/admin/promotions/:id` | süper admin |
 | GET | `/api/admin/promotions/rules` | süper admin (kural kataloğu) |
+| GET · POST | `/api/admin/announcements` | süper admin |
+| PATCH · DELETE | `/api/admin/announcements/:id` | süper admin |
+| GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
+| GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
 | GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
@@ -655,7 +710,7 @@ söz değildir.
 
 ### Yakın sırada
 
-- **Arayüz yenilemesi Faz 2** — Faz 1'de ortak tasarım katmanı kuruldu (renk/tipografi/gölge token'ları, manuel koyu tema, paylaşılan Button/Card/Badge/PageHeader, admin+portal+rep'in üçü de tek `AppHeader`'ı kullanıyor) ve login/403/ana sayfa/hesabım/admin panosu/sipariş tahtası bu dille yeniden çizildi. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı henüz eski ad-hoc Tailwind sınıflarında — yeni kabuğun içinde oturuyorlar ama kendi buton/tablo stilleri değişmedi.
+- **Yönetim ekranları henüz eski dilde (Faz 3)** — Faz 1 ortak katmanı, Faz 2 vitrini kurdu. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı hâlâ ad-hoc Tailwind sınıflarında: yeni kabuğun içinde oturuyorlar, token'ları (yazı tipi, koyu tema, odak halkası) otomatik alıyorlar, ama kendi buton/tablo stilleri elle değişmedi. Bunlar vitrin kimliğini **almayacak** — yönetim tarafı nötr dilde kalır.
 - **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor. Veri zaten tutulduğu için iş, kayıt defterine bir veri kümesi eklemekten ibaret.
 - **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı. Aşağıdaki yetim görsel temizliği ve ileride zamanlanmış raporlar da aynı runner'ı bekliyor.
 - **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok). Zamanlayıcı gelmeden tek başına yapılmaz.
@@ -692,7 +747,11 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
-- **Arayüz yenilemesi Faz 2:** kalan admin alt ekranları + rapor tasarımcısı + sipariş detayını yeni Button/Card/Badge/Panel diline taşımak (Faz 1: token'lar + 3 rol kabuğu + ana ekranlar — bitti).
+- **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
+- **Cariye göre ödeme yöntemi ve vade seçenekleri:** `PaymentMethod` bugün iki değerli bir enum; firmaya bağlı seçenek listesi ve sepette 30/60/90 vade seçimi yok.
+- **Plasiyer/admin adına sipariş girişi:** API hazır (`POST /api/orders` plasiyeri kabul ediyor), web ekranı yok — vitrine "hangi firma adına" seçicisi eklenecek.
+- **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok.
+- **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
 - **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).

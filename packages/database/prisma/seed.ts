@@ -136,6 +136,7 @@ async function main() {
   await seedReports(admin.id);
   await seedPromotions(group.id);
   await seedDocumentSeries();
+  await seedAnnouncements();
 
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
 }
@@ -328,6 +329,51 @@ async function seedReports(ownerId: string) {
         config: r.config,
       },
     });
+  }
+}
+
+/**
+ * Vitrin duyuruları — üç konumun da nasıl göründüğünü gösterecek kadar.
+ * Duyurular hiçbir tutarı etkilemez; indirimin kendisi seedPromotions'ta.
+ */
+async function seedAnnouncements() {
+  const items = [
+    {
+      title: "Kasım kampanyası başladı",
+      body: "Seçili kategorilerde %25'e varan indirim. KUPON25 koduyla sepette geçerli.",
+      placement: "BANNER" as const,
+      tone: "brand",
+      priority: 100,
+      linkUrl: "/portal",
+      linkLabel: "Katalogu gör",
+    },
+    {
+      title: "Ücretsiz kargo",
+      body: "5.000 TL üzeri siparişlerde",
+      placement: "TICKER" as const,
+      tone: "info",
+      priority: 50,
+      linkUrl: null,
+      linkLabel: null,
+    },
+    {
+      title: "Yeni sezon ürünleri stokta",
+      body: null,
+      placement: "TICKER" as const,
+      tone: "success",
+      priority: 40,
+      linkUrl: null,
+      linkLabel: null,
+    },
+  ];
+
+  for (const a of items) {
+    const existing = await prisma.announcement.findFirst({
+      where: { title: a.title },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.announcement.create({ data: a });
   }
 }
 

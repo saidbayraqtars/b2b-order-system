@@ -65,7 +65,9 @@ export type BusinessErrorCode =
   // ── password reset ──
   | "RESET_TOKEN_INVALID"
   // ── uploads ──
-  | "INVALID_UPLOAD";
+  | "INVALID_UPLOAD"
+  // ── storefront ──
+  | "ANNOUNCEMENT_NOT_FOUND";
 
 export class BusinessError extends Error {
   constructor(

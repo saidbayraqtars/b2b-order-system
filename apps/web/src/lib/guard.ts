@@ -270,6 +270,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   RESET_TOKEN_INVALID: 422,
   // uploads
   INVALID_UPLOAD: 422,
+  // storefront
+  ANNOUNCEMENT_NOT_FOUND: 404,
 };
 
 /**

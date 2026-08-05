@@ -38,3 +38,4 @@ export * from "./rate-limit";
 export * from "./audit-retention";
 export * from "./activity";
 export * from "./principal-cache";
+export * from "./announcement";

@@ -31,6 +31,9 @@ export default {
       fontFamily: {
         sans: ["var(--font-inter)", ...defaultTheme.fontFamily.sans],
         display: ["var(--font-jakarta)", ...defaultTheme.fontFamily.sans],
+        // Teknik yazı: SKU, stok, koli, fiyat. Ölçen her sayı bununla dizilir —
+        // vitrinin "mühendislik kataloğu" karakteri buradan geliyor.
+        mono: ["var(--font-mono)", ...defaultTheme.fontFamily.mono],
       },
       boxShadow: {
         // Düz gölge yerine katmanlı, markaya yakın nötr ton — kurumsal his.
@@ -38,14 +41,30 @@ export default {
         "card-hover":
           "0 8px 24px -6px rgb(15 23 42 / 0.12), 0 4px 8px -4px rgb(15 23 42 / 0.06)",
       },
+      backgroundImage: {
+        // Teknik çizim kâğıdı. Vitrin zemininde çok soluk durur; kartların
+        // arkasında "ölçekli kâğıt" hissi verir, okumayı bozmaz.
+        "tech-grid":
+          "linear-gradient(to right, rgb(148 163 184 / 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.18) 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        "tech-grid": "32px 32px",
+      },
       keyframes: {
         "fade-in": {
           from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Kayan kampanya şeridi. İçerik iki kez basılır, %50 kaydırınca dikiş
+        // görünmez — sonsuz akış.
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.15s ease-out",
+        marquee: "marquee 30s linear infinite",
       },
     },
   },

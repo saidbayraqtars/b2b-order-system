@@ -40,6 +40,7 @@ body {
     width: 10px;
     height: 10px;
   }
+
   ::-webkit-scrollbar-thumb {
     background-color: rgb(203 213 225);
     border-radius: 999px;
@@ -55,5 +56,38 @@ body {
   }
   ::-webkit-scrollbar-track {
     background: transparent;
+  }
+}
+
+/* ── VİTRİN: endüstriyel / teknik kimlik ────────────────────────────────────
+   Yalnızca müşteriye bakan katalog yüzeyinde kullanılır. Yönetim ekranları
+   Faz 1'in nötr dilinde kalır — orada veri girişi var, vitrin karakteri değil. */
+@layer components {
+  /* Ölçen her işaret: SKU, stok, koli, adet, fiyat. Sekmeli rakam şart —
+     alt alta gelen fiyatların basamakları hizalanmazsa tablo okunmuyor. */
+  .tech-num {
+    @apply font-mono tabular-nums;
+  }
+
+  /* Levha numarası / bölüm etiketi. Vitrindeki her başlığın üstünde bunun
+     gibi küçük, aralıklı, büyük harf bir "kod" durur. */
+  .tech-label {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-neutral-500;
+  }
+
+  /* Teknik çizim kâğıdı zemini — vitrin gövdesinde. */
+  .tech-paper {
+    @apply bg-tech-grid bg-tech-grid;
+  }
+}
+
+/* Kayan şeridin üzerine fare gelince dursun: kullanıcı okumak isteyebilir. */
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none !important;
   }
 }

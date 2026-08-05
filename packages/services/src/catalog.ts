@@ -74,52 +74,71 @@ export interface ListCatalogParams {
   search?: string;
 }
 
-export async function listCatalog(
-  params: ListCatalogParams,
-): Promise<CatalogProduct[]> {
-  const ctx = await loadCompanyPricingContext(params.companyId);
-
-  const products = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      ...(params.categoryId ? { categoryId: params.categoryId } : {}),
-      ...(params.search
-        ? { name: { contains: params.search, mode: "insensitive" } }
-        : {}),
-    },
+/**
+ * The columns every catalog surface needs. Shared so the list and the single
+ * product page cannot drift into showing different fields for the same variant.
+ */
+const CATALOG_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  brand: true,
+  images: true,
+  vatRate: true,
+  categoryId: true,
+  variants: {
     select: {
       id: true,
-      name: true,
-      slug: true,
-      brand: true,
-      images: true,
-      vatRate: true,
-      categoryId: true,
-      variants: {
+      sku: true,
+      barcode: true,
+      color: true,
+      size: true,
+      unitsPerCase: true,
+      moqUnits: true,
+      stock: true,
+      prices: {
         select: {
-          id: true,
-          sku: true,
-          barcode: true,
-          color: true,
-          size: true,
-          unitsPerCase: true,
-          moqUnits: true,
-          stock: true,
-          prices: {
-            select: {
-              customerGroupId: true,
-              minQuantity: true,
-              price: true,
-            },
-          },
+          customerGroupId: true,
+          minQuantity: true,
+          price: true,
         },
-        orderBy: { sku: "asc" },
       },
     },
-    orderBy: { name: "asc" },
-  });
+    orderBy: { sku: "asc" },
+  },
+} as const;
 
-  return products.map((p) => ({
+type CatalogRow = {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string | null;
+  images: string[];
+  vatRate: number;
+  categoryId: string;
+  variants: Array<{
+    id: string;
+    sku: string;
+    barcode: string | null;
+    color: string | null;
+    size: string | null;
+    unitsPerCase: number;
+    moqUnits: number;
+    stock: number;
+    prices: Array<{
+      customerGroupId: string | null;
+      minQuantity: number;
+      price: unknown;
+    }>;
+  }>;
+};
+
+/** One product row → the company's view of it, prices resolved. */
+function toCatalogProduct(
+  p: CatalogRow,
+  ctx: CompanyPricingContext,
+): CatalogProduct {
+  return {
     id: p.id,
     name: p.name,
     slug: p.slug,
@@ -140,7 +159,7 @@ export async function listCatalog(
       };
       try {
         const r = resolvePrice({
-          prices: v.prices,
+          prices: v.prices as Parameters<typeof resolvePrice>[0]["prices"],
           customerGroupId: ctx.customerGroupId,
           quantity: v.moqUnits,
           productId: p.id,
@@ -158,7 +177,59 @@ export async function listCatalog(
         return { ...base, unitPrice: null, discountPerUnit: null, netUnitPrice: null };
       }
     }),
-  }));
+  };
+}
+
+export async function listCatalog(
+  params: ListCatalogParams,
+): Promise<CatalogProduct[]> {
+  const ctx = await loadCompanyPricingContext(params.companyId);
+
+  const products = await prisma.product.findMany({
+    where: {
+      isActive: true,
+      ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      ...(params.search
+        ? {
+            OR: [
+              { name: { contains: params.search, mode: "insensitive" } },
+              { brand: { contains: params.search, mode: "insensitive" } },
+              // Müşteri elindeki SKU ya da barkodla arar; adı bilmesi gerekmez.
+              {
+                variants: {
+                  some: {
+                    OR: [
+                      { sku: { contains: params.search, mode: "insensitive" } },
+                      { barcode: { contains: params.search, mode: "insensitive" } },
+                    ],
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    select: CATALOG_SELECT,
+    orderBy: { name: "asc" },
+  });
+
+  return products.map((p) => toCatalogProduct(p, ctx));
+}
+
+/**
+ * One product, priced for one company. Returns null when the product does not
+ * exist or is not active — the caller renders a 404 rather than an error.
+ */
+export async function getCatalogProduct(
+  productId: string,
+  companyId: string,
+): Promise<CatalogProduct | null> {
+  const ctx = await loadCompanyPricingContext(companyId);
+  const product = await prisma.product.findFirst({
+    where: { id: productId, isActive: true },
+    select: CATALOG_SELECT,
+  });
+  return product ? toCatalogProduct(product, ctx) : null;
 }
 
 // ── Category tree ──
