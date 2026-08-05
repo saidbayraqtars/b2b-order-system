@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-05 · Adım 19 sonu
+Son güncelleme: 2026-08-05 · Adım 19 + arayüz yenilemesi Faz 1 sonu
 
 ---
 
@@ -33,6 +33,7 @@ Son güncelleme: 2026-08-05 · Adım 19 sonu
 | 17 | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon | ✅ |
 | 18 | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları | ✅ |
 | 19 | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği | ✅ |
+| 20 | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu | ✅ |
 
 ---
 
@@ -464,7 +465,46 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Üç kural bunu güvenli kılıyor: (1) önbellek asla "yetkili" demez, yalnızca satırı saklar — karar hâlâ her istekte `checkPrincipal`'da verilir; (2) yetkiyi değiştiren **her** yazma (rol, firma, aktiflik, şifre, silme, oturum iptali) girdiyi **yazmadan sonra** düşürür, böylece iptal bir sonraki istekte hissedilir; (3) ıskalamak güvenli yön — boş önbellek bir sorguya, bayat önbellek doğruluğa mal olur.
 - Sınırı yukarıda yazılı: çok süreçli kurulumda iptal diğer süreçlere ulaşmaz.
 
-## 20. Web Portal (`apps/web`)
+## 20. Arayüz Tasarım Katmanı (Adım 20 — Faz 1)
+
+Ekranlar tek tek yamanmadı; önce ortak bir katman kuruldu, ekranlar onun
+üstüne oturuyor. Amaç: renk/boşluk/buton kararının **tek yerde** verilmesi.
+
+### Token'lar
+
+- **`brand` renk skalası** (`tailwind.config.ts`) — koddaki dağınık `indigo-600` kullanımını resmileştirdi; yeni bir renk ailesi eklemedi, var olan örtük markayı adlandırdı.
+- **Tipografi ikilisi:** gövde Inter, başlık Plus Jakarta Sans (`next/font` ile, CSS değişkeni olarak).
+- **Gölge:** `shadow-card` / `shadow-card-hover` — düz gölge yerine katmanlı derinlik.
+- `globals.css`: marka rengiyle tutarlı odak halkası (`focus-visible`), tonlu kaydırma çubuğu ve seçim rengi.
+
+### Koyu tema
+
+- **`darkMode: "class"`** — sistem tercihi **değil**, kullanıcı üst bardaki anahtarla seçer.
+- `lib/theme.ts` boyamadan önce çalışan bir init script veriyor: tema `localStorage`'dan okunup `<html>`'e yazılıyor, böylece sayfa yanlış temada açılıp geri dönmüyor (FOUC yok).
+
+### Paylaşılan bileşenler
+
+| Dosya | İçerik |
+|-------|--------|
+| `components/form.tsx` | `Button` (primary/secondary/danger/success/ghost + `loading`), `TextInput`, `Select`, `TextArea`, `Label` (artık gerçek `<label>`), `Panel`, `ErrorLine` |
+| `components/ui.tsx` | `Card`, `Badge` (ton bazlı), `PageHeader`, `LoadingState`, `EmptyState` |
+| `components/app-shell.tsx` | `AppHeader` — marka işareti, ikonlu gezinme, aktif sekme vurgusu, tema anahtarı, çıkış |
+| `components/portal-nav.tsx` | Portalın rol bazlı link listesi (`AppHeader`'ı sarar) |
+
+- `form.tsx` zaten 20 yönetim dosyası tarafından içe aktarılıyordu; oradaki değişiklik o ekranlara kendiliğinden yansıdı.
+- **Üç rolün kabuğu tek bileşen oldu:** admin, portal ve plasiyer panelleri artık aynı `AppHeader`'ı kullanıyor — önceden her biri kendi başlığını elle çiziyordu.
+- Bu birleştirme bir **boşluğu da kapattı:** portalın alt sayfaları farklı ve eksik link setleri taşıyordu; `/portal/orders`'tan `/portal/approvals`'a geçilemiyordu. Artık her sayfadan her sayfaya gidiliyor.
+
+### Bu dille yeniden çizilen ekranlar
+
+`/login` · `/403` · `/` · `/hesabim` · `/admin` (pano + cari tablosu) · portalın beş sayfası · `/rep` · sipariş tahtası (`orders-board`, üç ekranda birden kullanılıyor).
+
+`documents/*` bilinçli olarak **dokunulmadı** — yazdırma şablonu kendi kuralına
+tabi (beyaz kâğıt, koyu tema yok, araç çubuğu baskıda kaybolur).
+
+Kalanı Faz 2'de — bkz. Bilinen Eksikler.
+
+## 21. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -501,7 +541,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 21. Mobil Uygulama (`apps/mobile`)
+## 22. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -516,7 +556,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 22. API Uçları
+## 23. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -593,27 +633,58 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 
 ---
 
+## Bilinçli Sınırlar
+
+Bunlar çözülmeyi bekleyen eksik **değil** — gerekçesi olan karar. Kaldırılsalar
+yerlerine geçtikleri şey (kayıt defterinin güvenlik sınırı, kredi limitinin
+ölçüm anı, raporun okunabilirliği) bozulur. Bu yüzden yapılacaklar listesinde
+değil burada duruyorlar.
+
+- **Kullanıcı kendi JOIN'ini kuramıyor** — bir rapor tek veri kümesi okur; ilişkiler kayıt defterinde **bizim** bildirdiğimiz join'lerdir. Serbest JOIN, kayıt defterinin güvenlik sınırını (tanımlı olmayan alan yoktur) delerdi. Yeni bir ilişki gerekiyorsa kayıt defterine bir satır eklenir, arayüz kendiliğinden görür.
+- **Çoka-çok ilişkiler alan olarak sunulmuyor** — firmanın adresleri, siparişin faturaları gibi liste ilişkiler satır çoğaltacağı için alan listesinde yok; bunlar kendi veri kümelerinden okunur.
+- **Gruplanmış raporda 5.000 sınırı** — satır değil **grup** sınırı; aşılırsa sonuç `truncated` işaretiyle döner. 5.000 gruplu bir tablo zaten okunan bir rapor değildir.
+- **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
+- **Faturada tek cari borç** — kısmi faturalar tek bir sipariş borcunu paylaşıyor; borç fatura başına parçalanmıyor (kredi limiti sipariş anında ölçüldüğü için borç da sipariş anında doğuyor). Vade en geç faturanın vadesine göre işliyor.
+
+---
+
 ## Bilinen Eksikler
 
-- **E-Fatura/E-İrsaliye entegrasyonu yok** — belge üretiliyor ve yazdırılıyor, ancak GİB entegratörüne (EDM, Foriba, Sovos) gönderim yok. Çıktı tarayıcıdan yazdırma ile alınıyor; sunucu tarafı PDF üretimi yok.
-- **Faturada tek cari borç** — kısmi faturalar tek bir sipariş borcunu paylaşıyor; borç fatura başına parçalanmıyor (kredi limiti sipariş anında ölçüldüğü için borç da sipariş anında doğuyor). Vade en geç faturanın vadesine göre işliyor.
-- **Kullanıcı kendi JOIN'ini kuramıyor (tasarım gereği)** — bir rapor tek veri kümesi okur; ilişkiler kayıt defterinde **bizim** bildirdiğimiz join'lerdir. Serbest JOIN, kayıt defterinin güvenlik sınırını (tanımlı olmayan alan yoktur) delerdi. Yeni bir ilişki gerekiyorsa kayıt defterine bir satır eklenir, arayüz kendiliğinden görür.
-- **Çoka-çok ilişkiler alan olarak sunulmuyor** — firmanın adresleri, siparişin faturaları gibi liste ilişkiler satır çoğaltacağı için alan listesinde yok; bunlar kendi veri kümelerinden okunur.
-- **Gruplanmış raporda satır sınırı 5.000** — satır değil **grup** sınırı; aşılırsa sonuç `truncated` işaretiyle döner. 5.000 gruplu bir tablo zaten okunan bir rapor değildir.
-- **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
-- Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
+Gerçekten yapılacak işler. Sıra yaklaşık olarak maliyet/etki sırasıdır,
+söz değildir.
+
+### Yakın sırada
+
+- **Arayüz yenilemesi Faz 2** — Faz 1'de ortak tasarım katmanı kuruldu (renk/tipografi/gölge token'ları, manuel koyu tema, paylaşılan Button/Card/Badge/PageHeader, admin+portal+rep'in üçü de tek `AppHeader`'ı kullanıyor) ve login/403/ana sayfa/hesabım/admin panosu/sipariş tahtası bu dille yeniden çizildi. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı henüz eski ad-hoc Tailwind sınıflarında — yeni kabuğun içinde oturuyorlar ama kendi buton/tablo stilleri değişmedi.
+- **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor. Veri zaten tutulduğu için iş, kayıt defterine bir veri kümesi eklemekten ibaret.
+- **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı. Aşağıdaki yetim görsel temizliği ve ileride zamanlanmış raporlar da aynı runner'ı bekliyor.
+- **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok). Zamanlayıcı gelmeden tek başına yapılmaz.
+
+### Mobil
+
+- Sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
+- **Sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
+- Uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
+
+### Daha büyük
+
 - **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
-- **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor.
-- **Mobil sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
-- **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
-- **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı.
+- **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
+- **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok). Önce sağlayıcı seçimi gerekir.
+
+### Canlıya çıkışta çözülecek
+
+Üçü de dağıtım topolojisine bağlı. Kurulumun şekli (kaç süreç, hangi ters vekil)
+belli olmadan yazılacak kod tahmine dayanır — bu yüzden geliştirme sırasında
+değil, canlıya çıkış turunda ele alınır.
+
 - **Principal önbelleği süreç içi** — birden çok süreç/örnek çalışıyorsa bir süreçteki iptal diğerlerine ulaşmaz, oradaki oturum TTL kadar (5 sn) hayatta kalabilir. Yük dengeleyici arkasına konacaksa iptal sinyali paylaşılan bir kanala (Redis pub/sub) taşınmalı; TTL'i büyütmek çözüm değil.
 - **Hız sınırı yalnızca giriş formunda** — diğer uçlar için genel bir istek sınırı yok; ters vekil (nginx/Cloudflare) katmanı varsayılıyor.
 - **`x-forwarded-for` güvenilir vekil gerektirir** — güvenilen bir vekil üzerine yazmıyorsa adres istemci kontrolündedir. Hız sınırı bu yüzden maliyeti artıran bir fren, erişim denetimi değil.
-- **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
-- **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok).
-- Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
-- **Arayüz yenilemesi Faz 1 bitti, Faz 2 bekliyor** — ortak tasarım katmanı kuruldu (renk/tipografi/gölge token'ları, manuel koyu tema, paylaşılan Button/Card/Badge/PageHeader, admin+portal+rep'in üçü de tek `AppHeader`'ı kullanıyor) ve login/403/ana sayfa/hesabım/admin panosu/sipariş tahtası bu dille yeniden çizildi. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı henüz eski ad-hoc Tailwind sınıflarında — yeni kabuğun içinde oturuyorlar ama kendi buton/tablo stilleri değişmedi.
+
+### Dış bağımlılık bekliyor
+
+- **E-Fatura/E-İrsaliye entegrasyonu yok** — belge üretiliyor ve yazdırılıyor, ancak GİB entegratörüne (EDM, Foriba, Sovos) gönderim yok. Çıktı tarayıcıdan yazdırma ile alınıyor; sunucu tarafı PDF üretimi yok. Kod ikinci adım: önce entegratör sözleşmesi (ücretli) gerekiyor.
 
 ## Sonraki Adımlar (planlanan)
 
@@ -622,7 +693,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz yenilemesi Faz 2:** kalan admin alt ekranları + rapor tasarımcısı + sipariş detayını yeni Button/Card/Badge/Panel diline taşımak (Faz 1: token'lar + 3 rol kabuğu + ana ekranlar — bitti).
-- **İş zamanlayıcı:** üç iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, zamanlanmış rapor gönderimi.
+- **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
 - **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
