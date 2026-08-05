@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-04 · Adım 14 sonu
+Son güncelleme: 2026-08-05 · Adım 19 sonu
 
 ---
 
@@ -39,7 +39,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 ## 1. Altyapı & Mimari
 
 - **Turborepo + pnpm workspace** monorepo. Uygulamalar `apps/*`, paylaşılan kod `packages/*`.
-- **Paketler:** `@repo/database` (Prisma client + şema + seed), `@repo/types` (Zod şemaları + tip literalleri), `@repo/auth` (Auth.js config + edge-safe RBAC), `@repo/services` (domain katmanı), `@repo/tsconfig`.
+- **Paketler:** `@repo/database` (Prisma client + şema + seed), `@repo/types` (Zod şemaları + tip literalleri), `@repo/auth` (Auth.js config + edge-safe RBAC), `@repo/services` (domain katmanı), `@repo/eslint-config`, `@repo/tsconfig`.
 - **Uygulamalar:** `apps/web` (Next.js 14 App Router — hem portal hem API), `apps/mobile` (Expo SDK 51 / RN 0.74).
 - **Postgres** Docker'da (host portu **5433**), Prisma migration'ları ile versiyonlu.
 - Domain katmanı Prisma'ya bağımlı; edge'de çalışan kod (middleware, RBAC) Prisma'dan tamamen ayrı — edge runtime bozulmuyor.
@@ -57,14 +57,18 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | `Product` / `ProductVariant` | Ürün + varyant (SKU, barkod, renk, beden, koli adedi, min sipariş, stok) |
 | `Price` | Varyant × müşteri grubu × miktar kademesi fiyatı |
 | `CompanyDiscount` | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) |
-| `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; kargo/takip no ve sevk/teslim/iptal zaman damgaları |
+| `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; nakliye bedeli/indirimi, kargo/takip no, sevk/teslim/iptal zaman damgaları. Kalemde sevk edilen/faturalanan miktar ve hediye işareti |
 | `OrderStatusHistory` | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only) |
-| `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı |
+| `DocumentSeries` | Belge serisi: tür (irsaliye/fatura), ön ek, basamak, son verilen numara, varsayılan mı, numarayı ERP mi veriyor (`externalOnly`) |
+| `Shipment` / `ShipmentItem` | İrsaliye başlığı + sevk edilen miktarlar; sipariş durumu buradan türetilir |
+| `Invoice` / `InvoiceItem` | Fatura başlığı + faturalanan miktarlar; para yeniden hesaplanmaz, sipariş satırından pay alınır. Vade tarihi burada doğar |
+| `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır |
 | `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
-| `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
+| `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
 | `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
-| `Cart` / `CartItem` | Taslak sepet (şema hazır — şu an sepet istemci tarafında tutuluyor) |
+| `Cart` / `CartItem` | Sunucudaki sepet: **(firma, sahip)** başına tek satır, yalnızca varyant + adet tutar. Fiyat okurken çözülür |
+| `PasswordResetToken` | "Şifremi unuttum" bileti: yalnızca token'ın SHA-256'sı, son kullanma ve harcanma zamanı |
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
 - `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration.
@@ -290,10 +294,10 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **ESLint** her pakette çalışıyor (`pnpm lint`, 6 paket, sıfır uyarı toleransı). Ortak yapılandırma `@repo/eslint-config`: `base` (TS), `next` (web), `react-native` (mobil).
   - Bilerek **tip-farkındalıklı değil** — tip hataları zaten `pnpm typecheck`'te yakalanıyor, tip-farkındalıklı lint ise üretilmiş Prisma client'ına bağımlı olurdu. Geriye tsc'nin söylemediği sınıf kalıyor: ölü kod, kaçak `any`, konsol gürültüsü.
   - Mobilde `eslint-config-expo` kullanılmıyor: o preset @typescript-eslint v8'de kaldırılmış kurallara atıf yapıyor, workspace ise v8 kullanıyor.
-- **Vitest** iki ayrı takım hâlinde (`pnpm test`):
-  - **Birim (27 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, kayıt defteri doğrulaması.
-  - **Entegrasyon (15 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
-  - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması.
+- **Vitest** iki ayrı takım hâlinde (`pnpm test`) — bugün **151 test / 11 dosya**:
+  - **Birim (70 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
+  - **Entegrasyon (81 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
+  - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi.
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
 
 ## 14. Belgeler & Sevkiyat (Adım 14)
@@ -472,7 +476,9 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
 | `/portal/users` | firma yöneticisi | Kendi firmasının kullanıcıları |
 | `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
-| `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları |
+| `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları, irsaliye/fatura paneli |
+| `/documents/shipments/[id]` | 4 rol (belgenin firması) | Yazdırılabilir irsaliye — fiyat yok |
+| `/documents/invoices/[id]` | 4 rol (belgenin firması) | Yazdırılabilir fatura — vade, tutar, KDV kırılımı |
 | `/admin` | süper admin | Cari hesap tablosu + tüm siparişler, limit override onayı |
 | `/admin/products` | süper admin | Ürün listesi: arama, kategori filtresi, stok/varyant/fiyatsız uyarısı |
 | `/admin/products/new` | süper admin | Yeni ürün formu |
@@ -483,11 +489,14 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/admin/companies/[id]` | süper admin | Firma düzenleme + adresler + kullanıcılar + iskontolar |
 | `/admin/users` | süper admin | Tüm kullanıcılar: oluştur, düzenle, şifre, pasife al, sil |
 | `/admin/customer-groups` | süper admin | Müşteri grubu CRUD |
+| `/admin/promotions` | süper admin | Kampanya listesi + kural tabanlı kampanya formu, kullanım/indirim özeti |
+| `/admin/documents` | süper admin | Belge serileri: ön ek, basamak, sayaç, varsayılan, ERP serisi |
 | `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
 | `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
 | `/reports` | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar |
 | `/reports/new` · `/reports/[id]` | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme |
-| `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama |
+| `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli |
+| `/admin/activity` | süper admin | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda |
 | `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
@@ -500,7 +509,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Plasiyer akışı:** Müşterilerim (portföy, arama, bakiye + kullanılabilir limit) → Firma → Katalog / Sepet / Siparişler / Ziyaret / Tahsilat.
 - **Firma kullanıcısı akışı:** doğrudan kendi firmasına düşer, plasiyer ekranları gizlidir.
 - **Katalog:** firmaya çözülmüş fiyat, iskontolu fiyat üstü çizili gösterim, stok/koli/min bilgisi, stoksuz ve fiyatsız varyant sipariş edilemez.
-- **Sepet:** koli katına yuvarlayan adet kontrolü, KDV'li toplam önizlemesi, ödeme yöntemi seçimi. **Firma bazlı** — müşteri değişince sıfırlanır (fiyat firmaya özeldir).
+- **Sepet:** koli katına yuvarlayan adet kontrolü, ödeme yöntemi seçimi, kupon alanı. **Firma bazlı** — müşteri değişince sıfırlanır (fiyat firmaya özeldir). Toplam **sunucudan** geliyor (`POST /api/orders/quote`): kampanyalar, hediyeler ve KDV cihazda değil sunucuda hesaplanıyor; cihazdaki toplam yalnızca istek uçarken görünen yer tutucu. Sepet satırları hâlâ cihazda tutuluyor (web sepeti sunucuda — bkz. Bilinen Eksikler).
 - **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz.
 - **Tahsilat:** tutar (virgüllü klavye desteği), ödeme yöntemi, açıklama; sonuç bakiyesi sunucudan döner.
 - **Sipariş detayı:** listeden dokunarak açılır — kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi ve durum geçmişi. Salt okunur.
@@ -597,29 +606,31 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor.
 - **Mobil sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
 - **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
-- **Zamanlayıcı yok** — süresi geçmiş sıfırlama biletlerini silen `purgePasswordResetTokens()` var ama onu çağıran bir cron/job runner yok; şimdilik elle çağrılıyor.
-- **Saklama temizliği elle tetikleniyor** — `/admin/audit` ekranından çalıştırılıyor; iş zamanlayıcı olmadığı için otomatik değil.
+- **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı.
 - **Principal önbelleği süreç içi** — birden çok süreç/örnek çalışıyorsa bir süreçteki iptal diğerlerine ulaşmaz, oradaki oturum TTL kadar (5 sn) hayatta kalabilir. Yük dengeleyici arkasına konacaksa iptal sinyali paylaşılan bir kanala (Redis pub/sub) taşınmalı; TTL'i büyütmek çözüm değil.
 - **Hız sınırı yalnızca giriş formunda** — diğer uçlar için genel bir istek sınırı yok; ters vekil (nginx/Cloudflare) katmanı varsayılıyor.
 - **`x-forwarded-for` güvenilir vekil gerektirir** — güvenilen bir vekil üzerine yazmıyorsa adres istemci kontrolündedir. Hız sınırı bu yüzden maliyeti artıran bir fren, erişim denetimi değil.
 - **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
 - **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok).
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
+- **Arayüz işlevsel ama fazla sade** — ekranlar çalışıyor, ancak ortak bir tasarım dili (tipografi ölçeği, renk sistemi, bileşen kütüphanesi, boşluk düzeni) yok; her ekran kendi Tailwind sınıflarını taşıyor. Tek tek yamamak yerine tek bir tasarım katmanı olarak ele alınacak.
 
 ## Sonraki Adımlar (planlanan)
 
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
+- **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
+- **Arayüz yenilemesi:** ekranları tek tek yamalamak yerine tek bir tasarım katmanı — mevcut arayüz işlevsel ama fazla sade.
+- **İş zamanlayıcı:** üç iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, zamanlanmış rapor gönderimi.
+- **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
+- **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
-- **Promosyon motoru v2:** hediye ürün (X alana Y bedava), kargo/nakliye indirimi, kampanya koşullarında VEYA, mobilde kupon alanı, kampanya performans raporu.
-- **Rapor tasarımcısı v2:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), veri kümeleri arası birleştirme, veritabanı tarafında gruplama (20.000 satır tarama sınırını kaldırmak için).
-- **Kalite:** ESLint kurulumu, domain katmanı için birim testleri, API için entegrasyon testleri, CI.
+- **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
 ### Uzun vadeli backlog
 
 **Operasyon & sipariş**
-- Kısmi sevkiyat: `OrderItem.quantityShipped` / `quantityPending`, parçalı irsaliye-fatura.
 - İade & değişim (RMA): talep → onay → ters cari + ters stok hareketi.
 - Teklif yönetimi: sepeti teklife çevir → plasiyer özel fiyat/vade → müşteri onayı → siparişe dönüşüm.
 - Hızlı & periyodik sipariş: geçmiş siparişi kopyala, SKU+miktar CSV/Excel toplu sipariş, abonelik siparişi.
@@ -633,7 +644,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - Holding/şube konsolidasyonu: şubeler kendi siparişini verir, limit + fatura ana caride birleşir.
 
 **Yönetim**
-- Firma & kullanıcı CRUD: şirket ekleme, kredi limiti + vade tanımı, şirket içi alt kullanıcı yetkileri.
 - Fine-grained RBAC/ABAC: bölge bazlı firma görünürlüğü, kategori bazlı iskonto yetkisi (kural matrisi).
 - Depo/şube bazlı stok + fiyat: carinin bağlı deposundan stok düşümü, bölgeye göre fiyat.
 
@@ -667,6 +677,5 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - Bildirim motoru: FCM push + SendGrid/Twilio; sipariş durumu, onay bekleyen, limit aşımı tetikleyicileri.
 - Çoklu para birimi + çoklu dil: USD/EUR/TRY fiyat listeleri, TCMB kur entegrasyonu.
 - Dışa açık B2B API + Webhook + OpenAPI: büyük bayi kendi ERP'sinden otomatik sipariş geçer.
-- Audit log (KVKK/GDPR): fiyat/limit/yetki değişimi — kim, ne zaman, hangi IP; append-only.
 - Temsilci devir defteri: plasiyer değişince sipariş, çek-senet, ziyaret ve sepet devri.
 - Sunum/maskeleme modu: plasiyer müşteri yanındayken maliyet ve diğer müşteri bakiyeleri gizlenir.

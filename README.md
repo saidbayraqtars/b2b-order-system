@@ -9,11 +9,13 @@ apps/
   web/        Next.js App Router — Admin panel + B2B portal + API
   mobile/     Expo React Native — Plasiyer + Müşteri app
 packages/
-  database/   Prisma schema, client singleton, seed
-  types/      Zod schemas + inferred TS types (edge-safe single source)
-  auth/       Auth.js v5 edge-safe config + RBAC helpers
-  services/   Domain layer — pricing, orders, ledger, reports, admin, security
-  tsconfig/   Shared TS base configs
+  database/       Prisma schema, client singleton, seed
+  types/          Zod schemas + inferred TS types (edge-safe single source)
+  auth/           Auth.js v5 edge-safe config + RBAC helpers
+  services/       Domain layer — pricing, orders, documents, ledger, promotions,
+                  cart, reports, mail, admin, security
+  eslint-config/  Shared ESLint presets (base / next / react-native)
+  tsconfig/       Shared TS base configs
 ```
 
 **`FEATURES.md` is the feature inventory** — what actually works today, the design
@@ -37,6 +39,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 #   Generate an auth secret:
 cd apps/web && npx auth secret && cd ../..
 #   Leave SMTP_HOST empty for local work: mail is printed to the log, not sent.
+#   UPLOAD_DIR defaults to ./uploads — product images are written there, not into public/.
 
 # 4) Postgres (Docker) — host port 5433, so it can't collide with a local 5432
 docker compose up -d
@@ -60,12 +63,18 @@ pnpm test        # Vitest: unit suite + integration suite
 pnpm build       # next build + package builds
 ```
 
-`pnpm test` runs two suites. The unit suite is pure domain maths and needs nothing.
-The integration suite talks to a real Postgres, builds its own fixture (group, company,
-product, price tiers, campaigns) and touches only its own rows — so it is safe against a
-database that already has seed data. Without `DATABASE_URL` it is skipped rather than
-failed. CI (`.github/workflows/ci.yml`) runs all four against a Postgres service
-container.
+`pnpm test` runs two suites, 151 tests over 11 files today. The unit suite (70) is pure
+domain maths and needs nothing. The integration suite (81) talks to a real Postgres,
+builds its own fixture (group, company, product, price tiers, campaigns, document series)
+and touches only its own rows — so it is safe against a database that already has seed
+data. Without `DATABASE_URL` it is skipped rather than failed. CI
+(`.github/workflows/ci.yml`) runs all four commands against a Postgres service container.
+
+One fixture is worth knowing about: a test that asserts on document numbers must call
+`useOwnDefaultSeries()`, because a series only issues numbers while it is the *default*
+one. Creating a series and forgetting to promote it leaves the test drawing from the
+seeded counter, which passes exactly once — on a database where that counter is still
+zero.
 
 ## Seed accounts (password: `Password123!`)
 
@@ -80,14 +89,15 @@ container.
 
 Source of truth: `packages/auth/src/rbac.ts`.
 
-| Prefix     | Allowed roles                                        |
-| ---------- | ---------------------------------------------------- |
-| `/admin`   | SUPER_ADMIN                                          |
-| `/rep`     | SALES_REP, SUPER_ADMIN                               |
-| `/portal`  | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN            |
-| `/reports` | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN                |
-| `/orders`  | all four (rows scoped server-side)                   |
-| `/hesabim` | all four (own account only)                          |
+| Prefix       | Allowed roles                                      |
+| ------------ | -------------------------------------------------- |
+| `/admin`     | SUPER_ADMIN                                        |
+| `/rep`       | SALES_REP, SUPER_ADMIN                             |
+| `/portal`    | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN          |
+| `/reports`   | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN              |
+| `/orders`    | all four (rows scoped server-side)                 |
+| `/documents` | all four (document authorized against its company) |
+| `/hesabim`   | all four (own account only)                        |
 
 ## Authorization model
 
