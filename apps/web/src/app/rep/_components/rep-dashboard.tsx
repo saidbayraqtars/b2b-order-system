@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReceivablesReport, SalesSummary } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { Card, EmptyState, LoadingState } from "@/components/ui";
 
 // Web view of a rep's portfolio: what is owed and how the last 30 days went.
 // Ordering, check-in and collection stay in the mobile app — this is the desk
@@ -19,11 +20,11 @@ export function RepDashboard() {
   });
 
   if (receivables.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (receivables.isError) {
     return (
-      <p className="text-sm text-red-600">
+      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
         {(receivables.error as Error).message}
       </p>
     );
@@ -47,8 +48,8 @@ export function RepDashboard() {
         />
       </section>
 
-      <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <header className="border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+      <section className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
+        <header className="border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
           <h2 className="text-sm font-semibold">Portföy alacakları</h2>
         </header>
         <table className="w-full text-left text-sm">
@@ -87,8 +88,8 @@ export function RepDashboard() {
             ))}
             {d.companies.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center text-neutral-500" colSpan={5}>
-                  Portföyünüzde firma yok.
+                <td colSpan={5}>
+                  <EmptyState label="Portföyünüzde firma yok." />
                 </td>
               </tr>
             )}
@@ -97,8 +98,8 @@ export function RepDashboard() {
       </section>
 
       {sales.data && sales.data.topCompanies.length > 0 && (
-        <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <header className="border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+        <section className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
+          <header className="border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
             <h2 className="text-sm font-semibold">Son 30 günün en iyileri</h2>
           </header>
           <table className="w-full text-left text-sm">
@@ -143,11 +144,15 @@ function Stat({
   danger?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <Card>
       <p className="text-xs text-neutral-500">{label}</p>
-      <p className={`text-lg tabular-nums ${danger ? "text-red-600" : ""}`}>
+      <p
+        className={`mt-0.5 text-lg font-semibold tabular-nums ${
+          danger ? "text-red-600 dark:text-red-400" : "text-neutral-900 dark:text-neutral-50"
+        }`}
+      >
         {value}
       </p>
-    </div>
+    </Card>
   );
 }

@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { SignOutButton } from "@/components/sign-out-button";
+import { PortalNav } from "@/components/portal-nav";
 import { OrdersBoard } from "@/components/orders-board";
 
 // The buying company's own order list. Staff read it; approving stays on
@@ -13,28 +13,28 @@ export default async function PortalOrdersPage() {
   ]);
   const canAct = user.role !== "COMPANY_STAFF";
 
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Siparişlerim</h1>
-          <p className="text-sm text-neutral-500">{user.name}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portal" className="text-sm underline">
-            Katalog
-          </Link>
-          <Link href="/portal/statement" className="text-sm underline">
-            Ekstre
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
+  const company = user.companyId
+    ? await prisma.company.findUnique({
+        where: { id: user.companyId },
+        select: { name: true },
+      })
+    : null;
 
-      <OrdersBoard
-        canApproveCredit={user.role === "SUPER_ADMIN"}
-        canAct={canAct}
+  return (
+    <div>
+      <PortalNav
+        role={user.role}
+        companyName={company?.name ?? user.name}
+        userName={user.name}
+        current="/portal/orders"
       />
-    </main>
+      <div className="mx-auto max-w-5xl px-4 pb-6">
+        <h1 className="mb-4 text-lg font-semibold">Siparişlerim</h1>
+        <OrdersBoard
+          canApproveCredit={user.role === "SUPER_ADMIN"}
+          canAct={canAct}
+        />
+      </div>
+    </div>
   );
 }

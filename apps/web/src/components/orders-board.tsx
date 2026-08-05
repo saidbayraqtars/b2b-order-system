@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderStatus, PaymentMethod } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { Button } from "@/components/form";
+import { Badge, EmptyState, LoadingState, type BadgeTone } from "@/components/ui";
 
 export interface OrderListItem {
   id: string;
@@ -30,16 +32,16 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Reddedildi",
 };
 
-const STATUS_CLASS: Record<OrderStatus, string> = {
-  DRAFT: "bg-neutral-100 text-neutral-700",
-  PENDING_APPROVAL: "bg-amber-100 text-amber-800",
-  PENDING_CREDIT: "bg-orange-100 text-orange-800",
-  CONFIRMED: "bg-emerald-100 text-emerald-800",
-  PROCESSING: "bg-blue-100 text-blue-800",
-  SHIPPED: "bg-indigo-100 text-indigo-800",
-  DELIVERED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-neutral-200 text-neutral-600",
-  REJECTED: "bg-red-100 text-red-800",
+const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
+  DRAFT: "neutral",
+  PENDING_APPROVAL: "warning",
+  PENDING_CREDIT: "warning",
+  CONFIRMED: "success",
+  PROCESSING: "info",
+  SHIPPED: "brand",
+  DELIVERED: "success",
+  CANCELLED: "neutral",
+  REJECTED: "danger",
 };
 
 export function OrdersBoard({
@@ -67,11 +69,11 @@ export function OrdersBoard({
   });
 
   if (ordersQuery.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (ordersQuery.isError) {
     return (
-      <p className="text-sm text-red-600">
+      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
         {(ordersQuery.error as Error).message}
       </p>
     );
@@ -79,16 +81,17 @@ export function OrdersBoard({
 
   const orders = ordersQuery.data?.orders ?? [];
   if (orders.length === 0) {
-    return <p className="text-sm text-neutral-500">Sipariş yok.</p>;
+    return <EmptyState label="Sipariş yok." />;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
       {action.isError && (
-        <p className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
           {(action.error as Error).message}
         </p>
       )}
+      <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
           <tr>
@@ -126,37 +129,33 @@ export function OrdersBoard({
                   {formatTRY(o.grandTotal)}
                 </td>
                 <td className="px-3 py-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[o.status]}`}
-                  >
-                    {STATUS_LABEL[o.status]}
-                  </span>
+                  <Badge tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
                 </td>
                 <td className="px-3 py-2 text-right">
                   {pending && (
                     <div className="flex justify-end gap-2">
                       {canApprove && (
-                        <button
-                          type="button"
-                          disabled={action.isPending}
+                        <Button
+                          variant="success"
+                          size="sm"
+                          loading={action.isPending}
                           onClick={() =>
                             action.mutate({ id: o.id, kind: "approve" })
                           }
-                          className="rounded bg-emerald-600 px-2 py-1 text-xs text-white disabled:opacity-50"
                         >
                           Onayla
-                        </button>
+                        </Button>
                       )}
-                      <button
-                        type="button"
-                        disabled={action.isPending}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={action.isPending}
                         onClick={() =>
                           action.mutate({ id: o.id, kind: "reject" })
                         }
-                        className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
                       >
                         Reddet
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </td>
@@ -165,6 +164,7 @@ export function OrdersBoard({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginSchema } from "@repo/types";
+import { Button, ErrorLine, Label, TextInput } from "@/components/form";
 
 /**
  * Why the page guard sent the user back here. A session can die between two
@@ -57,37 +59,41 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {reason && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+        <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {reason}
         </p>
       )}
-      <input
-        type="email"
-        placeholder="E-posta"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        autoComplete="email"
-      />
-      <input
-        type="password"
-        placeholder="Şifre"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        autoComplete="current-password"
-      />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-      >
+      <div>
+        <Label htmlFor="email">E-posta</Label>
+        <TextInput
+          id="email"
+          type="email"
+          placeholder="ad@firma.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          autoFocus
+        />
+      </div>
+      <div>
+        <Label htmlFor="password">Şifre</Label>
+        <TextInput
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+      </div>
+      <ErrorLine error={error ? new Error(error) : null} />
+      <Button type="submit" loading={loading} className="mt-1 w-full">
         {loading ? "Giriş yapılıyor…" : "Giriş yap"}
-      </button>
+      </Button>
       <Link
         href="/sifremi-unuttum"
-        className="text-center text-sm text-neutral-500 underline"
+        className="text-center text-sm text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400"
       >
         Şifremi unuttum
       </Link>

@@ -1,22 +1,35 @@
-import Link from "next/link";
-import { SignOutButton } from "@/components/sign-out-button";
+import {
+  Activity,
+  BarChart3,
+  Building2,
+  FileText,
+  LayoutDashboard,
+  Layers,
+  Package,
+  Percent,
+  ShieldCheck,
+  Tags,
+  Users,
+  Wand2,
+} from "lucide-react";
+import { AppHeader, type NavLink } from "@/components/app-shell";
 
-const LINKS = [
-  { href: "/admin", label: "Panel" },
-  { href: "/admin/companies", label: "Firmalar" },
-  { href: "/admin/users", label: "Kullanıcılar" },
-  { href: "/admin/products", label: "Ürünler" },
-  { href: "/admin/categories", label: "Kategoriler" },
-  { href: "/admin/customer-groups", label: "Gruplar" },
-  { href: "/admin/promotions", label: "Kampanyalar" },
-  { href: "/admin/documents", label: "Belgeler" },
-  { href: "/admin/reports", label: "Raporlar" },
-  { href: "/reports", label: "Tasarımcı" },
-  { href: "/admin/activity", label: "Hareketler" },
-  { href: "/admin/audit", label: "Güvenlik" },
-] as const;
+const LINKS: NavLink[] = [
+  { href: "/admin", label: "Panel", icon: LayoutDashboard },
+  { href: "/admin/companies", label: "Firmalar", icon: Building2 },
+  { href: "/admin/users", label: "Kullanıcılar", icon: Users },
+  { href: "/admin/products", label: "Ürünler", icon: Package },
+  { href: "/admin/categories", label: "Kategoriler", icon: Tags },
+  { href: "/admin/customer-groups", label: "Gruplar", icon: Layers },
+  { href: "/admin/promotions", label: "Kampanyalar", icon: Percent },
+  { href: "/admin/documents", label: "Belgeler", icon: FileText },
+  { href: "/admin/reports", label: "Raporlar", icon: BarChart3 },
+  { href: "/reports", label: "Tasarımcı", icon: Wand2 },
+  { href: "/admin/activity", label: "Hareketler", icon: Activity },
+  { href: "/admin/audit", label: "Güvenlik", icon: ShieldCheck },
+];
 
-/** Shared header for every admin screen. `current` renders as plain text. */
+/** Shared header for every admin screen. */
 export function AdminNav({
   email,
   current,
@@ -25,33 +38,11 @@ export function AdminNav({
   current: (typeof LINKS)[number]["href"];
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-3 dark:border-neutral-800">
-      <nav className="flex items-center gap-4">
-        {LINKS.map((l) =>
-          l.href === current ? (
-            <span key={l.href} className="text-sm font-semibold">
-              {l.label}
-            </span>
-          ) : (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
-            >
-              {l.label}
-            </Link>
-          ),
-        )}
-      </nav>
-      <div className="flex items-center gap-3">
-        <Link
-          href="/hesabim"
-          className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
-        >
-          {email}
-        </Link>
-        <SignOutButton />
-      </div>
-    </header>
+    <AppHeader
+      context="Yönetim Paneli"
+      links={LINKS}
+      current={current}
+      userLabel={email}
+    />
   );
 }

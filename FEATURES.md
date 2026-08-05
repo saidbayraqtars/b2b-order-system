@@ -613,7 +613,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
 - **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok).
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
-- **Arayüz işlevsel ama fazla sade** — ekranlar çalışıyor, ancak ortak bir tasarım dili (tipografi ölçeği, renk sistemi, bileşen kütüphanesi, boşluk düzeni) yok; her ekran kendi Tailwind sınıflarını taşıyor. Tek tek yamamak yerine tek bir tasarım katmanı olarak ele alınacak.
+- **Arayüz yenilemesi Faz 1 bitti, Faz 2 bekliyor** — ortak tasarım katmanı kuruldu (renk/tipografi/gölge token'ları, manuel koyu tema, paylaşılan Button/Card/Badge/PageHeader, admin+portal+rep'in üçü de tek `AppHeader`'ı kullanıyor) ve login/403/ana sayfa/hesabım/admin panosu/sipariş tahtası bu dille yeniden çizildi. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı henüz eski ad-hoc Tailwind sınıflarında — yeni kabuğun içinde oturuyorlar ama kendi buton/tablo stilleri değişmedi.
 
 ## Sonraki Adımlar (planlanan)
 
@@ -621,7 +621,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
-- **Arayüz yenilemesi:** ekranları tek tek yamalamak yerine tek bir tasarım katmanı — mevcut arayüz işlevsel ama fazla sade.
+- **Arayüz yenilemesi Faz 2:** kalan admin alt ekranları + rapor tasarımcısı + sipariş detayını yeni Button/Card/Badge/Panel diline taşımak (Faz 1: token'lar + 3 rol kabuğu + ana ekranlar — bitti).
 - **İş zamanlayıcı:** üç iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
 - **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).

@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { SignOutButton } from "@/components/sign-out-button";
+import { PortalNav } from "@/components/portal-nav";
 import { OrdersBoard } from "@/components/orders-board";
 
 // Company-admin approval surface. COMPANY_ADMIN may approve PENDING_APPROVAL;
@@ -9,22 +9,25 @@ export default async function ApprovalsPage() {
   const user = await requirePage(["COMPANY_ADMIN", "SUPER_ADMIN"]);
   const isSuper = user.role === "SUPER_ADMIN";
 
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Sipariş Onayları</h1>
-          <p className="text-sm text-neutral-500">{user.name}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portal" className="text-sm underline">
-            Katalog
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
+  const company = user.companyId
+    ? await prisma.company.findUnique({
+        where: { id: user.companyId },
+        select: { name: true },
+      })
+    : null;
 
-      <OrdersBoard canApproveCredit={isSuper} />
-    </main>
+  return (
+    <div>
+      <PortalNav
+        role={user.role}
+        companyName={company?.name ?? user.name}
+        userName={user.name}
+        current="/portal/approvals"
+      />
+      <div className="mx-auto max-w-5xl px-4 pb-6">
+        <h1 className="mb-4 text-lg font-semibold">Sipariş Onayları</h1>
+        <OrdersBoard canApproveCredit={isSuper} />
+      </div>
+    </div>
   );
 }

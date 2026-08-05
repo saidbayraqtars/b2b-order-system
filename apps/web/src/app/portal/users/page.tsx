@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { SignOutButton } from "@/components/sign-out-button";
+import { PortalNav } from "@/components/portal-nav";
 import { UserManager } from "@/components/user-manager";
 
 // A company admin managing their own staff. The service pins every read and
@@ -27,33 +26,25 @@ export default async function PortalUsersPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Kullanıcılar</h1>
-          <p className="text-sm text-neutral-500">{company?.name ?? user.name}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portal" className="text-sm underline">
-            Katalog
-          </Link>
-          <Link href="/portal/orders" className="text-sm underline">
-            Siparişlerim
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
-
-      <UserManager
-        currentUserId={user.id}
-        fixedCompanyId={user.companyId}
-        allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
+    <div>
+      <PortalNav
+        role={user.role}
+        companyName={company?.name ?? user.name}
+        userName={user.name}
+        current="/portal/users"
       />
-
-      <p className="mt-4 text-sm text-neutral-500">
-        Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir; personel
-        yalnızca sipariş oluşturur.
-      </p>
-    </main>
+      <div className="mx-auto max-w-5xl px-4 pb-6">
+        <h1 className="mb-4 text-lg font-semibold">Kullanıcılar</h1>
+        <UserManager
+          currentUserId={user.id}
+          fixedCompanyId={user.companyId}
+          allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
+        />
+        <p className="mt-4 text-sm text-neutral-500">
+          Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir;
+          personel yalnızca sipariş oluşturur.
+        </p>
+      </div>
+    </div>
   );
 }

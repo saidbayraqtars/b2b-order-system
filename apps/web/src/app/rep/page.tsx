@@ -1,7 +1,12 @@
-import Link from "next/link";
+import { BarChart3, LayoutDashboard } from "lucide-react";
 import { requirePage } from "@/lib/guard";
-import { SignOutButton } from "@/components/sign-out-button";
+import { AppHeader, type NavLink } from "@/components/app-shell";
 import { RepDashboard } from "./_components/rep-dashboard";
+
+const LINKS: NavLink[] = [
+  { href: "/rep", label: "Panel", icon: LayoutDashboard },
+  { href: "/reports", label: "Raporlarım", icon: BarChart3 },
+];
 
 export default async function RepDashboardPage() {
   // requirePage, not requireUser: a wrong-role visitor belongs on their own
@@ -9,24 +14,16 @@ export default async function RepDashboardPage() {
   const user = await requirePage(["SALES_REP", "SUPER_ADMIN"]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Plasiyer Paneli</h1>
-          <p className="text-sm text-neutral-500">{user.name}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/reports" className="text-sm underline">
-            Raporlarım
-          </Link>
-          <Link href="/hesabim" className="text-sm underline">
-            Hesabım
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
-
-      <RepDashboard />
-    </main>
+    <div>
+      <AppHeader
+        context="Plasiyer Paneli"
+        links={LINKS}
+        current="/rep"
+        userLabel={user.name}
+      />
+      <div className="mx-auto max-w-5xl px-4 pb-6">
+        <RepDashboard />
+      </div>
+    </div>
   );
 }

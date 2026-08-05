@@ -10,3 +10,50 @@ html,
 body {
   height: 100%;
 }
+
+@layer base {
+  body {
+    @apply bg-neutral-50 font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+    /* Tema anahtarı basılınca renkler sertçe değil yumuşak değişsin. */
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+
+  /* Kurumsal odak halkası — klavye erişilebilirliği, marka rengiyle tutarlı. */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500/60 ring-offset-2 ring-offset-neutral-50 dark:ring-offset-neutral-950;
+  }
+
+  ::selection {
+    @apply bg-brand-500/25;
+  }
+
+  /* İnce, kurumsal kaydırma çubuğu (Webkit). */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: rgb(51 65 85);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { EmptyState, LoadingState } from "@/components/ui";
 
 interface CompanyRow {
   id: string;
@@ -20,18 +21,23 @@ export function CompaniesTable() {
   });
 
   if (query.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (query.isError) {
     return (
-      <p className="text-sm text-red-600">{(query.error as Error).message}</p>
+      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
+        {(query.error as Error).message}
+      </p>
     );
   }
 
   const companies = query.data?.companies ?? [];
+  if (companies.length === 0) {
+    return <EmptyState label="Firma yok." />;
+  }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+    <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
       <table className="w-full text-left text-sm">
         <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
           <tr>

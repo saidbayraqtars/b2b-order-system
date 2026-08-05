@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { SignOutButton } from "@/components/sign-out-button";
+import { PortalNav } from "@/components/portal-nav";
 import { StatementView } from "@/components/statement-view";
 
 // The buying company's own cari ekstre. Super admins are not routed here —
@@ -26,24 +25,17 @@ export default async function PortalStatementPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Cari Ekstre</h1>
-          <p className="text-sm text-neutral-500">{company?.name ?? user.name}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portal" className="text-sm underline">
-            Katalog
-          </Link>
-          <Link href="/portal/orders" className="text-sm underline">
-            Siparişlerim
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
-
-      <StatementView companyId={user.companyId} />
-    </main>
+    <div>
+      <PortalNav
+        role={user.role}
+        companyName={company?.name ?? user.name}
+        userName={user.name}
+        current="/portal/statement"
+      />
+      <div className="mx-auto max-w-5xl px-4 pb-6">
+        <h1 className="mb-4 text-lg font-semibold">Cari Ekstre</h1>
+        <StatementView companyId={user.companyId} />
+      </div>
+    </div>
   );
 }
