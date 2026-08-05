@@ -13,7 +13,15 @@ import type { Role } from "@repo/types";
 const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/admin", roles: ["SUPER_ADMIN"] },
   { prefix: "/rep", roles: ["SALES_REP", "SUPER_ADMIN"] },
-  { prefix: "/portal", roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SUPER_ADMIN"] },
+  // Plasiyer ve süper admin de buraya girer: müşteri adına sipariş girmek
+  // (telefonla gelen sipariş, saha ziyareti) toptan işin normal akışı. Hangi
+  // firma adına çalışıldığı ?companyId ile taşınır ve her istekte
+  // resolveCompanyId tarafından yetkilendirilir — plasiyer yalnızca kendi
+  // portföyünü, süper admin herkesi görür.
+  {
+    prefix: "/portal",
+    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+  },
   // Report designer. Company staff are order-entry only; everyone else builds
   // reports, and the engine scopes each one's rows to what they may already see.
   { prefix: "/reports", roles: ["SUPER_ADMIN", "SALES_REP", "COMPANY_ADMIN"] },

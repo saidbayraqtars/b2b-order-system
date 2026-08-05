@@ -47,16 +47,28 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
 export function OrdersBoard({
   canApproveCredit,
   canAct = true,
+  companyId,
 }: {
   /** SUPER_ADMIN may confirm PENDING_CREDIT orders; company admins may not. */
   canApproveCredit: boolean;
   /** False for read-only surfaces (company staff), which hide the buttons. */
   canAct?: boolean;
+  /**
+   * Scope the list to one company. Needed when a rep or super admin is working
+   * on a customer's behalf — without it they would get their whole portfolio.
+   * The server authorizes it either way.
+   */
+  companyId?: string;
 }) {
   const qc = useQueryClient();
   const ordersQuery = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => apiGet<{ orders: OrderListItem[] }>("/api/orders"),
+    queryKey: ["orders", companyId ?? null],
+    queryFn: () =>
+      apiGet<{ orders: OrderListItem[] }>(
+        companyId
+          ? `/api/orders?companyId=${encodeURIComponent(companyId)}`
+          : "/api/orders",
+      ),
   });
 
   const action = useMutation({

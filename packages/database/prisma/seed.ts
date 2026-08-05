@@ -63,6 +63,30 @@ async function main() {
     },
   });
 
+  // İkinci firma — bilerek **hiçbir plasiyere atanmamış**. Portföy izolasyonu
+  // ancak portföy dışında bir firma varsa sınanabilir: plasiyer bunu
+  // görmemeli, adına sipariş girememeli.
+  await prisma.company.upsert({
+    where: { taxNumber: "9876543210" },
+    update: {},
+    create: {
+      name: "Beta Dağıtım Ltd.",
+      taxNumber: "9876543210",
+      taxOffice: "Çankaya",
+      creditLimit: 25000,
+      customerGroupId: group.id,
+      addresses: {
+        create: {
+          label: "Merkez",
+          line1: "Atatürk Bul. No:42",
+          city: "Ankara",
+          district: "Çankaya",
+          isDefault: true,
+        },
+      },
+    },
+  });
+
   // ── Company admin + staff ──
   await prisma.user.upsert({
     where: { email: "manager@ornek.local" },

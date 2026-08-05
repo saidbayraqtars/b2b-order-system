@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ShoppingBag } from "lucide-react";
 import type { ReceivablesReport, SalesSummary } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
@@ -60,6 +62,7 @@ export function RepDashboard() {
               <th className="px-3 py-2 text-right">Bakiye</th>
               <th className="px-3 py-2 text-right">Vadesi geçen</th>
               <th className="px-3 py-2">En eski vade</th>
+              <th className="px-3 py-2 text-right">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -84,11 +87,22 @@ export function RepDashboard() {
                     ? new Date(c.oldestDueDate).toLocaleDateString("tr-TR")
                     : "—"}
                 </td>
+                <td className="px-3 py-2 text-right">
+                  {/* Portföydeki firmadan tek tıkla sipariş: katalog o firmanın
+                      fiyatlarıyla açılır. */}
+                  <Link
+                    href={`/portal?companyId=${encodeURIComponent(c.companyId)}`}
+                    className="inline-flex items-center gap-1.5 border border-brand-600 px-2 py-1 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-600 hover:text-white dark:text-brand-400 dark:hover:text-white"
+                  >
+                    <ShoppingBag className="h-3 w-3" />
+                    Sipariş gir
+                  </Link>
+                </td>
               </tr>
             ))}
             {d.companies.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <EmptyState label="Portföyünüzde firma yok." />
                 </td>
               </tr>

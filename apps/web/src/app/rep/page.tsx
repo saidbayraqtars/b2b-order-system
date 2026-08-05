@@ -1,10 +1,11 @@
-import { BarChart3, LayoutDashboard } from "lucide-react";
+import { BarChart3, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { requirePage } from "@/lib/guard";
 import { AppHeader, type NavLink } from "@/components/app-shell";
 import { RepDashboard } from "./_components/rep-dashboard";
 
 const LINKS: NavLink[] = [
   { href: "/rep", label: "Panel", icon: LayoutDashboard },
+  { href: "/portal", label: "Sipariş gir", icon: ShoppingBag },
   { href: "/reports", label: "Raporlarım", icon: BarChart3 },
 ];
 

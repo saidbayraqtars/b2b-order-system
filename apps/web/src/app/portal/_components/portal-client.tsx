@@ -9,6 +9,7 @@ import { apiGet } from "@/lib/fetcher";
 import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
 import { Announcements } from "@/components/storefront/announcements";
+import { ActingAsBar } from "@/components/storefront/acting-as-bar";
 import { LoadingState, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./product-card";
@@ -19,6 +20,9 @@ interface Props {
   companyName: string;
   userName: string;
   role: Role;
+  /** Plasiyer / süper admin müşteri adına mı çalışıyor? */
+  isProxy?: boolean;
+  availableCredit?: string | null;
 }
 
 /** Flatten the category tree to a single ordered list for the sidebar. */
@@ -54,7 +58,14 @@ function totalStock(p: CatalogProduct): number {
   return p.variants.reduce((s, v) => s + v.stock, 0);
 }
 
-export function PortalClient({ companyId, companyName, userName, role }: Props) {
+export function PortalClient({
+  companyId,
+  companyName,
+  userName,
+  role,
+  isProxy = false,
+  availableCredit = null,
+}: Props) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
@@ -67,15 +78,15 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
   });
 
   const catalogQuery = useQuery({
-    queryKey: ["catalog", categoryId, search],
+    queryKey: ["catalog", companyId, categoryId, search],
     queryFn: () => {
-      const p = new URLSearchParams();
+      // companyId her zaman gönderilir. Vekil kullanıcı için zorunlu (fiyat
+      // firmaya göre çözülür); alıcı için zararsız — sunucu kendi firmasıyla
+      // eşleşmezse zaten 403 verir.
+      const p = new URLSearchParams({ companyId });
       if (categoryId) p.set("categoryId", categoryId);
       if (search.trim()) p.set("search", search.trim());
-      const qs = p.toString();
-      return apiGet<{ products: CatalogProduct[] }>(
-        `/api/catalog${qs ? `?${qs}` : ""}`,
-      );
+      return apiGet<{ products: CatalogProduct[] }>(`/api/catalog?${p}`);
     },
   });
 
@@ -113,6 +124,8 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
         companyName={companyName}
         userName={userName}
         current="/portal"
+        isProxy={isProxy}
+        companyId={companyId}
         right={
           <span className="mr-1 flex items-center gap-1.5 bg-brand-600 px-3 py-1.5 font-mono text-xs font-bold text-white">
             <ShoppingCart className="h-3.5 w-3.5" />
@@ -120,6 +133,13 @@ export function PortalClient({ companyId, companyName, userName, role }: Props) 
           </span>
         }
       />
+
+      {isProxy && (
+        <ActingAsBar
+          companyName={companyName}
+          availableCredit={availableCredit}
+        />
+      )}
 
       <Announcements companyId={companyId} />
 

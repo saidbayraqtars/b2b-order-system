@@ -1,13 +1,27 @@
 import type { ReactNode } from "react";
-import { BarChart3, CheckSquare, ClipboardList, Receipt, ShoppingBag, Users } from "lucide-react";
+import {
+  BarChart3,
+  CheckSquare,
+  ClipboardList,
+  Receipt,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 import type { Role } from "@repo/types";
 import { AppHeader, type NavLink } from "@/components/app-shell";
+import { CompanySwitcher } from "@/components/storefront/company-switcher";
 
 /**
- * Portalın 5 alt sayfası (katalog/sipariş/ekstre/onay/kullanıcı) eskiden her
- * biri kendi başlığını elle çiziyordu — biri "Onaylar"a link veriyor biri
- * vermiyordu. Tek nav'a taşımak görünümü birleştirdiği kadar bu boşluğu da
- * kapatır: artık her sayfadan her sayfaya gidilebiliyor.
+ * Portalın üst barı. İki farklı kullanıcıya hizmet eder:
+ *
+ *  - Alıcı (firma yöneticisi/personeli): kendi firmasının ekranları. Linkler
+ *    sade, companyId taşımaz — firma zaten hesabından geliyor.
+ *  - Vekil (plasiyer/süper admin): müşteri adına çalışır. Üstte firma seçici
+ *    çıkar ve **her link seçili firmayı taşır**; aksi hâlde "Siparişlerim"e
+ *    tıklayınca hangi firmada olunduğu kaybolurdu.
+ *
+ * Vekil kullanıcıya "Kullanıcılar"/"Onaylar" gösterilmez: bunlar müşterinin
+ * kendi iç işleyişi, plasiyerin işi değil.
  */
 export function PortalNav({
   role,
@@ -15,35 +29,54 @@ export function PortalNav({
   userName,
   current,
   right,
+  isProxy = false,
+  companyId,
 }: {
   role: Role;
-  companyName: string;
+  companyName: string | null;
   userName: string;
   current: string;
   right?: ReactNode;
+  isProxy?: boolean;
+  companyId?: string | null;
 }) {
+  // Vekil kullanıcıda seçili firma her bağlantıda korunur.
+  const q =
+    isProxy && companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
+
   const links: NavLink[] = [
-    { href: "/portal", label: "Katalog", icon: ShoppingBag },
-    { href: "/portal/orders", label: "Siparişlerim", icon: ClipboardList },
-    { href: "/portal/statement", label: "Ekstre", icon: Receipt },
+    { href: `/portal${q}`, label: "Katalog", icon: ShoppingBag },
+    { href: `/portal/orders${q}`, label: "Siparişler", icon: ClipboardList },
+    { href: `/portal/statement${q}`, label: "Ekstre", icon: Receipt },
   ];
-  if (role === "COMPANY_ADMIN") {
+
+  if (!isProxy && role === "COMPANY_ADMIN") {
     links.push(
       { href: "/portal/approvals", label: "Onaylar", icon: CheckSquare },
       { href: "/portal/users", label: "Kullanıcılar", icon: Users },
     );
   }
-  if (role === "COMPANY_ADMIN" || role === "SUPER_ADMIN") {
+  if (role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "SALES_REP") {
     links.push({ href: "/reports", label: "Raporlar", icon: BarChart3 });
   }
 
   return (
     <AppHeader
-      context={companyName}
+      context={companyName ?? (isProxy ? "Firma seçilmedi" : undefined)}
       links={links}
       current={current}
       userLabel={userName}
-      right={right}
+      right={
+        <>
+          {isProxy && (
+            <CompanySwitcher
+              currentCompanyId={companyId ?? null}
+              currentCompanyName={companyName}
+            />
+          )}
+          {right}
+        </>
+      }
     />
   );
 }

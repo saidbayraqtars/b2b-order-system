@@ -37,10 +37,13 @@ export function ProductCard({
   const { add } = useCart(companyId);
   const price = fromPrice(product);
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+  // Seçili firma detay sayfasına da taşınır; plasiyer ürüne tıklayınca hangi
+  // firma adına çalıştığını kaybetmemeli.
+  const detailHref = `/portal/urun/${product.id}?companyId=${encodeURIComponent(companyId)}`;
 
   return (
     <article className="group flex flex-col border border-neutral-300 bg-white transition-colors hover:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-brand-500">
-      <Link href={`/portal/urun/${product.id}`} className="block">
+      <Link href={detailHref} className="block">
         <div className="relative aspect-[4/3] overflow-hidden border-b border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800">
           {product.images[0] ? (
             // Görseller kendi rotamızdan, aynı kaynaktan ve değişmez servis

@@ -1,40 +1,42 @@
-import { prisma } from "@repo/database";
+import { redirect } from "next/navigation";
 import { requirePage } from "@/lib/guard";
+import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
 import { StatementView } from "@/components/statement-view";
 
-// The buying company's own cari ekstre. Super admins are not routed here —
-// they read any company's statement from /admin/companies/:id/statement.
-export default async function PortalStatementPage() {
-  const user = await requirePage(["COMPANY_ADMIN", "COMPANY_STAFF"]);
+export const dynamic = "force-dynamic";
 
-  if (!user.companyId) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <h1 className="text-2xl font-bold">Cari Ekstre</h1>
-        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-          Hesabınıza firma atanmamış.
-        </p>
-      </main>
-    );
-  }
+type Props = { searchParams: { companyId?: string } };
 
-  const company = await prisma.company.findUnique({
-    where: { id: user.companyId },
-    select: { name: true },
-  });
+// Cari ekstre. Alıcı kendi firmasının, plasiyer/süper admin seçili firmanın
+// ekstresini görür — plasiyerin sipariş almadan önce bakiyeye bakması işin
+// normal parçası.
+export default async function PortalStatementPage({ searchParams }: Props) {
+  const user = await requirePage([
+    "COMPANY_ADMIN",
+    "COMPANY_STAFF",
+    "SALES_REP",
+    "SUPER_ADMIN",
+  ]);
+
+  const ctx = await resolvePortalContext(user, searchParams.companyId);
+  if (!ctx.companyId) redirect("/portal");
 
   return (
     <div>
       <PortalNav
         role={user.role}
-        companyName={company?.name ?? user.name}
+        companyName={ctx.companyName}
         userName={user.name}
         current="/portal/statement"
+        isProxy={ctx.isProxy}
+        companyId={ctx.companyId}
       />
       <div className="mx-auto max-w-5xl px-4 pb-6">
-        <h1 className="mb-4 text-lg font-semibold">Cari Ekstre</h1>
-        <StatementView companyId={user.companyId} />
+        <h1 className="mb-4 text-lg font-semibold">
+          {ctx.isProxy ? `${ctx.companyName} — Cari Ekstre` : "Cari Ekstre"}
+        </h1>
+        <StatementView companyId={ctx.companyId} />
       </div>
     </div>
   );

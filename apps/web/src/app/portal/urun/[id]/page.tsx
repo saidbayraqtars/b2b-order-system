@@ -1,65 +1,69 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { prisma } from "@repo/database";
 import { getCatalogProduct } from "@repo/services";
 import { requirePage } from "@/lib/guard";
+import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
+import { ActingAsBar } from "@/components/storefront/acting-as-bar";
 import { ProductDetail } from "./_components/product-detail";
 
-type Params = { params: { id: string } };
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: { id: string };
+  searchParams: { companyId?: string };
+};
 
 // Ürün detayı. Fiyat sunucuda, firmaya göre çözülüp gönderiliyor — istemci
 // hiçbir zaman ham fiyat listesi görmüyor.
-export default async function ProductPage({ params }: Params) {
+export default async function ProductPage({ params, searchParams }: Props) {
   const user = await requirePage([
     "COMPANY_ADMIN",
     "COMPANY_STAFF",
+    "SALES_REP",
     "SUPER_ADMIN",
   ]);
 
-  if (!user.companyId) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <h1 className="text-2xl font-bold">B2B Portal</h1>
-        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-          Bu ekran firma hesapları içindir.{" "}
-          <Link href="/admin" className="underline">
-            Yönetim paneline
-          </Link>{" "}
-          gidin.
-        </p>
-      </main>
-    );
-  }
+  const ctx = await resolvePortalContext(user, searchParams.companyId);
 
-  const [company, product] = await Promise.all([
-    prisma.company.findUnique({
-      where: { id: user.companyId },
-      select: { name: true },
-    }),
-    getCatalogProduct(params.id, user.companyId),
+  // Vekil kullanıcı firma seçmeden ürüne gelemez (paylaşılmış bir bağlantı
+  // olabilir): seçim ekranına gönder.
+  if (!ctx.companyId) redirect("/portal");
+
+  const [product, category] = await Promise.all([
+    getCatalogProduct(params.id, ctx.companyId),
+    // Kategori adı ürün bulunmasa da sorulur; iki sorgu tek turda gitsin.
+    prisma.product
+      .findUnique({
+        where: { id: params.id },
+        select: { category: { select: { name: true } } },
+      })
+      .then((p) => p?.category?.name ?? null),
   ]);
 
   if (!product) notFound();
-
-  const category = await prisma.category.findUnique({
-    where: { id: product.categoryId },
-    select: { name: true },
-  });
 
   return (
     <div className="min-h-screen tech-paper">
       <PortalNav
         role={user.role}
-        companyName={company?.name ?? "Firma"}
+        companyName={ctx.companyName}
         userName={user.name}
         current="/portal"
+        isProxy={ctx.isProxy}
+        companyId={ctx.companyId}
       />
+      {ctx.isProxy && (
+        <ActingAsBar
+          companyName={ctx.companyName ?? "Firma"}
+          availableCredit={ctx.availableCredit}
+        />
+      )}
       <div className="mx-auto max-w-6xl px-4 pb-10">
         <ProductDetail
           product={product}
-          companyId={user.companyId}
-          categoryName={category?.name ?? null}
+          companyId={ctx.companyId}
+          categoryName={category}
         />
       </div>
     </div>

@@ -50,7 +50,9 @@ export function AppHeader({
         <nav className="flex flex-1 flex-wrap items-center gap-1">
           {links.map((l) => {
             const Icon = l.icon;
-            const active = l.href === current;
+            // Bağlantılar sorgu taşıyabiliyor (portalda seçili firma gibi);
+            // aktif sekme yola göre bulunur, tam metne göre değil.
+            const active = l.href.split("?")[0] === current;
             return (
               <Link
                 key={l.href}

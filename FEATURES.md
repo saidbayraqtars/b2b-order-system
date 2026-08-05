@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-05 · Adım 21 (vitrin Faz 2) sonu
+Son güncelleme: 2026-08-05 · Adım 22 (vekaleten sipariş) sonu
 
 ---
 
@@ -35,6 +35,7 @@ Son güncelleme: 2026-08-05 · Adım 21 (vitrin Faz 2) sonu
 | 19 | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği | ✅ |
 | 20 | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu | ✅ |
 | 21 | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları | ✅ |
+| 22 | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu) | ✅ |
 
 ---
 
@@ -553,17 +554,58 @@ olsaydı bir metin düzeltmesi fiyat mantığına dokunan bir yazma hâline geli
 - Yönetimi: **`/admin/announcements`**.
 - `prefers-reduced-motion` açıksa kayan şerit durur.
 
-## 22. Web Portal (`apps/web`)
+## 22. Vekaleten Sipariş (Adım 22)
+
+Toptan satışta siparişin çoğu müşterinin kendi elinden değil, **plasiyerin
+elinden** girer: saha ziyaretinde ya da telefonla gelen siparişte. Bu akış
+API'de baştan beri vardı (`POST /api/orders` plasiyeri kabul ediyordu) ama
+web'de onu çağıracak ekran yoktu — yani pratikte firma tarafından kimse
+sipariş giremiyordu. Adım 22 o boşluğu kapatır.
+
+### İki tür kullanıcı, tek vitrin
+
+| | Alıcı (firma yön./personel) | Vekil (plasiyer / süper admin) |
+|--|--|--|
+| Firma | Hesabından gelir | **URL'den seçilir** (`?companyId=`) |
+| Seçmeden | Katalog açılır | Firma seçim ekranı çıkar |
+| Üst bar | Sade | Firma seçici + uyarı şeridi |
+| Gezinme | Linkler sade | Her link seçili firmayı taşır |
+
+- **Seçim URL'de taşınır, tarayıcı hafızasında değil.** Yanlış cariye sipariş girmek pahalı bir hatadır ve gizli bir durumdan beslenmemeli: adres çubuğunda görünür, yenilemede korunur, sekmeler bağımsız kalır ve sunucu her istekte aynı değeri yetkilendirir.
+- **`ActingAsBar`** — "X firması adına sipariş giriyorsunuz" + kullanılabilir limit, katalogun üstünde dikkat çeken renkte. Limit doluysa "sipariş onaya düşer" uyarısı; plasiyer bunu siparişi tamamlamadan önce görür, sonra değil.
+- Firma seçmeden ürüne gelinirse (eski/paylaşılmış bağlantı) seçim ekranına dönülür — fiyat firmaya göre çözüldüğü için firmasız katalog zaten anlamsız.
+
+### Yetkilendirme
+
+- Tek karar noktası: **`resolveCompanyId`**. Sayfalar `lib/portal-context.ts` üzerinden aynı fonksiyonu çağırır — ekranın kendi kopyası olsaydı API ile zamanla ayrışırdı.
+- Plasiyer yalnızca **portföyündeki** firmayı (`Company.salesRepId`), süper admin herkesi seçebilir.
+- Sayfalarda yetkisiz firma → **`/403`'e yönlendirme**. (`AuthError` API'de `withAuthErrors` ile 403'e çevriliyor; sayfaların böyle bir sarmalayıcısı olmadığı için yakalanmasaydı kullanıcı erişim engellense bile **500 çökme sayfası** görürdü.)
+- Sepet zaten `(companyId, ownerId)` çiftine bağlı: plasiyerin A ve B müşterisi için kurduğu sepetler birbirine karışmaz, sahibi hiçbir zaman parametre değil oturumdan gelir.
+- Vekil kullanıcıya "Onaylar" ve "Kullanıcılar" gösterilmez — müşterinin kendi iç işleyişi, plasiyerin işi değil.
+
+### Giriş noktaları
+
+- `/rep` panosundaki portföy tablosunda her satırda **"Sipariş gir"** — katalog o firmanın fiyatlarıyla açılır.
+- Üst bardaki firma seçici (arama + bakiye/kullanılabilir limit gösterimi) ile firmalar arasında geçiş.
+- Plasiyer üst gezinmesine `Sipariş gir` eklendi.
+
+**Doğrulama:** betikli uçtan uca kontrol 18/18 — plasiyer girişi → firma seçimi →
+katalog → sepet → fiyat teklifi → **sipariş oluşturma**, ardından portföy dışı
+firma için sayfa/katalog/sipariş uçlarının üçünde de ret. Seed'e bilerek
+plasiyere atanmamış ikinci bir firma (`Beta Dağıtım Ltd.`) eklendi: portföy
+izolasyonu ancak portföy dışında bir firma varsa sınanabilir.
+
+## 23. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
 | `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
 | `/sifremi-unuttum` | herkes | Sıfırlama bağlantısı talebi (yanıt her zaman aynı) |
 | `/sifremi-unuttum/yenile` | bağlantı sahibi | Yeni şifre; kaydedince tüm oturumlar kapanır |
-| `/portal` | firma yön./personel | **Vitrin:** kategori kenar çubuğu, arama (ad/marka/SKU/barkod), sıralama, stok filtresi, duyurular, sepet |
-| `/portal/urun/[id]` | firma yön./personel | Ürün detayı: görsel galerisi, künye, varyant tablosu (adet + satır toplamı) |
-| `/portal/orders` | firma yön./personel | Firmanın sipariş listesi (personel salt okunur) |
-| `/portal/statement` | firma yön./personel | Kendi cari ekstresi + yaşlandırma + CSV |
+| `/portal` | 4 rol | **Vitrin:** kategori kenar çubuğu, arama (ad/marka/SKU/barkod), sıralama, stok filtresi, duyurular, sepet. Plasiyer/admin için önce firma seçimi |
+| `/portal/urun/[id]` | 4 rol | Ürün detayı: görsel galerisi, künye, varyant tablosu (adet + satır toplamı) |
+| `/portal/orders` | 4 rol | Firmanın sipariş listesi (personel salt okunur; vekil için seçili firma) |
+| `/portal/statement` | 4 rol | Cari ekstre + yaşlandırma + CSV (vekil için seçili firma) |
 | `/portal/users` | firma yöneticisi | Kendi firmasının kullanıcıları |
 | `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
 | `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları, irsaliye/fatura paneli |
@@ -589,10 +631,10 @@ olsaydı bir metin düzeltmesi fiyat mantığına dokunan bir yazma hâline geli
 | `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli |
 | `/admin/activity` | süper admin | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda |
 | `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
-| `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
+| `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **"Sipariş gir"** |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 23. Mobil Uygulama (`apps/mobile`)
+## 24. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -607,7 +649,7 @@ olsaydı bir metin düzeltmesi fiyat mantığına dokunan bir yazma hâline geli
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 24. API Uçları
+## 25. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -749,8 +791,8 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
 - **Cariye göre ödeme yöntemi ve vade seçenekleri:** `PaymentMethod` bugün iki değerli bir enum; firmaya bağlı seçenek listesi ve sepette 30/60/90 vade seçimi yok.
-- **Plasiyer/admin adına sipariş girişi:** API hazır (`POST /api/orders` plasiyeri kabul ediyor), web ekranı yok — vitrine "hangi firma adına" seçicisi eklenecek.
 - **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok.
+- **Tahsilat ve ziyaret web'de yok:** `/api/payments` ve `/api/checkins` uçları var, çağıran web ekranı yok — ikisi de yalnızca mobilde.
 - **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).

@@ -34,7 +34,7 @@ export function ProductDetail({
     <div>
       <nav className="flex items-center gap-2 py-4">
         <Link
-          href="/portal"
+          href={`/portal?companyId=${encodeURIComponent(companyId)}`}
           className="tech-label flex items-center gap-1.5 transition-colors hover:text-brand-600"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
