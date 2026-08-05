@@ -34,3 +34,7 @@ export * from "./password-reset";
 export * from "./notification";
 export * from "./cart";
 export * from "./media";
+export * from "./rate-limit";
+export * from "./audit-retention";
+export * from "./activity";
+export * from "./principal-cache";

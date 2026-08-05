@@ -231,3 +231,26 @@ Users cannot write their own joins, on purpose. Relations are declared in the
 registry and surfaced as fields grouped by source table, so the builder offers
 "Firma → Müşteri grubu" without anyone composing a query. Adding a relation is
 one line there, and the UI picks it up on its own.
+
+## Caching an authorization input
+
+`loadPrincipal` sits behind a five-second, in-process cache. That is caching an
+input to an access decision, so the design is deliberately narrow: the cache
+stores the account row and never a verdict — `checkPrincipal` still decides on
+every request — and every write that changes what an account may do evicts the
+entry *after* the write lands, so a revocation bites on the next request rather
+than at the end of the TTL. Evicting before the write would let a concurrent
+read repopulate the cache from the row about to be replaced.
+
+The remaining exposure is stated rather than hidden: across several processes an
+eviction in one does not reach the others, so a revocation can take up to the
+TTL to be seen elsewhere. Behind a load balancer that matters, the fix is a
+shared eviction signal — not a longer TTL.
+
+Account lockout counts per e-mail, which is exactly what password spraying
+avoids: one attempt against each of a hundred addresses trips nothing. So failed
+logins are also counted per source address, using the audit log itself as the
+counter rather than a second table free to disagree with the one an auditor
+reads. `x-forwarded-for` is client-controlled unless a trusted proxy overwrites
+it, so this raises the cost of spraying; it is not access control, and nothing
+in it decides authorization.

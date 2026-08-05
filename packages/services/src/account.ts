@@ -7,6 +7,7 @@ import type {
 } from "@repo/types";
 import { recordAudit, type RequestMeta } from "./audit";
 import { BusinessError } from "./errors";
+import { evictPrincipal } from "./principal-cache";
 
 // Self-service account management: what a user may do to their own account
 // without an administrator. Everything here is scoped by userId taken from the
@@ -92,6 +93,9 @@ export async function updateProfile(
     data: { name: input.name, phone: input.phone ?? null },
     select: profileSelect,
   });
+  // After the write, never before: evicting first would let a concurrent read
+  // repopulate the cache from the row this update is about to replace.
+  evictPrincipal(userId);
 
   await recordAudit({
     actor: { id: userId, email: before.email, role: before.role },
@@ -155,6 +159,7 @@ export async function changeOwnPassword(
       lockedUntil: null,
     },
   });
+  evictPrincipal(userId);
 
   await recordAudit({
     actor: { id: user.id, email: user.email, role: user.role },

@@ -6,6 +6,7 @@ import { BusinessError } from "./errors";
 import { recordAudit, type RequestMeta } from "./audit";
 import { appUrl, sendMail } from "./mail";
 import { passwordResetMail } from "./mail-templates";
+import { evictPrincipal } from "./principal-cache";
 
 // "Şifremi unuttum".
 //
@@ -150,6 +151,7 @@ export async function completePasswordReset(
       },
     }),
   ]);
+  evictPrincipal(row.user.id);
 
   await recordAudit({
     actor: { id: row.user.id, email: row.user.email, role: row.user.role },

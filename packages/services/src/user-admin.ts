@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { CreateUserInput, Role, UpdateUserInput } from "@repo/types";
 import { recordAudit, type RequestMeta } from "./audit";
 import { BusinessError } from "./errors";
+import { evictPrincipal } from "./principal-cache";
 
 // User administration.
 //
@@ -378,6 +379,9 @@ export async function updateUser(
     },
     select: userSelect,
   });
+  // Role, company and the active flag are read on every request through the
+  // principal cache; drop the entry so the change is felt on the next one.
+  evictPrincipal(id);
 
   const audit = {
     actor: actorOf(ctx),
@@ -436,6 +440,7 @@ export async function setUserPassword(
       lockedUntil: null,
     },
   });
+  evictPrincipal(id);
 
   await recordAudit({
     actor: actorOf(ctx),
@@ -497,6 +502,7 @@ export async function deleteUser(id: string, ctx: UserAdminContext): Promise<voi
     await tx.reportDefinition.deleteMany({ where: { ownerId: id } });
     await tx.user.delete({ where: { id } });
   });
+  evictPrincipal(id);
 
   // The deleted account's own log entries survive with actorId nulled out —
   // the denormalised e-mail on each row is what keeps them readable.

@@ -2,6 +2,12 @@ import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import type { Role, SessionUser } from "@repo/types";
 import { recordAudit, type RequestMeta } from "./audit";
+import { checkIpThrottle } from "./rate-limit";
+import {
+  evictPrincipal,
+  getCachedPrincipal,
+  setCachedPrincipal,
+} from "./principal-cache";
 
 // Login attempt handling and live principal lookup.
 //
@@ -33,6 +39,12 @@ export interface Principal extends SessionUser {
  * may have been demoted, moved to another company, deactivated or deleted.
  */
 export async function loadPrincipal(userId: string): Promise<Principal | null> {
+  // Seconds-long cache. It stores the row, never a verdict — checkPrincipal
+  // still decides on every request, and every write that changes what an
+  // account may do evicts the entry first. See principal-cache.ts.
+  const cached = getCachedPrincipal(userId);
+  if (cached !== undefined) return cached;
+
   const row = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -45,6 +57,7 @@ export async function loadPrincipal(userId: string): Promise<Principal | null> {
       tokenVersion: true,
     },
   });
+  setCachedPrincipal(userId, row ?? null);
   return row ?? null;
 }
 
@@ -82,6 +95,9 @@ export async function revokeSessions(userId: string): Promise<number> {
     data: { tokenVersion: { increment: 1 } },
     select: { tokenVersion: true },
   });
+  // Before returning, so the very next request re-reads the account. Without
+  // this the revocation would only bite once the cache entry expired.
+  evictPrincipal(userId);
   return updated.tokenVersion;
 }
 
@@ -89,7 +105,7 @@ export async function revokeSessions(userId: string): Promise<number> {
 // login
 // ─────────────────────────────────────────────
 
-export type LoginFailure = "INVALID" | "DISABLED" | "LOCKED";
+export type LoginFailure = "INVALID" | "DISABLED" | "LOCKED" | "IP_BLOCKED";
 
 export type LoginResult =
   | { ok: true; user: SessionUser; tokenVersion: number }
@@ -110,6 +126,26 @@ export async function attemptLogin(
   password: string,
   meta: RequestMeta = {},
 ): Promise<LoginResult> {
+  // Before anything else, and before touching a password: account lockout counts
+  // per e-mail, so one common password sprayed across a hundred addresses never
+  // trips it. The source address is the thing an attacker cannot vary cheaply.
+  const throttle = await checkIpThrottle(meta.ip);
+  if (throttle.blocked) {
+    await recordAudit({
+      actor: { id: null, email, role: null },
+      action: "LOGIN_LOCKED",
+      summary: `Adres hız sınırına takıldı (${throttle.failures} başarısız deneme)`,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      meta: {
+        channel: meta.channel ?? "web",
+        reason: "IP_THROTTLED",
+        retryAt: throttle.retryAt,
+      },
+    });
+    return { ok: false, reason: "IP_BLOCKED", lockedUntil: throttle.retryAt ?? undefined };
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {

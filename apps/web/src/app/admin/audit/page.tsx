@@ -1,6 +1,7 @@
 import { requirePage } from "@/lib/guard";
 import { AdminNav } from "../_components/admin-nav";
 import { AuditClient } from "./_components/audit-client";
+import { RetentionPanel } from "./_components/retention-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export default async function AuditPage() {
           Girişler, yetki değişiklikleri ve reddedilen istekler. Kayıtlar
           silinemez ve değiştirilemez.
         </p>
+      </div>
+      <div className="mb-6">
+        <RetentionPanel />
       </div>
       <AuditClient />
     </main>

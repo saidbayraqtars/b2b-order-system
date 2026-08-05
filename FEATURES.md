@@ -32,6 +32,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | 16 | Sunucu tarafı sepet + ürün görseli yükleme | ✅ |
 | 17 | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon | ✅ |
 | 18 | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları | ✅ |
+| 19 | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği | ✅ |
 
 ---
 
@@ -432,7 +433,34 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Sipariş kalemlerine katalog tarafı (marka, kategori, katalog SKU/ad), siparişlere firma tarafı (vergi no, kredi limiti, bakiye, vade, plasiyer e-postası), cari deftere sipariş durumu eklendi.
 - Kayıt defteri tutarlılığı **teste bağlandı**: bir alanın yolu bildirilmemiş bir ilişkiden geçiyorsa, join takma adları çakışıyorsa ya da join'ler ebeveyninden önce geliyorsa test kırmızıya döner — yoksa hata ilk gruplama denemesinde üretimde çıkardı.
 
-## 19. Web Portal (`apps/web`)
+## 19. Güvenlik Sertleştirme (Adım 19)
+
+### Adres bazlı giriş hız sınırı
+
+- Hesap kilidi **e-posta başına** sayar; bu yüzden tek bir yaygın şifreyi yüz farklı adrese denemek (password spraying) hiçbir hesabı kilitlemez — her hesap tek başarısızlık görür. Artık **kaynak adres başına** da sayılıyor: 15 dakikada 20 başarısızlık → adres bloklu.
+- Sayaç **denetim kaydının kendisi**. İkinci bir tablo, aynı olaylar hakkında ikinci bir gerçek kaynağı olurdu ve denetçinin okuduğundan sapabilirdi; `AuditLog` zaten her başarısız girişi adresiyle yazıyor, sorgu için indeks eklendi.
+- Blok, pencere içindeki eski başarısızlıklar yaşlandıkça **kendiliğinden** kalkar; ayrıca temizlenmesi gereken bir blok kaydı yok.
+- Kontrol şifre karşılaştırmasından **önce** yapılır. Adresi olmayan istek sınırlanmaz — "bilinmeyen" için bir kimlik uydurmak, o vekilin arkasındaki herkesi aynı kovaya koymak olurdu.
+
+### Denetim kaydı: saklama ve dışa aktarma
+
+- `/admin/audit` ekranında: toplam kayıt, en eski/en yeni tarih, seçilen saklama süresinden eski kayıt sayısı — **silmeyi önermeden önce ne gideceğini gösterir**.
+- Silme süper admine özel, **açık bir kesim tarihi** ister (kimsenin izlemediği bir zamanlayıcı değil) ve güvenlik olayları isteğe bağlı olarak muaf tutulabilir. Silmenin kendisi `AUDIT_PURGED` olarak kayda geçer — aksi hâlde kayıtta hiçbir şeyin açıklamadığı bir boşluk kalırdı.
+- CSV dışa aktarma **akış hâlinde**: dışa aktarma tam da tablonun en büyük olduğu andır, bir yıllık kaydı tek bir metne toplamak sunucuyu düşürmenin yoludur. Çıktı UTF-8 BOM ile başlar (Excel aksi hâlde Türkçe karakterleri sistem kod sayfasıyla okur) ve `=`, `+`, `-`, `@` ile başlayan hücreler tırnaklanır — bir denetim özeti kimsenin elektronik tablosunda formül olarak çalışmamalı.
+
+### Birleşik hareket akışı (`/admin/activity`)
+
+- Üç geçmiş tek sütunda: `OrderStatusHistory`, `Transaction`, `AuditLog`. **Yalnızca okuma** — hiçbir şey yazmaz, hiçbir şeyin sahibi değildir; üç kaynak da kendi olaylarının kaydı olmaya devam eder. Dördüncü bir tablo, diğer üçüyle çelişmekte özgür olurdu.
+- Her kaynaktan aynı limit çekilip birleştirilir: birinden az çekmek, yoğun bir kaynağın diğerlerini sayfadan itmesine yol açardı.
+- **Denetim kaydı yalnızca süper adminde görünür.** Firma alanı taşımadığı için, herkese gösterilseydi bir müşteriye başkalarının giriş kayıtları düşerdi — bu birleştirmenin kazara açabileceği delik tam olarak budur.
+
+### Principal önbelleği
+
+- İstek başına hesap sorgusunun önünde **5 saniyelik**, süreç içi bir önbellek.
+- Üç kural bunu güvenli kılıyor: (1) önbellek asla "yetkili" demez, yalnızca satırı saklar — karar hâlâ her istekte `checkPrincipal`'da verilir; (2) yetkiyi değiştiren **her** yazma (rol, firma, aktiflik, şifre, silme, oturum iptali) girdiyi **yazmadan sonra** düşürür, böylece iptal bir sonraki istekte hissedilir; (3) ıskalamak güvenli yön — boş önbellek bir sorguya, bayat önbellek doğruluğa mal olur.
+- Sınırı yukarıda yazılı: çok süreçli kurulumda iptal diğer süreçlere ulaşmaz.
+
+## 20. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -464,7 +492,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 20. Mobil Uygulama (`apps/mobile`)
+## 21. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -479,7 +507,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 21. API Uçları
+## 22. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -506,6 +534,9 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
 | POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
 | POST | `/api/admin/uploads` | süper admin (multipart görsel) |
+| GET | `/api/activity?companyId&from&to&limit` | süper admin, plasiyer, firma yöneticisi (kapsamlı) |
+| GET · POST | `/api/admin/audit/retention` | süper admin (durum / eski kayıtları sil) |
+| GET | `/api/admin/audit/export?from&to` | süper admin (CSV akışı) |
 | GET | `/api/admin/variants` | süper admin (hediye seçimi için varyant listesi) |
 | GET | `/api/media/<klasör>/<dosya>` | herkes (katalog görseli) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
@@ -567,10 +598,10 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Mobil sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
 - **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
 - **Zamanlayıcı yok** — süresi geçmiş sıfırlama biletlerini silen `purgePasswordResetTokens()` var ama onu çağıran bir cron/job runner yok; şimdilik elle çağrılıyor.
-- **Denetim kaydında saklama/arşivleme politikası yok** — tablo sınırsız büyüyor, otomatik temizlik ya da dışa aktarma yok.
-- **Denetim kapsamı yönetim işlemleriyle sınırlı** — kullanıcı/firma/oturum olayları kaydediliyor; sipariş ve cari hareketleri kendi geçmiş tablolarında (`OrderStatusHistory`, `Transaction`) duruyor, tek bir akışta birleşmiyorlar.
-- **Kilitleme e-posta bazlı** — aynı IP'den farklı hesaplara yapılan denemeler ayrı ayrı sayılıyor, IP başına hız sınırı yok.
-- **`tokenVersion` kontrolü her istekte bir sorgu** — istek başına `react/cache` ile tekil, ama Redis benzeri bir önbellek yok.
+- **Saklama temizliği elle tetikleniyor** — `/admin/audit` ekranından çalıştırılıyor; iş zamanlayıcı olmadığı için otomatik değil.
+- **Principal önbelleği süreç içi** — birden çok süreç/örnek çalışıyorsa bir süreçteki iptal diğerlerine ulaşmaz, oradaki oturum TTL kadar (5 sn) hayatta kalabilir. Yük dengeleyici arkasına konacaksa iptal sinyali paylaşılan bir kanala (Redis pub/sub) taşınmalı; TTL'i büyütmek çözüm değil.
+- **Hız sınırı yalnızca giriş formunda** — diğer uçlar için genel bir istek sınırı yok; ters vekil (nginx/Cloudflare) katmanı varsayılıyor.
+- **`x-forwarded-for` güvenilir vekil gerektirir** — güvenilen bir vekil üzerine yazmıyorsa adres istemci kontrolündedir. Hız sınırı bu yüzden maliyeti artıran bir fren, erişim denetimi değil.
 - **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
 - **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok).
 - Mobil uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.

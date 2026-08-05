@@ -875,6 +875,8 @@ enum AuditAction {
   COMPANY_UPDATED
   COMPANY_DELETED
   MEDIA_UPLOADED // a file landed on the server's disk
+  AUDIT_PURGED // old trail entries deleted under the retention policy
+  AUDIT_EXPORTED // the trail was taken off the system as a file
 }
 
 /// Append-only record of security-relevant events. Nothing in the application
@@ -911,4 +913,7 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([action, createdAt])
   @@index([entity, entityId])
+  /// Failed logins are counted per source address, so the throttle reads this
+  /// table rather than keeping a second one that could disagree with it.
+  @@index([ip, action, createdAt])
 }
