@@ -14,6 +14,8 @@ export interface RuleOptions {
   products: Array<{ id: string; name: string }>;
   customerGroups: Array<{ id: string; name: string }>;
   companies: Array<{ id: string; name: string }>;
+  /** Individual variants — what a gift action points at. */
+  variants: Array<{ id: string; name: string }>;
 }
 
 const OPTION_SOURCE: Partial<Record<RuleParamMeta["kind"], keyof RuleOptions>> = {
@@ -151,6 +153,26 @@ function ParamField({
             </option>
           ))}
         </select>
+      </label>
+    );
+  }
+
+  if (param.kind === "variantId") {
+    return (
+      <label className="block">
+        <Label hint={param.hint}>{param.label}</Label>
+        <Select
+          className="w-72"
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value || undefined)}
+        >
+          <option value="">Seçin…</option>
+          {options.variants.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </Select>
       </label>
     );
   }

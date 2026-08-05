@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import type { PaymentMethod } from "@repo/types";
-import { useCreateOrder } from "@/lib/queries";
+import { useCreateOrder, useOrderQuote } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL } from "@/lib/types";
 import { cartTotals, useCart } from "@/store/cart";
-import { Button, Card, Empty } from "@/components/ui";
+import { Button, Card, Empty, Field } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
 const METHODS: PaymentMethod[] = ["OPEN_ACCOUNT", "CREDIT_CARD"];
 
-// Draft review + submit. Totals here are an on-device preview; the server
-// recalculates prices, MOQ/case rules, stock and credit on POST /api/orders,
-// so a mismatch surfaces as a typed BusinessError rather than a silent accept.
+// Draft review + submit.
+//
+// The totals shown are the server's: campaigns are decided server-side, so a
+// device that added up its own lines would quietly under-report every discount.
+// The on-device figures are kept only as the placeholder while that request is
+// in flight. POST /api/orders re-runs the same calculation inside its
+// transaction, so what is quoted is what is charged.
 export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
   const { companyId } = route.params;
   const lines = useCart((s) => s.lines);
@@ -25,6 +29,15 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
   const createOrder = useCreateOrder();
   const [method, setMethod] = useState<PaymentMethod>("OPEN_ACCOUNT");
   const [error, setError] = useState<string | null>(null);
+  const [couponDraft, setCouponDraft] = useState("");
+  const [coupon, setCoupon] = useState<string | null>(null);
+
+  const items = lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
+  const quote = useOrderQuote(
+    { companyId, paymentMethod: method, couponCode: coupon ?? undefined, items },
+    lines.length > 0,
+  );
+  const q = quote.data;
 
   function onSubmit() {
     setError(null);
@@ -32,11 +45,14 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       {
         companyId,
         paymentMethod: method,
-        items: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+        ...(coupon ? { couponCode: coupon } : {}),
+        items,
       },
       {
         onSuccess: (res) => {
           clear();
+          setCoupon(null);
+          setCouponDraft("");
           Alert.alert(
             "Sipariş oluşturuldu",
             `${res.orderNumber} · ${formatMoney(res.grandTotal)}`,
@@ -131,16 +147,62 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
           })}
         </View>
 
+        <View className="flex-row items-end gap-2">
+          <Field
+            label="Kupon kodu"
+            className="flex-1"
+            autoCapitalize="characters"
+            placeholder="KUPON25"
+            editable={coupon === null}
+            value={couponDraft}
+            onChangeText={(t) => setCouponDraft(t.toUpperCase())}
+          />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              if (coupon === null) {
+                if (couponDraft.trim().length >= 3) setCoupon(couponDraft.trim());
+              } else {
+                setCoupon(null);
+                setCouponDraft("");
+              }
+            }}
+            className="h-12 items-center justify-center rounded-xl border border-neutral-300 px-4 dark:border-neutral-700"
+          >
+            <Text className="text-neutral-900 dark:text-neutral-100">
+              {coupon === null ? "Uygula" : "Kaldır"}
+            </Text>
+          </Pressable>
+        </View>
+
+        {quote.isError ? (
+          <Text className="text-red-600">
+            {quote.error instanceof Error ? quote.error.message : "Fiyat alınamadı"}
+          </Text>
+        ) : null}
+
         <View className="flex-row justify-between">
           <Text className="text-neutral-500">Ara toplam</Text>
           <Text className="text-neutral-900 dark:text-neutral-100">
-            {formatMoney(totals.subtotal)}
+            {formatMoney(
+              q ? Number(q.subtotal) - Number(q.discountTotal) : totals.subtotal,
+            )}
           </Text>
         </View>
+        {q?.promotions.map((p) => (
+          <View key={p.promotionId} className="flex-row justify-between">
+            <Text className="flex-1 text-emerald-700 dark:text-emerald-400">
+              Kampanya: {p.name}
+            </Text>
+            <Text className="text-emerald-700 dark:text-emerald-400">
+              − {formatMoney(p.amount)}
+            </Text>
+          </View>
+        ))}
         <View className="flex-row justify-between">
           <Text className="text-neutral-500">KDV</Text>
           <Text className="text-neutral-900 dark:text-neutral-100">
-            {formatMoney(totals.taxTotal)}
+            {formatMoney(q ? q.taxTotal : totals.taxTotal)}
           </Text>
         </View>
         <View className="flex-row justify-between">
@@ -148,15 +210,19 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
             Genel toplam
           </Text>
           <Text className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-            {formatMoney(totals.grandTotal)}
+            {formatMoney(q ? q.grandTotal : totals.grandTotal)}
           </Text>
         </View>
+        {quote.isFetching ? (
+          <Text className="text-xs text-neutral-400">Fiyat güncelleniyor…</Text>
+        ) : null}
 
         {error ? <Text className="text-red-600">{error}</Text> : null}
 
         <Button
           title="Siparişi gönder"
           onPress={onSubmit}
+          disabled={quote.isError || quote.isLoading}
           loading={createOrder.isPending}
         />
       </View>

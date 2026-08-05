@@ -68,6 +68,7 @@ export async function loadEligiblePromotions(
       code: true,
       priority: true,
       stopFurther: true,
+      conditionMode: true,
       usageLimit: true,
       perCompanyLimit: true,
       conditions: true,
@@ -101,6 +102,7 @@ export async function loadEligiblePromotions(
         code: row.code,
         priority: row.priority,
         stopFurther: row.stopFurther,
+        conditionMode: row.conditionMode,
         conditions: asArray(row.conditions).map(compileCondition),
         actions: asArray(row.actions).map(compileAction),
       };

@@ -122,7 +122,14 @@ export function OrderDetailView({
           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {o.items.map((i) => (
               <tr key={i.id}>
-                <td className="px-3 py-2">{i.productName}</td>
+                <td className="px-3 py-2">
+                  {i.productName}
+                  {i.isGift && (
+                    <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      hediye
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-neutral-500">{i.sku}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{i.quantity}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
@@ -156,6 +163,12 @@ export function OrderDetailView({
               value={`− ${formatTRY(p.amount)}`}
             />
           ))}
+          {Number(o.shippingDiscount) > 0 && (
+            <Row
+              label="Nakliye indirimi"
+              value={`− ${formatTRY(o.shippingDiscount)}`}
+            />
+          )}
           {Number(o.shippingFee) > 0 && (
             <Row label="Nakliye" value={formatTRY(o.shippingFee)} />
           )}

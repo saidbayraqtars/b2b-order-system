@@ -55,6 +55,9 @@ export function PromotionForm({
   const [endsAt, setEndsAt] = useState(toLocalInput(initial?.endsAt ?? null));
   const [priority, setPriority] = useState(String(initial?.priority ?? 0));
   const [stopFurther, setStopFurther] = useState(initial?.stopFurther ?? false);
+  const [conditionMode, setConditionMode] = useState<"ALL" | "ANY">(
+    initial?.conditionMode ?? "ALL",
+  );
   const [usageLimit, setUsageLimit] = useState(
     initial?.usageLimit === null || initial?.usageLimit === undefined
       ? ""
@@ -81,6 +84,7 @@ export function PromotionForm({
     endsAt: toIso(endsAt),
     priority: Number(priority) || 0,
     stopFurther,
+    conditionMode,
     usageLimit: numberOrNull(usageLimit),
     perCompanyLimit: numberOrNull(perCompanyLimit),
     conditions,
@@ -206,8 +210,27 @@ export function PromotionForm({
           </label>
         </div>
 
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <span className="text-neutral-500">Koşullar nasıl birleşsin?</span>
+          {(["ALL", "ANY"] as const).map((mode) => (
+            <label key={mode} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="conditionMode"
+                checked={conditionMode === mode}
+                onChange={() => setConditionMode(mode)}
+              />
+              {mode === "ALL" ? "Hepsi sağlanmalı (VE)" : "En az biri yeterli (VEYA)"}
+            </label>
+          ))}
+        </div>
+
         <RuleList
-          title="Koşullar (hepsi sağlanmalı)"
+          title={
+            conditionMode === "ANY"
+              ? "Koşullar (en az biri sağlanmalı)"
+              : "Koşullar (hepsi sağlanmalı)"
+          }
           emptyHint="Koşul yok — kampanya her sepette çalışır."
           catalog={catalog.conditions}
           options={options}

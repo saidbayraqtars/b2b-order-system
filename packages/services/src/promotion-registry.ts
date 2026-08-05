@@ -52,6 +52,8 @@ export interface EngineContext {
 export interface EngineState {
   lines: EngineLine[];
   context: EngineContext;
+  /** Freight still chargeable — what earlier campaigns have left of it. */
+  shippingFee: Money;
 }
 
 // ─────────────────────────────────────────────
@@ -117,6 +119,26 @@ interface ConditionDef<P> {
 /** What an action gives back: how much to take off each line, keyed by line. */
 export type Allocation = Map<string, Money>;
 
+/** A free item a campaign adds to the order. Priced by the quote, not here. */
+export interface GiftGrant {
+  variantId: string;
+  quantity: number;
+}
+
+/**
+ * Everything an action can do. Three channels, because a campaign discount can
+ * land in three different places on an order and pretending otherwise would
+ * force freight and gifts to be faked as line discounts.
+ */
+export interface ActionEffect {
+  /** Discount per cart line. */
+  perLine?: Allocation;
+  /** Discount on the freight. Clamped to what is left of it. */
+  shipping?: Money;
+  /** Items to add free of charge. */
+  gifts?: GiftGrant[];
+}
+
 interface ActionDef<P> {
   type: string;
   label: string;
@@ -124,7 +146,7 @@ interface ActionDef<P> {
   schema: z.ZodType<P>;
   params: RuleParamMeta[];
   /** Never returns more than a line's current net — the engine clamps again anyway. */
-  discount: (params: P, state: EngineState) => Allocation;
+  apply: (params: P, state: EngineState) => ActionEffect;
 }
 
 function sumNet(lines: EngineLine[]): Money {
@@ -241,13 +263,13 @@ const PERCENT_OFF: ActionDef<{ percent: number } & TargetParams> = {
     { key: "percent", label: "Oran (%)", kind: "percent", required: true },
     ...TARGET_META,
   ],
-  discount: (p, s) => {
+  apply: (p, s) => {
     const out: Allocation = new Map();
     for (const line of matchLines(s.lines, p)) {
       const amount = round2(line.net.mul(p.percent).div(100));
       if (amount.gt(ZERO)) out.set(line.key, amount);
     }
-    return out;
+    return { perLine: out };
   },
 };
 
@@ -263,7 +285,7 @@ const FIXED_OFF_UNIT: ActionDef<{ amount: number } & TargetParams> = {
     { key: "amount", label: "Adet başına (₺)", kind: "money", required: true },
     ...TARGET_META,
   ],
-  discount: (p, s) => {
+  apply: (p, s) => {
     const out: Allocation = new Map();
     const per = new Dec(p.amount);
     for (const line of matchLines(s.lines, p)) {
@@ -271,7 +293,7 @@ const FIXED_OFF_UNIT: ActionDef<{ amount: number } & TargetParams> = {
       const amount = wanted.gt(line.net) ? line.net : wanted;
       if (amount.gt(ZERO)) out.set(line.key, amount);
     }
-    return out;
+    return { perLine: out };
   },
 };
 
@@ -288,16 +310,103 @@ const FIXED_OFF_ORDER: ActionDef<{ amount: number } & TargetParams> = {
     { key: "amount", label: "Tutar (₺)", kind: "money", required: true },
     ...TARGET_META,
   ],
-  discount: (p, s) => {
+  apply: (p, s) => {
     const lines = matchLines(s.lines, p).filter((l) => l.net.gt(ZERO));
     const total = sumNet(lines);
-    if (total.lte(ZERO)) return new Map();
+    if (total.lte(ZERO)) return {};
 
     // Never give away more than the matched lines are worth.
     const wanted = new Dec(p.amount);
     const budget = wanted.gt(total) ? total : wanted;
 
-    return allocateProRata(lines, budget);
+    return { perLine: allocateProRata(lines, budget) };
+  },
+};
+
+const SHIPPING_PERCENT_OFF: ActionDef<{ percent: number }> = {
+  type: "SHIPPING_PERCENT_OFF",
+  label: "Nakliyeden yüzde indirim",
+  description:
+    "Siparişin nakliye bedelinden yüzde indirim yapar. Nakliye yoksa kampanya bir şey vermez.",
+  schema: z.object({ percent: z.number().positive().max(100) }),
+  params: [{ key: "percent", label: "Oran (%)", kind: "percent", required: true }],
+  apply: (p, s) => ({
+    shipping: round2(s.shippingFee.mul(p.percent).div(100)),
+  }),
+};
+
+const FREE_SHIPPING: ActionDef<Record<string, unknown>> = {
+  type: "FREE_SHIPPING",
+  label: "Ücretsiz kargo",
+  description: "Nakliye bedelinin tamamını siler.",
+  schema: z.record(z.unknown()),
+  params: [],
+  apply: (_p, s) => ({ shipping: s.shippingFee }),
+};
+
+/**
+ * X alana Y bedava.
+ *
+ * The action names the item and how many; it cannot price it, because the
+ * engine deliberately knows nothing about the catalogue. The quote adds the
+ * line, values it at the company's own price and discounts it in full — so the
+ * gift appears on the invoice at its worth with an equal discount, rather than
+ * as goods that were never worth anything.
+ *
+ * `perMatch` turns a flat gift into a repeating one: with a MIN_ITEM_QUANTITY
+ * of 10 on the same campaign, "1 free per 10 bought" is that condition plus
+ * this flag.
+ */
+const GIFT_ITEM: ActionDef<{
+  variantId: string;
+  quantity: number;
+  perMatch?: number;
+  maxQuantity?: number;
+} & TargetParams> = {
+  type: "GIFT_ITEM",
+  label: "Hediye ürün",
+  description:
+    "Siparişe bedelsiz ürün ekler. 'Her N adette bir' için eşleşen ürün/kategorileri ve N'i girin.",
+  schema: z.object({
+    variantId: z.string().min(1).max(60),
+    quantity: z.number().int().positive().max(10_000),
+    perMatch: z.number().int().positive().max(1_000_000).optional(),
+    maxQuantity: z.number().int().positive().max(10_000).optional(),
+    ...targetSchema,
+  }),
+  params: [
+    { key: "variantId", label: "Hediye varyant", kind: "variantId", required: true },
+    { key: "quantity", label: "Adet", kind: "quantity", required: true },
+    {
+      key: "perMatch",
+      label: "Her kaç adette bir",
+      kind: "quantity",
+      required: false,
+      hint: "Boş bırakılırsa sipariş başına bir kez verilir",
+    },
+    {
+      key: "maxQuantity",
+      label: "En fazla",
+      kind: "quantity",
+      required: false,
+      hint: "Tekrarlayan hediyede üst sınır",
+    },
+    ...TARGET_META,
+  ],
+  apply: (p, s) => {
+    let quantity = p.quantity;
+
+    if (p.perMatch) {
+      const matched = matchLines(s.lines, p).reduce((n, l) => n + l.quantity, 0);
+      const times = Math.floor(matched / p.perMatch);
+      if (times === 0) return {};
+      quantity = p.quantity * times;
+    }
+
+    if (p.maxQuantity && quantity > p.maxQuantity) quantity = p.maxQuantity;
+    if (quantity <= 0) return {};
+
+    return { gifts: [{ variantId: p.variantId, quantity }] };
   },
 };
 
@@ -351,7 +460,14 @@ const CONDITIONS = new Map<string, ConditionDef<any>>(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see above.
 const ACTIONS = new Map<string, ActionDef<any>>(
-  [PERCENT_OFF, FIXED_OFF_UNIT, FIXED_OFF_ORDER].map((d) => [d.type, d]),
+  [
+    PERCENT_OFF,
+    FIXED_OFF_UNIT,
+    FIXED_OFF_ORDER,
+    SHIPPING_PERCENT_OFF,
+    FREE_SHIPPING,
+    GIFT_ITEM,
+  ].map((d) => [d.type, d]),
 );
 
 /** A rule that passed registry validation: known type, parsed params. */
@@ -364,7 +480,7 @@ export interface CompiledCondition {
 export interface CompiledAction {
   type: string;
   params: unknown;
-  discount: (state: EngineState) => Allocation;
+  apply: (state: EngineState) => ActionEffect;
 }
 
 function ruleParts(raw: unknown): { type: string; params: unknown } {
@@ -424,7 +540,7 @@ export function compileAction(raw: unknown): CompiledAction {
   return {
     type,
     params: parsed.data,
-    discount: (state) => def.discount(parsed.data, state),
+    apply: (state) => def.apply(parsed.data, state),
   };
 }
 

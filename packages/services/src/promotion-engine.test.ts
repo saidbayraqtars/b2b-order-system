@@ -47,6 +47,7 @@ function promo(
     code: null,
     priority: 0,
     stopFurther: false,
+    conditionMode: "ALL",
     conditions: conditions.map(compileCondition),
     actions: actions.map(compileAction),
     ...extra,
@@ -299,5 +300,176 @@ describe("registry validation", () => {
   it("rejects a rule that is not even shaped like one", () => {
     expect(() => compileCondition("MIN_ORDER_SUBTOTAL")).toThrowError(BusinessError);
     expect(() => compileCondition(null)).toThrowError(BusinessError);
+  });
+});
+
+describe("condition mode", () => {
+  const wrongGroup = {
+    type: "CUSTOMER_GROUP_IN",
+    params: { customerGroupIds: ["group-9"] },
+  };
+  const rightCompany = { type: "COMPANY_IN", params: { companyIds: ["company-1"] } };
+  const tenPercent = { type: "PERCENT_OFF", params: { percent: 10 } };
+
+  it("requires every condition by default", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      promotions: [promo("p1", [wrongGroup, rightCompany], [tenPercent])],
+    });
+    expect(result.total.toFixed(2)).toBe("0.00");
+  });
+
+  it("takes one match when the promotion says ANY", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      promotions: [
+        promo("p1", [wrongGroup, rightCompany], [tenPercent], {
+          conditionMode: "ANY",
+        }),
+      ],
+    });
+    expect(result.total.toFixed(2)).toBe("100.00");
+  });
+
+  it("still applies with no conditions at all, in either mode", () => {
+    for (const mode of ["ALL", "ANY"] as const) {
+      const result = applyPromotions({
+        lines: [line("a", "1000.00")],
+        context: CONTEXT,
+        promotions: [promo("p1", [], [tenPercent], { conditionMode: mode })],
+      });
+      expect(result.total.toFixed(2)).toBe("100.00");
+    }
+  });
+});
+
+describe("shipping campaigns", () => {
+  it("takes a percentage off the freight and nothing off the goods", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      shippingFee: D("200.00"),
+      promotions: [
+        promo("p1", [], [{ type: "SHIPPING_PERCENT_OFF", params: { percent: 50 } }]),
+      ],
+    });
+    expect(result.shippingDiscount.toFixed(2)).toBe("100.00");
+    expect(result.perLine.size).toBe(0);
+    // `total` is the goods discount only — the freight is discounted at source,
+    // so adding it here would take it off the order a second time.
+    expect(result.total.toFixed(2)).toBe("0.00");
+    // The campaign is still credited with everything it gave.
+    expect(result.applied[0]!.amount.toFixed(2)).toBe("100.00");
+  });
+
+  it("wipes the freight and never more than it", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      shippingFee: D("75.50"),
+      promotions: [promo("p1", [], [{ type: "FREE_SHIPPING", params: {} }])],
+    });
+    expect(result.shippingDiscount.toFixed(2)).toBe("75.50");
+  });
+
+  it("does not count as applied when there is no freight to discount", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      promotions: [promo("p1", [], [{ type: "FREE_SHIPPING", params: {} }])],
+    });
+    expect(result.applied).toHaveLength(0);
+    expect(result.shippingDiscount.toFixed(2)).toBe("0.00");
+  });
+
+  it("lets a second campaign only take what the first one left", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      shippingFee: D("100.00"),
+      promotions: [
+        promo("p1", [], [{ type: "SHIPPING_PERCENT_OFF", params: { percent: 60 } }], {
+          priority: 1,
+        }),
+        promo("p2", [], [{ type: "FREE_SHIPPING", params: {} }], { priority: 2 }),
+      ],
+    });
+    expect(result.shippingDiscount.toFixed(2)).toBe("100.00");
+    expect(result.applied.map((a) => a.amount.toFixed(2))).toEqual(["60.00", "40.00"]);
+  });
+});
+
+describe("gift items", () => {
+  const gift = (params: Record<string, unknown>) => ({ type: "GIFT_ITEM", params });
+
+  it("reports the grant instead of pricing it", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00")],
+      context: CONTEXT,
+      promotions: [promo("p1", [], [gift({ variantId: "v-gift", quantity: 2 })])],
+    });
+    expect(result.gifts).toEqual([
+      { promotionId: "p1", variantId: "v-gift", quantity: 2 },
+    ]);
+    // Value is unknown here: the quote prices it against the catalogue.
+    expect(result.total.toFixed(2)).toBe("0.00");
+    expect(result.applied).toHaveLength(1);
+  });
+
+  it("repeats once per N bought, and stops at the cap", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00", { quantity: 47 })],
+      context: CONTEXT,
+      promotions: [
+        promo("p1", [], [gift({ variantId: "v-gift", quantity: 1, perMatch: 10 })]),
+        promo(
+          "p2",
+          [],
+          [gift({ variantId: "v-gift", quantity: 1, perMatch: 10, maxQuantity: 3 })],
+          { priority: 1 },
+        ),
+      ],
+    });
+    expect(result.gifts[0]!.quantity).toBe(4); // floor(47 / 10)
+    expect(result.gifts[1]!.quantity).toBe(3); // capped
+  });
+
+  it("grants nothing when the cart has not reached the threshold", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00", { quantity: 5 })],
+      context: CONTEXT,
+      promotions: [
+        promo("p1", [], [gift({ variantId: "v-gift", quantity: 1, perMatch: 10 })]),
+      ],
+    });
+    expect(result.gifts).toHaveLength(0);
+    expect(result.applied).toHaveLength(0);
+  });
+
+  it("counts only the targeted lines when deciding how many to give", () => {
+    const result = applyPromotions({
+      lines: [
+        line("a", "500.00", { quantity: 20, categoryId: "cat-promo" }),
+        line("b", "500.00", { quantity: 40, categoryId: "cat-other" }),
+      ],
+      context: CONTEXT,
+      promotions: [
+        promo(
+          "p1",
+          [],
+          [
+            gift({
+              variantId: "v-gift",
+              quantity: 1,
+              perMatch: 10,
+              categoryIds: ["cat-promo"],
+            }),
+          ],
+        ),
+      ],
+    });
+    expect(result.gifts[0]!.quantity).toBe(2);
   });
 });

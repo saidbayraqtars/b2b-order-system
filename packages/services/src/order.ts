@@ -98,6 +98,7 @@ async function buildOrder(
       promotionDiscount: l.promotionDiscount,
       vatRate: l.vatRate,
       lineTotal: l.lineNet,
+      isGift: l.isGift,
     }),
   );
   const stockUpdates = quote.lines.map((l) => ({
@@ -153,6 +154,7 @@ async function buildOrder(
       discountTotal,
       promotionTotal,
       shippingFee: quote.shippingFee,
+      shippingDiscount: quote.shippingDiscount,
       shippingVatRate: quote.shippingVatRate,
       taxTotal,
       grandTotal,

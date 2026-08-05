@@ -162,6 +162,21 @@ left, and VAT is charged on the net after promotions. Usage caps count redemptio
 whose order is still alive, so a cancellation returns the quota while the order keeps its
 record of what it was granted.
 
+### Where a campaign discount lands
+
+Three places, and they are kept apart on purpose. Line discounts go into
+`promotionTotal`, which always equals the sum of the lines — invoicing splits that
+figure across them, so nothing else may hide in it. A freight discount is taken off
+`shippingFee` at source and recorded in `shippingDiscount`; it takes no part in the grand
+total, because subtracting it again would discount the delivery twice. A gift is a line
+carrying its own list value and an equal discount, so it nets to zero without pretending
+the goods were worthless — which is what an invoice has to show.
+
+The engine reports all three separately and never prices anything: it knows *what* to give
+and *how many*, and `buildQuote` values it against the catalogue. A gift that cannot be
+given — out of stock, or no price this company could be charged — is skipped, not fatal. A
+campaign misconfigured months ago must not block today's checkout.
+
 ## Mail without a mail server
 
 Leave `SMTP_HOST` empty and every message is printed to the server log instead of being

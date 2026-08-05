@@ -189,6 +189,45 @@ export interface AdminProductRow {
   unpricedVariants: number;
 }
 
+/** A variant flattened for a picker: one line, product name and SKU together. */
+export interface VariantOption {
+  id: string;
+  name: string;
+  sku: string;
+  stock: number;
+}
+
+/**
+ * Every sellable variant, for the places that need to point at exactly one —
+ * the gift action of a campaign, for now. Archived products are excluded: you
+ * cannot give away something that is no longer in the catalogue.
+ */
+export async function listVariantOptions(): Promise<VariantOption[]> {
+  const rows = await prisma.productVariant.findMany({
+    where: { product: { isActive: true } },
+    select: {
+      id: true,
+      sku: true,
+      color: true,
+      size: true,
+      stock: true,
+      product: { select: { name: true } },
+    },
+    orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
+    take: 2000,
+  });
+
+  return rows.map((v) => {
+    const traits = [v.color, v.size].filter(Boolean).join(" · ");
+    return {
+      id: v.id,
+      sku: v.sku,
+      stock: v.stock,
+      name: `${v.product.name}${traits ? ` (${traits})` : ""} — ${v.sku}`,
+    };
+  });
+}
+
 export interface ListProductsParams {
   search?: string;
   categoryId?: string;

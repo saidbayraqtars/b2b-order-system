@@ -22,6 +22,7 @@ export interface PromotionRow {
   endsAt: string | null;
   priority: number;
   stopFurther: boolean;
+  conditionMode: "ALL" | "ANY";
   usageLimit: number | null;
   perCompanyLimit: number | null;
   conditions: PromotionRuleInput[];
@@ -93,6 +94,7 @@ function toRow(r: PromotionRecord): Omit<PromotionRow, "usedCount" | "discountGr
     endsAt: r.endsAt?.toISOString() ?? null,
     priority: r.priority,
     stopFurther: r.stopFurther,
+    conditionMode: r.conditionMode,
     usageLimit: r.usageLimit,
     perCompanyLimit: r.perCompanyLimit,
     conditions: asRules(r.conditions),
@@ -149,6 +151,7 @@ export async function createPromotion(
       endsAt: input.endsAt ? new Date(input.endsAt) : null,
       priority: input.priority ?? 0,
       stopFurther: input.stopFurther ?? false,
+      conditionMode: input.conditionMode ?? "ALL",
       usageLimit: input.usageLimit ?? null,
       perCompanyLimit: input.perCompanyLimit ?? null,
       conditions: input.conditions as unknown as Prisma.InputJsonValue,
@@ -195,6 +198,9 @@ export async function updatePromotion(
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.stopFurther !== undefined
         ? { stopFurther: input.stopFurther }
+        : {}),
+      ...(input.conditionMode !== undefined
+        ? { conditionMode: input.conditionMode }
         : {}),
       ...(input.usageLimit !== undefined
         ? { usageLimit: input.usageLimit ?? null }

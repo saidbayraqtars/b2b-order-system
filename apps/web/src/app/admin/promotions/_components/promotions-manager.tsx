@@ -8,6 +8,7 @@ import type {
   CompanyRow,
   CustomerGroupRow,
   PromotionRow,
+  VariantOption,
 } from "@repo/services";
 import type { PromotionRuleCatalog } from "@repo/types";
 import { apiDelete, apiGet, apiPatch } from "@/lib/fetcher";
@@ -57,6 +58,11 @@ export function PromotionsManager() {
     queryKey: ["admin-companies", "promotions"],
     queryFn: () => apiGet<{ companies: CompanyRow[] }>("/api/admin/companies"),
   });
+  const variants = useQuery({
+    queryKey: ["admin-variants"],
+    queryFn: () =>
+      apiGet<{ variants: VariantOption[] }>("/api/admin/variants"),
+  });
 
   const options: RuleOptions = useMemo(
     () => ({
@@ -73,8 +79,12 @@ export function PromotionsManager() {
         id: c.id,
         name: c.name,
       })),
+      variants: (variants.data?.variants ?? []).map((v) => ({
+        id: v.id,
+        name: v.name,
+      })),
     }),
-    [categories.data, products.data, groups.data, companies.data],
+    [categories.data, products.data, groups.data, companies.data, variants.data],
   );
 
   const invalidate = () =>

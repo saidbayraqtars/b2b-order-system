@@ -14,6 +14,7 @@ import type {
   CompanyAging,
   CreateOrderResult,
   OrderDetail,
+  OrderQuote,
   OrderSummary,
   RecordPaymentResult,
   Statement,
@@ -124,6 +125,42 @@ export function useCreateOrder() {
       qc.invalidateQueries({ queryKey: keys.statement(input.companyId) });
       qc.invalidateQueries({ queryKey: keys.aging(input.companyId) });
     },
+  });
+}
+
+export interface QuoteVars {
+  companyId: string;
+  paymentMethod: PaymentMethod;
+  couponCode?: string;
+  items: Array<{ variantId: string; quantity: number }>;
+}
+
+/**
+ * Price the basket on the server before submitting it.
+ *
+ * Campaigns are decided server-side, so a device cannot total a cart honestly
+ * any more — it can only guess at the goods and miss every discount. This asks
+ * for the real figure, and the same call is what validates the coupon: an
+ * unusable code comes back as a typed error, not as a surprise at checkout.
+ */
+export function useOrderQuote(vars: QuoteVars, enabled: boolean) {
+  return useQuery<OrderQuote>({
+    queryKey: [
+      "order-quote",
+      vars.companyId,
+      vars.paymentMethod,
+      vars.couponCode ?? "",
+      vars.items,
+    ],
+    queryFn: () =>
+      post<OrderQuote>("/api/orders/quote", {
+        companyId: vars.companyId,
+        paymentMethod: vars.paymentMethod,
+        ...(vars.couponCode ? { couponCode: vars.couponCode } : {}),
+        items: vars.items,
+      }),
+    enabled: enabled && vars.items.length > 0,
+    retry: false,
   });
 }
 

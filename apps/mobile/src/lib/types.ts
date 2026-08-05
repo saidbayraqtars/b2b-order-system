@@ -130,6 +130,35 @@ export interface CreateOrderResult {
   grandTotal: string;
 }
 
+/** What POST /api/orders/quote answers: the priced cart, campaigns included. */
+export interface OrderQuote {
+  lines: Array<{
+    variantId: string;
+    sku: string;
+    productName: string;
+    quantity: number;
+    unitPrice: string;
+    discountPerUnit: string;
+    promotionDiscount: string;
+    lineNet: string;
+    vatRate: number;
+    isGift: boolean;
+  }>;
+  subtotal: string;
+  discountTotal: string;
+  promotionTotal: string;
+  shippingFee: string;
+  taxTotal: string;
+  grandTotal: string;
+  promotions: Array<{
+    promotionId: string;
+    name: string;
+    code: string | null;
+    amount: string;
+  }>;
+  coupon: string | null;
+}
+
 export interface RecordPaymentResult {
   transactionId: string;
   amount: string;

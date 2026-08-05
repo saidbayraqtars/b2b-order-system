@@ -53,6 +53,8 @@ export interface QuotedLine {
   /** What the line costs after both discounts, excl. VAT. */
   lineNet: Money;
   lineTax: Money;
+  /** True for a line a campaign added free of charge. */
+  isGift: boolean;
 }
 
 export interface QuoteCompany {
@@ -68,9 +70,16 @@ export interface OrderQuote {
   lines: QuotedLine[];
   subtotal: Money;
   discountTotal: Money;
+  /** Campaign discount on the goods — equal to the sum of the lines'. */
   promotionTotal: Money;
   /** Freight after any campaign discount on it, excl. VAT. */
   shippingFee: Money;
+  /**
+   * What a campaign took off the freight. Already gone from `shippingFee`, so
+   * it takes no part in the grand total — subtracting it again would discount
+   * the delivery twice.
+   */
+  shippingDiscount: Money;
   shippingVatRate: number;
   /** Goods VAT plus freight VAT. */
   taxTotal: Money;
@@ -194,6 +203,7 @@ export async function buildQuote(
       promotionDiscount: ZERO,
       lineNet: r.lineNet,
       lineTax: ZERO,
+      isGift: false,
     });
   }
 
@@ -203,6 +213,10 @@ export async function buildQuote(
     companyId: company.id,
     couponCode: coupon,
   });
+
+  const shippingVatRate = input.shippingVatRate ?? 20;
+  let shippingFee = round2(new Dec(input.shippingFee ?? 0));
+  let shippingDiscount = ZERO;
 
   let promotionTotal = ZERO;
   let appliedPromotions: AppliedPromotion[] = [];
@@ -221,15 +235,51 @@ export async function buildQuote(
       net: l.lineNet,
     }));
 
-    const result = applyPromotions({ lines: engineLines, context, promotions });
+    const result = applyPromotions({
+      lines: engineLines,
+      context,
+      promotions,
+      shippingFee,
+    });
     for (const line of lines) {
       const granted = result.perLine.get(line.variantId);
       if (!granted) continue;
       line.promotionDiscount = granted;
       line.lineNet = round2(line.lineNet.sub(granted));
     }
+    shippingDiscount = result.shippingDiscount;
+    shippingFee = round2(shippingFee.sub(shippingDiscount));
     promotionTotal = result.total;
     appliedPromotions = result.applied;
+
+    // Gifts are priced here, not in the engine: the engine knows nothing about
+    // the catalogue. Each gift becomes a line carrying its own list value and
+    // an equal promotion discount, so it nets to zero on the order and still
+    // shows what it was worth on the invoice.
+    if (result.gifts.length > 0) {
+      const giftLines = await priceGifts(client, {
+        gifts: result.gifts,
+        customerGroupId: company.customerGroupId,
+        discounts: company.discounts,
+        // A gift of something already in the cart must not eat the stock the
+        // paid line is holding.
+        reserved: lines.reduce<Map<string, number>>((map, l) => {
+          map.set(l.variantId, (map.get(l.variantId) ?? 0) + l.quantity);
+          return map;
+        }, new Map()),
+      });
+
+      for (const gift of giftLines) {
+        lines.push(gift.line);
+        promotionTotal = promotionTotal.add(gift.value);
+
+        const promo = appliedPromotions.find(
+          (a) => a.promotionId === gift.promotionId,
+        );
+        if (promo) promo.amount = round2(promo.amount.add(gift.value));
+      }
+      promotionTotal = round2(promotionTotal);
+    }
   }
 
   assertCouponApplied(coupon, couponFound, appliedPromotions);
@@ -245,9 +295,9 @@ export async function buildQuote(
     taxTotal = taxTotal.add(line.lineTax);
   }
 
-  // 4. Freight is its own taxed line, outside the goods subtotal.
-  const shippingVatRate = input.shippingVatRate ?? 20;
-  const shippingFee = round2(new Dec(input.shippingFee ?? 0));
+  // 4. Freight is its own taxed line, outside the goods subtotal. Whatever a
+  //    shipping campaign took off is already gone from it, so the VAT follows
+  //    the amount actually charged.
   if (shippingFee.gt(ZERO)) {
     taxTotal = taxTotal.add(round2(shippingFee.mul(shippingVatRate).div(100)));
   }
@@ -269,6 +319,7 @@ export async function buildQuote(
     discountTotal,
     promotionTotal,
     shippingFee,
+    shippingDiscount,
     shippingVatRate,
     taxTotal,
     grandTotal,
@@ -285,6 +336,110 @@ export async function buildQuote(
   };
 }
 
+interface PricedGift {
+  promotionId: string;
+  /** List value of the gift, which is also the discount that cancels it. */
+  value: Money;
+  line: QuotedLine;
+}
+
+/**
+ * Turn engine gift grants into order lines.
+ *
+ * A gift is skipped rather than failing the order when the item cannot be
+ * given: no stock left after the paid lines have taken theirs, or no price the
+ * company could be charged (a gift with no value could not be invoiced). A
+ * campaign misconfigured months ago must not be able to block checkout today.
+ */
+async function priceGifts(
+  client: Client,
+  params: {
+    gifts: Array<{ promotionId: string; variantId: string; quantity: number }>;
+    customerGroupId: string | null;
+    discounts: Array<{
+      categoryId: string | null;
+      productId: string | null;
+      discountType: "PERCENTAGE" | "FIXED";
+      value: Prisma.Decimal;
+    }>;
+    reserved: Map<string, number>;
+  },
+): Promise<PricedGift[]> {
+  // Several campaigns may grant the same item; ask for each variant once.
+  const wanted = new Map<string, number>();
+  for (const gift of params.gifts) {
+    wanted.set(gift.variantId, (wanted.get(gift.variantId) ?? 0) + gift.quantity);
+  }
+
+  const variants = await client.productVariant.findMany({
+    where: { id: { in: [...wanted.keys()] }, product: { isActive: true } },
+    select: {
+      id: true,
+      sku: true,
+      stock: true,
+      product: { select: { id: true, name: true, vatRate: true, categoryId: true } },
+      prices: { select: { customerGroupId: true, minQuantity: true, price: true } },
+    },
+  });
+  const vmap = new Map(variants.map((v) => [v.id, v]));
+
+  const out: PricedGift[] = [];
+  const taken = new Map(params.reserved);
+
+  for (const gift of params.gifts) {
+    const v = vmap.get(gift.variantId);
+    if (!v) continue; // withdrawn from the catalogue since the campaign was written
+
+    const already = taken.get(v.id) ?? 0;
+    const available = v.stock - already;
+    const quantity = Math.min(gift.quantity, Math.max(0, available));
+    if (quantity === 0) continue;
+
+    let priced;
+    try {
+      priced = resolvePrice({
+        prices: v.prices,
+        customerGroupId: params.customerGroupId,
+        quantity,
+        productId: v.product.id,
+        categoryId: v.product.categoryId,
+        discounts: params.discounts,
+      });
+    } catch {
+      continue; // no price for this company — nothing to put on the invoice
+    }
+
+    const value = round2(priced.netUnitPrice.mul(quantity));
+    if (value.lte(ZERO)) continue;
+
+    taken.set(v.id, already + quantity);
+    out.push({
+      promotionId: gift.promotionId,
+      value,
+      line: {
+        variantId: v.id,
+        productId: v.product.id,
+        categoryId: v.product.categoryId,
+        productName: v.product.name,
+        sku: v.sku,
+        quantity,
+        caseCount: null,
+        vatRate: v.product.vatRate,
+        unitPrice: priced.unitPrice,
+        discountPerUnit: priced.discountPerUnit,
+        lineGross: round2(priced.unitPrice.mul(quantity)),
+        lineDiscount: round2(priced.discountPerUnit.mul(quantity)),
+        promotionDiscount: value,
+        lineNet: ZERO,
+        lineTax: ZERO,
+        isGift: true,
+      },
+    });
+  }
+
+  return out;
+}
+
 // ── API-facing shape (money as strings, like every other endpoint) ──
 
 export interface QuoteLineView {
@@ -297,6 +452,7 @@ export interface QuoteLineView {
   promotionDiscount: string;
   lineNet: string;
   vatRate: number;
+  isGift: boolean;
 }
 
 export interface OrderQuoteView {
@@ -305,6 +461,7 @@ export interface OrderQuoteView {
   discountTotal: string;
   promotionTotal: string;
   shippingFee: string;
+  shippingDiscount: string;
   taxTotal: string;
   grandTotal: string;
   promotions: Array<{
@@ -331,11 +488,13 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
       promotionDiscount: l.promotionDiscount.toFixed(2),
       lineNet: l.lineNet.toFixed(2),
       vatRate: l.vatRate,
+      isGift: l.isGift,
     })),
     subtotal: quote.subtotal.toFixed(2),
     discountTotal: quote.discountTotal.toFixed(2),
     promotionTotal: quote.promotionTotal.toFixed(2),
     shippingFee: quote.shippingFee.toFixed(2),
+    shippingDiscount: quote.shippingDiscount.toFixed(2),
     taxTotal: quote.taxTotal.toFixed(2),
     grandTotal: quote.grandTotal.toFixed(2),
     promotions: quote.appliedPromotions.map((p) => ({

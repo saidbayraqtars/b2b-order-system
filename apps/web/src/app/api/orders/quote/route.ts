@@ -24,6 +24,16 @@ export function POST(req: NextRequest) {
 
     await resolveCompanyId(user, input.companyId);
 
-    return Response.json(await quoteOrder(input));
+    // Freight is a seller-side figure — the same rule order creation applies,
+    // so a buyer cannot make a shipping campaign fire by inventing a delivery
+    // charge in the preview.
+    const isSeller = user.role === "SUPER_ADMIN" || user.role === "SALES_REP";
+
+    return Response.json(
+      await quoteOrder({
+        ...input,
+        shippingFee: isSeller ? input.shippingFee : 0,
+      }),
+    );
   });
 }

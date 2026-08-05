@@ -287,6 +287,8 @@ export interface OrderDetailItem {
   /** Partial fulfilment progress. */
   quantityShipped: number;
   quantityInvoiced: number;
+  /** A line a campaign added free of charge. */
+  isGift: boolean;
 }
 
 export interface OrderStatusEvent {
@@ -307,6 +309,8 @@ export interface OrderDetail {
   discountTotal: string;
   promotionTotal: string;
   shippingFee: string;
+  /** What a campaign took off the freight; already gone from shippingFee. */
+  shippingDiscount: string;
   taxTotal: string;
   grandTotal: string;
   currency: string;
@@ -352,6 +356,7 @@ export async function getOrderDetail(
       discountTotal: true,
       promotionTotal: true,
       shippingFee: true,
+      shippingDiscount: true,
       taxTotal: true,
       grandTotal: true,
       currency: true,
@@ -384,6 +389,7 @@ export async function getOrderDetail(
           lineTotal: true,
           quantityShipped: true,
           quantityInvoiced: true,
+          isGift: true,
         },
         orderBy: { productName: "asc" },
       },
@@ -415,6 +421,7 @@ export async function getOrderDetail(
     discountTotal: o.discountTotal.toFixed(2),
     promotionTotal: o.promotionTotal.toFixed(2),
     shippingFee: o.shippingFee.toFixed(2),
+    shippingDiscount: o.shippingDiscount.toFixed(2),
     taxTotal: o.taxTotal.toFixed(2),
     grandTotal: o.grandTotal.toFixed(2),
     currency: o.currency,
@@ -444,6 +451,7 @@ export async function getOrderDetail(
       lineTotal: i.lineTotal.toFixed(2),
       quantityShipped: i.quantityShipped,
       quantityInvoiced: i.quantityInvoiced,
+      isGift: i.isGift,
     })),
     history: o.statusHistory.map((h) => ({
       id: h.id,

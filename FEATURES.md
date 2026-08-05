@@ -30,6 +30,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | 14 | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli | ✅ |
 | 15 | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri | ✅ |
 | 16 | Sunucu tarafı sepet + ürün görseli yükleme | ✅ |
+| 17 | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon | ✅ |
 
 ---
 
@@ -386,7 +387,34 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Sınır 5 MB. Yükleme denetim kaydına `MEDIA_UPLOADED` olarak düşüyor.
 - `/api/media` **kimlik doğrulaması istemiyor**: bunlar katalog fotoğrafı, belge değil; mobilde `<Image>` bearer token ekleyemez. Adlar rastgele olduğu için URL tahmin edilemiyor.
 
-## 17. Web Portal (`apps/web`)
+## 17. Kampanya Motoru v2 (Adım 17)
+
+### Koşullarda VEYA
+
+- `Promotion.conditionMode`: **ALL** (VE, varsayılan) ya da **ANY** (VEYA). Önceki kampanyalar VE ile çalıştığı için varsayılan onları olduğu gibi korur.
+- Koşulsuz kampanya her iki modda da çalışır — "koşul yok" demek "her sepette geçerli" demek.
+
+### Nakliye indirimi
+
+- Yeni aksiyonlar: **`FREE_SHIPPING`** (nakliyeyi siler) ve **`SHIPPING_PERCENT_OFF`** (yüzde düşer).
+- Motor nakliyeyi de sırayla tüketiyor: ilk kampanya %60 aldıysa ikincisi yalnızca kalan %40'ı alabiliyor, toplam hiçbir zaman navlunu aşmıyor.
+- **Para modeli (önemli):** `Order.shippingFee` **indirim sonrası, tahsil edilen** tutardır; indirim ayrıca `Order.shippingDiscount` sütununda durur ve **genel toplam hesabına girmez** — girseydi nakliye iki kez düşerdi. `promotionTotal` yalnızca **mal** indirimini taşır, çünkü faturalama bu tutarı satırlara paylaştırıyor; içinde saklanan bir navlun indirimi tahsisi bozardı. Alıcıya gösterilen "Kampanya: X − 150" satırı ise kampanyanın verdiği **her şeyi** içerir.
+- KDV, tahsil edilen navluna göre hesaplanır.
+
+### Hediye ürün (X alana Y bedava)
+
+- Aksiyon `GIFT_ITEM`: hediye varyantı, adet, isteğe bağlı **"her N adette bir"** (`perMatch`) ve **üst sınır** (`maxQuantity`). Hedef ürün/kategori verilirse N sayımı yalnızca o satırlardan yapılır.
+- Motor hediyeyi **fiyatlamaz** — katalogdan haberi yok, sadece "şu varyanttan şu kadar" der. Fiyatlamayı teklif yapar: hediye, **kendi liste değeriyle** bir satır olarak eklenir ve **eşit tutarda kampanya indirimiyle** sıfırlanır. Böylece fatura hediyeyi bedelsiz gösterirken değerini de gösterir; "hiç değeri yokmuş" gibi davranmaz.
+- Hediye **stoktan düşer**, ücretli satırların ayırdığı stoğu yemez.
+- Verilemeyen hediye siparişi düşürmez, **atlanır**: stok bittiyse kalan kadarı verilir, firmaya uygulanabilir fiyatı yoksa hiç verilmez. Aylar önce yanlış kurulmuş bir kampanya bugünkü siparişi bloklamamalı.
+- `OrderItem.isGift` ile işaretlenir; sipariş detayında "hediye" rozeti çıkar.
+
+### Mobilde kupon
+
+- Mobil sepet artık **sunucudan fiyat alıyor** (`POST /api/orders/quote`): cihaz kendi topladığı için kampanyaları kaçırmıyordu. Cihaz üzerindeki hesap yalnızca istek uçarken gösterilen yer tutucu.
+- Kupon alanı eklendi; geçersiz kod ödeme anında değil, **teklif çağrısında** tipli hata olarak dönüyor.
+
+## 18. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -418,7 +446,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 18. Mobil Uygulama (`apps/mobile`)
+## 19. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -433,7 +461,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 19. API Uçları
+## 20. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -460,6 +488,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
 | POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
 | POST | `/api/admin/uploads` | süper admin (multipart görsel) |
+| GET | `/api/admin/variants` | süper admin (hediye seçimi için varyant listesi) |
 | GET | `/api/media/<klasör>/<dosya>` | herkes (katalog görseli) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
 | POST | `/api/orders/quote` | 4 rol (sepeti fiyatlar, sipariş oluşturmaz) |
@@ -514,9 +543,8 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
 - **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
-- **Kupon yalnızca web portalında** — mobil sipariş ekranında kupon alanı yok; otomatik kampanyalar mobilde de uygulanır çünkü hesap sunucuda.
-- **Kampanya "hediye ürün" veremez** — aksiyonlar yalnızca tutar düşer; sepete satır ekleyen (X alana Y bedava) kampanya yok. Kargo indirimi de yok, çünkü nakliye ücreti modeli henüz yok.
-- **Kampanya kuralları arasında VEYA yok** — bir kampanyanın koşulları VE ile bağlanır; alternatif koşul için ikinci kampanya tanımlanır.
+- **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
+- **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor.
 - **Mobil sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
 - **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok).
 - **Zamanlayıcı yok** — süresi geçmiş sıfırlama biletlerini silen `purgePasswordResetTokens()` var ama onu çağıran bir cron/job runner yok; şimdilik elle çağrılıyor.

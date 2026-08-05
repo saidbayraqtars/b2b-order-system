@@ -33,6 +33,8 @@ const promotionBodySchema = z.object({
   endsAt: z.string().datetime().nullable().optional(),
   priority: z.number().int().min(0).max(1000).optional(),
   stopFurther: z.boolean().optional(),
+  /** How the conditions are joined: every one (AND) or at least one (OR). */
+  conditionMode: z.enum(["ALL", "ANY"]).optional(),
   usageLimit: z.number().int().positive().max(1_000_000).nullable().optional(),
   perCompanyLimit: z.number().int().positive().max(10_000).nullable().optional(),
   conditions: z.array(promotionRuleSchema).max(10).default([]),
@@ -68,6 +70,8 @@ export const quoteOrderSchema = z.object({
   companyId: z.string().cuid(),
   paymentMethod: z.enum(["OPEN_ACCOUNT", "CREDIT_CARD"]).default("OPEN_ACCOUNT"),
   couponCode: couponCodeSchema.optional(),
+  /** Freight, so a seller-side preview can show a shipping campaign working. */
+  shippingFee: z.number().min(0).max(1_000_000).optional(),
   items: z
     .array(
       z.object({
@@ -93,6 +97,8 @@ export const RuleParamKindEnum = z.enum([
   "customerGroupIds",
   "companyIds",
   "paymentMethod",
+  /** A single product variant — the gift a campaign hands out. */
+  "variantId",
 ]);
 export type RuleParamKind = z.infer<typeof RuleParamKindEnum>;
 

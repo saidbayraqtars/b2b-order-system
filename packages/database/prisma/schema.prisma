@@ -59,6 +59,12 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+/// How a promotion joins its conditions.
+enum ConditionMode {
+  ALL // every condition must hold (AND)
+  ANY // at least one must hold (OR)
+}
+
 // ─────────────────────────────────────────────
 // AUTH & RBAC
 // ─────────────────────────────────────────────
@@ -494,6 +500,11 @@ model Promotion {
   /// how an "exclusive" campaign is expressed.
   stopFurther Boolean @default(false)
 
+  /// How the conditions are joined. ALL is AND (the default and the safe one);
+  /// ANY is OR, for "either of these customers" style campaigns that would
+  /// otherwise need one promotion per alternative.
+  conditionMode ConditionMode @default(ALL)
+
   /// Redemption caps; null = unlimited. Counted from PromotionRedemption, so a
   /// cancelled order gives its redemption back.
   usageLimit      Int?
@@ -562,12 +573,20 @@ model Order {
   // Totals — computed from item snapshots (price frozen at order time).
   // grandTotal = subtotal − discountTotal − promotionTotal + shippingFee + taxTotal,
   // and the tax is charged on the net *after* promotions (goods VAT + shipping VAT).
+  // shippingFee is already net of any freight campaign, so shippingDiscount
+  // does not appear in that sum — it would be subtracted twice.
   subtotal      Decimal @default(0) @db.Decimal(14, 2)
   discountTotal Decimal @default(0) @db.Decimal(14, 2)
-  /// Sum of every promotion applied to this order, excl. VAT.
+  /// Campaign discount on the *goods*, excl. VAT. Always equal to the sum of
+  /// OrderItem.promotionDiscount — invoicing splits this figure across the
+  /// lines, so a freight discount must not be hiding in it.
   promotionTotal Decimal @default(0) @db.Decimal(14, 2)
-  /// Freight charged to the buyer, excl. VAT. Only the seller side may set it.
+  /// Freight actually charged, excl. VAT — already net of any campaign on it.
+  /// Only the seller side may set it.
   shippingFee    Decimal @default(0) @db.Decimal(14, 2)
+  /// What a campaign took off the freight. Kept for reporting; it is already
+  /// gone from shippingFee, so it is NOT part of the grand-total arithmetic.
+  shippingDiscount Decimal @default(0) @db.Decimal(14, 2)
   shippingVatRate Int    @default(20)
   taxTotal      Decimal @default(0) @db.Decimal(14, 2)
   grandTotal    Decimal @default(0) @db.Decimal(14, 2)
@@ -645,6 +664,11 @@ model OrderItem {
   promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
   vatRate     Int     @default(20) // snapshot of Product.vatRate
   lineTotal   Decimal @db.Decimal(14, 2) // net of both discounts, excl. VAT
+
+  /// A line a campaign added for free. It carries its list value and an equal
+  /// promotion discount, so it nets to zero without pretending the goods were
+  /// worthless — which is what an invoice ("bedelsiz") has to show.
+  isGift Boolean @default(false)
 
   /// Running totals for partial fulfilment. Both are <= quantity, and invoiced
   /// never exceeds shipped when the invoice was raised from a despatch.
