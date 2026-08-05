@@ -206,3 +206,28 @@ Uploaded images land in `UPLOAD_DIR` and come back through `/api/media/...`, nev
 the moment the app is containerised. The upload path trusts the bytes, not the name: only
 files carrying a real image signature are accepted, and the stored name is random, so
 there is no path to traverse and no URL to guess.
+
+## Reports are a registry, not a query language
+
+A saved report is user data: it arrives over HTTP, it is stored as JSON, and it
+can be edited straight in the database. So no name in it ever reaches the
+database. A field is resolved through the dataset registry first, and what comes
+out is a definition *we* wrote — its path, its type, what may be aggregated, and
+which relations it travels through.
+
+Aggregation runs as `GROUP BY` in Postgres, which is why there is no longer a
+row-scan cap: the database returns one row per group however many it read. That
+requires building SQL by hand, and it is safe here for one reason — every
+identifier in the statement comes from the registry, and every value travels as
+a bound parameter. A field that is not in the registry does not exist, so there
+is no route from input to an identifier.
+
+The row scope is written once, as a Prisma filter, and translated for the SQL
+path. Two scope declarations would be a hole waiting for the day someone pressed
+"group by"; the integration tests check that a sales rep grouping a report still
+sees only their own portfolio.
+
+Users cannot write their own joins, on purpose. Relations are declared in the
+registry and surfaced as fields grouped by source table, so the builder offers
+"Firma → Müşteri grubu" without anyone composing a query. Adding a relation is
+one line there, and the UI picks it up on its own.

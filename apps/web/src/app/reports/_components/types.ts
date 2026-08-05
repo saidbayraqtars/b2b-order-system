@@ -7,6 +7,12 @@ import type { Aggregate, ColumnFormat, ReportDataset } from "@repo/types";
 export interface CatalogField {
   key: string;
   label: string;
+  /**
+   * Table the field really comes from. A report reads one dataset but reaches
+   * across the relations the registry declares, so the palette groups by this
+   * and the user picks "Firma → Müşteri grubu" without writing a join.
+   */
+  source: string;
   type: "string" | "number" | "money" | "date" | "enum" | "boolean";
   groupable: boolean;
   aggregates: Aggregate[];

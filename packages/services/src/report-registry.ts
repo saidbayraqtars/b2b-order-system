@@ -28,6 +28,15 @@ export type ReportFieldType =
 export interface ReportFieldDef {
   /** Turkish label shown in the builder and as the default column header. */
   label: string;
+  /**
+   * Which table this field really comes from, e.g. "Firma" or "Ürün".
+   *
+   * Reports read one dataset, but that dataset reaches across relations the
+   * registry declares — so the builder groups fields by source and a user picks
+   * "Firma → Müşteri grubu" without ever writing a join. Absent means the
+   * dataset's own table.
+   */
+  source?: string;
   type: ReportFieldType;
   /** Dot path from the row root. Drives both the Prisma select and the read. */
   path: string;
@@ -49,13 +58,50 @@ export interface ReportContext {
   companyId: string | null;
 }
 
+/**
+ * How a dataset maps onto tables, so a grouped report can be answered by the
+ * database instead of by reading rows into memory.
+ *
+ * Every identifier here is written in this file. None of it can come from a
+ * report definition: the builder resolves a field name to a `ReportFieldDef`
+ * first, and only then does the SQL layer turn that definition's `path` into a
+ * column using the aliases below. There is no route from user input to an
+ * identifier — values always travel as bound parameters.
+ */
+export interface DatasetSql {
+  /** Base table, unquoted (Prisma's default naming: the model name). */
+  table: string;
+  alias: string;
+  /**
+   * One entry per relation path that any field or scope reaches through, in
+   * dependency order. `on` references only aliases declared here.
+   *
+   * All joins are LEFT JOINs of to-one relations, so they can add columns but
+   * never rows — a row count stays a row count.
+   */
+  joins: ReadonlyArray<{
+    /** Relation path from the base row, e.g. "order.company". */
+    prefix: string;
+    table: string;
+    alias: string;
+    on: string;
+  }>;
+}
+
 export interface DatasetDef {
   label: string;
   /** Prisma delegate key on the client. */
   model: "order" | "orderItem" | "transaction" | "company" | "checkIn";
+  sql: DatasetSql;
   fields: Record<string, ReportFieldDef>;
   defaultSort: { field: string; direction: "asc" | "desc" };
-  /** Row-level scope for this caller. `{}` means unrestricted. */
+  /**
+   * Row-level scope for this caller. `{}` means unrestricted.
+   *
+   * Written as a Prisma filter and translated to SQL for grouped reports, so
+   * both paths read one declaration — a scope that only existed on one of them
+   * would be a hole waiting for the day someone groups a report.
+   */
   scope: (ctx: ReportContext) => Record<string, unknown>;
 }
 
@@ -116,18 +162,25 @@ function dateParts(
   };
 }
 
-const money = (label: string, path: string): ReportFieldDef => ({
+const money = (label: string, path: string, source?: string): ReportFieldDef => ({
   label,
   type: "money",
   path,
   format: "money",
+  ...(source ? { source } : {}),
 });
 
-const text = (label: string, path: string, groupable = true): ReportFieldDef => ({
+const text = (
+  label: string,
+  path: string,
+  groupable = true,
+  source?: string,
+): ReportFieldDef => ({
   label,
   type: "string",
   path,
   groupable,
+  ...(source ? { source } : {}),
 });
 
 // ─────────────────────────────────────────────
@@ -138,6 +191,32 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
   ORDERS: {
     label: "Siparişler",
     model: "order",
+    sql: {
+      table: "Order",
+      alias: "o",
+      joins: [
+        { prefix: "company", table: "Company", alias: "c", on: 'c."id" = o."companyId"' },
+        {
+          prefix: "company.customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        {
+          prefix: "company.salesRep",
+          table: "User",
+          alias: "csr",
+          on: 'csr."id" = c."salesRepId"',
+        },
+        { prefix: "createdBy", table: "User", alias: "cb", on: 'cb."id" = o."createdById"' },
+        {
+          prefix: "shippingAddress",
+          table: "Address",
+          alias: "sa",
+          on: 'sa."id" = o."shippingAddressId"',
+        },
+      ],
+    },
     defaultSort: { field: "createdAt", direction: "desc" },
     fields: {
       orderNumber: text("Sipariş no", "orderNumber", false),
@@ -162,13 +241,29 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
       discountTotal: money("İskonto", "discountTotal"),
       taxTotal: money("KDV", "taxTotal"),
       grandTotal: money("Genel toplam", "grandTotal"),
-      companyName: text("Firma", "company.name"),
-      customerGroupName: text("Müşteri grubu", "company.customerGroup.name"),
-      salesRepName: text("Plasiyer", "company.salesRep.name"),
-      createdByName: text("Siparişi giren", "createdBy.name"),
+      promotionTotal: money("Kampanya indirimi", "promotionTotal"),
+      shippingFee: money("Nakliye", "shippingFee"),
+      shippingDiscount: money("Nakliye indirimi", "shippingDiscount"),
+      companyName: text("Firma", "company.name", true, "Firma"),
+      companyTaxNumber: text("Vergi no", "company.taxNumber", false, "Firma"),
+      creditLimit: money("Kredi limiti", "company.creditLimit", "Firma"),
+      currentBalance: money("Güncel bakiye", "company.currentBalance", "Firma"),
+      companyPaymentTermDays: {
+        label: "Firma vadesi (gün)",
+        type: "number",
+        path: "company.paymentTermDays",
+        groupable: true,
+        format: "number",
+        source: "Firma",
+      },
+      customerGroupName: text("Müşteri grubu", "company.customerGroup.name", true, "Firma"),
+      salesRepName: text("Plasiyer", "company.salesRep.name", true, "Firma"),
+      salesRepEmail: text("Plasiyer e-posta", "company.salesRep.email", false, "Firma"),
+      createdByName: text("Siparişi giren", "createdBy.name", true, "Kullanıcı"),
       carrier: text("Kargo firması", "carrier"),
       trackingNumber: text("Takip no", "trackingNumber", false),
-      city: text("Sevk şehri", "shippingAddress.city"),
+      city: text("Sevk şehri", "shippingAddress.city", true, "Sevk adresi"),
+      shippingDistrict: text("Sevk ilçesi", "shippingAddress.district", true, "Sevk adresi"),
     },
     scope: (ctx) => {
       switch (ctx.role) {
@@ -185,6 +280,49 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
   ORDER_ITEMS: {
     label: "Sipariş kalemleri",
     model: "orderItem",
+    sql: {
+      table: "OrderItem",
+      alias: "oi",
+      joins: [
+        { prefix: "order", table: "Order", alias: "o", on: 'o."id" = oi."orderId"' },
+        {
+          prefix: "order.company",
+          table: "Company",
+          alias: "c",
+          on: 'c."id" = o."companyId"',
+        },
+        {
+          prefix: "order.company.customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        {
+          prefix: "order.company.salesRep",
+          table: "User",
+          alias: "csr",
+          on: 'csr."id" = c."salesRepId"',
+        },
+        {
+          prefix: "variant",
+          table: "ProductVariant",
+          alias: "v",
+          on: 'v."id" = oi."variantId"',
+        },
+        {
+          prefix: "variant.product",
+          table: "Product",
+          alias: "p",
+          on: 'p."id" = v."productId"',
+        },
+        {
+          prefix: "variant.product.category",
+          table: "Category",
+          alias: "cat",
+          on: 'cat."id" = p."categoryId"',
+        },
+      ],
+    },
     // The item table has no date of its own — it inherits the order's.
     defaultSort: { field: "order_createdAt", direction: "desc" },
     fields: {
@@ -201,19 +339,50 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         groupable: true,
         format: "number",
       },
-      orderNumber: text("Sipariş no", "order.orderNumber", false),
+      promotionDiscount: money("Kampanya indirimi", "promotionDiscount"),
+      quantityShipped: {
+        label: "Sevk edilen",
+        type: "number",
+        path: "quantityShipped",
+        format: "number",
+      },
+      quantityInvoiced: {
+        label: "Faturalanan",
+        type: "number",
+        path: "quantityInvoiced",
+        format: "number",
+      },
+      isGift: { label: "Hediye", type: "boolean", path: "isGift", groupable: true },
+      orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
       orderStatus: {
         label: "Sipariş durumu",
         type: "enum",
         path: "order.status",
         groupable: true,
         enumValues: ORDER_STATUSES,
+        source: "Sipariş",
+      },
+      orderPaymentMethod: {
+        label: "Ödeme yöntemi",
+        type: "enum",
+        path: "order.paymentMethod",
+        groupable: true,
+        enumValues: PAYMENT_METHODS,
+        source: "Sipariş",
       },
       ...dateParts("order.createdAt", "Sipariş tarihi"),
-      companyName: text("Firma", "order.company.name"),
-      salesRepName: text("Plasiyer", "order.company.salesRep.name"),
-      brand: text("Marka", "variant.product.brand"),
-      categoryName: text("Kategori", "variant.product.category.name"),
+      companyName: text("Firma", "order.company.name", true, "Firma"),
+      customerGroupName: text(
+        "Müşteri grubu",
+        "order.company.customerGroup.name",
+        true,
+        "Firma",
+      ),
+      salesRepName: text("Plasiyer", "order.company.salesRep.name", true, "Firma"),
+      sku_catalog: text("Katalog SKU", "variant.sku", false, "Ürün"),
+      brand: text("Marka", "variant.product.brand", true, "Ürün"),
+      productNameCatalog: text("Katalog adı", "variant.product.name", true, "Ürün"),
+      categoryName: text("Kategori", "variant.product.category.name", true, "Ürün"),
     },
     scope: (ctx) => {
       switch (ctx.role) {
@@ -230,6 +399,32 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
   LEDGER: {
     label: "Cari defter",
     model: "transaction",
+    sql: {
+      table: "Transaction",
+      alias: "t",
+      joins: [
+        { prefix: "company", table: "Company", alias: "c", on: 'c."id" = t."companyId"' },
+        {
+          prefix: "company.customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        {
+          prefix: "company.salesRep",
+          table: "User",
+          alias: "csr",
+          on: 'csr."id" = c."salesRepId"',
+        },
+        {
+          prefix: "recordedBy",
+          table: "User",
+          alias: "rb",
+          on: 'rb."id" = t."recordedById"',
+        },
+        { prefix: "order", table: "Order", alias: "o", on: 'o."id" = t."orderId"' },
+      ],
+    },
     defaultSort: { field: "createdAt", direction: "desc" },
     fields: {
       ...dateParts("createdAt", "Tarih"),
@@ -249,10 +444,20 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         enumValues: PAYMENT_METHODS,
       },
       description: text("Açıklama", "description", false),
-      companyName: text("Firma", "company.name"),
-      salesRepName: text("Plasiyer", "company.salesRep.name"),
-      recordedByName: text("Kaydeden", "recordedBy.name"),
-      orderNumber: text("Sipariş no", "order.orderNumber", false),
+      companyName: text("Firma", "company.name", true, "Firma"),
+      customerGroupName: text("Müşteri grubu", "company.customerGroup.name", true, "Firma"),
+      salesRepName: text("Plasiyer", "company.salesRep.name", true, "Firma"),
+      currentBalance: money("Güncel bakiye", "company.currentBalance", "Firma"),
+      recordedByName: text("Kaydeden", "recordedBy.name", true, "Kullanıcı"),
+      orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
+      orderStatus: {
+        label: "Sipariş durumu",
+        type: "enum",
+        path: "order.status",
+        groupable: true,
+        enumValues: ORDER_STATUSES,
+        source: "Sipariş",
+      },
     },
     scope: (ctx) => {
       switch (ctx.role) {
@@ -269,6 +474,19 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
   COMPANIES: {
     label: "Firmalar",
     model: "company",
+    sql: {
+      table: "Company",
+      alias: "c",
+      joins: [
+        {
+          prefix: "customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        { prefix: "salesRep", table: "User", alias: "sr", on: 'sr."id" = c."salesRepId"' },
+      ],
+    },
     defaultSort: { field: "name", direction: "asc" },
     fields: {
       name: text("Firma", "name"),
@@ -292,8 +510,8 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         path: "requiresOrderApproval",
         groupable: true,
       },
-      customerGroupName: text("Müşteri grubu", "customerGroup.name"),
-      salesRepName: text("Plasiyer", "salesRep.name"),
+      customerGroupName: text("Müşteri grubu", "customerGroup.name", true, "Müşteri grubu"),
+      salesRepName: text("Plasiyer", "salesRep.name", true, "Plasiyer"),
       ...dateParts("createdAt", "Kayıt tarihi"),
     },
     scope: (ctx) => {
@@ -311,6 +529,20 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
   CHECKINS: {
     label: "Ziyaretler",
     model: "checkIn",
+    sql: {
+      table: "CheckIn",
+      alias: "ci",
+      joins: [
+        { prefix: "company", table: "Company", alias: "c", on: 'c."id" = ci."companyId"' },
+        {
+          prefix: "company.customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        { prefix: "salesRep", table: "User", alias: "sr", on: 'sr."id" = ci."salesRepId"' },
+      ],
+    },
     defaultSort: { field: "checkInAt", direction: "desc" },
     fields: {
       ...dateParts("checkInAt", "Ziyaret"),
@@ -318,8 +550,9 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
       note: text("Not", "note", false),
       latitude: { label: "Enlem", type: "number", path: "latitude", format: "number" },
       longitude: { label: "Boylam", type: "number", path: "longitude", format: "number" },
-      companyName: text("Firma", "company.name"),
-      salesRepName: text("Plasiyer", "salesRep.name"),
+      companyName: text("Firma", "company.name", true, "Firma"),
+      customerGroupName: text("Müşteri grubu", "company.customerGroup.name", true, "Firma"),
+      salesRepName: text("Plasiyer", "salesRep.name", true, "Plasiyer"),
     },
     scope: (ctx) => {
       switch (ctx.role) {
@@ -375,6 +608,7 @@ export function describeDatasets() {
     fields: Object.entries(ds.fields).map(([fieldKey, f]) => ({
       key: fieldKey,
       label: f.label,
+      source: f.source ?? ds.label,
       type: f.type,
       groupable: Boolean(f.groupable),
       aggregates: allowedAggregates(f),

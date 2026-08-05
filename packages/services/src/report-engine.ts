@@ -8,7 +8,6 @@ import type {
   ReportFilter,
 } from "@repo/types";
 import { BusinessError } from "./errors";
-import { Dec, ZERO } from "./money";
 import {
   DATASETS,
   allowedAggregates,
@@ -19,6 +18,7 @@ import {
   type ReportContext,
   type ReportFieldDef,
 } from "./report-registry";
+import { MAX_GROUPS, buildGroupedQuery } from "./report-sql";
 
 // Compiles a user-defined report into a Prisma query and runs it.
 //
@@ -28,12 +28,11 @@ import {
 // running someone else's shared report is safe.
 
 /**
- * Aggregating happens in JS (Prisma cannot group by a relation column), so an
- * aggregate report reads rows before folding them. The cap keeps one report
- * from pulling an unbounded table into memory; hitting it is reported rather
- * than hidden, because a silently partial total is worse than no total.
+ * Aggregation runs in the database (see report-sql.ts), so an aggregate report
+ * no longer reads rows into memory and no scan cap applies to it. What is
+ * bounded now is the number of *groups* returned — a report with more than that
+ * is not a report anyone reads, and saying so beats streaming it.
  */
-const MAX_SCAN_ROWS = 20_000;
 const DEFAULT_DETAIL_LIMIT = 500;
 
 export interface ReportColumnOut {
@@ -52,9 +51,12 @@ export interface ReportRunResult {
   columns: ReportColumnOut[];
   rows: Record<string, ReportCellValue>[];
   rowCount: number;
-  /** Rows read from the database before aggregation. */
+  /**
+   * Rows the database read to answer this. Aggregates are folded server-side,
+   * so for a grouped report this is the number of groups, not of source rows.
+   */
   scannedRows: number;
-  /** True when the scan cap was hit — aggregates cover only what was read. */
+  /** True when the result was cut short — there was more than the limit. */
   truncated: boolean;
   grouped: boolean;
   chart: ReportConfig["chart"] | null;
@@ -354,33 +356,32 @@ export async function runReport(
   const hasAggregate = columns.some((c) => c.aggregate);
   const detail = !grouped && !hasAggregate;
 
-  // Detail listings can be ordered and limited by the database, so they never
-  // hit the scan cap. Aggregations have to read the matching set.
-  const take = detail
-    ? (config.limit ?? DEFAULT_DETAIL_LIMIT)
-    : MAX_SCAN_ROWS;
-
-  const orderBy = detail ? detailOrderBy(dataset, config) : undefined;
-
-  const delegate = prisma[ds.model] as {
-    findMany: (args: unknown) => Promise<unknown[]>;
-  };
-  const raw = await delegate.findMany({
-    where,
-    select,
-    take,
-    ...(orderBy ? { orderBy } : {}),
-  });
-
-  const flat = raw.map((row) => flattenRow(dataset, columns, row));
-
   let rows: Record<string, ReportCellValue>[];
+  let scannedRows: number;
+  let truncated = false;
+
   if (detail) {
-    rows = flat.map((r) => emit(columns, r));
+    // A plain listing is ordered and limited by the database already.
+    const take = config.limit ?? DEFAULT_DETAIL_LIMIT;
+    const orderBy = detailOrderBy(dataset, config);
+    const delegate = prisma[ds.model] as {
+      findMany: (args: unknown) => Promise<unknown[]>;
+    };
+    const raw = await delegate.findMany({
+      where,
+      select,
+      take,
+      ...(orderBy ? { orderBy } : {}),
+    });
+    rows = raw
+      .map((row) => flattenRow(dataset, columns, row))
+      .map((r) => emit(columns, r));
+    scannedRows = raw.length;
   } else {
-    rows = aggregate(config, columns, flat);
-    rows = sortRows(rows, config);
-    if (config.limit) rows = rows.slice(0, config.limit);
+    const result = await runGrouped(dataset, config, columns, where);
+    rows = result.rows;
+    scannedRows = rows.length;
+    truncated = result.truncated;
   }
 
   return {
@@ -400,12 +401,56 @@ export async function runReport(
     }),
     rows,
     rowCount: rows.length,
-    scannedRows: raw.length,
-    truncated: !detail && raw.length >= MAX_SCAN_ROWS,
+    scannedRows,
+    truncated,
     grouped,
     chart: config.chart ?? null,
     generatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Run the aggregation as a GROUP BY.
+ *
+ * The database returns one row per group, so nothing here scales with the size
+ * of the underlying table — which is the whole reason this replaced the JS fold
+ * and its 20 000-row cap. Values come back as Postgres types (numeric strings,
+ * Dates), so they go through the same `toCell` every other path uses.
+ */
+async function runGrouped(
+  dataset: ReportDataset,
+  config: ReportConfig,
+  columns: ReportColumn[],
+  where: Record<string, unknown>,
+): Promise<{ rows: Record<string, ReportCellValue>[]; truncated: boolean }> {
+  const query = buildGroupedQuery({
+    dataset,
+    config,
+    columns,
+    columnKey,
+    where,
+  });
+
+  const raw = await prisma.$queryRaw<Record<string, unknown>[]>(query.sql);
+
+  const limit = Math.min(config.limit ?? MAX_GROUPS, MAX_GROUPS);
+  const truncated = raw.length > limit;
+  const kept = truncated ? raw.slice(0, limit) : raw;
+
+  const ds = DATASETS[dataset];
+  const rows = kept.map((row) => {
+    const out: Record<string, ReportCellValue> = {};
+    query.keys.forEach((key, index) => {
+      const column = columns[index]!;
+      const raw = row[`c${index}`];
+      out[key] = column.aggregate
+        ? toAggregateCell(ds.fields[column.field]!, column.aggregate, raw)
+        : toCell(raw);
+    });
+    return out;
+  });
+
+  return { rows, truncated };
 }
 
 function labelFor(def: ReportFieldDef, aggregate?: Aggregate): string {
@@ -480,106 +525,39 @@ function toCell(value: unknown): ReportCellValue {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value.toISOString();
   if (value instanceof Prisma.Decimal) return Number(value.toFixed(2));
+  // Raw SQL hands back what Postgres has: COUNT is bigint, SUM/AVG over money
+  // is numeric, and the driver renders those as BigInt and string. A total that
+  // arrived as "2400" is still a total, so it goes out as one.
+  if (typeof value === "bigint") return Number(value);
   if (typeof value === "number" || typeof value === "boolean") return value;
   return String(value);
 }
 
 /**
- * Fold flat rows into groups.
- *
- * COUNT is the number of rows in the group (SQL's COUNT(*)), which is what
- * people mean by "adet"; COUNT_DISTINCT counts distinct non-null values of the
- * chosen field. Sums run through Decimal so money stays exact until the last
- * step.
+ * Same, for a value that came out of an aggregate. The column's own type
+ * decides: a SUM of money is a number even though the driver said "2400.00",
+ * while a MAX of a date must stay a date.
  */
-function aggregate(
-  config: ReportConfig,
-  columns: ReportColumn[],
-  flat: Record<string, unknown>[],
-): Record<string, ReportCellValue>[] {
-  const keyOf = (row: Record<string, unknown>) =>
-    config.groupBy.map((g) => String(row[g] ?? "")).join(" ");
+function toAggregateCell(
+  def: ReportFieldDef,
+  aggregate: Aggregate,
+  value: unknown,
+): ReportCellValue {
+  if (value === null || value === undefined) return null;
 
-  const groups = new Map<
-    string,
-    { keyValues: Record<string, unknown>; rows: Record<string, unknown>[] }
-  >();
+  const numeric =
+    aggregate === "COUNT" ||
+    aggregate === "COUNT_DISTINCT" ||
+    aggregate === "AVG" ||
+    aggregate === "SUM" ||
+    def.type === "number" ||
+    def.type === "money";
 
-  // No grouping but aggregates present → one grand-total row.
-  if (config.groupBy.length === 0) {
-    groups.set("", { keyValues: {}, rows: flat });
-  } else {
-    for (const row of flat) {
-      const k = keyOf(row);
-      const g = groups.get(k);
-      if (g) g.rows.push(row);
-      else {
-        const keyValues: Record<string, unknown> = {};
-        for (const field of config.groupBy) keyValues[field] = row[field];
-        groups.set(k, { keyValues, rows: [row] });
-      }
-    }
+  if (numeric) {
+    const n = Number(value instanceof Prisma.Decimal ? value.toFixed(4) : value);
+    return Number.isNaN(n) ? toCell(value) : Number(n.toFixed(2));
   }
-
-  return [...groups.values()].map((group) => {
-    const out: Record<string, ReportCellValue> = {};
-    for (const c of columns) {
-      const key = columnKey(c);
-      if (!c.aggregate) {
-        out[key] = toCell(group.keyValues[c.field]);
-        continue;
-      }
-      out[key] = applyAggregate(
-        c.aggregate,
-        group.rows.map((r) => r[c.field]),
-      );
-    }
-    return out;
-  });
+  return toCell(value);
 }
 
-function applyAggregate(aggregateFn: Aggregate, values: unknown[]): ReportCellValue {
-  if (aggregateFn === "COUNT") return values.length;
 
-  const present = values.filter((v) => v !== null && v !== undefined);
-
-  if (aggregateFn === "COUNT_DISTINCT") {
-    return new Set(present.map((v) => (v instanceof Date ? v.getTime() : String(v))))
-      .size;
-  }
-  if (present.length === 0) return null;
-
-  if (aggregateFn === "MIN" || aggregateFn === "MAX") {
-    const sorted = [...present].sort(compareValues);
-    return toCell(aggregateFn === "MIN" ? sorted[0] : sorted[sorted.length - 1]);
-  }
-
-  let sum = ZERO;
-  for (const v of present) sum = sum.plus(new Dec(String(v)));
-  if (aggregateFn === "SUM") return Number(sum.toFixed(2));
-  return Number(sum.dividedBy(present.length).toFixed(2));
-}
-
-function compareValues(a: unknown, b: unknown): number {
-  const av = a instanceof Date ? a.getTime() : a;
-  const bv = b instanceof Date ? b.getTime() : b;
-  if (typeof av === "number" && typeof bv === "number") return av - bv;
-  const an = Number(av);
-  const bn = Number(bv);
-  if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
-  return String(av).localeCompare(String(bv), "tr");
-}
-
-function sortRows(
-  rows: Record<string, ReportCellValue>[],
-  config: ReportConfig,
-): Record<string, ReportCellValue>[] {
-  if (config.sort.length === 0) return rows;
-  return [...rows].sort((a, b) => {
-    for (const s of config.sort) {
-      const cmp = compareValues(a[s.field], b[s.field]);
-      if (cmp !== 0) return s.direction === "desc" ? -cmp : cmp;
-    }
-    return 0;
-  });
-}

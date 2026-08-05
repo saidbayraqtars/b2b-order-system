@@ -83,14 +83,19 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
   const catalog = useQuery({
     queryKey: ["report-datasets"],
-    queryFn: () => apiGet<{ datasets: CatalogDataset[] }>("/api/reports/datasets"),
+    queryFn: () =>
+      apiGet<{ datasets: CatalogDataset[] }>("/api/reports/datasets"),
   });
 
   const [name, setName] = useState(saved?.name ?? "");
   const [description, setDescription] = useState(saved?.description ?? "");
   const [isShared, setIsShared] = useState(saved?.isShared ?? false);
-  const [dataset, setDataset] = useState<ReportDataset>(saved?.dataset ?? "ORDERS");
-  const [config, setConfig] = useState<ReportConfig>(saved?.config ?? EMPTY_CONFIG);
+  const [dataset, setDataset] = useState<ReportDataset>(
+    saved?.dataset ?? "ORDERS",
+  );
+  const [config, setConfig] = useState<ReportConfig>(
+    saved?.config ?? EMPTY_CONFIG,
+  );
   const [result, setResult] = useState<ReportRunResult | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -101,6 +106,24 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
     const m = new Map<string, CatalogField>();
     for (const f of ds?.fields ?? []) m.set(f.key, f);
     return m;
+  }, [ds]);
+
+  /**
+   * Palette grouped by source table, dataset's own fields first. That grouping
+   * is the whole "join" experience: the relations are declared server-side, and
+   * the user only chooses which side of them to read.
+   */
+  const fieldGroups = useMemo(() => {
+    const groups = new Map<string, CatalogField[]>();
+    for (const f of ds?.fields ?? []) {
+      const list = groups.get(f.source);
+      if (list) list.push(f);
+      else groups.set(f.source, [f]);
+    }
+    const own = ds?.label;
+    return [...groups.entries()].sort(([a], [b]) =>
+      a === own ? -1 : b === own ? 1 : a.localeCompare(b, "tr"),
+    );
   }, [ds]);
 
   const preview = useMutation({
@@ -128,15 +151,23 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
   const save = useMutation({
     mutationFn: async () => {
-      const body = { name, description: description || undefined, isShared, config };
+      const body = {
+        name,
+        description: description || undefined,
+        isShared,
+        config,
+      };
       if (saved) {
         await apiPatch(`/api/reports/definitions/${saved.id}`, body);
         return saved.id;
       }
-      const created = await apiPost<{ id: string }>("/api/reports/definitions", {
-        ...body,
-        dataset,
-      });
+      const created = await apiPost<{ id: string }>(
+        "/api/reports/definitions",
+        {
+          ...body,
+          dataset,
+        },
+      );
       return created.id;
     },
     onSuccess: (id) => router.push(`/reports/${id}`),
@@ -160,7 +191,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
   };
   const updateColumn = (i: number, next: Partial<ReportColumn>) =>
     patch({
-      columns: config.columns.map((c, idx) => (idx === i ? { ...c, ...next } : c)),
+      columns: config.columns.map((c, idx) =>
+        idx === i ? { ...c, ...next } : c,
+      ),
     });
   const removeColumn = (i: number) => {
     const removed = config.columns[i]!;
@@ -202,7 +235,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Rapor adı</span>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Rapor adı
+            </span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -212,7 +247,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Açıklama</span>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Açıklama
+            </span>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -221,7 +258,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Veri kümesi</span>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Veri kümesi
+            </span>
             {saved ? (
               <p className="flex h-9 items-center text-sm">
                 {REPORT_DATASET_LABELS[dataset]}
@@ -267,7 +306,8 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             <button
               type="button"
               onClick={() => {
-                if (confirm(`"${saved.name}" raporu silinsin mi?`)) remove.mutate();
+                if (confirm(`"${saved.name}" raporu silinsin mi?`))
+                  remove.mutate();
               }}
               className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white"
             >
@@ -277,7 +317,10 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
           <button
             type="button"
             disabled={
-              readOnly || !name.trim() || config.columns.length === 0 || save.isPending
+              readOnly ||
+              !name.trim() ||
+              config.columns.length === 0 ||
+              save.isPending
             }
             onClick={() => save.mutate()}
             className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white disabled:opacity-50"
@@ -306,47 +349,60 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             <h2 className="text-sm font-semibold">Alanlar</h2>
           </header>
           <ul className="max-h-[28rem] divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
-            {ds?.fields.map((f) => (
-              <li key={f.key} className="flex items-center justify-between px-3 py-1.5">
-                <span className="text-sm">{f.label}</span>
-                <span className="flex gap-1">
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => addColumn(f.key)}
-                    title="Sütun olarak ekle"
-                    className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
-                  >
-                    sütun
-                  </button>
-                  {f.groupable && (
-                    <button
-                      type="button"
-                      disabled={readOnly || config.groupBy.includes(f.key)}
-                      onClick={() => patch({ groupBy: [...config.groupBy, f.key] })}
-                      title="Bu alana göre grupla"
-                      className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
+            {fieldGroups.map(([source, fields]) => (
+              <li key={source}>
+                <p className="sticky top-0 bg-neutral-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+                  {source}
+                </p>
+                <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {fields.map((f) => (
+                    <li
+                      key={f.key}
+                      className="flex items-center justify-between px-3 py-1.5"
                     >
-                      grupla
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() =>
-                      patch({
-                        filters: [
-                          ...config.filters,
-                          defaultFilter(f),
-                        ],
-                      })
-                    }
-                    title="Filtre ekle"
-                    className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
-                  >
-                    filtre
-                  </button>
-                </span>
+                      <span className="text-sm">{f.label}</span>
+                      <span className="flex gap-1">
+                        <button
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => addColumn(f.key)}
+                          title="Sütun olarak ekle"
+                          className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
+                        >
+                          sütun
+                        </button>
+                        {f.groupable && (
+                          <button
+                            type="button"
+                            disabled={
+                              readOnly || config.groupBy.includes(f.key)
+                            }
+                            onClick={() =>
+                              patch({ groupBy: [...config.groupBy, f.key] })
+                            }
+                            title="Bu alana göre grupla"
+                            className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
+                          >
+                            grupla
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() =>
+                            patch({
+                              filters: [...config.filters, defaultFilter(f)],
+                            })
+                          }
+                          title="Filtre ekle"
+                          className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
+                        >
+                          filtre
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
@@ -367,7 +423,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                       type="button"
                       disabled={readOnly}
                       onClick={() =>
-                        patch({ groupBy: config.groupBy.filter((x) => x !== g) })
+                        patch({
+                          groupBy: config.groupBy.filter((x) => x !== g),
+                        })
                       }
                       className="text-indigo-500"
                     >
@@ -406,8 +464,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         onChange={(e) =>
                           updateColumn(i, {
                             aggregate: (e.target.value || undefined) as
-                              | Aggregate
-                              | undefined,
+                              Aggregate | undefined,
                           })
                         }
                         className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
@@ -423,7 +480,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         value={c.format ?? f?.format ?? "text"}
                         disabled={readOnly}
                         onChange={(e) =>
-                          updateColumn(i, { format: e.target.value as ColumnFormat })
+                          updateColumn(i, {
+                            format: e.target.value as ColumnFormat,
+                          })
                         }
                         className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
                       >
@@ -438,7 +497,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         disabled={readOnly}
                         placeholder="Başlık (ops.)"
                         onChange={(e) =>
-                          updateColumn(i, { label: e.target.value || undefined })
+                          updateColumn(i, {
+                            label: e.target.value || undefined,
+                          })
                         }
                         className="h-8 w-36 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
                       />
@@ -451,7 +512,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         max={600}
                         onChange={(e) =>
                           updateColumn(i, {
-                            width: e.target.value ? Number(e.target.value) : undefined,
+                            width: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
                           })
                         }
                         className="h-8 w-20 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
@@ -462,19 +525,29 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                           checked={Boolean(c.hidden)}
                           disabled={readOnly}
                           onChange={(e) =>
-                            updateColumn(i, { hidden: e.target.checked || undefined })
+                            updateColumn(i, {
+                              hidden: e.target.checked || undefined,
+                            })
                           }
                         />
                         gizle
                       </label>
                       <span className="ml-auto flex gap-1">
-                        <IconBtn label="↑" disabled={readOnly || i === 0} onClick={() => moveColumn(i, -1)} />
+                        <IconBtn
+                          label="↑"
+                          disabled={readOnly || i === 0}
+                          onClick={() => moveColumn(i, -1)}
+                        />
                         <IconBtn
                           label="↓"
                           disabled={readOnly || i === config.columns.length - 1}
                           onClick={() => moveColumn(i, 1)}
                         />
-                        <IconBtn label="×" disabled={readOnly} onClick={() => removeColumn(i)} />
+                        <IconBtn
+                          label="×"
+                          disabled={readOnly}
+                          onClick={() => removeColumn(i)}
+                        />
                       </span>
                     </li>
                   );
@@ -500,7 +573,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                       })
                     }
                     onRemove={() =>
-                      patch({ filters: config.filters.filter((_, idx) => idx !== i) })
+                      patch({
+                        filters: config.filters.filter((_, idx) => idx !== i),
+                      })
                     }
                   />
                 ))}
@@ -511,7 +586,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
           <Panel title="Sıralama, limit ve grafik">
             <div className="flex flex-wrap items-end gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">Sırala</span>
+                <span className="mb-1 block text-xs text-neutral-500">
+                  Sırala
+                </span>
                 <select
                   value={config.sort[0]?.field ?? ""}
                   disabled={readOnly}
@@ -561,7 +638,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">Satır limiti</span>
+                <span className="mb-1 block text-xs text-neutral-500">
+                  Satır limiti
+                </span>
                 <input
                   type="number"
                   min={1}
@@ -571,14 +650,18 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                   placeholder="500"
                   onChange={(e) =>
                     patch({
-                      limit: e.target.value ? Number(e.target.value) : undefined,
+                      limit: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
                     })
                   }
                   className="h-9 w-24 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">Görünüm</span>
+                <span className="mb-1 block text-xs text-neutral-500">
+                  Görünüm
+                </span>
                 <select
                   value={config.chart?.type ?? "table"}
                   disabled={readOnly}
@@ -603,13 +686,18 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
               {config.chart && config.chart.type !== "table" && (
                 <>
                   <label className="block">
-                    <span className="mb-1 block text-xs text-neutral-500">Etiket sütunu</span>
+                    <span className="mb-1 block text-xs text-neutral-500">
+                      Etiket sütunu
+                    </span>
                     <select
                       value={config.chart.categoryField ?? ""}
                       disabled={readOnly}
                       onChange={(e) =>
                         patch({
-                          chart: { ...config.chart!, categoryField: e.target.value },
+                          chart: {
+                            ...config.chart!,
+                            categoryField: e.target.value,
+                          },
                         })
                       }
                       className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
@@ -623,20 +711,27 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                     </select>
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs text-neutral-500">Değer sütunu</span>
+                    <span className="mb-1 block text-xs text-neutral-500">
+                      Değer sütunu
+                    </span>
                     <select
                       value={config.chart.valueField ?? ""}
                       disabled={readOnly}
                       onChange={(e) =>
                         patch({
-                          chart: { ...config.chart!, valueField: e.target.value },
+                          chart: {
+                            ...config.chart!,
+                            valueField: e.target.value,
+                          },
                         })
                       }
                       className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                     >
                       <option value="">Seçin</option>
                       {outputColumns
-                        .filter((c) => c.format === "money" || c.format === "number")
+                        .filter(
+                          (c) => c.format === "money" || c.format === "number",
+                        )
                         .map((c) => (
                           <option key={c.key} value={c.key}>
                             {c.label}
@@ -674,9 +769,11 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
 function defaultFilter(f: CatalogField): ReportFilter {
   const operator = (f.operators[0] ?? "eq") as FilterOperator;
-  if (f.type === "date") return { field: f.key, operator: "lastNDays", value: 30 };
+  if (f.type === "date")
+    return { field: f.key, operator: "lastNDays", value: 30 };
   if (operator === "in") return { field: f.key, operator, value: [] };
-  if (operator === "between") return { field: f.key, operator, value: ["", ""] };
+  if (operator === "between")
+    return { field: f.key, operator, value: ["", ""] };
   return { field: f.key, operator, value: "" };
 }
 
@@ -755,7 +852,9 @@ function FilterValue({
     "h-8 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900";
 
   if (filter.operator === "in" || filter.operator === "notIn") {
-    const selected = Array.isArray(filter.value) ? (filter.value as string[]) : [];
+    const selected = Array.isArray(filter.value)
+      ? (filter.value as string[])
+      : [];
     if (field.enumValues) {
       return (
         <span className="flex flex-wrap gap-2">
@@ -800,7 +899,9 @@ function FilterValue({
   }
 
   if (filter.operator === "between") {
-    const pair = Array.isArray(filter.value) ? (filter.value as string[]) : ["", ""];
+    const pair = Array.isArray(filter.value)
+      ? (filter.value as string[])
+      : ["", ""];
     const type = field.type === "date" ? "date" : "number";
     return (
       <span className="flex items-center gap-1">
@@ -831,7 +932,9 @@ function FilterValue({
           max={3650}
           value={Number(filter.value ?? 30)}
           disabled={readOnly}
-          onChange={(e) => onChange({ ...filter, value: Number(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...filter, value: Number(e.target.value) })
+          }
           className={`${cls} w-20`}
         />
         gün
@@ -862,7 +965,9 @@ function FilterValue({
       <select
         value={String(filter.value ?? "true")}
         disabled={readOnly}
-        onChange={(e) => onChange({ ...filter, value: e.target.value === "true" })}
+        onChange={(e) =>
+          onChange({ ...filter, value: e.target.value === "true" })
+        }
         className={cls}
       >
         <option value="true">Evet</option>
@@ -888,7 +993,13 @@ function FilterValue({
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-lg border border-neutral-200 dark:border-neutral-800">
       <header className="border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">

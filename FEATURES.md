@@ -31,6 +31,7 @@ Son güncelleme: 2026-08-04 · Adım 14 sonu
 | 15 | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri | ✅ |
 | 16 | Sunucu tarafı sepet + ürün görseli yükleme | ✅ |
 | 17 | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon | ✅ |
+| 18 | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları | ✅ |
 
 ---
 
@@ -414,7 +415,24 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - Mobil sepet artık **sunucudan fiyat alıyor** (`POST /api/orders/quote`): cihaz kendi topladığı için kampanyaları kaçırmıyordu. Cihaz üzerindeki hesap yalnızca istek uçarken gösterilen yer tutucu.
 - Kupon alanı eklendi; geçersiz kod ödeme anında değil, **teklif çağrısında** tipli hata olarak dönüyor.
 
-## 18. Web Portal (`apps/web`)
+## 18. Rapor Motoru v2 (Adım 18)
+
+### Gruplama artık veritabanında
+
+- Özetli raporlar `GROUP BY` ile çalışıyor (`report-sql.ts`). Veritabanı grup başına tek satır döndürdüğü için **20.000 satırlık tarama sınırı kalktı**; bugün sınırlanan şey satır değil **grup** sayısı (5.000).
+- Kayıt defteri artık her veri kümesi için **tablo ve join haritası** da taşıyor (`DatasetSql`). SQL'e giden hiçbir tanımlayıcı rapor tanımından gelmiyor: alan adı önce kayıt defterinde çözülüyor, sonra bizim yazdığımız `path` bizim yazdığımız takma adlarla sütuna dönüşüyor. Değerler (filtre argümanı, kapsam kimliği, limit) **her zaman bağlı parametre**.
+- Çıktı sütunları `c0`, `c1`… olarak adlandırılıyor: sütun anahtarı kullanıcı girdisinden gelebiliyor ve SQL tanımlayıcısı olmaya hakkı yok. Eşleme konuma göre geri kuruluyor.
+- **Kapsam tek yerden okunuyor:** `scope()` hâlâ Prisma filtresi olarak yazılıyor, SQL tarafına çevriliyor. İki ayrı kapsam tanımı, "grupla" düğmesine basıldığı gün açılacak bir delik olurdu — entegrasyon testi plasiyerin ve firma yöneticisinin gruplanmış raporda da yalnızca kendi satırlarını gördüğünü doğruluyor.
+- **Tarih kovaları raporlama saat diliminde** kesiliyor (`REPORT_TIMEZONE`, varsayılan `Europe/Istanbul`). Postgres UTC saklar; dilim verilmezse 01:30'daki sipariş sessizce dünkü güne düşerdi.
+- Sayısal sonuçlar sürücüden `bigint`/`numeric` olarak geldiği için sütunun kendi tipine göre sayıya çevriliyor; para toplamları iki haneye yuvarlanıyor.
+
+### İlişkili tablo alanları
+
+- Alanlar artık **kaynak tabloya göre** gruplu sunuluyor (`source`): "Siparişler | Firma | Kullanıcı | Sevk adresi". Kullanıcı "Firma → Müşteri grubu"nu seçiyor, JOIN yazmıyor.
+- Sipariş kalemlerine katalog tarafı (marka, kategori, katalog SKU/ad), siparişlere firma tarafı (vergi no, kredi limiti, bakiye, vade, plasiyer e-postası), cari deftere sipariş durumu eklendi.
+- Kayıt defteri tutarlılığı **teste bağlandı**: bir alanın yolu bildirilmemiş bir ilişkiden geçiyorsa, join takma adları çakışıyorsa ya da join'ler ebeveyninden önce geliyorsa test kırmızıya döner — yoksa hata ilk gruplama denemesinde üretimde çıkardı.
+
+## 19. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -446,7 +464,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 | `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 19. Mobil Uygulama (`apps/mobile`)
+## 20. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -461,7 +479,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 20. API Uçları
+## 21. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -539,8 +557,9 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 
 - **E-Fatura/E-İrsaliye entegrasyonu yok** — belge üretiliyor ve yazdırılıyor, ancak GİB entegratörüne (EDM, Foriba, Sovos) gönderim yok. Çıktı tarayıcıdan yazdırma ile alınıyor; sunucu tarafı PDF üretimi yok.
 - **Faturada tek cari borç** — kısmi faturalar tek bir sipariş borcunu paylaşıyor; borç fatura başına parçalanmıyor (kredi limiti sipariş anında ölçüldüğü için borç da sipariş anında doğuyor). Vade en geç faturanın vadesine göre işliyor.
-- **Rapor tasarımcısının sınırları:** gruplama/özet bellekte yapılıyor (Prisma ilişki sütununa göre gruplayamıyor), bu yüzden özetli raporlar en fazla **20.000 satır** tarıyor; sınıra çarpınca sonuç `truncated` işaretiyle dönüyor ve arayüz uyarı gösteriyor. Detay listeleri sıralama ve limiti veritabanına ittiği için bu sınırdan etkilenmiyor.
-- **Tasarımcıda veri kümeleri birleştirilemiyor** — bir rapor tek tablodan okur, JOIN kurulamaz (ilişkili alanlar kayıt defterinde hazır sütun olarak sunulur).
+- **Kullanıcı kendi JOIN'ini kuramıyor (tasarım gereği)** — bir rapor tek veri kümesi okur; ilişkiler kayıt defterinde **bizim** bildirdiğimiz join'lerdir. Serbest JOIN, kayıt defterinin güvenlik sınırını (tanımlı olmayan alan yoktur) delerdi. Yeni bir ilişki gerekiyorsa kayıt defterine bir satır eklenir, arayüz kendiliğinden görür.
+- **Çoka-çok ilişkiler alan olarak sunulmuyor** — firmanın adresleri, siparişin faturaları gibi liste ilişkiler satır çoğaltacağı için alan listesinde yok; bunlar kendi veri kümelerinden okunur.
+- **Gruplanmış raporda satır sınırı 5.000** — satır değil **grup** sınırı; aşılırsa sonuç `truncated` işaretiyle döner. 5.000 gruplu bir tablo zaten okunan bir rapor değildir.
 - **Yaşlandırma tasarımcıyla ifade edilemiyor** — FIFO mahsup yürüyen bir hesap gerektirir; Adım 8'in yaşlandırma ekranı bu yüzden özel kod olarak kalıyor (satış/ürün/tahsilat raporları ise tasarımcıyla yeniden kurulabilir).
 - Mobil sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
 - **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
