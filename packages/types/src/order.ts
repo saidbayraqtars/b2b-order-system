@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OrderStatusEnum, PaymentMethodEnum } from "./enums";
+import { CollectionMethodEnum, OrderStatusEnum, PaymentMethodEnum } from "./enums";
 import { couponCodeSchema } from "./promotion";
 
 export const cartItemInputSchema = z.object({
@@ -26,10 +26,30 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export const recordPaymentSchema = z.object({
   companyId: z.string().cuid(),
   amount: z.number().positive(),
-  paymentMethod: PaymentMethodEnum,
+  /**
+   * How the money arrived — nakit, havale, çek… Not PaymentMethod: that enum
+   * answers how an *order* gets settled and is read by approval and promotion
+   * rules, so cash and cheques have no business in it.
+   */
+  collectionMethod: CollectionMethodEnum,
   description: z.string().max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+/**
+ * Undo a collection recorded by mistake — wrong amount, wrong customer.
+ *
+ * The ledger is append-only, so this writes an opposing DEBIT rather than
+ * deleting anything: both entries stay on the ekstre, which is what the
+ * customer's accountant needs to see when reconciling.
+ */
+export const reversePaymentSchema = z.object({
+  /** The company the caller claims the collection belongs to; authorized like
+   *  every other company-scoped call, then compared against the stored row. */
+  companyId: z.string().cuid(),
+  reason: z.string().min(3, "Gerekçe yazın").max(300),
+});
+export type ReversePaymentInput = z.infer<typeof reversePaymentSchema>;
 
 export const changeOrderStatusSchema = z.object({
   status: OrderStatusEnum,

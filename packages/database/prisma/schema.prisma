@@ -43,6 +43,23 @@ enum TransactionType {
   CREDIT // alacak (payment / refund)
 }
 
+/// How a collection (tahsilat) reached us. See Transaction.collectionMethod for
+/// why this is separate from PaymentMethod.
+enum CollectionMethod {
+  CASH // nakit
+  BANK_TRANSFER // havale / EFT
+  CHEQUE // çek
+  PROMISSORY_NOTE // senet
+  CREDIT_CARD // kredi kartı / sanal POS
+  OTHER
+}
+
+/// Which application wrote a field record.
+enum FieldEntrySource {
+  MOBILE
+  WEB
+}
+
 enum DiscountType {
   PERCENTAGE
   FIXED
@@ -693,8 +710,26 @@ model Transaction {
 
   type          TransactionType
   amount        Decimal         @db.Decimal(14, 2) // always positive; sign implied by type
-  paymentMethod PaymentMethod? // set for payments/collections
+  paymentMethod PaymentMethod? // the order's agreed method, copied onto its debt row
   description   String?
+
+  /// How the money physically arrived, for collections only.
+  ///
+  /// Deliberately NOT PaymentMethod: that enum answers "how will this order be
+  /// paid" (açık hesap / kredi kartı) and is read by order approval and by
+  /// promotion conditions. Cash and cheque are meaningless there, and widening
+  /// it would push them into both. A collection is a different question, so it
+  /// gets its own answer.
+  collectionMethod CollectionMethod?
+
+  /// Set on the correcting entry that reverses an earlier collection. The
+  /// ledger is append-only: a mistaken tahsilat is undone by a DEBIT of the
+  /// same amount pointing here, never by deleting the CREDIT row. Unique, so
+  /// the database — not a check-then-write in application code — is what
+  /// prevents the same collection being reversed twice.
+  reversalOfId String?      @unique
+  reversalOf   Transaction? @relation("TransactionReversal", fields: [reversalOfId], references: [id])
+  reversedBy   Transaction? @relation("TransactionReversal")
 
   /// When this debt falls due. Written at order time from the company's term and
   /// re-stamped by the invoice once one is issued, because the invoice is what
@@ -737,8 +772,21 @@ model CheckIn {
   checkOutAt DateTime?
   note       String?
 
+  /// Which application recorded the visit, derived server-side from the
+  /// credential the request carried — never from the request body.
+  ///
+  /// It matters because the two are not equally good evidence: the phone app
+  /// reads a real GPS fix at the customer's door, while a browser on a desk
+  /// reports whatever the operating system guesses (often the office, often
+  /// nothing). Without this column a visit typed in at the office and a visit
+  /// made in the field are indistinguishable in the same report. Existing rows
+  /// default to MOBILE because until now the app was the only writer.
+  source FieldEntrySource @default(MOBILE)
+
   @@index([salesRepId])
   @@index([companyId])
+  /// "Is this rep still inside an open visit" — read before every check-in.
+  @@index([salesRepId, checkOutAt])
 }
 
 // ─────────────────────────────────────────────

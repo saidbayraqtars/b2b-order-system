@@ -1,16 +1,17 @@
 "use client";
 
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingBag } from "lucide-react";
+import { MapPin, ShoppingBag, Wallet } from "lucide-react";
 import type { ReceivablesReport, SalesSummary } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { Card, EmptyState, LoadingState } from "@/components/ui";
 
-// Web view of a rep's portfolio: what is owed and how the last 30 days went.
-// Ordering, check-in and collection stay in the mobile app — this is the desk
-// view a rep opens before heading out.
+// Web view of a rep's portfolio: what is owed and how the last 30 days went,
+// and the row from which each of the day's three jobs — order, collection,
+// visit — is started for a given customer.
 export function RepDashboard() {
   const receivables = useQuery({
     queryKey: ["report", "receivables"],
@@ -87,16 +88,27 @@ export function RepDashboard() {
                     ? new Date(c.oldestDueDate).toLocaleDateString("tr-TR")
                     : "—"}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  {/* Portföydeki firmadan tek tıkla sipariş: katalog o firmanın
-                      fiyatlarıyla açılır. */}
-                  <Link
-                    href={`/portal?companyId=${encodeURIComponent(c.companyId)}`}
-                    className="inline-flex items-center gap-1.5 border border-brand-600 px-2 py-1 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-600 hover:text-white dark:text-brand-400 dark:hover:text-white"
-                  >
-                    <ShoppingBag className="h-3 w-3" />
-                    Sipariş gir
-                  </Link>
+                <td className="px-3 py-2">
+                  {/* Portföy satırından sahanın üç işi de tek tıkla açılır;
+                      firma seçimi bağlantıda taşındığı için hedef ekran hangi
+                      cariyle çalışıldığını sormaz. */}
+                  <div className="flex justify-end gap-1.5">
+                    <RowAction
+                      href={`/portal?companyId=${encodeURIComponent(c.companyId)}`}
+                      icon={ShoppingBag}
+                      label="Sipariş"
+                    />
+                    <RowAction
+                      href={`/rep/tahsilat?companyId=${encodeURIComponent(c.companyId)}`}
+                      icon={Wallet}
+                      label="Tahsilat"
+                    />
+                    <RowAction
+                      href={`/rep/ziyaret?companyId=${encodeURIComponent(c.companyId)}`}
+                      icon={MapPin}
+                      label="Ziyaret"
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -141,10 +153,28 @@ export function RepDashboard() {
         </section>
       )}
 
-      <p className="text-sm text-neutral-500">
-        Sipariş alma, ziyaret ve tahsilat işlemleri mobil uygulamada yapılır.
-      </p>
     </div>
+  );
+}
+
+/** Portföy satırındaki kompakt işlem bağlantısı. */
+function RowAction({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-brand-500 dark:hover:text-white"
+    >
+      <Icon className="h-3 w-3" />
+      {label}
+    </Link>
   );
 }
 

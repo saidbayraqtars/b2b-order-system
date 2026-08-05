@@ -10,11 +10,25 @@ import type { CompanyOption } from "@/components/storefront/company-switcher";
 import { LoadingState, EmptyState } from "@/components/ui";
 
 /**
- * Plasiyer/admin henüz firma seçmediğinde katalog yerine bu ekran çıkar.
- * Boş bir katalog gösterip "önce firma seç" demek yerine, seçimi ilk iş yapar:
- * fiyat firmaya göre çözüldüğü için firmasız bir katalog zaten anlamsız.
+ * "Hangi firma adına?" — vekil kullanıcı (plasiyer / süper admin) henüz firma
+ * seçmediğinde ekranın yerine bu çıkar. Katalog, tahsilat ve ziyaret üçü de
+ * firmasız anlamsız olduğu için seçimi ilk iş yapar.
+ *
+ * Seçim `basePath?companyId=` bağlantısıyla taşınır: kullanıcı hangi ekrandan
+ * geldiyse oraya döner ve firma URL'de görünür kalır (bkz. company-switcher).
  */
-export function PickCompany() {
+export function CompanyPicker({
+  basePath,
+  eyebrow,
+  title = "Firma seçin",
+  subtitle,
+}: {
+  /** Seçilen firmayla dönülecek sayfa, örn. "/rep/tahsilat". */
+  basePath: string;
+  eyebrow: string;
+  title?: string;
+  subtitle: string;
+}) {
   const [filter, setFilter] = useState("");
 
   const query = useQuery({
@@ -32,13 +46,10 @@ export function PickCompany() {
     <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
       <div className="mb-1 flex items-center gap-2">
         <Building2 className="h-4 w-4 text-brand-600" />
-        <span className="tech-label">Adına sipariş girilecek firma</span>
+        <span className="tech-label">{eyebrow}</span>
       </div>
-      <h1 className="mb-1 font-display text-xl font-bold">Firma seçin</h1>
-      <p className="mb-5 text-sm text-neutral-500">
-        Fiyatlar, kampanyalar ve kredi limiti firmaya göre çözülür — katalog
-        firma seçilmeden açılamaz.
-      </p>
+      <h1 className="mb-1 font-display text-xl font-bold">{title}</h1>
+      <p className="mb-5 text-sm text-neutral-500">{subtitle}</p>
 
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -75,7 +86,7 @@ export function PickCompany() {
                 className={i > 0 ? "border-t border-neutral-200 dark:border-neutral-800" : ""}
               >
                 <Link
-                  href={`/portal?companyId=${encodeURIComponent(c.id)}`}
+                  href={`${basePath}?companyId=${encodeURIComponent(c.id)}`}
                   className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800"
                 >
                   <div className="min-w-0">

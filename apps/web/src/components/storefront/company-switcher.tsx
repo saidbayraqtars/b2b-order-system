@@ -29,9 +29,16 @@ export interface CompanyOption {
 export function CompanySwitcher({
   currentCompanyId,
   currentCompanyName,
+  basePath = "/portal",
 }: {
   currentCompanyId: string | null;
   currentCompanyName: string | null;
+  /**
+   * Firma değişince gidilecek sayfa. Varsayılan katalog, ama tahsilat ve
+   * ziyaret ekranları da aynı seçiciyi kullanıyor: orada firma değiştiren
+   * kullanıcı katalogda değil, bulunduğu işin ekranında kalmalı.
+   */
+  basePath?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -54,7 +61,7 @@ export function CompanySwitcher({
   function pick(id: string) {
     setOpen(false);
     setFilter("");
-    router.push(`/portal?companyId=${encodeURIComponent(id)}`);
+    router.push(`${basePath}?companyId=${encodeURIComponent(id)}`);
     // Katalog, sepet ve duyurular firmaya göre değişir; sunucu bileşenleri de
     // yeni firmayla yeniden çalışsın.
     router.refresh();

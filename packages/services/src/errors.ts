@@ -67,7 +67,10 @@ export type BusinessErrorCode =
   // ── uploads ──
   | "INVALID_UPLOAD"
   // ── storefront ──
-  | "ANNOUNCEMENT_NOT_FOUND";
+  | "ANNOUNCEMENT_NOT_FOUND"
+  // ── field operations: collection, visit ──
+  | "TRANSACTION_NOT_FOUND"
+  | "VISIT_ALREADY_OPEN";
 
 export class BusinessError extends Error {
   constructor(

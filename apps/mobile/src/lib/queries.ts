@@ -4,7 +4,11 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import type { CreateOrderInput, PaymentMethod } from "@repo/types";
+import type {
+  CollectionMethod,
+  CreateOrderInput,
+  PaymentMethod,
+} from "@repo/types";
 import { apiFetch, qs } from "./api";
 import { authToken } from "@/store/auth";
 import type {
@@ -192,7 +196,8 @@ export function useCheckOut() {
 export interface PaymentVars {
   companyId: string;
   amount: number;
-  paymentMethod: PaymentMethod;
+  /** Nakit, havale, çek… — siparişin ödeme yöntemiyle aynı şey değil. */
+  collectionMethod: CollectionMethod;
   description?: string;
 }
 

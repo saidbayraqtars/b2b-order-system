@@ -1,7 +1,7 @@
 import { requirePage } from "@/lib/guard";
 import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
-import { PickCompany } from "./_components/pick-company";
+import { CompanyPicker } from "@/components/company-picker";
 import { PortalClient } from "./_components/portal-client";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,11 @@ export default async function PortalPage({ searchParams }: Props) {
           current="/portal"
           isProxy
         />
-        <PickCompany />
+        <CompanyPicker
+          basePath="/portal"
+          eyebrow="Adına sipariş girilecek firma"
+          subtitle="Fiyatlar, kampanyalar ve kredi limiti firmaya göre çözülür — katalog firma seçilmeden açılamaz."
+        />
       </div>
     );
   }

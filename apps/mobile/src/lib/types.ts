@@ -121,6 +121,8 @@ export interface CheckInRecord {
   checkInAt: string;
   checkOutAt: string | null;
   note: string | null;
+  /** Hangi uygulamadan yazıldı — sunucu belirler, istemci gönderemez. */
+  source: "MOBILE" | "WEB";
 }
 
 export interface CreateOrderResult {

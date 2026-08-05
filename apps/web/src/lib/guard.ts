@@ -184,6 +184,19 @@ export async function requireUser(allowed?: readonly Role[]): Promise<SessionUse
 }
 
 /**
+ * Which application the current request came from, decided by the credential it
+ * carried: a bearer token is the phone app, a cookie is a browser.
+ *
+ * Exposed so records that mean different things depending on where they were
+ * written (a field visit, above all) can say so truthfully. A client-supplied
+ * "source" field would be worth nothing — this one the caller cannot set.
+ */
+export async function requestChannel(): Promise<"web" | "mobile"> {
+  const result = await resolvePrincipal();
+  return result.ok ? result.channel : (result.claim?.channel ?? "web");
+}
+
+/**
  * Page-level guard for Server Components. Unlike requireUser (which throws for
  * route handlers), this redirects: no/dead session → /login, wrong role → the
  * caller's own default landing route. The same live-account check applies, so
@@ -272,6 +285,9 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   INVALID_UPLOAD: 422,
   // storefront
   ANNOUNCEMENT_NOT_FOUND: 404,
+  // field operations
+  TRANSACTION_NOT_FOUND: 404,
+  VISIT_ALREADY_OPEN: 409,
 };
 
 /**

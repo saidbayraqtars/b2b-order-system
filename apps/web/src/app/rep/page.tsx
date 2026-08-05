@@ -1,13 +1,6 @@
-import { BarChart3, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { requirePage } from "@/lib/guard";
-import { AppHeader, type NavLink } from "@/components/app-shell";
+import { RepNav } from "@/components/rep-nav";
 import { RepDashboard } from "./_components/rep-dashboard";
-
-const LINKS: NavLink[] = [
-  { href: "/rep", label: "Panel", icon: LayoutDashboard },
-  { href: "/portal", label: "Sipariş gir", icon: ShoppingBag },
-  { href: "/reports", label: "Raporlarım", icon: BarChart3 },
-];
 
 export default async function RepDashboardPage() {
   // requirePage, not requireUser: a wrong-role visitor belongs on their own
@@ -16,12 +9,7 @@ export default async function RepDashboardPage() {
 
   return (
     <div>
-      <AppHeader
-        context="Plasiyer Paneli"
-        links={LINKS}
-        current="/rep"
-        userLabel={user.name}
-      />
+      <RepNav userName={user.name} current="/rep" />
       <div className="mx-auto max-w-5xl px-4 pb-6">
         <RepDashboard />
       </div>

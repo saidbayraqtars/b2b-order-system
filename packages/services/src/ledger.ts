@@ -1,5 +1,10 @@
 import { Prisma, prisma } from "@repo/database";
-import type { AgingBucketKey, PaymentMethod, TransactionType } from "@repo/types";
+import type {
+  AgingBucketKey,
+  CollectionMethod,
+  PaymentMethod,
+  TransactionType,
+} from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO } from "./money";
 
@@ -21,6 +26,10 @@ export interface StatementRow {
   type: TransactionType;
   description: string;
   paymentMethod: PaymentMethod | null;
+  /** How a collection arrived (nakit, havale…). Null on order debt rows. */
+  collectionMethod: CollectionMethod | null;
+  /** Set when this row is the correcting entry that undid a collection. */
+  reversalOfId: string | null;
   orderId: string | null;
   orderNumber: string | null;
   recordedByName: string | null;
@@ -96,6 +105,8 @@ export async function getStatement(
       amount: true,
       description: true,
       paymentMethod: true,
+      collectionMethod: true,
+      reversalOfId: true,
       orderId: true,
       order: { select: { orderNumber: true } },
       recordedBy: { select: { name: true } },
@@ -121,6 +132,8 @@ export async function getStatement(
       type: r.type,
       description: r.description ?? (isDebit ? "Sipariş borcu" : "Tahsilat"),
       paymentMethod: r.paymentMethod,
+      collectionMethod: r.collectionMethod,
+      reversalOfId: r.reversalOfId,
       orderId: r.orderId,
       orderNumber: r.order?.orderNumber ?? null,
       recordedByName: r.recordedBy?.name ?? null,

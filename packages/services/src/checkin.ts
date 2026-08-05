@@ -1,4 +1,5 @@
 import { prisma } from "@repo/database";
+import type { FieldEntrySource } from "@repo/types";
 import { BusinessError } from "./errors";
 
 // Field-sales visit tracking. A sales rep "checks in" at a customer's location
@@ -11,6 +12,8 @@ export interface CreateCheckInInput {
   latitude?: number;
   longitude?: number;
   note?: string;
+  /** Derived from the caller's credential at the route layer, never sent by the client. */
+  source: FieldEntrySource;
 }
 
 export interface CheckInRecord {
@@ -22,6 +25,7 @@ export interface CheckInRecord {
   checkInAt: string;
   checkOutAt: string | null;
   note: string | null;
+  source: FieldEntrySource;
 }
 
 function toRecord(row: {
@@ -33,6 +37,7 @@ function toRecord(row: {
   checkInAt: Date;
   checkOutAt: Date | null;
   note: string | null;
+  source: FieldEntrySource;
 }): CheckInRecord {
   return {
     id: row.id,
@@ -43,6 +48,7 @@ function toRecord(row: {
     checkInAt: row.checkInAt.toISOString(),
     checkOutAt: row.checkOutAt?.toISOString() ?? null,
     note: row.note,
+    source: row.source,
   };
 }
 
@@ -55,9 +61,18 @@ const SELECT = {
   checkInAt: true,
   checkOutAt: true,
   note: true,
+  source: true,
 } as const;
 
-/** Record a new field visit for the given sales rep at an (already authorized) company. */
+/**
+ * Record a new field visit for the given sales rep at an (already authorized)
+ * company.
+ *
+ * A rep may only have one visit open at a time. Two overlapping visits are
+ * never a real thing that happened — they are a forgotten check-out — and every
+ * duration read off them afterwards is wrong. Refusing here, with the open
+ * visit named, turns a silent data problem into a one-click fix.
+ */
 export async function createCheckIn(
   input: CreateCheckInInput,
   salesRepId: string,
@@ -70,6 +85,19 @@ export async function createCheckIn(
     throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı");
   }
 
+  const open = await prisma.checkIn.findFirst({
+    where: { salesRepId, checkOutAt: null },
+    select: { id: true, company: { select: { name: true } } },
+    orderBy: { checkInAt: "desc" },
+  });
+  if (open) {
+    throw new BusinessError(
+      "VISIT_ALREADY_OPEN",
+      `Açık ziyaretiniz var (${open.company.name}). Önce onu kapatın.`,
+      { openCheckInId: open.id },
+    );
+  }
+
   const row = await prisma.checkIn.create({
     data: {
       salesRepId,
@@ -77,10 +105,23 @@ export async function createCheckIn(
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
       note: input.note ?? null,
+      source: input.source,
     },
     select: SELECT,
   });
   return toRecord(row);
+}
+
+/** The rep's currently open visit, if any. Drives the web screen's main action. */
+export async function getOpenCheckIn(
+  salesRepId: string,
+): Promise<CheckInRecord | null> {
+  const row = await prisma.checkIn.findFirst({
+    where: { salesRepId, checkOutAt: null },
+    select: SELECT,
+    orderBy: { checkInAt: "desc" },
+  });
+  return row ? toRecord(row) : null;
 }
 
 /** Close an open visit (set checkOutAt). Only the rep who opened it may close it. */

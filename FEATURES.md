@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-05 · Adım 22 (vekaleten sipariş) sonu
+Son güncelleme: 2026-08-05 · Adım 23 (saha işlemleri web'de) sonu
 
 ---
 
@@ -36,6 +36,7 @@ Son güncelleme: 2026-08-05 · Adım 22 (vekaleten sipariş) sonu
 | 20 | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu | ✅ |
 | 21 | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları | ✅ |
 | 22 | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu) | ✅ |
+| 23 | Saha işlemleri web'de: tahsilat girişi + iptal kaydı, ziyaret aç/kapat, tahsilat şekli ayrı enum | ✅ |
 
 ---
 
@@ -65,8 +66,8 @@ Son güncelleme: 2026-08-05 · Adım 22 (vekaleten sipariş) sonu
 | `DocumentSeries` | Belge serisi: tür (irsaliye/fatura), ön ek, basamak, son verilen numara, varsayılan mı, numarayı ERP mi veriyor (`externalOnly`) |
 | `Shipment` / `ShipmentItem` | İrsaliye başlığı + sevk edilen miktarlar; sipariş durumu buradan türetilir |
 | `Invoice` / `InvoiceItem` | Fatura başlığı + faturalanan miktarlar; para yeniden hesaplanmaz, sipariş satırından pay alınır. Vade tarihi burada doğar |
-| `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır |
-| `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) |
+| `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır. Tahsilatta `collectionMethod` (nakit/havale/çek…), iptal kaydında `reversalOfId` (tekil — bir tahsilat iki kez iptal edilemez) |
+| `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) + `source` (MOBILE/WEB — sunucu belirler) |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
 | `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
 | `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
@@ -129,7 +130,8 @@ Son güncelleme: 2026-08-05 · Adım 22 (vekaleten sipariş) sonu
 
 - Firma bazlı cari defter: sipariş borcu (DEBIT) ve tahsilat (CREDIT) kayıtları.
 - `Company.currentBalance` defterden türeyen önbellek — her yazma aynı transaction içinde güncellenir.
-- Saha tahsilatı: plasiyer/admin tutar + ödeme yöntemi + açıklama girer, bakiye anında düşer.
+- Saha tahsilatı: plasiyer/admin tutar + **tahsilat şekli** (nakit/havale/çek/senet/kart/diğer) + açıklama girer, bakiye anında düşer. Web ekranı için bkz. Adım 23.
+- **Tahsilat iptali ters kayıtla** yapılır: aynı tutarda DEBIT satırı orijinali işaret eder, ikisi de ekstrede kalır. Silme yok — defter salt-ekleme.
 - Kullanılabilir limit = kredi limiti − güncel bakiye; katalog ve müşteri listesinde görünür.
 
 ### Cari ekstre & yaşlandırma (Adım 8)
@@ -297,10 +299,10 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **ESLint** her pakette çalışıyor (`pnpm lint`, 6 paket, sıfır uyarı toleransı). Ortak yapılandırma `@repo/eslint-config`: `base` (TS), `next` (web), `react-native` (mobil).
   - Bilerek **tip-farkındalıklı değil** — tip hataları zaten `pnpm typecheck`'te yakalanıyor, tip-farkındalıklı lint ise üretilmiş Prisma client'ına bağımlı olurdu. Geriye tsc'nin söylemediği sınıf kalıyor: ölü kod, kaçak `any`, konsol gürültüsü.
   - Mobilde `eslint-config-expo` kullanılmıyor: o preset @typescript-eslint v8'de kaldırılmış kurallara atıf yapıyor, workspace ise v8 kullanıyor.
-- **Vitest** iki ayrı takım hâlinde (`pnpm test`) — bugün **151 test / 11 dosya**:
+- **Vitest** iki ayrı takım hâlinde (`pnpm test`) — bugün **161 test / 12 dosya**:
   - **Birim (70 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
-  - **Entegrasyon (81 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
-  - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi.
+  - **Entegrasyon (91 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
+  - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi; tahsilatın defter ile önbelleği birlikte hareket ettirmesi, iptalin ters kayıtla yazılması ve iki kez yapılamaması, başka firmanın tahsilatına erişilememesi, açık ziyaret varken ikinci ziyaretin reddi.
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
 
 ## 14. Belgeler & Sevkiyat (Adım 14)
@@ -595,7 +597,65 @@ firma için sayfa/katalog/sipariş uçlarının üçünde de ret. Seed'e bilerek
 plasiyere atanmamış ikinci bir firma (`Beta Dağıtım Ltd.`) eklendi: portföy
 izolasyonu ancak portföy dışında bir firma varsa sınanabilir.
 
-## 23. Web Portal (`apps/web`)
+## 23. Saha İşlemleri Web'de (Adım 23)
+
+Adım 22 sipariş boşluğunu kapattı; aynı desendeki iki boşluk daha duruyordu:
+`/api/payments` ve `/api/checkins` uçları baştan beri vardı ama **yalnızca
+mobil uygulama çağırıyordu**. Uygulama hiçbir gerçek cihazda çalıştırılmadığı
+için pratikte tahsilat ve ziyaret hiç girilemiyordu. Adım 23 ikisini de web'e
+taşır — ve taşırken üç modelleme hatasını düzeltir.
+
+### Tahsilat şekli artık ayrı bir soru
+
+`PaymentMethod` (`OPEN_ACCOUNT` / `CREDIT_CARD`) **siparişin nasıl kapanacağını**
+söyler; sipariş onayı ve kampanya koşulları bu enum'u okur. Tahsilat ekranı
+onu sorduğunda plasiyere "Açık hesap mı, kredi kartı mı?" diye soruluyordu —
+sahada toplanan paranın (nakit, havale, çek, senet) karşılığı listede yoktu.
+
+Enum'u genişletmek nakit ve çeki sipariş akışına ve kampanya kurallarına da
+sokardı. Bunun yerine ayrı bir alan açıldı:
+
+- **`CollectionMethod`** = `CASH · BANK_TRANSFER · CHEQUE · PROMISSORY_NOTE · CREDIT_CARD · OTHER`
+- `Transaction.collectionMethod` yalnızca tahsilat satırlarında dolar; `paymentMethod` sipariş tarafının alanı olarak kalır.
+- Mobil tahsilat ekranı da bu listeye geçti (eski "ödeme yöntemi" seçimi kaldırıldı).
+
+### Tahsilat iptali — silme değil, ters kayıt
+
+Yanlış tutar ya da yanlış cari, veritabanına elle girmeden düzeltilemiyordu.
+Artık düzeltiliyor, ama **kayıt silinmez**: aynı tutarda ters bir DEBIT satırı
+yazılır ve orijinali işaret eder.
+
+- `Transaction.reversalOfId` **tekil (unique)** — aynı tahsilatın iki kez iptali uygulama kodundaki kontrolle değil **veritabanıyla** engelleniyor; yarış koşulu bırakmıyor.
+- Gerekçe zorunlu (en az 3 karakter) ve iptal satırının açıklamasına yazılır: ekstreyi okuyan kişi "neden" sorusunun cevabını satırın kendisinde bulur.
+- İki satır da ekstrede kalır; nakit bakiyesi eski hâline döner.
+- Yetki: `companyId` istekle gelir, `resolveCompanyId` ile yetkilendirilir, sonra servis kaydın gerçekten o firmaya ait olduğunu doğrular. Yanlış firma ve olmayan kayıt **aynı cevabı** verir (404) — yetki id deneyerek yoklanamaz.
+
+### Ziyaret: kaynak damgası + tek açık ziyaret
+
+- **`CheckIn.source` (`MOBILE` / `WEB`)** sunucuda, isteğin taşıdığı kimlik bilgisinden türetilir (`requestChannel()`): bearer token → mobil, çerez → web. İstemci gönderemez. Gerekçe: telefonun kapıda aldığı GPS ölçümü ile masaüstü tarayıcının tahmini konumu aynı kanıt değil; kolon olmadan ofiste yazılmış ziyaretle sahadaki ziyaret aynı raporda ayırt edilemezdi.
+- **Bir plasiyerin aynı anda tek açık ziyareti olabilir.** Üst üste binen iki ziyaret gerçekte olmuş bir şey değil, unutulmuş bir çıkıştır — ve üzerinden hesaplanan her süre yanlıştır. Yeni ziyaret açık ziyaret varken reddedilir, hata mesajı açık ziyaretin firmasını söyler, ekran da onu en üstte kapatma butonuyla gösterir.
+- `GET /api/checkins` artık listeyle birlikte **açık ziyareti ayrıca** döndürür (listeden aranırsa filtre/sayfalama değişince bozulurdu).
+- Konum web'de de best-effort: izin verilmezse ziyaret konumsuz kaydedilir, plasiyer bloklanmaz.
+
+### Ekranlar
+
+| Ekran | İçerik |
+|-------|--------|
+| `/rep/tahsilat` | Firma seçimi (URL'de) → bakiye/limit kartları → tutar + tahsilat şekli + açıklama → **onay adımı** → kayıt. Altında o firmanın tüm tahsilatları (kimin girdiği dahil) ve satır bazında iptal. |
+| `/rep/ziyaret` | Açık ziyaret kartı (canlı süre + kapat), yeni ziyaret formu (not + "Konumu ekle"), geçmiş listesi (Mobil/Web rozeti, süre, haritada) |
+
+- **Onay adımı bilinçli:** tutar yazılıp kaydet denince önce "X firmasına Y ₺ işlenecek, bakiye A → B" büyük puntoyla gösterilir. Bu ekranda en pahalı iki hata fazladan bir sıfır ve çift tıklamadır.
+- **Liste ofisin girdiklerini de gösterir** — plasiyer yalnızca kendi kayıtlarını görseydi merkezden işlenmiş bir ödemeyi ikinci kez isterdi. Firma verilmeden çağrılırsa uç "benim kaydettiklerim"e döner; kapsamsız listeleme yok.
+- `/rep` portföy tablosundaki her satırda artık **Sipariş · Tahsilat · Ziyaret** üçlüsü var; firma seçimi bağlantıda taşındığı için hedef ekran hangi cariyle çalışıldığını sormaz.
+- Plasiyer üst barı tek bileşene (`components/rep-nav.tsx`) alındı ve seçili firmayı her linkte taşıyor — portalda Faz 1'de düzeltilen "her sayfa kendi link listesini çiziyor" hatası burada baştan yapılmadı.
+- Firma seçim ekranı (`components/company-picker.tsx`) portaldan çıkarılıp paylaşıldı: katalog, tahsilat ve ziyaret aynı seçiciyi `basePath` ile kullanıyor.
+
+**Doğrulama:** 10 yeni entegrasyon testi (toplam **161**) + betikli uçtan uca
+kontrol **25/25**: giriş → sayfalar → tahsilat → bakiye → iptal → ikinci iptal
+reddi → ziyaret aç → ikinci ziyaret reddi → kapat. Portföy dışı firma için
+sayfa, liste ve iptal uçlarının üçünde de ret.
+
+## 24. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -631,10 +691,12 @@ izolasyonu ancak portföy dışında bir firma varsa sınanabilir.
 | `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli |
 | `/admin/activity` | süper admin | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda |
 | `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
-| `/rep` | plasiyer | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **"Sipariş gir"** |
+| `/rep` | plasiyer, süper admin | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **Sipariş · Tahsilat · Ziyaret** |
+| `/rep/tahsilat` | plasiyer, süper admin | Tahsilat girişi (onay adımlı), firmanın tahsilat geçmişi, satır bazında iptal |
+| `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 24. Mobil Uygulama (`apps/mobile`)
+## 25. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -643,13 +705,13 @@ izolasyonu ancak portföy dışında bir firma varsa sınanabilir.
 - **Firma kullanıcısı akışı:** doğrudan kendi firmasına düşer, plasiyer ekranları gizlidir.
 - **Katalog:** firmaya çözülmüş fiyat, iskontolu fiyat üstü çizili gösterim, stok/koli/min bilgisi, stoksuz ve fiyatsız varyant sipariş edilemez.
 - **Sepet:** koli katına yuvarlayan adet kontrolü, ödeme yöntemi seçimi, kupon alanı. **Firma bazlı** — müşteri değişince sıfırlanır (fiyat firmaya özeldir). Toplam **sunucudan** geliyor (`POST /api/orders/quote`): kampanyalar, hediyeler ve KDV cihazda değil sunucuda hesaplanıyor; cihazdaki toplam yalnızca istek uçarken görünen yer tutucu. Sepet satırları hâlâ cihazda tutuluyor (web sepeti sunucuda — bkz. Bilinen Eksikler).
-- **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz.
-- **Tahsilat:** tutar (virgüllü klavye desteği), ödeme yöntemi, açıklama; sonuç bakiyesi sunucudan döner.
+- **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz. Kayıtlar `MOBILE` damgasıyla yazılır (Adım 23) ve açık ziyaret varken yenisi açılamaz.
+- **Tahsilat:** tutar (virgüllü klavye desteği), **tahsilat şekli** (nakit/havale/çek/senet/kart/diğer — Adım 23'te siparişin ödeme yönteminden ayrıldı), açıklama; sonuç bakiyesi sunucudan döner.
 - **Sipariş detayı:** listeden dokunarak açılır — kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi ve durum geçmişi. Salt okunur.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 25. API Uçları
+## 26. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -693,9 +755,10 @@ izolasyonu ancak portföy dışında bir firma varsa sınanabilir.
 | GET · DELETE | `/api/invoices/:id` | okuma 4 rol (kendi kapsamı), iptal süper admin |
 | GET · POST | `/api/admin/document-series` | süper admin |
 | PATCH · DELETE | `/api/admin/document-series/:id` | süper admin |
-| POST · GET | `/api/checkins` | plasiyer, süper admin |
+| POST · GET | `/api/checkins?companyId=` | plasiyer, süper admin (GET listeyle birlikte açık ziyareti de döndürür) |
 | POST | `/api/checkins/:id/checkout` | plasiyer, süper admin (yalnız açan kapatır) |
-| POST | `/api/payments` | plasiyer, süper admin |
+| POST · GET | `/api/payments?companyId=` | plasiyer, süper admin (firma verilmezse "kendi kaydettiklerim") |
+| POST | `/api/payments/:id/reverse` | plasiyer (portföyü), süper admin — ters kayıt yazar, silmez |
 | GET · POST | `/api/admin/companies?search&includeInactive` | süper admin |
 | GET · PATCH · DELETE | `/api/admin/companies/:id` | süper admin |
 | POST | `/api/admin/companies/:id/addresses` | süper admin |
@@ -756,6 +819,8 @@ söz değildir.
 - **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor. Veri zaten tutulduğu için iş, kayıt defterine bir veri kümesi eklemekten ibaret.
 - **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı. Aşağıdaki yetim görsel temizliği ve ileride zamanlanmış raporlar da aynı runner'ı bekliyor.
 - **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok). Zamanlayıcı gelmeden tek başına yapılmaz.
+- **Tahsilatta mükerrer koruması yok** — ekranda onay adımı ve kilitlenen buton var, ama sunucuda idempotency anahtarı yok: aynı isteği iki kez gönderen bir istemci iki tahsilat yazar. İkincisi iptal kaydıyla geri alınabiliyor (Adım 23), yine de doğru çözüm istek başına anahtar.
+- **Ziyaret raporu yok** — `CheckIn.source`, süre ve konum artık kayıtlı ama "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" sorusunu soran bir rapor/veri kümesi yok. Rapor kayıt defterine veri kümesi olarak eklenmesi gerekiyor.
 
 ### Mobil
 
@@ -792,7 +857,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
 - **Cariye göre ödeme yöntemi ve vade seçenekleri:** `PaymentMethod` bugün iki değerli bir enum; firmaya bağlı seçenek listesi ve sepette 30/60/90 vade seçimi yok.
 - **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok.
-- **Tahsilat ve ziyaret web'de yok:** `/api/payments` ve `/api/checkins` uçları var, çağıran web ekranı yok — ikisi de yalnızca mobilde.
 - **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
