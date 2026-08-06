@@ -1,8 +1,9 @@
 import { useLayoutEffect } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { PAYMENT_METHOD_LABELS } from "@repo/types";
 import { useOrder } from "@/lib/queries";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { ORDER_STATUS_LABEL, PAYMENT_METHOD_LABEL } from "@/lib/types";
+import { ORDER_STATUS_LABEL } from "@/lib/types";
 import { Badge, Card, ErrorState, Loading, Row } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -81,7 +82,11 @@ export default function OrderDetailScreen({
           value={formatMoney(o.grandTotal, o.currency)}
           strong
         />
-        <Row label="Ödeme" value={PAYMENT_METHOD_LABEL[o.paymentMethod]} />
+        <Row label="Ödeme" value={PAYMENT_METHOD_LABELS[o.paymentMethod]} />
+        <Row
+          label="Vade"
+          value={o.paymentTermDays > 0 ? `${o.paymentTermDays} gün` : "Peşin"}
+        />
       </Card>
 
       {o.shippingAddress ? (

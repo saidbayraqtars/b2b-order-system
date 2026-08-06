@@ -91,6 +91,8 @@ export interface OrderDetail {
   taxTotal: string;
   grandTotal: string;
   currency: string;
+  /** Vade in days, company default already folded in. 0 = peşin. */
+  paymentTermDays: number;
   note: string | null;
   carrier: string | null;
   trackingNumber: string | null;
@@ -159,6 +161,11 @@ export interface OrderQuote {
     amount: string;
   }>;
   coupon: string | null;
+  /** The settlement the quote was priced under, after the server validated it. */
+  paymentMethod: PaymentMethod;
+  /** Vade in days including the company default — 0 means peşin. */
+  paymentTermDays: number;
+  createsReceivable: boolean;
 }
 
 export interface RecordPaymentResult {
@@ -180,10 +187,23 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Reddedildi",
 };
 
-export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  OPEN_ACCOUNT: "Açık Hesap (Cari)",
-  CREDIT_CARD: "Kredi Kartı",
-};
+// Payment method labels are NOT defined here. This file used to keep its own
+// copy, which silently fell behind when the enum grew from two members to five.
+// Screens import PAYMENT_METHOD_LABELS from @repo/types instead — one map, next
+// to the enum, so the compiler catches the next new method everywhere at once.
+
+/** What GET /api/payment-options answers: this customer's checkout menu. */
+export interface PaymentOptions {
+  methods: Array<{
+    value: PaymentMethod;
+    label: string;
+    /** True when picking it books cari debt rather than being paid at once. */
+    createsReceivable: boolean;
+  }>;
+  /** Empty means the customer has no choice — `defaultTermDays` applies silently. */
+  terms: Array<{ id: string; name: string; days: number }>;
+  defaultTermDays: number;
+}
 
 // ── Cari ekstre / yaşlandırma (mirrors @repo/services ledger types) ──
 

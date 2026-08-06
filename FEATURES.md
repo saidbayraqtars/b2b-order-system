@@ -720,6 +720,13 @@ kazandırmıyor.
 | `/admin/payment-terms` | Vade tanımı ekle/düzenle/pasife al. Firmalara tanımlı vade **silinemez** — pasife alınır, o vadeyle satılmış siparişler açıklanabilir kalsın diye |
 | `/admin/companies/[id]` | Bu firmaya sunulacak yöntemler + vade menüsü |
 | Sepet paneli | Ödeme yöntemi ve vade seçimi. Vade yalnız cari borç doğuran yöntemlerde çıkar; yöntem peşine dönünce seçili vade düşer. Panelde "cari hesaba işlenir · 60 gün vade" satırı, siparişten **önce** ne olacağını söyler |
+| Mobil sepet | Aynı menü, aynı kurallar — yöntem listesi `GET /api/payment-options`'tan geliyor. Cihaz listeyi tahmin etmiyor: nakit/havale ile kısıtlı bir müşteriye açık hesap göstermek, alıcının çözemeyeceği bir 422'den başka bir şey üretmezdi |
+
+**Ödeme yöntemi etiketleri tek yerde** (`PAYMENT_METHOD_LABELS`, `@repo/types`).
+Mobil uygulama bir zamanlar kendi kopyasını tutuyordu; enum ikiden beşe
+çıkınca o kopya sessizce geride kaldı ve derlemeyi CI'da kırdı. Artık tek harita
+enum'un yanında duruyor, yeni bir yöntem eklendiğinde derleyici onu kullanan
+**her** ekranı aynı anda gösteriyor.
 
 **Doğrulama:** 13 birim testi (toplam **174**) + betikli uçtan uca kontrol
 **23/23**: menü firmaya göre daralıyor, kısıtlanan firmaya açık hesap 422,

@@ -1,14 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import type { PaymentMethod } from "@repo/types";
-import { useCreateOrder, useOrderQuote } from "@/lib/queries";
+import { useCreateOrder, useOrderQuote, usePaymentOptions } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
-import { PAYMENT_METHOD_LABEL } from "@/lib/types";
 import { cartTotals, useCart } from "@/store/cart";
 import { Button, Card, Empty, Field } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
-
-const METHODS: PaymentMethod[] = ["OPEN_ACCOUNT", "CREDIT_CARD"];
 
 // Draft review + submit.
 //
@@ -28,14 +25,49 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
 
   const createOrder = useCreateOrder();
   const [method, setMethod] = useState<PaymentMethod>("OPEN_ACCOUNT");
+  const [termId, setTermId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [couponDraft, setCouponDraft] = useState("");
   const [coupon, setCoupon] = useState<string | null>(null);
 
+  // Which settlements this customer may pick. Asked rather than assumed: the
+  // menu is per-company, and offering one the server will refuse only produces
+  // a 422 the buyer cannot act on.
+  const options = usePaymentOptions(companyId);
+  // Memoised because both lists are effect dependencies below — a fresh array
+  // on every render would re-run those effects forever.
+  const methods = useMemo(() => options.data?.methods ?? [], [options.data]);
+  const chosenMethod = methods.find((m) => m.value === method);
+
+  // A vade only means something on a method that books debt; on a peşin one the
+  // server rejects it outright, so it is not offered there either.
+  const termsOffered = useMemo(
+    () => (chosenMethod?.createsReceivable ? (options.data?.terms ?? []) : []),
+    [chosenMethod, options.data],
+  );
+
+  // The default (açık hesap) is not always on the menu. Fall back to whatever
+  // the customer actually has rather than leaving a selection they cannot use.
+  useEffect(() => {
+    const first = methods[0];
+    if (first && !chosenMethod) setMethod(first.value);
+  }, [methods, chosenMethod]);
+
+  // Switching to a peşin method has to drop the vade with it.
+  useEffect(() => {
+    if (termId && !termsOffered.some((t) => t.id === termId)) setTermId(null);
+  }, [termId, termsOffered]);
+
   const items = lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
   const quote = useOrderQuote(
-    { companyId, paymentMethod: method, couponCode: coupon ?? undefined, items },
-    lines.length > 0,
+    {
+      companyId,
+      paymentMethod: method,
+      paymentTermId: termId ?? undefined,
+      couponCode: coupon ?? undefined,
+      items,
+    },
+    lines.length > 0 && !!chosenMethod,
   );
   const q = quote.data;
 
@@ -45,6 +77,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       {
         companyId,
         paymentMethod: method,
+        ...(termId ? { paymentTermId: termId } : {}),
         ...(coupon ? { couponCode: coupon } : {}),
         items,
       },
@@ -118,34 +151,43 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       />
 
       <View className="gap-3 border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <View className="flex-row gap-2">
-          {METHODS.map((m) => {
-            const on = m === method;
-            return (
-              <Pressable
-                key={m}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                onPress={() => setMethod(m)}
-                className={`flex-1 items-center rounded-xl border px-2 py-2 ${
-                  on
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                    : "border-neutral-300 dark:border-neutral-700"
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    on
-                      ? "font-semibold text-indigo-700 dark:text-indigo-300"
-                      : "text-neutral-700 dark:text-neutral-300"
-                  }`}
-                >
-                  {PAYMENT_METHOD_LABEL[m]}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View className="flex-row flex-wrap gap-2">
+          {methods.map((m) => (
+            <Chip
+              key={m.value}
+              label={m.label}
+              selected={m.value === method}
+              onPress={() => setMethod(m.value)}
+            />
+          ))}
         </View>
+
+        {termsOffered.length > 0 ? (
+          <View className="flex-row flex-wrap gap-2">
+            <Chip
+              label={`Varsayılan (${options.data?.defaultTermDays ?? 0} gün)`}
+              selected={termId === null}
+              onPress={() => setTermId(null)}
+            />
+            {termsOffered.map((t) => (
+              <Chip
+                key={t.id}
+                label={t.name}
+                selected={t.id === termId}
+                onPress={() => setTermId(t.id)}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {/* What the chosen settlement actually does, before the order is sent. */}
+        {q ? (
+          <Text className="text-xs text-neutral-500">
+            {q.createsReceivable
+              ? `Cari hesaba işlenir · ${q.paymentTermDays} gün vade`
+              : "Sipariş anında ödenir — cari hesaba işlenmez"}
+          </Text>
+        ) : null}
 
         <View className="flex-row items-end gap-2">
           <Field
@@ -227,6 +269,39 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         />
       </View>
     </View>
+  );
+}
+
+function Chip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`rounded-xl border px-3 py-2 ${
+        selected
+          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+          : "border-neutral-300 dark:border-neutral-700"
+      }`}
+    >
+      <Text
+        className={`text-sm ${
+          selected
+            ? "font-semibold text-indigo-700 dark:text-indigo-300"
+            : "text-neutral-700 dark:text-neutral-300"
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

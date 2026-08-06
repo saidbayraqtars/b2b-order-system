@@ -20,6 +20,7 @@ import type {
   OrderDetail,
   OrderQuote,
   OrderSummary,
+  PaymentOptions,
   RecordPaymentResult,
   Statement,
 } from "./types";
@@ -43,6 +44,7 @@ export const keys = {
   checkIns: (companyId?: string) => ["checkins", companyId ?? "all"] as const,
   statement: (companyId: string) => ["statement", companyId] as const,
   aging: (companyId: string) => ["aging", companyId] as const,
+  paymentOptions: (companyId: string) => ["payment-options", companyId] as const,
 };
 
 /** Customers the caller may act on (rep portfolio, or own company). */
@@ -116,6 +118,23 @@ export function useCheckIns(companyId?: string): UseQueryResult<CheckInRecord[]>
   });
 }
 
+/**
+ * The settlement menu this customer is actually offered.
+ *
+ * The device must not guess it: a customer restricted to nakit/havale would be
+ * shown açık hesap and get a 422 at checkout. The list is per-company, so a rep
+ * switching customers gets a different menu without changing anything else.
+ */
+export function usePaymentOptions(
+  companyId: string,
+): UseQueryResult<PaymentOptions> {
+  return useQuery({
+    queryKey: keys.paymentOptions(companyId),
+    queryFn: () => get<PaymentOptions>(`/api/payment-options${qs({ companyId })}`),
+    enabled: !!companyId,
+  });
+}
+
 export function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation({
@@ -135,6 +154,8 @@ export function useCreateOrder() {
 export interface QuoteVars {
   companyId: string;
   paymentMethod: PaymentMethod;
+  /** Vade picked from the customer's own menu; the server re-checks it. */
+  paymentTermId?: string;
   couponCode?: string;
   items: Array<{ variantId: string; quantity: number }>;
 }
@@ -153,6 +174,7 @@ export function useOrderQuote(vars: QuoteVars, enabled: boolean) {
       "order-quote",
       vars.companyId,
       vars.paymentMethod,
+      vars.paymentTermId ?? "",
       vars.couponCode ?? "",
       vars.items,
     ],
@@ -160,6 +182,7 @@ export function useOrderQuote(vars: QuoteVars, enabled: boolean) {
       post<OrderQuote>("/api/orders/quote", {
         companyId: vars.companyId,
         paymentMethod: vars.paymentMethod,
+        ...(vars.paymentTermId ? { paymentTermId: vars.paymentTermId } : {}),
         ...(vars.couponCode ? { couponCode: vars.couponCode } : {}),
         items: vars.items,
       }),
