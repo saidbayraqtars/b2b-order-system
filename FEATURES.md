@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
+Son güncelleme: 2026-08-06 · Adım 28 (sanal POS / ödeme sağlayıcı) sonu
 
 ---
 
@@ -41,6 +41,7 @@ Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
 | 25 | Hacim iskontosu: ciroyla hak edilen genel merdiven, firma başına otomatik/elle mod, siparişte anlık görüntü | ✅ |
 | 26 | Kuruluş kimliği + kiracı klasörü: `tenants/<slug>/tenant.json`, belgede satıcı bloğu, marka dosyaları | ✅ |
 | 27 | Kasa & banka defteri: peşin siparişin ve tahsilatın hesaba girmesi, elle giriş/çıkış, aktarım, gün sonu | ✅ |
+| 28 | Sanal POS: ödeme sağlayıcı kayıt defteri, ödeme niyeti, kart parası tahsil edilene kadar kasaya girmez | ✅ |
 
 ---
 
@@ -77,6 +78,8 @@ Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
 | `CashAccount` | Kasa / banka hesabı / POS: para birimi, devir bakiyesi, güncel bakiye, varsayılan işareti. Cari defterden **ayrı** — bu bizim paramız |
 | `CashMovement` | Kasa defteri satırı: yön (IN/OUT), kaynak (sipariş/tahsilat/elle/aktarım), `occurredAt` (girildiği gün değil, olduğu gün), siparişe ve cari satırına bağ, `reversalOfId` + `counterpartId` (ikisi de tekil) |
 | `PaymentMethodAccount` | Ödeme yöntemi → hesap eşlemesi. Birincil anahtar yöntemin kendisi: yöntem başına tek hesap, veritabanı garantisi |
+| `PaymentIntent` | Kart tahsilatı: sağlayıcı (düz metin — kayıt defteri anahtarı), durum, tutar, taksit, sağlayıcı referansı, 3-D Secure yönlendirmesi. `cashMovementId` **tekil**: tahsilat iki kez deftere yazılamaz |
+| `PaymentIntentEvent` | Bir ödemenin geçtiği her durum (ekle-only). Sağlayıcı yanıtı kart verisi ayıklanmış hâlde saklanır — PAN/CVV asla |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
 | `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
 | `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
@@ -115,7 +118,7 @@ Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
 - **Satır doğrulama:** minimum sipariş miktarı, koli katı olma zorunluluğu, stok yeterliliği — her biri ayrı hata kodu döner.
 - **Toplamlar:** ara toplam, iskonto toplamı, kampanya toplamı, KDV, genel toplam — hepsi Decimal. KDV kampanya sonrası net üzerinden hesaplanır.
 - **Fiyatlama tek yerde:** doğrulama + fiyat + kampanya + KDV hesabı `buildQuote` içinde; hem sepet önizlemesi hem sipariş oluşturma onu çağırır, sipariş anında transaction içinde yeniden çalışır.
-- **Durum akışı:** firma onay istiyorsa + oluşturan personelse → `PENDING_APPROVAL`; açık hesap + limit aşımı → `PENDING_CREDIT`; aksi halde `CONFIRMED`. Kredi kartı cari borç yazmaz.
+- **Durum akışı:** firma onay istiyorsa + oluşturan personelse → `PENDING_APPROVAL`; açık hesap + limit aşımı → `PENDING_CREDIT`; aksi halde `CONFIRMED`. Kredi kartı cari borç yazmaz; onay anında bir **ödeme niyeti** açar (Adım 28) ve kasaya girişi tahsilat onayında olur.
 - **Stok** tüm reddedilmemiş siparişlerde (bekleyenler dahil) oluşturma anında düşülür; red halinde iade edilir.
 - **Cari borç** yalnızca `CONFIRMED` + açık hesapta yazılır — bekleyen siparişler onay anında borçlanır.
 - Sipariş numarası `ORD-YYYYMMDD-NNNN`, yarış durumunda 2 kez yeniden dener.
@@ -130,7 +133,7 @@ Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
 - Geçiş haritası: `CONFIRMED → PROCESSING → SHIPPED → DELIVERED`. `CONFIRMED` ve `PROCESSING` iptal edilebilir; **sevk edildikten sonra iptal yok**. `DELIVERED`, `CANCELLED`, `REJECTED` uçtur.
 - `DRAFT` buradan `CONFIRMED` yapılamaz — onay kredi kontrolü gerektirir, o da sipariş/onay servisinde.
 - **Yetki:** sevkiyat durumlarını yalnızca süper admin değiştirir. İptali süper admin ya da siparişi veren firmanın yöneticisi (sadece sevkten önce) yapabilir.
-- **İptal geri alır:** tüm kalemler stoğa iade edilir ve cari borç yazılmışsa ters kayıt (CREDIT) ile bakiye eski haline döner. Kredi kartı siparişinde cariye dokunulmaz — ters kayıt varsayımla değil, gerçek DEBIT satırı aranarak yazılır.
+- **İptal geri alır:** tüm kalemler stoğa iade edilir ve cari borç yazılmışsa ters kayıt (CREDIT) ile bakiye eski haline döner. Kredi kartı siparişinde cariye dokunulmaz — ters kayıt varsayımla değil, gerçek DEBIT satırı aranarak yazılır. Kasa kaydı ve kart tahsilatı da aynı anda çözülür (Adım 27–28): peşin para girdiği hesaptan çıkar, çekilmemiş kart tahsilatı iptal, çekilmiş olan **iade** olur.
 - `SHIPPED` geçişinde kargo firması + takip numarası kaydedilir; `shippedAt` / `deliveredAt` / `cancelledAt` damgalanır.
 - **Durum geçmişi** (`OrderStatusHistory`): oluşturma anı dahil her geçiş, kim ve ne zaman yaptığı ve opsiyonel notuyla append-only tutulur.
 - API sipariş detayında `availableTransitions` döner — arayüz butonları buna göre çizer, yetkisiz seçenek hiç görünmez.
@@ -932,7 +935,11 @@ yöntemin bir satır olarak eklenmesini sağlar, her yerde istisna olmasını de
 |--------|-------------|--------------|
 | Açık hesap | ✅ | — |
 | Çek | ✅ | — |
-| Nakit / Havale / Kredi kartı | — | ✅ |
+| Nakit / Havale | — | ✅ sipariş onayında |
+| Kredi kartı | — | ✅ **tahsilat onayında** (Adım 28) |
+
+> Kredi kartı satırı Adım 27'de "sipariş onayında" idi ve **yanlıştı**: kimse
+> kartı çekmeden para deftere giriyordu. Adım 28 araya ödeme niyetini koydu.
 
 Tahsilat tarafında da aynı ayrım var: **çek ve senet kasaya girmez.** Kabul etmek
 müşterinin borcunu kapatır, ama tahsil edilene kadar kasada para yoktur — nakit
@@ -991,7 +998,104 @@ izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzelt
 **Doğrulama:** 4 birim + 13 entegrasyon testi (toplam **240**), typecheck + lint
 + build temiz.
 
-## 28. Web Portal (`apps/web`)
+## 28. Sanal POS & Ödeme Sağlayıcı (Adım 28)
+
+Adım 27 kart siparişinin bedelini POS hesabına yazıyordu — ama kartı **kimse
+çekmiyordu**. Elimizde olmayan paranın kaydı, ilkinden daha sinsi bir hata:
+defter dolu görünüyor, kasa boş.
+
+### Ödeme niyeti (`PaymentIntent`)
+
+Sipariş ile paranın arasına giren adım. Kart siparişi onaylandığında **kasaya
+hiçbir şey yazılmaz**; bir niyet açılır ve kasa ancak tahsilat gerçekleşince
+haberdar olur.
+
+| Durum | Anlamı |
+|-------|--------|
+| `PENDING` | Açıldı, çekilmedi. Elden POS'ta insan bekler; 3-D Secure'da müşteri bankadadır |
+| `AUTHORIZED` | Kartta bloke var, para alınmadı |
+| `CAPTURED` | Para alındı — **kasaya yazan tek durum** |
+| `FAILED` / `CANCELLED` / `REFUNDED` | Reddedildi / vazgeçildi / iade edildi |
+
+`PaymentIntentEvent` her geçişi saklar. Ödeme, sistemdeki **en çok tartışılan
+kayıttır** — müşteri "ödedim" der, banka "gelmedi" der — bu yüzden son durum
+değil, yolun tamamı tutulur.
+
+### Kayıt defteri — güvenlik sınırı
+
+`payment-provider-registry.ts`, `promotion-registry` / `report-registry` ile aynı
+desende. Sipariş hattı **yalnızca arayüzü** bilir: `authorize`, `capture`,
+`refund`, `complete3DS`, `verifyWebhook`.
+
+Pazarlık konusu olmayan kural: **kart verisi bu sisteme girmez.** PAN yok, CVV
+yok, son kullanma yok — ne parametrede, ne logda, ne `payload` alanında. Bu
+yüzden `authorize()` kart numarası almaz, **müşterinin yönlendirileceği URL**
+döner. Kart numarasına ihtiyaç duyan bir sağlayıcı bu kurulumu PCI-DSS kapsamına
+sokardı; bir toptan sipariş sisteminin gireceği bir kapsam değil.
+
+`verifyWebhook` ham gövdeyi alır, ayrıştırılmış nesneyi değil: her sağlayıcı
+gönderdiği **baytları** imzalar, JSON'u yeniden serileştirmek onları değiştirir.
+İmzayı doğrulayamayan sağlayıcı `null` döner — doğrulanmamış bir webhook,
+yabancının siparişleri "ödendi" yapabildiği bir uçtur.
+
+### Kutudan çıkan sağlayıcı: elden POS
+
+`manual`. Hiçbir yere bağlanmaz: sipariş niyeti açar, niyet `/admin/kasa`
+ekranındaki listede bekler, tezgâhtaki cihazdan çekimi yapan kişi **onaylar**.
+Para deftere ancak o an girer.
+
+Bu bir yer tutucu değil — tezgâhında banka POS'u olan bir işletme zaten böyle
+çalışır. Ve önceki davranışın olmadığı bir şeydir: **dürüst.** Para, sipariş
+kaydedildiği için değil, bir insan "çektim" dediği için görünür.
+
+Gerçek sağlayıcının onay düğmesi **hiç çıkmaz** (`capabilities.manual`): iyzico'nun
+tahsilatını elle "oldu" demek, parayı uydurmaktır.
+
+### Seçim dosyada, anahtar ortamda
+
+```json
+"payment": { "provider": "manual", "installments": [], "autoCapture": false }
+```
+
+`tenant.json` **hangi sağlayıcı** ve **nasıl davranacağını** söyler. **Anahtarlar
+buraya yazılmaz.** Kiracı klasörü destek akışının taşıma birimidir — elden ele
+gider, e-postayla gönderilir, yedeklenir; oraya yazılan bir API anahtarı bu
+yolculukların hepsine katılır ve gönderenden uzun yaşar. Sırlar ortamdan okunur:
+`PAYMENT_<SAĞLAYICI>_<AD>` (`paymentSecret()`). Ad listesi sabit değil, çünkü her
+sağlayıcının ihtiyacı farklı; adaptör neye ihtiyacı varsa okur.
+
+Tanımsız sağlayıcı anahtarı **reddedilir** (`PAYMENT_PROVIDER_UNKNOWN`, 500 —
+arayanın değil, kurulumun hatası). Sessizce "tahsilat yok, parayı yine de yaz"a
+dönmez; Adım 28'in kaldırmaya geldiği davranış tam olarak buydu.
+
+### Sıralama: sağlayıcı işlem içinde çağrılmaz
+
+Niyet siparişin kendi veritabanı işleminde açılır (geri alınan siparişin
+tahsilatı olmamalı), ama sağlayıcı **işlem kapandıktan sonra** çağrılır. Bankaya
+giden bir ağ çağrısı sipariş satırının kilitlerini tutamaz — yavaş bir banka
+sistemdeki her siparişi bekletirdi. Sağlayıcı çökerse sipariş **ayakta kalır**:
+mal sipariş edildi, para henüz girmedi; hata niyetin üstüne yazılır.
+
+### Onaylama iki kez para yazmaz
+
+`PaymentIntent.cashMovementId` tekildir ve durum işlem **içinde** yeniden okunur:
+çift tıklanan onayla düğmesi de, aynı anda onaylayan iki operatör de tutarı
+ikinci kez yazamaz.
+
+### Sipariş iptali
+
+| Niyetin hâli | Sonuç |
+|--------------|-------|
+| Çekilmemiş (`PENDING`/`AUTHORIZED`) | `CANCELLED` — kasaya dokunulmaz, ortada para yok |
+| Çekilmiş (`CAPTURED`) | `REFUNDED` + kasa kaydı ters kayıtla geri alınır |
+
+İptal edilmiş siparişin tahsilatı **alınamaz**: sevk edilmeyecek mal için para
+çekmek olurdu.
+
+**Doğrulama:** 11 birim + 10 entegrasyon testi (toplam **261**), typecheck +
+lint + build temiz.
+
+## 29. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1032,7 +1136,7 @@ izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzelt
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 29. Mobil Uygulama (`apps/mobile`)
+## 30. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1047,7 +1151,7 @@ izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzelt
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 30. API Uçları
+## 31. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -1135,6 +1239,9 @@ izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzelt
 | POST | `/api/admin/cash-movements/:id/reverse` | süper admin (yalnız elle/aktarım kaydı) |
 | GET | `/api/admin/cash-movements/summary?from&to` | süper admin (gün sonu) |
 | GET | `/api/cash-accounts` | plasiyer, süper admin (tahsilat seçicisi — bakiye göstermez) |
+| GET | `/api/admin/payment-intents?status&companyId&orderId` | süper admin (kart tahsilatları + aktif sağlayıcı) |
+| POST | `/api/admin/payment-intents/:id/capture` | süper admin (kasaya yazan tek yol; çift tıklama ikinci kayıt yazmaz) |
+| POST | `/api/admin/payment-intents/:id/cancel` | süper admin (tahsil edilmiş ödeme reddedilir — iade gerekir) |
 | GET | `/api/branding/<dosya>` | herkes (kiracı klasöründeki logo/favicon — oturum taşımayan `<img>` ve yazdırılan belge için) |
 | GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
 | GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
@@ -1195,7 +1302,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 - ~~**Satıcı kimliği yok**~~ — Adım 26'da kapatıldı.
 - ~~**Peşin satışın parası hiçbir deftere girmiyor**~~ — Adım 27'de kapatıldı: kasa/banka defteri, yöntem → hesap eşlemesi, gün sonu.
-- **Sanal POS yok** — `CREDIT_CARD` yalnızca bir etiket; iyzico/PayTR/VPOS entegrasyonu hiç yok. Kart siparişinin bedeli artık POS hesabına yazılıyor (Adım 27) ama **hiçbir yerde tahsil edilmiyor**: kaydı var, çekimi yok. Sağlayıcı müşteriye göre değişeceği için kayıt defteri/eklenti olarak yazılmalı, sabit kodlanmamalı.
+- ~~**Sanal POS yok**~~ — Adım 28'de bağlantı noktası kapatıldı: kayıt defteri, ödeme niyeti, elden POS sağlayıcısı. **Gerçek bir sağlayıcı adaptörü hâlâ yok** — iyzico/PayTR/VPOS'tan hangisinin yazılacağı müşteri seçimine ve sözleşmesine bağlı. Arayüz hazır; yazılacak şey tek dosyalık adaptör + 3-D Secure dönüş ve webhook rotaları.
 - **Çek/senet portföyü yok** — çek tahsilatı cariyi kapatıyor ama kasaya girmiyor (doğru), yine de çekin kendisi hiçbir yerde durmuyor: vade takibi, tahsil/karşılıksız durumu, ciro edilmesi yok. Kasa defteri bu boşluğu görünür kıldı, kapatmadı.
 - **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
 - **Dağıtım hikâyesi yok** — `Dockerfile` yok; `docker-compose.yml` yalnızca geliştirme postgres'i. Üretim imajı, kiracı klasörünün bağlanması, yedekleme, sağlık kontrolü ve uzaktan güncelleme akışı yok.
@@ -1258,7 +1365,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - Hızlı & periyodik sipariş: geçmiş siparişi kopyala, SKU+miktar CSV/Excel toplu sipariş, abonelik siparişi.
 
 **Cari & finans**
-- Sanal POS + taksit: iyzico / PayTR / banka VPOS, DBS (doğrudan borçlandırma).
+- Sanal POS adaptörü: iyzico / PayTR / banka VPOS — bağlantı noktası Adım 28'de açıldı, geriye somut adaptör + 3-D Secure dönüş/webhook rotaları kaldı. DBS (doğrudan borçlandırma) ayrı.
 - Çek/senet takibi: sahadan görselle giriş, vade takibi, risk hesabına işleme.
 - E-Fatura / E-İrsaliye: özel entegratör (EDM, Foriba, Sovos) üzerinden belgelendirme + PDF.
 - Vade farkı & erken ödeme iskontosu motoru: peşin/vadeli fiyat farkı, "10 günde öderse %2".

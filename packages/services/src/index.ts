@@ -16,6 +16,8 @@ export * from "./promotion-admin";
 export * from "./checkin";
 export * from "./payment";
 export * from "./cash";
+export * from "./payment-provider-registry";
+export * from "./payment-intent";
 export * from "./slug";
 export * from "./catalog-admin";
 export * from "./pricing-admin";

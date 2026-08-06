@@ -88,7 +88,11 @@ export type BusinessErrorCode =
   | "CASH_ACCOUNT_IN_USE"
   | "LAST_CASH_ACCOUNT"
   | "CASH_MOVEMENT_NOT_FOUND"
-  | "INVALID_AMOUNT";
+  | "INVALID_AMOUNT"
+  // ── sanal POS / ödeme sağlayıcı ──
+  | "PAYMENT_PROVIDER_UNKNOWN"
+  | "PAYMENT_INTENT_NOT_FOUND"
+  | "PAYMENT_INSTALLMENT_NOT_ALLOWED";
 
 export class BusinessError extends Error {
   constructor(

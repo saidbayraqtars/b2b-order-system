@@ -310,6 +310,14 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   LAST_CASH_ACCOUNT: 409,
   CASH_MOVEMENT_NOT_FOUND: 404,
   INVALID_AMOUNT: 422,
+  // sanal POS / ödeme sağlayıcı
+  //
+  // 500, not 4xx: an unknown provider key is a typo in tenant.json, not
+  // something the caller did. Answering 4xx would tell an operator their order
+  // was wrong when the installation is.
+  PAYMENT_PROVIDER_UNKNOWN: 500,
+  PAYMENT_INTENT_NOT_FOUND: 404,
+  PAYMENT_INSTALLMENT_NOT_ALLOWED: 422,
 };
 
 /**

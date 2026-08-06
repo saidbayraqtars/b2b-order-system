@@ -7,7 +7,11 @@ import {
 } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, round2, type Money } from "./money";
-import { entersCashAccount, settlesToCashAccount } from "./payment-terms";
+import {
+  entersCashAccount,
+  requiresPaymentIntent,
+  settlesToCashAccount,
+} from "./payment-terms";
 
 type Tx = Prisma.TransactionClient;
 
@@ -191,12 +195,18 @@ export interface OrderCashContext {
  * Book a peşin order's money into the till. Called wherever an order becomes
  * CONFIRMED — at creation and at approval — because those are the two moments
  * the sale is agreed, and only one of them fires for any given order.
+ *
+ * A card order is the exception and returns null: its money has not been
+ * charged yet, so it goes through a `PaymentIntent` and reaches the till on
+ * capture. Booking it here — which is what this function used to do — recorded
+ * money nobody had taken.
  */
 export async function postOrderCashIn(
   tx: Tx,
   ctx: OrderCashContext,
 ): Promise<PostedMovement | null> {
   if (!settlesToCashAccount(ctx.paymentMethod)) return null;
+  if (requiresPaymentIntent(ctx.paymentMethod)) return null;
 
   const accountId = await resolveAccountForMethod(tx, ctx.paymentMethod);
   return postCashMovement(tx, {

@@ -88,6 +88,46 @@ export const brandingSchema = z
   .default({});
 export type Branding = z.infer<typeof brandingSchema>;
 
+/**
+ * Which card-payment provider this installation runs, and how.
+ *
+ * **No secrets here, ever.** This folder is the unit of support: it is handed
+ * over, e-mailed and copied back and forth. An API key written into it travels
+ * on every one of those trips and ends up in inboxes and backups nobody is
+ * tracking. Keys are read from the environment instead — see
+ * `paymentSettings()` in @repo/services — and this block only says *which*
+ * provider to use and how it should behave.
+ *
+ * The default is `manual`: no integration, an operator confirms the charge they
+ * made on the terminal by the till. That is not a placeholder — it is how a
+ * shop with a bank terminal actually works, and it is honest, which the earlier
+ * "book the money because an order was saved" behaviour was not.
+ */
+export const paymentSettingsSchema = z
+  .object({
+    /** Registry key. `manual` ships in the box; others arrive as adapters. */
+    provider: z.string().trim().min(1).max(40).default("manual"),
+    /**
+     * Taksit seçenekleri sunulacaksa. Boş = yalnızca peşin. The provider still
+     * has the last word: it refuses a count it does not support.
+     */
+    installments: z.array(z.number().int().min(1).max(24)).max(12).default([]),
+    /**
+     * Take the money as soon as the provider has only *held* it.
+     *
+     * Applies to providers that separate provizyon from tahsilat: with this on,
+     * an AUTHORIZED result is captured immediately instead of waiting for
+     * someone to press a button. It cannot affect the manual provider, which
+     * never returns AUTHORIZED — there, a human is the capture step.
+     *
+     * Off by default: holding first and taking on despatch is the safer
+     * default for a wholesaler who may not be able to ship what was ordered.
+     */
+    autoCapture: z.boolean().default(false),
+  })
+  .default({});
+export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
+
 export const tenantConfigSchema = z.object({
   /** Folder name and update target. Lowercase so it is safe in a path or a URL. */
   slug: z
@@ -96,5 +136,6 @@ export const tenantConfigSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/, "Slug küçük harf, rakam ve tire olabilir"),
   seller: sellerSchema,
   branding: brandingSchema,
+  payment: paymentSettingsSchema,
 });
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;

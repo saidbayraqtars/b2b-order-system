@@ -45,3 +45,30 @@ cp -r tenants/demo tenants/acme
 
 `demo` dışındaki klasörler `.gitignore`'da: gerçek bir müşterinin unvanı, VKN'si
 ve logosu onun verisidir, ortak depoya girmez.
+
+## Ödeme sağlayıcısı — seçim burada, anahtar burada değil
+
+```json
+"payment": {
+  "provider": "manual",
+  "installments": [],
+  "autoCapture": false
+}
+```
+
+`provider`, kayıt defterindeki anahtardır. Kutudan `manual` çıkar: entegrasyon
+yok, tezgâhtaki POS cihazından çekim yapılır ve `/admin/kasa` ekranından
+onaylanır. Para kasaya **ancak o onayla** girer — sipariş kaydedildi diye değil.
+
+**Anahtarlar ve sırlar bu dosyaya yazılmaz.** Bu klasör destek akışının taşıma
+birimidir: elden ele gider, e-postayla gönderilir, yedeklenir. Buraya yazılan bir
+API anahtarı o yolculukların hepsine katılır ve gönderen kişiden uzun yaşar.
+Sırlar ortam değişkeninden okunur:
+
+```bash
+PAYMENT_<SAĞLAYICI>_<AD>=...
+# örn. PAYMENT_IYZICO_API_KEY, PAYMENT_IYZICO_SECRET
+```
+
+Her sağlayıcının ihtiyacı farklı olduğu için ad listesi sabit değil; adaptör
+neye ihtiyacı varsa onu okur ve eksikse kendi hatasını verir.

@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 import { Prisma, prisma } from "@repo/database";
-import { clearCart, createOrder, notifyOrderPlaced } from "@repo/services";
+import {
+  authorizeOpenIntent,
+  clearCart,
+  createOrder,
+  notifyOrderPlaced,
+} from "@repo/services";
 import { createOrderSchema, OrderStatusEnum } from "@repo/types";
 import { InputError, requireUser, withAuthErrors } from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
@@ -36,9 +41,29 @@ export function POST(req: NextRequest) {
     // holds for the mobile app too.
     await clearCart(input.companyId, user.id);
 
+    // A card order opened a charge inside the transaction; the provider is
+    // called only now that it has committed. A bank on the other end of a
+    // network hop must not be holding this order's row locks — and a provider
+    // that is down must not roll the order back, which is why its failure is
+    // recorded on the intent rather than thrown at the buyer.
+    let redirectUrl: string | null = null;
+    if (result.paymentIntentId) {
+      const origin = new URL(req.url).origin;
+      try {
+        const authorized = await authorizeOpenIntent(
+          result.paymentIntentId,
+          `${origin}/orders/${result.orderId}`,
+        );
+        redirectUrl = authorized.redirectUrl;
+      } catch {
+        // Left PENDING/FAILED on the intent, visible in /admin/kasa. The order
+        // stands: the goods were ordered, the money is simply not in yet.
+      }
+    }
+
     // After the transaction: the order exists whether or not the mail goes out.
     await notifyOrderPlaced(result.orderId);
-    return Response.json(result, { status: 201 });
+    return Response.json({ ...result, paymentRedirectUrl: redirectUrl }, { status: 201 });
   });
 }
 

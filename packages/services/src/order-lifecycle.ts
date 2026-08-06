@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
 import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
+import { releaseIntentsForOrder } from "./payment-intent";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
 
 // What happens to an order after it is confirmed. Approval (PENDING_* → CONFIRMED
@@ -98,6 +99,15 @@ export async function changeOrderStatus(
         orderNumber: order.orderNumber,
         actorId: ctx.userId,
       });
+      // A card charge that was never taken is simply abandoned; one that was
+      // becomes REFUNDED, so the fact that money has to go back survives the
+      // cancellation instead of disappearing with the order's status.
+      await releaseIntentsForOrder(
+        tx,
+        order.id,
+        `Sipariş ${order.orderNumber} iptal edildi`,
+        ctx.userId,
+      );
     }
 
     const now = new Date();

@@ -4,7 +4,8 @@ import { postOrderCashIn } from "./cash";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
 import { recordStatusChange } from "./order-lifecycle";
-import { createsReceivable } from "./payment-terms";
+import { openIntentForOrder } from "./payment-intent";
+import { createsReceivable, requiresPaymentIntent } from "./payment-terms";
 
 export interface ApprovalContext {
   approverId: string;
@@ -224,7 +225,7 @@ async function confirmAndDebit(
   }
 
   // The peşin half of the same decision: an order that waited for approval and
-  // was paid by card or havale settles into a till, not onto the cari.
+  // was paid by havale or nakit settles into a till, not onto the cari.
   await postOrderCashIn(tx, {
     orderId: order.id,
     orderNumber: updated.orderNumber,
@@ -232,6 +233,17 @@ async function confirmAndDebit(
     grandTotal: order.grandTotal,
     actorId: ctx.approverId,
   });
+
+  // A card order approved here still has to be charged; the intent opens now,
+  // for the same reason it opens at creation when no approval was needed.
+  if (requiresPaymentIntent(order.paymentMethod)) {
+    await openIntentForOrder(tx, {
+      orderId: order.id,
+      companyId: order.companyId,
+      amount: order.grandTotal,
+      actorId: ctx.approverId,
+    });
+  }
 
   return {
     orderId: order.id,

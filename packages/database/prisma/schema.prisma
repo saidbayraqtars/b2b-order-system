@@ -141,6 +141,8 @@ model User {
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
   cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
+  paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
+  paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
   reports        ReportDefinition[]   @relation("ReportOwner")
   auditLogs      AuditLog[]           @relation("AuditActor")
@@ -223,6 +225,7 @@ model Company {
   carts        Cart[]
   promotionRedemptions PromotionRedemption[]
   invoices     Invoice[]
+  paymentIntents PaymentIntent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -742,10 +745,11 @@ model Order {
   deliveredAt    DateTime?
   cancelledAt    DateTime?
 
-  items         OrderItem[]
-  transactions  Transaction[]
-  cashMovements CashMovement[]
-  statusHistory OrderStatusHistory[]
+  items          OrderItem[]
+  transactions   Transaction[]
+  cashMovements  CashMovement[]
+  paymentIntents PaymentIntent[]
+  statusHistory  OrderStatusHistory[]
   promotions    PromotionRedemption[]
   shipments     Shipment[]
   invoices      Invoice[]
@@ -993,12 +997,126 @@ model CashMovement {
   recordedById String?
   recordedBy   User?   @relation("CashMovementRecordedBy", fields: [recordedById], references: [id])
 
+  /// The card payment this entry settled, when it came from one.
+  paymentIntent PaymentIntent?
+
   createdAt DateTime @default(now())
 
   @@index([accountId, occurredAt])
   @@index([occurredAt])
   @@index([orderId])
   @@index([source, occurredAt])
+}
+
+// ─────────────────────────────────────────────
+// ÖDEME NİYETİ (sanal POS / ödeme sağlayıcı)
+// ─────────────────────────────────────────────
+//
+// A card order used to walk straight into the till: the money was booked the
+// moment the order was confirmed, though nobody had charged anything. That is
+// a record of money we do not have.
+//
+// A PaymentIntent is the missing step. The order is confirmed, the intent is
+// opened, and the till only hears about it when the charge actually succeeds —
+// whether that is a provider capturing the card or an operator confirming they
+// swiped it on the physical POS on the counter.
+
+/// Where an intent is in its life. Deliberately provider-agnostic: iyzico,
+/// PayTR and a bank VPOS all use different words for the same five states, and
+/// the order pipeline must not learn any of their vocabularies.
+enum PaymentIntentStatus {
+  /// Opened, nothing charged. A physical-POS installation lives here until a
+  /// human confirms; a 3DS flow lives here while the customer is at the bank.
+  PENDING
+  /// Held on the card but not taken. Providers that separate the two use it.
+  AUTHORIZED
+  /// Money taken. This — and only this — is what writes the till entry.
+  CAPTURED
+  /// Refused by the provider or by the bank. `failureReason` says why.
+  FAILED
+  /// Given up on: the order was cancelled, or an operator abandoned it.
+  CANCELLED
+  /// Taken and given back. The till entry is reversed, never deleted.
+  REFUNDED
+}
+
+model PaymentIntent {
+  id String @id @default(cuid())
+
+  /// Registry key of the provider that owns this intent ("manual", "iyzico"…).
+  /// A plain string, not an enum: which providers exist is a property of the
+  /// installation, and a database enum would need a migration per customer.
+  provider String
+
+  status PaymentIntentStatus @default(PENDING)
+
+  amount   Decimal @db.Decimal(14, 2)
+  currency String  @default("TRY")
+
+  /// Taksit sayısı. 1 means peşin. The provider decides what it will accept;
+  /// this records what was asked for.
+  installmentCount Int @default(1)
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  /// The provider's own identifier, for reconciliation against its panel.
+  providerRef String?
+
+  /// Where to send the customer for 3-D Secure. Transient — cleared once the
+  /// flow ends, because a stale bank URL is worse than none.
+  redirectUrl String?
+
+  failureReason String?
+
+  /// The till entry written when this was captured. Null until then, which is
+  /// exactly the bug this model exists to fix.
+  cashMovementId String?       @unique
+  cashMovement   CashMovement? @relation(fields: [cashMovementId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("PaymentIntentCreatedBy", fields: [createdById], references: [id])
+
+  events PaymentIntentEvent[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  capturedAt  DateTime?
+  cancelledAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([orderId])
+  @@index([companyId, createdAt])
+  @@index([provider, providerRef])
+}
+
+/// Append-only history of one intent. A payment that went wrong is the single
+/// most argued-about record in the system — the customer says they paid, the
+/// bank says nothing arrived — so every transition it made is kept, not just
+/// the state it ended in.
+model PaymentIntentEvent {
+  id       String        @id @default(cuid())
+  intentId String
+  intent   PaymentIntent @relation(fields: [intentId], references: [id], onDelete: Cascade)
+
+  status PaymentIntentStatus
+  /// Short human line: what happened, in Turkish, for the operator reading it.
+  note String?
+
+  /// The provider's response, with card data stripped before it gets here.
+  /// Never a PAN, never a CVV — see payment-provider-registry.ts, which is the
+  /// only place a provider payload is allowed to be shaped.
+  payload Json?
+
+  actorId String?
+  actor   User?   @relation("PaymentIntentActor", fields: [actorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([intentId, createdAt])
 }
 
 /// Which account a peşin order's money lands in.

@@ -142,6 +142,32 @@ export const CASH_MOVEMENT_SOURCE_LABELS: Record<CashMovementSource, string> = {
   TRANSFER: "Hesaplar arası aktarım",
 };
 
+/**
+ * Where a card payment is in its life.
+ *
+ * Provider-agnostic on purpose: iyzico, PayTR and a bank VPOS each have their
+ * own words for these five states, and the order pipeline must not learn any of
+ * their vocabularies. Only `CAPTURED` writes money into a till.
+ */
+export const PaymentIntentStatusEnum = z.enum([
+  "PENDING",
+  "AUTHORIZED",
+  "CAPTURED",
+  "FAILED",
+  "CANCELLED",
+  "REFUNDED",
+]);
+export type PaymentIntentStatus = z.infer<typeof PaymentIntentStatusEnum>;
+
+export const PAYMENT_INTENT_STATUS_LABELS: Record<PaymentIntentStatus, string> = {
+  PENDING: "Onay bekliyor",
+  AUTHORIZED: "Provizyon alındı",
+  CAPTURED: "Tahsil edildi",
+  FAILED: "Başarısız",
+  CANCELLED: "İptal edildi",
+  REFUNDED: "İade edildi",
+};
+
 /** Which application wrote a field record (visit, collection). */
 export const FieldEntrySourceEnum = z.enum(["MOBILE", "WEB"]);
 export type FieldEntrySource = z.infer<typeof FieldEntrySourceEnum>;

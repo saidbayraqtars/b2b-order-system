@@ -39,6 +39,17 @@ export interface PaymentMethodMeta {
    * a method is one row here instead of an exception everywhere.
    */
   settlesToCashAccount: boolean;
+  /**
+   * True when the money has to be *charged* before it is ours, through a
+   * payment provider or a terminal someone swipes.
+   *
+   * Such a method still settles to a till — but later, and only if the charge
+   * succeeds. Booking it at confirmation the way nakit is booked would record
+   * money nobody had taken, which is precisely what step 28 came to fix. The
+   * order opens a `PaymentIntent` instead, and the till entry hangs off its
+   * capture.
+   */
+  requiresPaymentIntent: boolean;
 }
 
 const META: Record<PaymentMethod, PaymentMethodMeta> = {
@@ -46,6 +57,7 @@ const META: Record<PaymentMethod, PaymentMethodMeta> = {
     label: PAYMENT_METHOD_LABELS.OPEN_ACCOUNT,
     createsReceivable: true,
     settlesToCashAccount: false,
+    requiresPaymentIntent: false,
   },
   // A cheque is a promise to pay later — cari debt with a vade, same as açık
   // hesap. Whether the cheque itself clears is the collection's problem.
@@ -53,21 +65,29 @@ const META: Record<PaymentMethod, PaymentMethodMeta> = {
     label: PAYMENT_METHOD_LABELS.CHEQUE,
     createsReceivable: true,
     settlesToCashAccount: false,
+    requiresPaymentIntent: false,
   },
+  // The only method somebody has to actually charge. Its money reaches a till
+  // through a PaymentIntent capture, never at confirmation.
   CREDIT_CARD: {
     label: PAYMENT_METHOD_LABELS.CREDIT_CARD,
     createsReceivable: false,
     settlesToCashAccount: true,
+    requiresPaymentIntent: true,
   },
+  // Havale arrives on its own; by the time an operator picks this, the money is
+  // in the bank. Nothing to charge.
   BANK_TRANSFER: {
     label: PAYMENT_METHOD_LABELS.BANK_TRANSFER,
     createsReceivable: false,
     settlesToCashAccount: true,
+    requiresPaymentIntent: false,
   },
   CASH: {
     label: PAYMENT_METHOD_LABELS.CASH,
     createsReceivable: false,
     settlesToCashAccount: true,
+    requiresPaymentIntent: false,
   },
 };
 
@@ -83,6 +103,11 @@ export function createsReceivable(method: PaymentMethod): boolean {
 /** Does confirming this order put money into a kasa/banka account? */
 export function settlesToCashAccount(method: PaymentMethod): boolean {
   return META[method].settlesToCashAccount;
+}
+
+/** Does this method need charging through a provider before the money is ours? */
+export function requiresPaymentIntent(method: PaymentMethod): boolean {
+  return META[method].requiresPaymentIntent;
 }
 
 // ─────────────────────────────────────────────

@@ -5,6 +5,8 @@ import { BusinessError } from "./errors";
 import { Dec } from "./money";
 import { buildQuote } from "./order-quote";
 import { recordStatusChange } from "./order-lifecycle";
+import { openIntentForOrder } from "./payment-intent";
+import { requiresPaymentIntent } from "./payment-terms";
 import { recordRedemptions } from "./promotion";
 
 export interface CreateOrderContext {
@@ -23,6 +25,14 @@ export interface CreateOrderResult {
   promotions: Array<{ name: string; code: string | null; amount: string }>;
   /** Human hint for the UI about why it isn't CONFIRMED. */
   reason: "APPROVAL_REQUIRED" | "CREDIT_EXCEEDED" | null;
+  /**
+   * The card charge opened for this order, when it was paid by card.
+   *
+   * The caller takes it to `authorizeOpenIntent` once this transaction has
+   * committed — the provider is a network hop and must not be made from inside
+   * a database transaction. Null for every other payment method.
+   */
+  paymentIntentId: string | null;
 }
 
 type Tx = Prisma.TransactionClient;
@@ -76,6 +86,7 @@ async function buildOrder(
   const isSeller =
     ctx.createdByRole === "SUPER_ADMIN" || ctx.createdByRole === "SALES_REP";
   const shippingFee = isSeller ? (input.shippingFee ?? 0) : 0;
+  let paymentIntentId: string | null = null;
 
   const quote = await buildQuote(tx, {
     companyId: input.companyId,
@@ -232,6 +243,20 @@ async function buildOrder(
     });
   }
 
+  // 12. …and for the one method that has to be *charged*, open the intent
+  //     instead. The provider is not called here — that happens after this
+  //     transaction commits, because a bank on the other end of a network hop
+  //     must not be holding this order's row locks.
+  if (status === "CONFIRMED" && requiresPaymentIntent(quote.terms.method)) {
+    const opened = await openIntentForOrder(tx, {
+      orderId: order.id,
+      companyId: company.id,
+      amount: grandTotal,
+      actorId: ctx.createdById,
+    });
+    paymentIntentId = opened.intentId;
+  }
+
   return {
     orderId: order.id,
     orderNumber: order.orderNumber,
@@ -244,6 +269,7 @@ async function buildOrder(
       amount: p.amount.toFixed(2),
     })),
     reason,
+    paymentIntentId,
   };
 }
 

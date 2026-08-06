@@ -23,5 +23,10 @@
   },
   "branding": {
     "logo": "branding/logo.svg"
+  },
+  "payment": {
+    "provider": "manual",
+    "installments": [],
+    "autoCapture": false
   }
 }

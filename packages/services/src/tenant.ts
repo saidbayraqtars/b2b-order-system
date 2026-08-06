@@ -1,6 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { tenantConfigSchema, type TenantConfig } from "@repo/types";
+import {
+  tenantConfigSchema,
+  type PaymentSettings,
+  type TenantConfig,
+} from "@repo/types";
 
 // The tenant folder: what this installation is, and what has been customised
 // for it.
@@ -102,6 +106,51 @@ export async function loadTenant(): Promise<TenantConfig> {
 /** Drop the cache. For tests and for a future "yapılandırmayı yenile" action. */
 export function clearTenantCache(): void {
   cache = null;
+}
+
+// ─────────────────────────────────────────────
+// ÖDEME SAĞLAYICISI: SEÇİM DOSYADA, SIR ORTAMDA
+// ─────────────────────────────────────────────
+
+/**
+ * The card-payment settings for this installation.
+ *
+ * Split deliberately down the middle:
+ *
+ *   * **Which provider, and how it behaves** → tenant.json. It is a choice
+ *     someone makes once, it is worth reading in a support hand-over, and it
+ *     belongs next to the rest of the installation's identity.
+ *   * **The keys** → environment variables. The tenant folder gets e-mailed,
+ *     zipped and copied during support; a secret written into it travels with
+ *     every one of those trips and outlives the person who sent it. An
+ *     environment variable does not leave the machine.
+ *
+ * Missing settings are not an error: `manual` is a working configuration, and
+ * most installations will never need another one.
+ */
+export async function paymentSettings(): Promise<PaymentSettings> {
+  const config = await loadTenant();
+  return config.payment;
+}
+
+/**
+ * A provider's secret, by convention `PAYMENT_<PROVIDER>_<NAME>`.
+ *
+ * The naming is a convention rather than a schema because each provider needs a
+ * different set — an api key and a secret here, a merchant id and a store key
+ * there — and a fixed shape would be wrong for the second integration. Adapters
+ * read what they need and say so in their own error when it is missing.
+ *
+ * Never logged, never returned to a client, never written into
+ * `PaymentIntentEvent.payload`.
+ */
+export function paymentSecret(provider: string, name: string): string | undefined {
+  const key = `PAYMENT_${provider.toUpperCase()}_${name.toUpperCase()}`.replace(
+    /[^A-Z0-9_]/g,
+    "_",
+  );
+  const value = process.env[key];
+  return value && value.trim() !== "" ? value : undefined;
 }
 
 // ─────────────────────────────────────────────

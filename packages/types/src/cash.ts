@@ -3,6 +3,7 @@ import {
   CashAccountKindEnum,
   CashDirectionEnum,
   CashMovementSourceEnum,
+  PaymentIntentStatusEnum,
   PaymentMethodEnum,
 } from "./enums";
 
@@ -98,3 +99,25 @@ export const cashMovementFilterSchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 export type CashMovementFilter = z.infer<typeof cashMovementFilterSchema>;
+
+// ─────────────────────────────────────────────
+// KART TAHSİLATI (ödeme niyeti)
+// ─────────────────────────────────────────────
+
+export const paymentIntentFilterSchema = z.object({
+  status: PaymentIntentStatusEnum.optional(),
+  companyId: z.string().cuid().optional(),
+  orderId: z.string().cuid().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+});
+export type PaymentIntentFilter = z.infer<typeof paymentIntentFilterSchema>;
+
+/**
+ * Giving up on a charge. The reason is required for the same purpose it is on a
+ * tahsilat iptali: the row is kept, and whoever reads it later needs to know
+ * why it stopped.
+ */
+export const cancelPaymentIntentSchema = z.object({
+  reason: z.string().trim().min(1, "İptal gerekçesi gerekli").max(300),
+});
+export type CancelPaymentIntentInput = z.infer<typeof cancelPaymentIntentSchema>;
