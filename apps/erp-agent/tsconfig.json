@@ -1,0 +1,15 @@
+{
+  "extends": "@repo/tsconfig/base.json",
+  "compilerOptions": {
+    // The agent is the one workspace that actually ships compiled JavaScript:
+    // it runs on the customer's machine with plain `node`, not through a
+    // bundler. The base config turns emit off for everything else.
+    "noEmit": false,
+    "outDir": "dist",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

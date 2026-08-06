@@ -1,0 +1,29 @@
+{
+  "name": "erp-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "bin": {
+    "erp-agent": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "sync": "tsx src/index.ts --once",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts --max-warnings 0"
+  },
+  "dependencies": {
+    "mssql": "^11.0.1"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:^",
+    "@repo/tsconfig": "workspace:*",
+    "@types/mssql": "^9.1.5",
+    "@types/node": "^20.16.11",
+    "eslint": "^8.57.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

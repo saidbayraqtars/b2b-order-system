@@ -18,6 +18,8 @@ export * from "./payment";
 export * from "./cash";
 export * from "./payment-provider-registry";
 export * from "./payment-intent";
+export * from "./erp-agent";
+export * from "./erp-ingest";
 export * from "./slug";
 export * from "./catalog-admin";
 export * from "./pricing-admin";

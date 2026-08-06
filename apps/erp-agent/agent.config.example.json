@@ -1,0 +1,27 @@
+{
+  "apiUrl": "https://siparis.musteri.com",
+  "token": "B2B > Yönetim > ERP ekranında ajan açınca BİR KEZ gösterilen token",
+
+  "db": {
+    "server": "localhost",
+    "port": 1433,
+    "database": "VEGADB",
+    "user": "b2b_agent",
+    "password": "",
+    "instanceName": ""
+  },
+
+  "vega": {
+    "firma": "0101",
+    "donem": "0017"
+  },
+
+  "intervalMinutes": 30,
+  "batchSize": 1000,
+
+  "sync": {
+    "customers": true,
+    "stock": true,
+    "prices": false
+  }
+}

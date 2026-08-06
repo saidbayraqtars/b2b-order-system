@@ -168,9 +168,19 @@ model Company {
   phone     String?
 
   /// This customer's cari code in the ERP (VegaWin A5 / VegaDB and the like).
-  /// Nothing in the app depends on it yet; it is the join key an ERP sync needs,
-  /// and adding it now costs nothing.
+  /// The join key the ERP bridge matches on — see erp-ingest.ts.
   externalCode String? @unique
+
+  /// The balance the ERP last reported for this cari.
+  ///
+  /// Deliberately **not** written into `currentBalance`. That one is derived
+  /// from this system's own Transaction ledger and every screen adds up against
+  /// it; overwriting it with a number computed from a different set of books
+  /// would leave the balance disagreeing with the ekstre printed beside it.
+  /// This is shown next to ours so a human can see the two and investigate,
+  /// which is the only honest thing to do with two sets of books.
+  erpBalance   Decimal?  @db.Decimal(14, 2)
+  erpSyncedAt  DateTime?
 
   // Cari / limit
   creditLimit    Decimal @default(0) @db.Decimal(14, 2)
@@ -379,9 +389,14 @@ model ProductVariant {
   color   String?
   size    String?
 
-  /// The stock code this variant has in the ERP — the join key for a future
-  /// stock/price sync. Unused by the app itself.
+  /// The stock code this variant has in the ERP — the join key the bridge
+  /// matches stock and price rows on.
   externalCode String? @unique
+
+  /// When the ERP last confirmed this row. Answers "is this stock figure from
+  /// this morning or from three weeks ago", which a run log alone cannot: the
+  /// run says what arrived, this says what it touched.
+  erpSyncedAt DateTime?
 
   unitsPerCase Int  @default(1) // koli içi adet
   moqUnits     Int  @default(1) // minimum order quantity
@@ -1117,6 +1132,120 @@ model PaymentIntentEvent {
   createdAt DateTime @default(now())
 
   @@index([intentId, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// ERP KÖPRÜSÜ (ajan)
+// ─────────────────────────────────────────────
+//
+// The customer's ERP — VegaWin A5 for the first one — is where their accountant
+// works and where e-fatura already happens. This system does not reach into it
+// over the network: a small **agent** runs on the customer's own machine, reads
+// the ERP, and posts normalised data here over HTTPS.
+//
+// The agent, not this system, is what knows the ERP's schema. That is a
+// security decision, not a tidiness one: the alternative — an agent that runs
+// whatever SQL it is handed — would mean anyone who compromised this server
+// could run arbitrary SQL inside the customer's accounting database. The agent
+// exposes a fixed set of named read operations and nothing else.
+
+/// What one sync run carried. Named rather than free-form so the ingest side
+/// can refuse a payload that does not match what it claims to be.
+enum ErpSyncKind {
+  /// Cari kartları — codes, names, tax numbers.
+  CUSTOMERS
+  /// Stok miktarları.
+  STOCK
+  /// Fiyat listesi.
+  PRICES
+  /// Cari bakiyeleri — informational, never overwrites our own ledger.
+  BALANCES
+}
+
+enum ErpSyncStatus {
+  RUNNING
+  SUCCEEDED
+  /// Applied what it could; `ErpSyncIssue` rows say what it could not.
+  PARTIAL
+  FAILED
+}
+
+/// One agent process, and the credential it authenticates with.
+model ErpAgent {
+  id   String @id @default(cuid())
+  name String @unique
+
+  /// Which ERP it speaks to. Free text — the agent's own business; this side
+  /// only records it so an operator reading the screen knows what they are
+  /// looking at.
+  erp String @default("vega")
+
+  /// SHA-256 of the bearer token. The token itself is shown **once**, when it
+  /// is issued, and never stored — same treatment PasswordResetToken gets. A
+  /// leaked database must not hand over the ability to write stock and prices.
+  tokenHash String @unique
+
+  /// Last four characters of the token, so an operator can tell two agents
+  /// apart when deciding which to revoke. Not enough to authenticate with.
+  tokenHint String?
+
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime?
+  /// Where it called from, for the same reason AuditLog keeps one.
+  lastSeenIp String?
+
+  runs ErpSyncRun[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ErpSyncRun {
+  id      String    @id @default(cuid())
+  agentId String?
+  agent   ErpAgent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  kind   ErpSyncKind
+  status ErpSyncStatus @default(RUNNING)
+
+  /// How many rows arrived, and what became of them. `skipped` is the number
+  /// the bridge could not match to anything here — the figure that says whether
+  /// the mapping is finished.
+  received Int @default(0)
+  applied  Int @default(0)
+  skipped  Int @default(0)
+
+  error String?
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  issues ErpSyncIssue[]
+
+  @@index([kind, startedAt])
+  @@index([agentId, startedAt])
+}
+
+/// A row the bridge could not apply, kept so somebody can fix the mapping.
+///
+/// Without this a sync that silently dropped 4.000 of 80.000 cari would look
+/// exactly like one that worked. The unmatched code is the whole value here:
+/// it is what an operator pastes into the ERP to find out what it belongs to.
+model ErpSyncIssue {
+  id    String     @id @default(cuid())
+  runId String
+  run   ErpSyncRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  /// The ERP's own code for the row that did not land.
+  externalCode String
+  /// Whatever name came with it, to make the list readable.
+  label  String?
+  reason String
+
+  createdAt DateTime @default(now())
+
+  @@index([runId])
+  @@index([externalCode])
 }
 
 /// Which account a peşin order's money lands in.

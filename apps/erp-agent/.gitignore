@@ -1,0 +1,4 @@
+# The live config holds the ERP database login and the B2B token. It stays on
+# the customer's machine and never in the repository.
+agent.config.json
+dist/

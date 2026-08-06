@@ -92,7 +92,11 @@ export type BusinessErrorCode =
   // ── sanal POS / ödeme sağlayıcı ──
   | "PAYMENT_PROVIDER_UNKNOWN"
   | "PAYMENT_INTENT_NOT_FOUND"
-  | "PAYMENT_INSTALLMENT_NOT_ALLOWED";
+  | "PAYMENT_INSTALLMENT_NOT_ALLOWED"
+  // ── ERP köprüsü ──
+  | "ERP_AGENT_NOT_FOUND"
+  | "ERP_AGENT_NAME_TAKEN"
+  | "ERP_RUN_NOT_FOUND";
 
 export class BusinessError extends Error {
   constructor(
