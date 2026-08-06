@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { CreateOrderResult, OrderQuoteView } from "@repo/services";
+import type { CreateOrderResult, OrderQuoteView, PaymentOptions } from "@repo/services";
+import type { PaymentMethod } from "@repo/types";
 import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
-import { apiPost } from "@/lib/fetcher";
+import { apiGet, apiPost } from "@/lib/fetcher";
 
 const STATUS_MESSAGE: Record<string, string> = {
   CONFIRMED: "Siparişiniz onaylandı ve işleme alındı.",
@@ -20,22 +21,66 @@ export function CartPanel({ companyId }: { companyId: string }) {
 
   const [couponDraft, setCouponDraft] = useState("");
   const [coupon, setCoupon] = useState<string | null>(null);
+  const [method, setMethod] = useState<PaymentMethod>("OPEN_ACCOUNT");
+  const [termId, setTermId] = useState("");
 
   const items = lines.map((l) => ({
     variantId: l.variantId,
     quantity: l.quantity,
   }));
 
+  // What this customer is allowed to pick. The server re-checks the choice when
+  // pricing, so this call only decides what to *render*.
+  const options = useQuery({
+    queryKey: ["payment-options", companyId],
+    queryFn: () =>
+      apiGet<PaymentOptions>(
+        `/api/payment-options?companyId=${encodeURIComponent(companyId)}`,
+      ),
+  });
+
+  // Memoised because both feed effect dependencies: a fresh array on every
+  // render would re-run the guards below on each keystroke in the panel.
+  const methods = useMemo(() => options.data?.methods ?? [], [options.data]);
+  // Vade is only meaningful on a sale that goes on the cari — a due date on an
+  // already-paid order is refused server-side, so it is not offered here.
+  const termsOffered = useMemo(() => {
+    const selected = methods.find((m) => m.value === method);
+    return selected?.createsReceivable ? (options.data?.terms ?? []) : [];
+  }, [methods, method, options.data]);
+
+  // A customer restricted to, say, cash only would otherwise sit on the
+  // OPEN_ACCOUNT default and get a rejection at checkout with no way to fix it.
+  useEffect(() => {
+    if (methods.length > 0 && !methods.some((m) => m.value === method)) {
+      setMethod(methods[0]!.value);
+    }
+  }, [methods, method]);
+
+  // Switching to a prepaid method has to drop the vade with it; leaving it set
+  // would post a term the server refuses for that method.
+  useEffect(() => {
+    if (termId && !termsOffered.some((t) => t.id === termId)) setTermId("");
+  }, [termsOffered, termId]);
+
+  const settlement = {
+    paymentMethod: method,
+    ...(termId ? { paymentTermId: termId } : {}),
+  };
+
   // Campaigns are evaluated server-side, so the cart cannot total itself any
   // more: it asks for a quote and shows exactly what the order will charge.
   // The local total stays as the fallback while that request is in flight.
+  //
+  // Method and term are part of the key: a campaign can depend on how the order
+  // is paid, so changing the method has to re-price the basket.
   const quote = useQuery({
-    queryKey: ["order-quote", companyId, items, coupon],
+    queryKey: ["order-quote", companyId, items, coupon, method, termId],
     enabled: lines.length > 0,
     queryFn: () =>
       apiPost<OrderQuoteView>("/api/orders/quote", {
         companyId,
-        paymentMethod: "OPEN_ACCOUNT",
+        ...settlement,
         ...(coupon ? { couponCode: coupon } : {}),
         items,
       }),
@@ -46,7 +91,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
     mutationFn: () =>
       apiPost<CreateOrderResult>("/api/orders", {
         companyId,
-        paymentMethod: "OPEN_ACCOUNT",
+        ...settlement,
         ...(coupon ? { couponCode: coupon } : {}),
         items,
       }),
@@ -149,6 +194,43 @@ export function CartPanel({ companyId }: { companyId: string }) {
 
       {lines.length > 0 && (
         <div className="flex flex-col gap-3 border-t border-neutral-200 pt-3 text-sm dark:border-neutral-800">
+          {methods.length > 0 && (
+            <label className="block">
+              <span className="tech-label mb-1 block">Ödeme yöntemi</span>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                className="h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+              >
+                {methods.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {termsOffered.length > 0 && (
+            <label className="block">
+              <span className="tech-label mb-1 block">Vade</span>
+              <select
+                value={termId}
+                onChange={(e) => setTermId(e.target.value)}
+                className="h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+              >
+                <option value="">
+                  Varsayılan ({options.data?.defaultTermDays ?? 0} gün)
+                </option>
+                {termsOffered.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.days === 0 ? "peşin" : `${t.days} gün`})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="flex items-end gap-2">
             <label className="flex-1">
               <span className="tech-label mb-1 block">Kupon kodu</span>
@@ -218,6 +300,18 @@ export function CartPanel({ companyId }: { companyId: string }) {
             />
             {quote.isFetching && (
               <p className="text-xs text-neutral-400">Fiyat güncelleniyor…</p>
+            )}
+            {priced && (
+              // What the settlement actually resolved to, straight from the
+              // quote — the buyer should see the vade before ordering, not
+              // discover it on the invoice.
+              <p className="mt-1 text-xs text-neutral-500">
+                {q.createsReceivable
+                  ? q.paymentTermDays > 0
+                    ? `Cari hesaba işlenir · ${q.paymentTermDays} gün vade`
+                    : "Cari hesaba işlenir · peşin"
+                  : "Sipariş anında ödenir — cari hesaba işlenmez"}
+              </p>
             )}
           </div>
 

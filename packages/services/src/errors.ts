@@ -70,7 +70,13 @@ export type BusinessErrorCode =
   | "ANNOUNCEMENT_NOT_FOUND"
   // ── field operations: collection, visit ──
   | "TRANSACTION_NOT_FOUND"
-  | "VISIT_ALREADY_OPEN";
+  | "VISIT_ALREADY_OPEN"
+  // ── payment methods and terms ──
+  | "PAYMENT_METHOD_NOT_ALLOWED"
+  | "PAYMENT_TERM_NOT_ALLOWED"
+  | "PAYMENT_TERM_NOT_FOUND"
+  | "PAYMENT_TERM_IN_USE"
+  | "PAYMENT_TERM_NAME_TAKEN";
 
 export class BusinessError extends Error {
   constructor(

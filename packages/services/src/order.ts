@@ -79,6 +79,11 @@ async function buildOrder(
   const quote = await buildQuote(tx, {
     companyId: input.companyId,
     paymentMethod: input.paymentMethod,
+    // Vade is validated inside the quote against what this customer was
+    // offered, so the same rules apply to the preview and to the real order.
+    paymentTermId: input.paymentTermId,
+    paymentTermDays: input.paymentTermDays,
+    isSeller,
     couponCode: input.couponCode,
     shippingFee,
     items: input.items,
@@ -114,7 +119,9 @@ async function buildOrder(
   if (company.requiresOrderApproval && isStaff) {
     status = "PENDING_APPROVAL";
     reason = "APPROVAL_REQUIRED";
-  } else if (input.paymentMethod === "OPEN_ACCOUNT") {
+  } else if (quote.terms.createsReceivable) {
+    // Only credit sales are checked against the limit. Cash, transfer and card
+    // take the money now, so they cannot push the cari anywhere.
     const projected = new Dec(company.currentBalance).add(grandTotal);
     if (projected.gt(company.creditLimit)) {
       status = "PENDING_CREDIT";
@@ -123,7 +130,7 @@ async function buildOrder(
       status = "CONFIRMED";
     }
   } else {
-    status = "CONFIRMED"; // CREDIT_CARD assumed paid at order time
+    status = "CONFIRMED"; // paid at order time
   }
 
   // 5. Reserve stock (all non-rejected orders hold stock)
@@ -158,8 +165,9 @@ async function buildOrder(
       shippingVatRate: quote.shippingVatRate,
       taxTotal,
       grandTotal,
-      // Per-order vade override; null falls back to the company's term.
-      paymentTermDays: isSeller ? (input.paymentTermDays ?? null) : null,
+      // Already validated against this customer's menu; null falls back to the
+      // company's default term.
+      paymentTermDays: quote.terms.paymentTermDays,
       items: { create: itemsData },
     },
     select: { id: true, orderNumber: true, status: true },
@@ -181,15 +189,15 @@ async function buildOrder(
     applied: quote.appliedPromotions,
   });
 
-  // 10. Cari DEBIT only when the order is immediately CONFIRMED on open account.
+  // 10. Cari DEBIT only when the order is immediately CONFIRMED on credit.
   //    Pending orders get their debit at approval/confirmation time.
-  if (status === "CONFIRMED" && input.paymentMethod === "OPEN_ACCOUNT") {
+  if (status === "CONFIRMED" && quote.terms.createsReceivable) {
     await tx.transaction.create({
       data: {
         company: { connect: { id: company.id } },
         type: "DEBIT",
         amount: grandTotal,
-        paymentMethod: "OPEN_ACCOUNT",
+        paymentMethod: quote.terms.method,
         description: `Sipariş ${orderNumber}`,
         // No due date yet, deliberately. The vade starts with the invoice, so
         // until one is issued this debt ages from the order date plus the

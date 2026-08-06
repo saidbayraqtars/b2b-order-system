@@ -1,8 +1,9 @@
 import { Prisma, prisma } from "@repo/database";
-import type { OrderStatus, Role } from "@repo/types";
+import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
 import { recordStatusChange } from "./order-lifecycle";
+import { createsReceivable } from "./payment-terms";
 
 export interface ApprovalContext {
   approverId: string;
@@ -23,7 +24,7 @@ type PendingOrder = {
   id: string;
   orderNumber: string;
   status: OrderStatus;
-  paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
+  paymentMethod: PaymentMethod;
   grandTotal: Prisma.Decimal;
   companyId: string;
   /** Order-level vade override; null falls back to the company's term. */
@@ -52,7 +53,9 @@ export async function approveOrder(
     assertCanApprove(order, ctx);
 
     if (order.status === "PENDING_APPROVAL") {
-      if (order.paymentMethod === "OPEN_ACCOUNT") {
+      // Only a credit sale can breach the limit; a paid-up-front order goes
+      // straight through.
+      if (createsReceivable(order.paymentMethod)) {
         const projected = new Dec(order.company.currentBalance).add(
           order.grandTotal,
         );
@@ -200,13 +203,13 @@ async function confirmAndDebit(
     changedById: ctx.approverId,
   });
 
-  if (order.paymentMethod === "OPEN_ACCOUNT") {
+  if (createsReceivable(order.paymentMethod)) {
     await tx.transaction.create({
       data: {
         company: { connect: { id: order.companyId } },
         type: "DEBIT",
         amount: order.grandTotal,
-        paymentMethod: "OPEN_ACCOUNT",
+        paymentMethod: order.paymentMethod,
         description: `Sipariş ${order.orderNumber}`,
         // Due date comes from the invoice, not from here — see order.ts.
         order: { connect: { id: order.id } },

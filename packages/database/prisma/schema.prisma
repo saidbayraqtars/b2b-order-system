@@ -33,9 +33,16 @@ enum OrderStatus {
   REJECTED
 }
 
+/// How an *order* is agreed to be settled. Read by the credit check, by order
+/// approval and by promotion conditions — see `paymentMethodMeta()` in
+/// @repo/services for the one place that says which of these create a
+/// receivable. Do not branch on individual members anywhere else.
 enum PaymentMethod {
-  OPEN_ACCOUNT // cari / açık hesap
-  CREDIT_CARD
+  OPEN_ACCOUNT // cari / açık hesap — borç doğurur, vadesi vardır
+  CREDIT_CARD // sipariş anında ödenmiş sayılır
+  BANK_TRANSFER // havale / EFT, peşin
+  CASH // peşin nakit (teslimatta / plasiyere)
+  CHEQUE // çek ile ödeme — borç doğurur, vadesi vardır
 }
 
 enum TransactionType {
@@ -43,8 +50,12 @@ enum TransactionType {
   CREDIT // alacak (payment / refund)
 }
 
-/// How a collection (tahsilat) reached us. See Transaction.collectionMethod for
-/// why this is separate from PaymentMethod.
+/// How a collection (tahsilat) reached us. Still separate from PaymentMethod
+/// even though the two now share member names: this one records what already
+/// happened to money, the other records what an order *agreed* to and is read
+/// by the credit check, approval and promotion rules. Merging them would make
+/// every new collection channel a new branch in the order engine.
+/// See Transaction.collectionMethod.
 enum CollectionMethod {
   CASH // nakit
   BANK_TRANSFER // havale / EFT
@@ -158,7 +169,20 @@ model Company {
   currency       String  @default("TRY")
 
   /// Vade: days a debit may stay open before it counts as overdue in aging.
+  /// This is the customer's *default* term — what an order gets when nobody
+  /// picks one. `paymentTerms` below is the menu they may pick from instead.
   paymentTermDays Int @default(0)
+
+  /// Which settlement methods this customer may choose at checkout.
+  /// **Empty means no restriction** (every method is offered) — the same
+  /// convention as Announcement.customerGroupIds. Restricting is opt-in, so
+  /// existing customers keep working without a data migration.
+  allowedPaymentMethods PaymentMethod[] @default([])
+
+  /// The vade options offered to this customer at checkout. Empty = no choice:
+  /// the order silently takes `paymentTermDays` above, which is how every
+  /// order behaved before terms existed.
+  paymentTerms PaymentTerm[] @relation("CompanyPaymentTerms")
 
   // If true, COMPANY_STAFF orders go to PENDING_APPROVAL before credit check.
   requiresOrderApproval Boolean @default(false)
@@ -203,6 +227,32 @@ model Address {
   shippedOrders Order[]
 
   @@index([companyId])
+}
+
+/// A named vade option — "Peşin", "30 gün", "60 gün".
+///
+/// Definitions are global; which customer may pick which is the m-n above.
+/// An order does **not** point back here: it snapshots `paymentTermDays`, so
+/// renaming or deleting "60 gün" next year cannot rewrite what a past order
+/// was sold on. This row only decides what may be *chosen*.
+model PaymentTerm {
+  id String @id @default(cuid())
+  /// Shown at checkout. Unique so the same vade cannot be defined twice under
+  /// two names and drift apart.
+  name String @unique
+  /// Days added to the invoice date. 0 = peşin.
+  days Int    @default(0)
+  /// Kept out of the checkout menu without deleting it — orders sold on this
+  /// term stay explainable.
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  companies Company[] @relation("CompanyPaymentTerms")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 // ─────────────────────────────────────────────
@@ -609,8 +659,10 @@ model Order {
   grandTotal    Decimal @default(0) @db.Decimal(14, 2)
   currency      String  @default("TRY")
 
-  /// Vade for this order specifically; falls back to Company.paymentTermDays.
-  /// An invoice takes its due date from here.
+  /// Vade agreed for this order, as a snapshot in days — either the option the
+  /// buyer picked from Company.paymentTerms or a seller's free-form override.
+  /// Null falls back to Company.paymentTermDays. The invoice takes its due date
+  /// from here, and aging uses it for debts not yet invoiced.
   paymentTermDays Int?
 
   /// The coupon the buyer typed, kept for the record even after the campaign ends.

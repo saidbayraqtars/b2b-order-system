@@ -256,7 +256,13 @@ export async function getCompanyAging(
 
   const rows = await prisma.transaction.findMany({
     where: { companyId, createdAt: { lte: asOf } },
-    select: { type: true, amount: true, createdAt: true, dueDate: true },
+    select: {
+      type: true,
+      amount: true,
+      createdAt: true,
+      dueDate: true,
+      order: { select: { paymentTermDays: true } },
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 
@@ -316,6 +322,7 @@ export async function getReceivables(
           amount: true,
           createdAt: true,
           dueDate: true,
+          order: { select: { paymentTermDays: true } },
         },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       })
@@ -398,6 +405,8 @@ type LedgerRow = {
   createdAt: Date;
   /** Set by the invoice; null for debts that have not been invoiced yet. */
   dueDate: Date | null;
+  /** The order this debt came from, when it came from one. */
+  order: { paymentTermDays: number | null } | null;
 };
 
 /** FIFO settlement, then bucket whatever debt is left by days past due. */
@@ -411,8 +420,13 @@ function ageRows(
 
   for (const row of rows) {
     if (row.type === "DEBIT") {
+      // Best available answer, in order: the invoice's own due date; failing
+      // that the vade the order was sold on; failing that the customer's
+      // default. Reading the company term first would age a 60-day order as if
+      // it were 30 just because that is what the customer usually gets.
+      const termDays = row.order?.paymentTermDays ?? company.paymentTermDays;
       open.push({
-        due: row.dueDate ?? addDays(row.createdAt, company.paymentTermDays),
+        due: row.dueDate ?? addDays(row.createdAt, termDays),
         remaining: new Dec(row.amount),
       });
       continue;

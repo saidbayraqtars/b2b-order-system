@@ -3,6 +3,7 @@ import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
+import { createsReceivable, resolvePaymentTerm } from "./payment-terms";
 import { resolvePrice } from "./pricing";
 import { applyPromotions, type AppliedPromotion } from "./promotion-engine";
 import type { EngineLine } from "./promotion-registry";
@@ -23,6 +24,12 @@ type Client = Prisma.TransactionClient;
 export interface QuoteInput {
   companyId: string;
   paymentMethod: PaymentMethod;
+  /** Vade chosen from the customer's own menu. */
+  paymentTermId?: string | null;
+  /** Free-form vade in days; honoured only when `isSeller`. */
+  paymentTermDays?: number | null;
+  /** SUPER_ADMIN / SALES_REP — may price freight and set a vade directly. */
+  isSeller?: boolean;
   couponCode?: string;
   /** Freight, excl. VAT. Seller-side only — a buyer cannot price its own delivery. */
   shippingFee?: number | string;
@@ -66,6 +73,17 @@ export interface QuoteCompany {
   paymentTermDays: number;
 }
 
+/** The settlement the quote was priced under, already validated for this customer. */
+export interface QuoteTerms {
+  method: PaymentMethod;
+  /** Vade agreed for this order; null = the company's default. */
+  paymentTermDays: number | null;
+  /** What the vade works out to, default included — for display and due dates. */
+  effectiveTermDays: number;
+  /** True when the order will book a cari DEBIT rather than being paid at once. */
+  createsReceivable: boolean;
+}
+
 export interface OrderQuote {
   lines: QuotedLine[];
   subtotal: Money;
@@ -87,6 +105,7 @@ export interface OrderQuote {
   appliedPromotions: AppliedPromotion[];
   coupon: string | null;
   company: QuoteCompany;
+  terms: QuoteTerms;
 }
 
 /**
@@ -113,6 +132,11 @@ export async function buildQuote(
       requiresOrderApproval: true,
       customerGroupId: true,
       paymentTermDays: true,
+      allowedPaymentMethods: true,
+      paymentTerms: {
+        where: { isActive: true },
+        select: { id: true, name: true, days: true },
+      },
       discounts: {
         select: {
           categoryId: true,
@@ -128,6 +152,17 @@ export async function buildQuote(
       companyId: input.companyId,
     });
   }
+
+  // Settlement is settled first: an order the customer may not pay for that way
+  // should not be priced at all, and the promotion engine is about to read the
+  // method as a condition. Both the cart preview and order creation come
+  // through here, so the check cannot be skipped by posting straight to /orders.
+  const resolvedTerm = resolvePaymentTerm(company, {
+    method: input.paymentMethod,
+    paymentTermId: input.paymentTermId ?? null,
+    paymentTermDaysOverride: input.paymentTermDays ?? null,
+    isSeller: input.isSeller ?? false,
+  });
 
   const variants = await client.productVariant.findMany({
     where: { id: { in: input.items.map((i) => i.variantId) } },
@@ -333,6 +368,12 @@ export async function buildQuote(
       customerGroupId: company.customerGroupId,
       paymentTermDays: company.paymentTermDays,
     },
+    terms: {
+      method: resolvedTerm.method,
+      paymentTermDays: resolvedTerm.paymentTermDays,
+      effectiveTermDays: resolvedTerm.paymentTermDays ?? company.paymentTermDays,
+      createsReceivable: createsReceivable(resolvedTerm.method),
+    },
   };
 }
 
@@ -471,6 +512,16 @@ export interface OrderQuoteView {
     amount: string;
   }>;
   coupon: string | null;
+  /**
+   * The settlement this price is good for. The panel shows what the server
+   * accepted rather than what the user clicked, so a rejected method or vade
+   * can never sit unnoticed in the UI next to a valid total.
+   */
+  paymentMethod: PaymentMethod;
+  /** Vade in days including the company default — 0 means peşin. */
+  paymentTermDays: number;
+  /** Whether this order will be booked as cari debt. */
+  createsReceivable: boolean;
 }
 
 /** Price a cart for the portal without touching stock, orders or the ledger. */
@@ -504,5 +555,8 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
       amount: p.amount.toFixed(2),
     })),
     coupon: quote.coupon,
+    paymentMethod: quote.terms.method,
+    paymentTermDays: quote.terms.effectiveTermDays,
+    createsReceivable: quote.terms.createsReceivable,
   };
 }

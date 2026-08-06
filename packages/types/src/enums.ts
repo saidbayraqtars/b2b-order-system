@@ -24,16 +24,39 @@ export const OrderStatusEnum = z.enum([
 ]);
 export type OrderStatus = z.infer<typeof OrderStatusEnum>;
 
-export const PaymentMethodEnum = z.enum(["OPEN_ACCOUNT", "CREDIT_CARD"]);
+/**
+ * How an order is agreed to be settled.
+ *
+ * Which of these create a cari receivable is decided in one place —
+ * `paymentMethodMeta()` in @repo/services. Nothing else may branch on a
+ * specific member, or adding the next method means hunting for `=== "..."`.
+ */
+export const PaymentMethodEnum = z.enum([
+  "OPEN_ACCOUNT",
+  "CREDIT_CARD",
+  "BANK_TRANSFER",
+  "CASH",
+  "CHEQUE",
+]);
 export type PaymentMethod = z.infer<typeof PaymentMethodEnum>;
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  OPEN_ACCOUNT: "Açık hesap (cari)",
+  CREDIT_CARD: "Kredi kartı",
+  BANK_TRANSFER: "Havale / EFT",
+  CASH: "Nakit",
+  CHEQUE: "Çek",
+};
 
 export const TransactionTypeEnum = z.enum(["DEBIT", "CREDIT"]);
 export type TransactionType = z.infer<typeof TransactionTypeEnum>;
 
 /**
- * How a collection reached us. Separate from PaymentMethod on purpose: that one
- * describes how an *order* will be settled and is read by order approval and
- * promotion conditions, where "nakit" and "çek" mean nothing.
+ * How a collection reached us. Still separate from PaymentMethod even though
+ * several member names now coincide: this records money that has already moved,
+ * the other records what an order *agreed* to and is read by the credit check,
+ * approval and promotion rules. One enum for both would drag every new
+ * collection channel into the order engine.
  */
 export const CollectionMethodEnum = z.enum([
   "CASH",

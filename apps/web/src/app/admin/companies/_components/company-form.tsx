@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { CompanyRow, CustomerGroupRow } from "@repo/services";
+import type { CompanyRow, CustomerGroupRow, PaymentTermRow } from "@repo/services";
+import { PAYMENT_METHOD_LABELS, PaymentMethodEnum, type PaymentMethod } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 
@@ -23,6 +24,10 @@ export interface CompanyFormValues {
   isActive: boolean;
   customerGroupId: string;
   salesRepId: string;
+  /** Empty = no restriction: every method is offered at checkout. */
+  allowedPaymentMethods: PaymentMethod[];
+  /** Empty = no vade menu; the default term above applies silently. */
+  paymentTermIds: string[];
 }
 
 export function CompanyForm({ company }: { company?: CompanyFormValues }) {
@@ -43,14 +48,33 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       isActive: true,
       customerGroupId: "",
       salesRepId: "",
+      allowedPaymentMethods: [],
+      paymentTermIds: [],
     },
   );
   const set = <K extends keyof CompanyFormValues>(k: K, val: CompanyFormValues[K]) =>
     setV((prev) => ({ ...prev, [k]: val }));
 
+  /** Toggle one id in a list-valued field, keeping the rest untouched. */
+  const toggleIn = <K extends "allowedPaymentMethods" | "paymentTermIds">(
+    k: K,
+    id: CompanyFormValues[K][number],
+  ) =>
+    setV((prev) => {
+      const list = prev[k] as string[];
+      return {
+        ...prev,
+        [k]: list.includes(id) ? list.filter((x) => x !== id) : [...list, id],
+      };
+    });
+
   const groups = useQuery({
     queryKey: ["admin-customer-groups"],
     queryFn: () => apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
+  });
+  const terms = useQuery({
+    queryKey: ["admin-payment-terms"],
+    queryFn: () => apiGet<{ terms: PaymentTermRow[] }>("/api/admin/payment-terms"),
   });
   const reps = useQuery({
     queryKey: ["admin-sales-reps"],
@@ -75,6 +99,11 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         isActive: v.isActive,
         customerGroupId: v.customerGroupId || (editing ? null : undefined),
         salesRepId: v.salesRepId || (editing ? null : undefined),
+        // Always sent, empty included: an empty list is a real value here
+        // ("no restriction" / "no menu"), and on update the service replaces
+        // the whole set — so omitting it would make un-ticking impossible.
+        allowedPaymentMethods: v.allowedPaymentMethods,
+        paymentTermIds: v.paymentTermIds,
       };
       if (editing) {
         await apiPatch(`/api/admin/companies/${company!.id}`, body);
@@ -179,6 +208,57 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           </Select>
         </label>
       </div>
+
+      <fieldset className="mt-5 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+        <legend className="px-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+          Ödemede sunulacaklar
+        </legend>
+
+        <p className="mb-2 text-xs text-neutral-500">
+          Ödeme yöntemi — <strong>hiçbiri seçilmezse hepsi sunulur.</strong>{" "}
+          Kısıtlamak istemiyorsanız boş bırakın.
+        </p>
+        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
+          {PaymentMethodEnum.options.map((m) => (
+            <label key={m} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={v.allowedPaymentMethods.includes(m)}
+                onChange={() => toggleIn("allowedPaymentMethods", m)}
+              />
+              {PAYMENT_METHOD_LABELS[m]}
+            </label>
+          ))}
+        </div>
+
+        <p className="mb-2 text-xs text-neutral-500">
+          Vade seçenekleri — boş bırakılırsa müşteriye menü çıkmaz, sipariş
+          yukarıdaki varsayılan vadeyi alır. Tanımlar{" "}
+          <strong>Vadeler</strong> sayfasında yapılır.
+        </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {(terms.data?.terms ?? [])
+            .filter((t) => t.isActive || v.paymentTermIds.includes(t.id))
+            .map((t) => (
+              <label key={t.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={v.paymentTermIds.includes(t.id)}
+                  onChange={() => toggleIn("paymentTermIds", t.id)}
+                />
+                {t.name}
+                <span className="text-neutral-400">
+                  ({t.days === 0 ? "peşin" : `${t.days}g`})
+                </span>
+              </label>
+            ))}
+          {terms.data?.terms.length === 0 && (
+            <span className="text-sm text-neutral-500">
+              Henüz vade tanımı yok.
+            </span>
+          )}
+        </div>
+      </fieldset>
 
       <div className="mt-3 flex flex-wrap gap-5">
         <label className="flex items-center gap-2 text-sm">

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RoleEnum } from "./enums";
+import { PaymentMethodEnum, RoleEnum } from "./enums";
 
 // Company, address, user and customer-group administration.
 // Role rules (who may create what) live in the service layer — these schemas
@@ -23,6 +23,17 @@ const taxNumber = z
 
 const money = z.coerce.number().min(0, "Negatif olamaz").max(99_999_999);
 
+/**
+ * Which settlement methods a customer may pick. **Empty means no restriction**,
+ * not "nothing allowed" — restricting is a deliberate act, so a company nobody
+ * has configured keeps every method. Same convention as `paymentTermIds` below
+ * and as Announcement.customerGroupIds.
+ */
+const allowedPaymentMethods = z.array(PaymentMethodEnum).max(10);
+
+/** Vade options offered to a customer. Empty = no menu; the default term applies. */
+const paymentTermIds = z.array(z.string().cuid()).max(50);
+
 // ─────────────────────────────────────────────
 // COMPANY
 // ─────────────────────────────────────────────
@@ -34,13 +45,15 @@ export const createCompanySchema = z.object({
   email: z.string().trim().email("Geçersiz e-posta").optional().or(z.literal("").transform(() => undefined)),
   phone: optionalText(40),
   creditLimit: money.default(0),
-  /** Vade: days a debit may stay open before aging counts it as overdue. */
+  /** Default vade: what an order gets when no term is picked from the menu. */
   paymentTermDays: z.coerce.number().int().min(0).max(365).default(0),
   currency: z.string().trim().length(3).default("TRY"),
   requiresOrderApproval: z.boolean().default(false),
   isActive: z.boolean().default(true),
   customerGroupId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
   salesRepId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
+  allowedPaymentMethods: allowedPaymentMethods.default([]),
+  paymentTermIds: paymentTermIds.default([]),
 });
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 
@@ -64,9 +77,35 @@ export const updateCompanySchema = z
     isActive: z.boolean().optional(),
     customerGroupId: z.string().cuid().nullable().optional(),
     salesRepId: z.string().cuid().nullable().optional(),
+    allowedPaymentMethods: allowedPaymentMethods.optional(),
+    paymentTermIds: paymentTermIds.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+// ─────────────────────────────────────────────
+// PAYMENT TERM (vade tanımı)
+// ─────────────────────────────────────────────
+
+export const createPaymentTermSchema = z.object({
+  name: z.string().trim().min(1, "Vade adı gerekli").max(80),
+  /** Days added to the invoice date. 0 = peşin. */
+  days: z.coerce.number().int().min(0).max(365),
+  isActive: z.boolean().default(true),
+  /** Menu order. Defaults to `days` in the service, so terms sort naturally. */
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+});
+export type CreatePaymentTermInput = z.infer<typeof createPaymentTermSchema>;
+
+export const updatePaymentTermSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    days: z.coerce.number().int().min(0).max(365).optional(),
+    isActive: z.boolean().optional(),
+    sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
+export type UpdatePaymentTermInput = z.infer<typeof updatePaymentTermSchema>;
 
 // ─────────────────────────────────────────────
 // ADDRESS

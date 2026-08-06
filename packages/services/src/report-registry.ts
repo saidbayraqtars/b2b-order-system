@@ -1,4 +1,5 @@
 import type { Prisma } from "@repo/database";
+import { PaymentMethodEnum } from "@repo/types";
 import type {
   Aggregate,
   ColumnFormat,
@@ -117,7 +118,7 @@ const ORDER_STATUSES = [
   "REJECTED",
 ] as const;
 
-const PAYMENT_METHODS = ["OPEN_ACCOUNT", "CREDIT_CARD"] as const;
+const PAYMENT_METHODS = PaymentMethodEnum.options;
 const TRANSACTION_TYPES = ["DEBIT", "CREDIT"] as const;
 
 /** A company user with no company matches nothing rather than everything. */

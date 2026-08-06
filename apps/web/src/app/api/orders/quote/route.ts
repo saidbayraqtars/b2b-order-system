@@ -24,14 +24,17 @@ export function POST(req: NextRequest) {
 
     await resolveCompanyId(user, input.companyId);
 
-    // Freight is a seller-side figure — the same rule order creation applies,
-    // so a buyer cannot make a shipping campaign fire by inventing a delivery
-    // charge in the preview.
+    // Freight and free-form vade are both seller-side figures — the same rule
+    // order creation applies, so a buyer cannot make a shipping campaign fire
+    // by inventing a delivery charge in the preview, nor grant itself a term.
+    // `isSeller` has to reach the quote too: without it a rep's negotiated vade
+    // would price here and be refused at checkout.
     const isSeller = user.role === "SUPER_ADMIN" || user.role === "SALES_REP";
 
     return Response.json(
       await quoteOrder({
         ...input,
+        isSeller,
         shippingFee: isSeller ? input.shippingFee : 0,
       }),
     );

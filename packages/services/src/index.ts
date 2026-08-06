@@ -39,3 +39,4 @@ export * from "./audit-retention";
 export * from "./activity";
 export * from "./principal-cache";
 export * from "./announcement";
+export * from "./payment-terms";

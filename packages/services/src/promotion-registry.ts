@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { PaymentMethodEnum } from "@repo/types";
 import type {
+  PaymentMethod,
   PromotionRuleCatalog,
   RuleMeta,
   RuleParamMeta,
@@ -43,7 +45,7 @@ export interface EngineLine {
 export interface EngineContext {
   companyId: string;
   customerGroupId: string | null;
-  paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
+  paymentMethod: PaymentMethod;
   /** Orders the company has placed before this one (rejected/cancelled excluded). */
   previousOrderCount: number;
   now: Date;
@@ -216,13 +218,13 @@ const COMPANY_IN: ConditionDef<{ companyIds: string[] }> = {
 };
 
 const PAYMENT_METHOD_IS: ConditionDef<{
-  paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
+  paymentMethod: PaymentMethod;
 }> = {
   type: "PAYMENT_METHOD_IS",
   label: "Ödeme yöntemi",
   description: "Sipariş bu ödeme yöntemiyle veriliyorsa geçerli.",
   schema: z.object({
-    paymentMethod: z.enum(["OPEN_ACCOUNT", "CREDIT_CARD"]),
+    paymentMethod: PaymentMethodEnum,
   }),
   params: [
     {

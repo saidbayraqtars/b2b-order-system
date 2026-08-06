@@ -1,5 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
-import type { OrderStatus, Role } from "@repo/types";
+import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
 
@@ -56,7 +56,7 @@ type LoadedOrder = {
   id: string;
   orderNumber: string;
   status: OrderStatus;
-  paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
+  paymentMethod: PaymentMethod;
   grandTotal: Prisma.Decimal;
   companyId: string;
 };
@@ -304,7 +304,7 @@ export interface OrderDetail {
   id: string;
   orderNumber: string;
   status: OrderStatus;
-  paymentMethod: "OPEN_ACCOUNT" | "CREDIT_CARD";
+  paymentMethod: PaymentMethod;
   subtotal: string;
   discountTotal: string;
   promotionTotal: string;

@@ -17,7 +17,17 @@ export const createOrderSchema = z.object({
   couponCode: couponCodeSchema.optional(),
   /** Freight excl. VAT. Ignored unless the caller is on the selling side. */
   shippingFee: z.number().min(0).max(1_000_000).optional(),
-  /** Vade override for this order; falls back to the company's term. */
+  /**
+   * Vade picked from the menu this customer was offered (Company.paymentTerms).
+   * Anyone may send it — the term is looked up against that menu server-side,
+   * so an id the customer was never offered is refused.
+   */
+  paymentTermId: z.string().cuid().optional(),
+  /**
+   * Free-form vade in days. Seller side only: a buyer sending this is refused
+   * rather than silently ignored, because "365" quietly dropped would look
+   * like the term was granted. Reps and admins negotiate, so they may set it.
+   */
   paymentTermDays: z.number().int().min(0).max(365).optional(),
   items: z.array(cartItemInputSchema).min(1, "Sepet boş olamaz"),
 });

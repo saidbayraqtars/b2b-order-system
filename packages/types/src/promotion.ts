@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PaymentMethodEnum } from "./enums";
 
 // Shape of a campaign. These schemas check STRUCTURE only: that a rule has a
 // type and a params object, that a promotion has a name, and so on.
@@ -65,10 +66,22 @@ export const updatePromotionSchema = promotionBodySchema
   );
 export type UpdatePromotionInput = z.infer<typeof updatePromotionSchema>;
 
-/** Price a cart without placing it: what the buyer sees before checkout. */
+/**
+ * Price a cart without placing it: what the buyer sees before checkout.
+ *
+ * Settlement fields mirror `createOrderSchema` exactly, and that is not
+ * cosmetic: both go through `buildQuote`, so a method or vade the preview
+ * accepts must be one the order accepts. When this schema listed its own
+ * narrower set of methods, a customer allowed to pay by cheque got a
+ * validation error in the cart and a working order from the API.
+ */
 export const quoteOrderSchema = z.object({
   companyId: z.string().cuid(),
-  paymentMethod: z.enum(["OPEN_ACCOUNT", "CREDIT_CARD"]).default("OPEN_ACCOUNT"),
+  paymentMethod: PaymentMethodEnum.default("OPEN_ACCOUNT"),
+  /** Vade picked from the menu this customer was offered. */
+  paymentTermId: z.string().cuid().optional(),
+  /** Free-form vade in days; refused unless the caller is on the selling side. */
+  paymentTermDays: z.number().int().min(0).max(365).optional(),
   couponCode: couponCodeSchema.optional(),
   /** Freight, so a seller-side preview can show a shipping campaign working. */
   shippingFee: z.number().min(0).max(1_000_000).optional(),

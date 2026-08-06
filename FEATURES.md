@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-05 · Adım 23 (saha işlemleri web'de) sonu
+Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
 
 ---
 
@@ -37,6 +37,7 @@ Son güncelleme: 2026-08-05 · Adım 23 (saha işlemleri web'de) sonu
 | 21 | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları | ✅ |
 | 22 | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu) | ✅ |
 | 23 | Saha işlemleri web'de: tahsilat girişi + iptal kaydı, ziyaret aç/kapat, tahsilat şekli ayrı enum | ✅ |
+| 24 | Ödeme yöntemi + vade: 5 yöntem, isimli vade tanımları, firmaya özel menü, ödemede seçim | ✅ |
 
 ---
 
@@ -299,8 +300,8 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - **ESLint** her pakette çalışıyor (`pnpm lint`, 6 paket, sıfır uyarı toleransı). Ortak yapılandırma `@repo/eslint-config`: `base` (TS), `next` (web), `react-native` (mobil).
   - Bilerek **tip-farkındalıklı değil** — tip hataları zaten `pnpm typecheck`'te yakalanıyor, tip-farkındalıklı lint ise üretilmiş Prisma client'ına bağımlı olurdu. Geriye tsc'nin söylemediği sınıf kalıyor: ölü kod, kaçak `any`, konsol gürültüsü.
   - Mobilde `eslint-config-expo` kullanılmıyor: o preset @typescript-eslint v8'de kaldırılmış kurallara atıf yapıyor, workspace ise v8 kullanıyor.
-- **Vitest** iki ayrı takım hâlinde (`pnpm test`) — bugün **161 test / 12 dosya**:
-  - **Birim (70 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
+- **Vitest** iki ayrı takım hâlinde (`pnpm test`) — bugün **174 test / 13 dosya**:
+  - **Birim (83 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; ödeme yönteminin cari borç doğurup doğurmadığı, firma kısıtlamasının satıcıyı da bağlaması, alıcının vade uyduramaması, peşin yönteme vade konamaması; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
   - **Entegrasyon (91 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
   - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi; tahsilatın defter ile önbelleği birlikte hareket ettirmesi, iptalin ters kayıtla yazılması ve iki kez yapılamaması, başka firmanın tahsilatına erişilememesi, açık ziyaret varken ikinci ziyaretin reddi.
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
@@ -655,7 +656,77 @@ kontrol **25/25**: giriş → sayfalar → tahsilat → bakiye → iptal → iki
 reddi → ziyaret aç → ikinci ziyaret reddi → kapat. Portföy dışı firma için
 sayfa, liste ve iptal uçlarının üçünde de ret.
 
-## 24. Web Portal (`apps/web`)
+## 24. Ödeme Yöntemi & Vade (Adım 24)
+
+Sipariş "nasıl kapanacak" sorusunun cevabı. Önceki hâlde iki yöntem vardı
+(açık hesap, kredi kartı) ve vade yalnızca firmanın tek bir sayısıydı.
+
+### Beş yöntem, tek karar tablosu
+
+`OPEN_ACCOUNT · CREDIT_CARD · BANK_TRANSFER · CASH · CHEQUE`
+
+Asıl soru şu: hangisi **cari borç doğurur**? Cevap tek yerde —
+`paymentMethodMeta()` (`payment-terms.ts`):
+
+| Yöntem | Cari borç doğurur | Neden |
+|--------|-------------------|-------|
+| Açık hesap | ✅ | Tanımı bu |
+| **Çek** | ✅ | İleri tarihli ödeme sözü — çekin tahsil edilip edilmeyeceği tahsilatın sorunu, siparişin değil |
+| Nakit · Havale · Kredi kartı | ❌ | Para sipariş anında alınmış; cari hiç duymaz |
+
+Bu tabloyu okuyan üç yer var: **kredi limiti kontrolü** (yalnız vadeli satış
+limite sayılır), **cari kaydı** (borç yalnız vadeli satışta yazılır) ve
+**kampanya koşulu**. Hiçbiri tek tek yönteme bakmıyor — yeni bir yöntem
+eklemek tabloya bir satır eklemek demek.
+
+### Vade artık isimli tanım
+
+`PaymentTerm` — "Peşin", "30 gün", "60 gün". Tanımlar geneldir
+(`/admin/payment-terms`), **kime sunulacağı firma sayfasında** seçilir (m-n).
+
+İki kalıcı karar:
+
+- **Sipariş tanıma bağlanmaz, gün sayısını kopyalar.** Gelecek yıl "60 gün"
+  tanımını silmek ya da 45'e çekmek, o vadeyle satılmış geçmiş siparişleri
+  değiştiremez.
+- **Alıcı vade uyduramaz.** İstekte `paymentTermDays: 365` gönderen alıcı
+  reddedilir (sessizce yok sayılmaz — yutulsaydı vade verilmiş gibi görünürdü).
+  Alıcı yalnızca kendisine sunulan menüden seçer; serbest gün girmek satıcı
+  tarafının (plasiyer / süper admin) işidir, çünkü pazarlığı onlar yapar.
+
+Peşin bir yönteme vade konursa **hata verilir**: ödenmiş bir siparişe vade
+yazmak, olmayan bir borca son ödeme tarihi koymak olurdu. "Peşin" (0 gün)
+tanımı ise nakitle uyumludur — çelişki pozitif vadede.
+
+### Firma bazlı kısıtlama
+
+`Company.allowedPaymentMethods` — bu müşteriye ödemede hangi yöntemler
+çıkacak. **Boş dizi = kısıtlama yok** (hepsi sunulur), "hiçbiri" değil:
+kısıtlamak bilinçli bir işlem, kimsenin ayar yapmadığı firma çalışmaya devam
+eder. Kısıtlama **satıcıyı da bağlar** — plasiyer müşteri adına sipariş
+girerken de aynı menüyle sınırlıdır.
+
+### Önizleme ile sipariş aynı kuralı uygular
+
+Kontrol `buildQuote` içinde, yani sepet önizlemesi ile sipariş oluşturma aynı
+noktadan geçiyor: **önizlemenin kabul ettiği vade siparişin de kabul ettiği
+vadedir.** Önizlemeyi atlayıp doğrudan `/api/orders`'a POST atmak bir şey
+kazandırmıyor.
+
+### Ekranlar
+
+| Yer | Ne yapılır |
+|-----|------------|
+| `/admin/payment-terms` | Vade tanımı ekle/düzenle/pasife al. Firmalara tanımlı vade **silinemez** — pasife alınır, o vadeyle satılmış siparişler açıklanabilir kalsın diye |
+| `/admin/companies/[id]` | Bu firmaya sunulacak yöntemler + vade menüsü |
+| Sepet paneli | Ödeme yöntemi ve vade seçimi. Vade yalnız cari borç doğuran yöntemlerde çıkar; yöntem peşine dönünce seçili vade düşer. Panelde "cari hesaba işlenir · 60 gün vade" satırı, siparişten **önce** ne olacağını söyler |
+
+**Doğrulama:** 13 birim testi (toplam **174**) + betikli uçtan uca kontrol
+**23/23**: menü firmaya göre daralıyor, kısıtlanan firmaya açık hesap 422,
+alıcının uydurduğu 365 gün 422, peşine vade 422, seçilen 60 gün siparişe
+yazılıyor, alıcı başka firmanın menüsünü okuyamıyor (403).
+
+## 25. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -696,7 +767,7 @@ sayfa, liste ve iptal uçlarının üçünde de ret.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 25. Mobil Uygulama (`apps/mobile`)
+## 26. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -711,7 +782,7 @@ sayfa, liste ve iptal uçlarının üçünde de ret.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 26. API Uçları
+## 27. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|

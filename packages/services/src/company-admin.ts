@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type {
   CreateAddressInput,
   CreateCompanyInput,
+  PaymentMethod,
   UpdateAddressInput,
   UpdateCompanyInput,
 } from "@repo/types";
@@ -30,6 +31,10 @@ export interface CompanyRow {
   isActive: boolean;
   customerGroup: { id: string; name: string } | null;
   salesRep: { id: string; name: string } | null;
+  /** Empty = no restriction; every method is offered. See @repo/types. */
+  allowedPaymentMethods: PaymentMethod[];
+  /** The vade menu this customer picks from. Empty = default term applies. */
+  paymentTerms: { id: string; name: string; days: number }[];
   counts: { orders: number; users: number; addresses: number };
 }
 
@@ -67,6 +72,11 @@ const companySelect = {
   createdAt: true,
   customerGroup: { select: { id: true, name: true } },
   salesRep: { select: { id: true, name: true } },
+  allowedPaymentMethods: true,
+  paymentTerms: {
+    select: { id: true, name: true, days: true },
+    orderBy: [{ sortOrder: "asc" }, { days: "asc" }],
+  },
   _count: { select: { orders: true, members: true, addresses: true } },
 } satisfies Prisma.CompanySelect;
 
@@ -88,6 +98,8 @@ function toRow(c: CompanyPayload): CompanyRow {
     isActive: c.isActive,
     customerGroup: c.customerGroup,
     salesRep: c.salesRep,
+    allowedPaymentMethods: c.allowedPaymentMethods,
+    paymentTerms: c.paymentTerms,
     counts: {
       orders: c._count.orders,
       users: c._count.members,
@@ -156,7 +168,22 @@ export async function getCompany(id: string): Promise<CompanyDetail> {
 async function assertReferences(input: {
   customerGroupId?: string | null;
   salesRepId?: string | null;
+  paymentTermIds?: string[];
 }): Promise<void> {
+  if (input.paymentTermIds && input.paymentTermIds.length > 0) {
+    // Checked here rather than left to Prisma: `connect`/`set` on a missing row
+    // raises P2025 with no indication of *which* id was wrong, and the admin
+    // screen would show "kayıt bulunamadı" for a company that exists.
+    const found = await prisma.paymentTerm.count({
+      where: { id: { in: input.paymentTermIds } },
+    });
+    if (found !== new Set(input.paymentTermIds).size) {
+      throw new BusinessError(
+        "PAYMENT_TERM_NOT_FOUND",
+        "Seçilen vade tanımlarından biri bulunamadı",
+      );
+    }
+  }
   if (input.customerGroupId) {
     const group = await prisma.customerGroup.findUnique({
       where: { id: input.customerGroupId },
@@ -212,6 +239,10 @@ export async function createCompany(
       isActive: input.isActive,
       customerGroupId: input.customerGroupId ?? null,
       salesRepId: input.salesRepId ?? null,
+      allowedPaymentMethods: input.allowedPaymentMethods,
+      ...(input.paymentTermIds.length > 0
+        ? { paymentTerms: { connect: input.paymentTermIds.map((id) => ({ id })) } }
+        : {}),
     },
     select: companySelect,
   });
@@ -255,6 +286,15 @@ export async function updateCompany(
         ? { customerGroupId: input.customerGroupId }
         : {}),
       ...(input.salesRepId !== undefined ? { salesRepId: input.salesRepId } : {}),
+      ...(input.allowedPaymentMethods !== undefined
+        ? { allowedPaymentMethods: input.allowedPaymentMethods }
+        : {}),
+      // `set` and not `connect`: the screen sends the whole menu, so a term
+      // removed there has to be removed here. `connect` would only ever add,
+      // leaving a customer on a vade the admin thought they had taken away.
+      ...(input.paymentTermIds !== undefined
+        ? { paymentTerms: { set: input.paymentTermIds.map((id) => ({ id })) } }
+        : {}),
     },
     select: companySelect,
   });

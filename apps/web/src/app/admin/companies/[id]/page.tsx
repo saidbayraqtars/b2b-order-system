@@ -66,6 +66,8 @@ export default async function AdminCompanyPage({
           isActive: company.isActive,
           customerGroupId: company.customerGroup?.id ?? "",
           salesRepId: company.salesRep?.id ?? "",
+          allowedPaymentMethods: company.allowedPaymentMethods,
+          paymentTermIds: company.paymentTerms.map((t) => t.id),
         }}
       />
 

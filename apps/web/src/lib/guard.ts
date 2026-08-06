@@ -288,6 +288,16 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // field operations
   TRANSACTION_NOT_FOUND: 404,
   VISIT_ALREADY_OPEN: 409,
+  // payment methods and terms
+  //
+  // 422, not 403: the caller is allowed to order, they picked a settlement this
+  // customer was not offered. 403 would read as "you may not order at all" and
+  // send the portal to the forbidden page instead of showing the message.
+  PAYMENT_METHOD_NOT_ALLOWED: 422,
+  PAYMENT_TERM_NOT_ALLOWED: 422,
+  PAYMENT_TERM_NOT_FOUND: 404,
+  PAYMENT_TERM_IN_USE: 409,
+  PAYMENT_TERM_NAME_TAKEN: 409,
 };
 
 /**

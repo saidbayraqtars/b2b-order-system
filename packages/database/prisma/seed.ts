@@ -37,12 +37,34 @@ async function main() {
     create: { name: "Bayi", description: "Standart bayi grubu" },
   });
 
+  // ── Vade tanımları ──
+  // Global definitions; which customer may pick which is the m-n below.
+  const terms = await Promise.all(
+    [
+      { name: "Peşin", days: 0 },
+      { name: "30 gün", days: 30 },
+      { name: "60 gün", days: 60 },
+    ].map((t) =>
+      prisma.paymentTerm.upsert({
+        where: { name: t.name },
+        update: {},
+        create: { ...t, sortOrder: t.days },
+      }),
+    ),
+  );
+
   // ── Company (cari) ──
   // Upsert, not create: the rest of the seed is idempotent, and re-running it to
   // pick up new fixtures must not duplicate the company or reset its balance.
   const company = await prisma.company.upsert({
     where: { taxNumber: "1234567890" },
-    update: {},
+    // Settlement config is refreshed on re-run, unlike balance and history:
+    // `update: {}` would leave an already-seeded database without the vade
+    // menu, so the fixture would silently describe something that isn't there.
+    update: {
+      paymentTerms: { set: terms.map((t) => ({ id: t.id })) },
+      allowedPaymentMethods: [],
+    },
     create: {
       name: "Örnek Ticaret A.Ş.",
       taxNumber: "1234567890",
@@ -51,6 +73,8 @@ async function main() {
       requiresOrderApproval: true,
       customerGroupId: group.id,
       salesRepId: rep.id,
+      // Full vade menu, no method restriction — the common case.
+      paymentTerms: { connect: terms.map((t) => ({ id: t.id })) },
       addresses: {
         create: {
           label: "Merkez",
@@ -68,13 +92,17 @@ async function main() {
   // görmemeli, adına sipariş girememeli.
   await prisma.company.upsert({
     where: { taxNumber: "9876543210" },
-    update: {},
+    update: { allowedPaymentMethods: ["CASH", "BANK_TRANSFER"] },
     create: {
       name: "Beta Dağıtım Ltd.",
       taxNumber: "9876543210",
       taxOffice: "Çankaya",
       creditLimit: 25000,
       customerGroupId: group.id,
+      // Deliberately restricted, and to a prepaid method: this is the fixture
+      // that proves the restriction bites (açık hesap must be refused here) and
+      // that a vade cannot be attached to a cash sale.
+      allowedPaymentMethods: ["CASH", "BANK_TRANSFER"],
       addresses: {
         create: {
           label: "Merkez",
