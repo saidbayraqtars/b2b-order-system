@@ -826,7 +826,75 @@ ayrılınca eski sipariş açıklanabilir kalıyor ama yeni sipariş kazanamıyo
 **siparişi iptal etmek iskontoyu geri alıyor**, ve `MANUAL` cari hiç alışveriş
 yapmadan söz verilen oranla fiyatlanıyor.
 
-## 26. Web Portal (`apps/web`)
+## 26. Kuruluş Kimliği & Kiracı Klasörü (Adım 26)
+
+Sistem fatura ve irsaliye basıyordu ama **kimin adına bastığını bilmiyordu**:
+belgede yalnızca müşteri tarafı vardı, satıcının unvanı/VKN'si hiçbir modelde
+yoktu. Bu, geçerli görünen geçersiz belge demekti.
+
+Aynı boşluk, ürünün satış modelinin de ilk taşı: her müşteri firma **kendi
+kurulumunda** çalışacak (kendi sunucusu ya da onun için alınan hosting), o hâlde
+"satıcı kim" sorusu bir tablo değil, **kurulumun bir özelliği**dir.
+
+### Kiracı klasörü
+
+```
+tenants/<slug>/
+  tenant.json      satıcı kimliği, marka dosyalarının yolları
+  branding/        logo, favicon, fontlar
+```
+
+**Dosya kaynaktır, veritabanı değil.** Klasör desteğin birimidir: alınır, elle
+düzenlenir, geri gönderilir. Aynı bilgi veritabanında da dursaydı ikisi
+kaçınılmaz olarak ayrışırdı — müşteri dosyayı düzenler, ekranda hiçbir şey
+değişmezdi. Bu, bir destek akışı için mümkün olan en kötü sonuçtur.
+
+`tenant.json` dosyanın **mtime**'ına göre önbelleklenir: dosyayı düzenleyip
+sayfayı yenilemek yeter, sunucu yeniden başlatılmaz. Düzenleme döngüsünün
+tamamı budur.
+
+### Varsayılan yok, sessiz devam yok
+
+Klasör `TENANT_DIR` ile bulunur ve **gömülü bir varsayılan yoktur**. Fatura basan
+bir sistem, kimin adına bastığını bilmiyorsa başkasının adına basmaktansa
+durmalıdır. Eksik ya da hatalı dosyada:
+
+- Belge başlığında satıcı yerine **"Kurulum eksik — bu belge geçersizdir"** kırmızı
+  bloğu ve hatanın tam sebebi çıkar. Sessizce satıcısız basmaz.
+- Doğrulama **tüm eksikleri tek seferde** listeler; yarım dosya bir düzenlemede
+  tamamlansın diye, alan başına gidiş-dönüş olmasın diye.
+- Bu bir `BusinessError` **değildir** — iş kuralı değil, kurulum hatası. 4xx'e
+  eşlenip "sen yanlış yaptın" gibi okunmamalı; operatörün sorunudur.
+
+### Satıcı bloğu tek yerde
+
+`DocumentShell` içinde. Fatura ile irsaliyenin firmayı farklı yazması bu yüzden
+mümkün değil — bu oturumda üç kez düzeltilen "kapalı kümenin kopyası bayatlar"
+hatasının belge tarafındaki karşılığı. IBAN listesi **yalnız faturada**:
+irsaliye mal taşır, para değil.
+
+### Marka dosyaları
+
+`/api/branding/<dosya>` ile servis edilir, `public/` üzerinden değil — `public/`
+derleme zamanı bir dizindir, kiracı klasörünün varlık sebebi ise **yeniden
+derlemeden değiştirilebilmesi**. İki kapatma: uzantı sunduğumuz türlerden biri
+olmalı, ve çözülmüş yol `branding/` içinde kalmalı (URL'ye yazılmış bir `../`
+süreç ne okuyabiliyorsa okurdu). Logo genelde SVG ve SVG script taşıyabilir —
+`Content-Security-Policy: default-src 'none'` + `nosniff` ile etkisizleştirilir.
+
+### Ekranlar
+
+| Yer | Ne yapılır |
+|-----|------------|
+| `/admin/organization` | Kuruluş bilgileri **salt okunur** + dosyanın tam yolu. Düzenleme formu bilerek yok: ikinci bir kaynak yaratırdı, operatör ekranda değiştirir, dosya başka şey söylemeye devam ederdi |
+| Fatura / irsaliye | Başlıkta logo + unvan + adres + V.D./VKN + MERSİS/sicil + iletişim |
+
+**Doğrulama:** 16 birim testi (toplam **218**) + betikli uçtan uca kontrol
+**26/26**. Betik scratchpad'de: `verify-tenant.mjs`. Bozuk yapılandırma yolu da
+canlıda sınandı: `tenant.json` bozulunca belge kırmızı uyarıyla çıkıyor, eski
+unvan önbellekten **sızmıyor**, dosya geri konunca yeniden başlatmadan düzeliyor.
+
+## 27. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -867,7 +935,7 @@ yapmadan söz verilen oranla fiyatlanıyor.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 27. Mobil Uygulama (`apps/mobile`)
+## 28. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -882,7 +950,7 @@ yapmadan söz verilen oranla fiyatlanıyor.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 28. API Uçları
+## 29. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -961,6 +1029,7 @@ yapmadan söz verilen oranla fiyatlanıyor.
 | GET · POST | `/api/admin/volume-tiers` | süper admin |
 | PATCH · DELETE | `/api/admin/volume-tiers/:id` | süper admin (firmaya atanmış basamak silinemez) |
 | GET | `/api/volume-status?companyId=` | 4 rol (yalnız gösterim — oran her fiyatlamada sunucuda çözülür) |
+| GET | `/api/branding/<dosya>` | herkes (kiracı klasöründeki logo/favicon — oturum taşımayan `<img>` ve yazdırılan belge için) |
 | GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
 | GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
 | GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
@@ -985,10 +1054,44 @@ değil burada duruyorlar.
 
 ---
 
+## Ürün modeli
+
+Her müşteri firma **kendi kurulumunda** çalışır — kendi sunucusunda ya da onun
+için alınan hosting'de. Paylaşılan tek örnek yoktur. Bunun iki sonucu var:
+
+- **`tenantId` hiçbir tabloda yok ve olmayacak.** Her kurulumun kendi
+  veritabanı var; satır bazında kiracı ayrımı ve onun getirdiği "filtreyi unutup
+  veri sızdırma" sınıfı hiç doğmuyor.
+- **Sürüm firma bazlıdır.** A müşterisi bir sürümde, B müşterisi başkasında
+  olabilir. Ortak şemada bu mümkün olmazdı.
+
+Özelleştirme kiracı klasöründen gelir (Adım 26) ve dört katmandır. Sınırı
+Next.js'in derleme modeli çizer, tercih değil:
+
+| Ne değişiyor | Yayına alma |
+|---|---|
+| Satıcı kimliği, logo, marka dosyaları | **Anında** — dosya, mtime önbelleği (Adım 26 ✅) |
+| Renk/font token'ları, metinler | **Anında** — CSS değişkeni (planlandı) |
+| Sayfa düzeni: hangi blok, hangi sırada | **Anında** — JSON + blok kayıt defteri (planlandı) |
+| Ödeme sağlayıcı, ERP eşitleme, iş kuralı | **Yeniden başlatma** — eklenti (planlandı) |
+| Yeni React bileşeni | **Yeniden derleme** — o kiracının imajı |
+
+---
+
 ## Bilinen Eksikler
 
 Gerçekten yapılacak işler. Sıra yaklaşık olarak maliyet/etki sırasıdır,
 söz değildir.
+
+### Satışı engelleyenler
+
+Bunlar olmadan sistem bir müşteriye teslim edilemez.
+
+- ~~**Satıcı kimliği yok**~~ — Adım 26'da kapatıldı.
+- **Peşin satışın parası hiçbir deftere girmiyor** — nakit/havale/kart siparişi cariye borç yazmıyor (doğru, para alınmış sayılıyor) ama **alındığını da kimse yazmıyor**: kasa hesabı yok, banka hesabı yok, `Transaction` satırı yok. "Bugün kasaya ne girdi" sorusunun cevabı sistemde yok.
+- **Sanal POS yok** — `CREDIT_CARD` yalnızca bir etiket; iyzico/PayTR/VPOS entegrasyonu hiç yok. Üstteki maddeyle birleşince kredi kartı siparişi ne tahsil ediliyor ne borçlandırılıyor. Sağlayıcı müşteriye göre değişeceği için kayıt defteri/eklenti olarak yazılmalı, sabit kodlanmamalı.
+- **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
+- **Dağıtım hikâyesi yok** — `Dockerfile` yok; `docker-compose.yml` yalnızca geliştirme postgres'i. Üretim imajı, kiracı klasörünün bağlanması, yedekleme, sağlık kontrolü ve uzaktan güncelleme akışı yok.
 
 ### Yakın sırada
 

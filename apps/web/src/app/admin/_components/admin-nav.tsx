@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   FileText,
+  Landmark,
   LayoutDashboard,
   Layers,
   Megaphone,
@@ -19,6 +20,7 @@ import { AppHeader, type NavLink } from "@/components/app-shell";
 
 const LINKS: NavLink[] = [
   { href: "/admin", label: "Panel", icon: LayoutDashboard },
+  { href: "/admin/organization", label: "Kuruluş", icon: Landmark },
   { href: "/admin/companies", label: "Firmalar", icon: Building2 },
   { href: "/admin/users", label: "Kullanıcılar", icon: Users },
   { href: "/admin/products", label: "Ürünler", icon: Package },

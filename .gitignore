@@ -32,6 +32,12 @@ packages/database/prisma/migrations/dev.db*
 # uploaded files (UPLOAD_DIR) — user content, never source
 uploads/
 
+# Tenant folders. Only the shipped `demo` belongs in the repo: a real customer's
+# trade name, tax number and logo are that customer's data, not our source.
+/tenants/*
+!/tenants/README.md
+!/tenants/demo/
+
 # misc
 .DS_Store
 *.log

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" width="200" height="48" role="img" aria-label="Demo Toptan">
+  <rect x="0" y="8" width="32" height="32" rx="8" fill="#4f46e5"/>
+  <path d="M9 30V18h6.2c3.6 0 6 2.3 6 6s-2.4 6-6 6H9Zm4-3h2.1c1.7 0 2.9-1.2 2.9-3s-1.2-3-2.9-3H13v6Z" fill="#fff"/>
+  <text x="42" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#1e1b4b">Demo Toptan</text>
+  <text x="42" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="9" letter-spacing="1.5" fill="#64748b">TICARET A.S.</text>
+</svg>

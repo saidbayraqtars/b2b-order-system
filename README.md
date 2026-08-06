@@ -41,6 +41,9 @@ cp apps/mobile/.env.example apps/mobile/.env
 cd apps/web && npx auth secret && cd ../..
 #   Yerelde SMTP_HOST boş kalsın: e-posta gönderilmez, günlüğe basılır.
 #   UPLOAD_DIR varsayılanı ./uploads — ürün görselleri oraya yazılır, public/ içine değil.
+#   TENANT_DIR bu kurulumun HANGİ FİRMAYA ait olduğunu söyler; varsayılanı yoktur.
+#   Örnek klasör depoyla geliyor: apps/web/.env içinde ../../tenants/demo kalsın.
+#   Bkz. tenants/README.md — fatura/irsaliye başlığındaki satıcı oradan gelir.
 
 # 4) Postgres (Docker) — host portu 5433, yereldeki 5432 ile çakışmasın diye
 docker compose up -d
@@ -152,6 +155,23 @@ Vade faturayla başlıyor. Cari borç hâlâ sipariş onaylandığında yazılı
 şey o) ama vade tarihi boş; ilk fatura vadeyi damgalıyor, sonraki faturalar yalnızca ileri
 itiyor. Yaşlandırma bu tarihe göre kovalıyor, henüz faturalanmamış borçlar için sipariş tarihi +
 firmanın vadesine düşüyor.
+
+## Kurulum kimin adına belge basıyor
+
+Her müşteri firma kendi kurulumunda çalışıyor, o hâlde "satıcı kim" bir tablo değil kurulumun bir
+özelliği. Cevabı `tenants/<slug>/tenant.json` veriyor: unvan, vergi dairesi, VKN, adres, MERSİS,
+logo, faturaya basılacak IBAN'lar. `TENANT_DIR` hangi klasör olduğunu söylüyor ve **varsayılanı
+yok** — fatura basan bir sistem, kimin adına bastığını bilmiyorsa başkasının adına basmaktansa
+durmalı.
+
+Kaynak dosya, veritabanı değil. Klasör desteğin birimi: alınıyor, elle düzenleniyor, geri
+gönderiliyor. Aynı bilgi veritabanında da dursaydı ikisi kaçınılmaz olarak ayrışırdı — müşteri
+dosyayı düzenler, ekranda hiçbir şey değişmezdi. Dosya mtime'ına göre önbellekleniyor: düzenleyip
+sayfayı yenilemek yetiyor, sunucu yeniden başlatılmıyor.
+
+Eksik ya da bozuk dosyada belge sessizce satıcısız basılmıyor: başlıkta "Kurulum eksik — bu belge
+geçersizdir" kırmızı bloğu ve hatanın tam sebebi çıkıyor. Doğrulama tüm eksikleri tek seferde
+listeliyor, yarım dosya bir düzenlemede tamamlansın diye.
 
 ## Kampanya = veri
 

@@ -42,3 +42,4 @@ export * from "./announcement";
 export * from "./payment-terms";
 export * from "./order-status";
 export * from "./volume-discount";
+export * from "./tenant";

@@ -1,0 +1,27 @@
+{
+  "slug": "demo",
+  "seller": {
+    "legalName": "Demo Toptan Ticaret A.Ş.",
+    "tradeName": "Demo Toptan",
+    "taxOffice": "Kadıköy",
+    "taxNumber": "1112223334",
+    "mersisNo": "0111222333400001",
+    "tradeRegistryNo": "654321",
+    "address": {
+      "line1": "Bağdat Caddesi No: 100 Kat: 3",
+      "district": "Kadıköy",
+      "city": "İstanbul",
+      "postalCode": "34710",
+      "country": "Türkiye"
+    },
+    "phone": "+90 216 555 00 00",
+    "email": "info@demotoptan.example",
+    "website": "https://demotoptan.example",
+    "bankAccounts": [
+      { "label": "Ziraat Bankası", "iban": "TR330006100519786457841326" }
+    ]
+  },
+  "branding": {
+    "logo": "branding/logo.svg"
+  }
+}

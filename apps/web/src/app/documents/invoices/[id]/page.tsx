@@ -7,6 +7,7 @@ import {
   DocumentField,
   DocumentParty,
   DocumentShell,
+  SellerBankAccounts,
 } from "../../_components/document-shell";
 
 const ALL_ROLES = [
@@ -128,6 +129,8 @@ export default async function InvoiceDocumentPage({
           {invoice.note}
         </p>
       )}
+      {/* Only on the invoice: a waybill carries goods, not money. */}
+      <SellerBankAccounts />
       <p className="mt-6 text-xs text-neutral-500">
         Düzenleyen: {invoice.createdByName}
       </p>
