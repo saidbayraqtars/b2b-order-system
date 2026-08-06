@@ -80,7 +80,15 @@ export type BusinessErrorCode =
   // ── hacim iskontosu ──
   | "VOLUME_TIER_NOT_FOUND"
   | "VOLUME_TIER_IN_USE"
-  | "VOLUME_TIER_NAME_TAKEN";
+  | "VOLUME_TIER_NAME_TAKEN"
+  // ── kasa & banka defteri ──
+  | "CASH_ACCOUNT_NOT_FOUND"
+  | "CASH_ACCOUNT_NAME_TAKEN"
+  | "CASH_ACCOUNT_INACTIVE"
+  | "CASH_ACCOUNT_IN_USE"
+  | "LAST_CASH_ACCOUNT"
+  | "CASH_MOVEMENT_NOT_FOUND"
+  | "INVALID_AMOUNT";
 
 export class BusinessError extends Error {
   constructor(

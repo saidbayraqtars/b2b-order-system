@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
+import { postOrderCashIn } from "./cash";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
 import { recordStatusChange } from "./order-lifecycle";
@@ -221,6 +222,16 @@ async function confirmAndDebit(
       data: { currentBalance: { increment: order.grandTotal } },
     });
   }
+
+  // The peşin half of the same decision: an order that waited for approval and
+  // was paid by card or havale settles into a till, not onto the cari.
+  await postOrderCashIn(tx, {
+    orderId: order.id,
+    orderNumber: updated.orderNumber,
+    paymentMethod: order.paymentMethod,
+    grandTotal: order.grandTotal,
+    actorId: ctx.approverId,
+  });
 
   return {
     orderId: order.id,

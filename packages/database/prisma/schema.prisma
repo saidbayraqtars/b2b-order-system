@@ -140,6 +140,7 @@ model User {
   invoicesIssued Invoice[]     @relation("InvoiceCreatedBy")
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
+  cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
   reports        ReportDefinition[]   @relation("ReportOwner")
   auditLogs      AuditLog[]           @relation("AuditActor")
@@ -743,6 +744,7 @@ model Order {
 
   items         OrderItem[]
   transactions  Transaction[]
+  cashMovements CashMovement[]
   statusHistory OrderStatusHistory[]
   promotions    PromotionRedemption[]
   shipments     Shipment[]
@@ -868,6 +870,10 @@ model Transaction {
   recordedById String?
   recordedBy   User?   @relation("TransactionRecordedBy", fields: [recordedById], references: [id])
 
+  /// The till entry this ledger row was paired with, when the money physically
+  /// arrived. A cheque collection has no counterpart here — see CashMovement.
+  cashMovement CashMovement?
+
   createdAt DateTime @default(now())
 
   @@index([companyId])
@@ -876,6 +882,142 @@ model Transaction {
   @@index([companyId, createdAt])
   @@index([recordedById, createdAt])
   @@index([companyId, dueDate])
+}
+
+// ─────────────────────────────────────────────
+// KASA & BANKA DEFTERİ
+// ─────────────────────────────────────────────
+//
+// Transaction is the *customer's* ledger: what they owe us. It answers "bu
+// müşteri ne kadar borçlu". It cannot answer "bugün kasaya ne girdi", because a
+// cash or card sale never touches it — there is no debt to record. That money
+// used to leave no trace anywhere. These three tables are the second ledger:
+// what we hold, and where.
+
+/// Where the money physically sits. Same ledger, different place.
+enum CashAccountKind {
+  CASH // kasa — elde duran nakit
+  BANK // banka hesabı
+  POS // sanal/fiziksel POS — para bankaya geçene kadar burada bekler
+}
+
+enum CashDirection {
+  IN // giriş
+  OUT // çıkış
+}
+
+/// Why a till entry was written. Reports group by it, and the reversal rules
+/// differ: an ORDER entry is undone by cancelling the order, a MANUAL one by
+/// hand.
+enum CashMovementSource {
+  ORDER // peşin siparişin bedeli
+  COLLECTION // cariden tahsilat
+  MANUAL // elle girilen gelir/gider
+  TRANSFER // hesaplar arası aktarım
+}
+
+model CashAccount {
+  id   String          @id @default(cuid())
+  name String          @unique
+  kind CashAccountKind @default(CASH)
+
+  /// Bu defterin para birimi. Çoklu para birimi gelene kadar tek değer taşır;
+  /// kolon şimdiden var ki hesap açarken sorulan soru sonradan eklenmesin.
+  currency String @default("TRY")
+
+  bankName String?
+  iban     String?
+
+  /// Devir bakiyesi — sistem kurulmadan önce kasada duran para. Hareket
+  /// değildir, bu yüzden defterde satırı yoktur; bakiye bunun üzerine toplanır.
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Hareketlerden türetilebilir, ama her ekranda toplam almamak için burada
+  /// tutulur. Company.currentBalance ile aynı anlaşma: yazan her yer ikisini
+  /// aynı veritabanı işleminde günceller, yoksa ayrışırlar.
+  currentBalance Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Yöntemi eşlenmemiş her para buraya düşer. Tam bir tane olduğunu servis
+  /// katmanı garanti eder (cash.ts): kurulumda bir kasa açılır, son varsayılan
+  /// ne silinebilir ne pasife alınabilir.
+  isDefault Boolean @default(false)
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  movements      CashMovement[]
+  methodBindings PaymentMethodAccount[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model CashMovement {
+  id        String      @id @default(cuid())
+  accountId String
+  account   CashAccount @relation(fields: [accountId], references: [id])
+
+  direction   CashDirection
+  amount      Decimal            @db.Decimal(14, 2) // always positive; the sign is `direction`
+  source      CashMovementSource
+  description String?
+
+  /// When the money actually moved, which is not when the row was typed. A
+  /// collection taken yesterday and entered this morning belongs to yesterday's
+  /// gün sonu, so every report reads this and not createdAt.
+  occurredAt DateTime @default(now())
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  /// The cari row this entry was written beside. A collection writes both in
+  /// one transaction; a peşin order has no cari row at all, so this stays null.
+  transactionId String?      @unique
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+
+  /// Reversal link, the same shape as Transaction's: a wrong entry is undone by
+  /// its opposite, never by deleting the row. Unique, so the database is what
+  /// stops the same entry being reversed twice.
+  reversalOfId String?       @unique
+  reversalOf   CashMovement? @relation("CashMovementReversal", fields: [reversalOfId], references: [id])
+  reversedBy   CashMovement? @relation("CashMovementReversal")
+
+  /// The other leg of a transfer. Kasadan bankaya yatırmak iki satırdır — one
+  /// OUT, one IN — and half of it alone means nothing.
+  counterpartId String?       @unique
+  counterpart   CashMovement? @relation("CashTransfer", fields: [counterpartId], references: [id])
+  counterpartOf CashMovement? @relation("CashTransfer")
+
+  recordedById String?
+  recordedBy   User?   @relation("CashMovementRecordedBy", fields: [recordedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([accountId, occurredAt])
+  @@index([occurredAt])
+  @@index([orderId])
+  @@index([source, occurredAt])
+}
+
+/// Which account a peşin order's money lands in.
+///
+/// There is no cashier standing there: the order may arrive from the customer's
+/// own browser at midnight, so the account has to have been decided in advance.
+/// Collections are different — a human is filling in that form, and picks the
+/// account on it.
+model PaymentMethodAccount {
+  /// One account per method, enforced by the database rather than by a
+  /// check-then-write in an admin screen.
+  method PaymentMethod @id
+
+  accountId String
+  account   CashAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
 }
 
 // ─────────────────────────────────────────────
@@ -961,6 +1103,7 @@ enum ReportDataset {
   LEDGER
   COMPANIES
   CHECKINS
+  CASH
 }
 
 model ReportDefinition {

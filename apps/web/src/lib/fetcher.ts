@@ -2,7 +2,7 @@
 
 async function request<T>(
   url: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   body?: unknown,
 ): Promise<T> {
   const res = await fetch(url, {
@@ -43,6 +43,11 @@ export function apiPost<T>(url: string, body: unknown): Promise<T> {
 
 export function apiPatch<T>(url: string, body: unknown): Promise<T> {
   return request<T>(url, "PATCH", body);
+}
+
+/** For endpoints that set a value rather than create one — an upsert by key. */
+export function apiPut<T>(url: string, body: unknown): Promise<T> {
+  return request<T>(url, "PUT", body);
 }
 
 export function apiDelete(url: string): Promise<void> {

@@ -11,3 +11,4 @@ export * from "./document";
 export * from "./cart";
 export * from "./announcement";
 export * from "./tenant";
+export * from "./cash";

@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
+import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
 
@@ -90,6 +91,13 @@ export async function changeOrderStatus(
       await assertNothingDespatched(tx, order.id);
       await restock(tx, order.id);
       await reverseDebit(tx, order, ctx.userId);
+      // The peşin counterpart: money that came in at confirmation goes back out
+      // of the same account it landed in.
+      await reverseOrderCash(tx, {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        actorId: ctx.userId,
+      });
     }
 
     const now = new Date();

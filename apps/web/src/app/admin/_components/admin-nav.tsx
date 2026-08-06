@@ -14,6 +14,7 @@ import {
   Tags,
   TrendingUp,
   Users,
+  Wallet,
   Wand2,
 } from "lucide-react";
 import { AppHeader, type NavLink } from "@/components/app-shell";
@@ -27,6 +28,7 @@ const LINKS: NavLink[] = [
   { href: "/admin/categories", label: "Kategoriler", icon: Tags },
   { href: "/admin/customer-groups", label: "Gruplar", icon: Layers },
   { href: "/admin/promotions", label: "Kampanyalar", icon: Percent },
+  { href: "/admin/kasa", label: "Kasa", icon: Wallet },
   { href: "/admin/payment-terms", label: "Vadeler", icon: CalendarClock },
   { href: "/admin/volume-tiers", label: "Hacim", icon: TrendingUp },
   { href: "/admin/announcements", label: "Duyurular", icon: Megaphone },

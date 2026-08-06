@@ -43,6 +43,12 @@ export const recordPaymentSchema = z.object({
    */
   collectionMethod: CollectionMethodEnum,
   description: z.string().max(500).optional(),
+  /**
+   * Which kasa/banka hesabı the money went into. Optional on purpose: the
+   * mobile app has no such picker and a rep in the field has one drawer, so an
+   * omitted account means the default till rather than a rejected collection.
+   */
+  cashAccountId: z.string().cuid().nullable().optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 

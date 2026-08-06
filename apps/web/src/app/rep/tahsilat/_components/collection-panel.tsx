@@ -6,17 +6,26 @@ import { RotateCcw, Wallet } from "lucide-react";
 import type { PaymentRecord, RecordPaymentResult } from "@repo/services";
 import {
   COLLECTION_METHOD_LABELS,
+  COLLECTION_METHOD_SETTLES,
   CollectionMethodEnum,
+  type CashAccountKind,
   type CollectionMethod,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CompanyOption } from "@/components/storefront/company-switcher";
-import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
+import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
 const METHODS = CollectionMethodEnum.options;
+
+interface AccountOption {
+  id: string;
+  name: string;
+  kind: CashAccountKind;
+  isDefault: boolean;
+}
 
 /**
  * Tahsilat girişi + o firmanın son tahsilatları.
@@ -39,6 +48,7 @@ export function CollectionPanel({
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<CollectionMethod>("CASH");
   const [description, setDescription] = useState("");
+  const [cashAccountId, setCashAccountId] = useState("");
   const [confirming, setConfirming] = useState(false);
 
   const companies = useQuery({
@@ -47,6 +57,16 @@ export function CollectionPanel({
     staleTime: 60_000,
   });
   const company = companies.data?.companies.find((c) => c.id === companyId);
+
+  // Hangi kasaya girdiği yalnızca harcanabilir para için sorulur: çek ve senet
+  // cariyi kapatır ama tahsil edilene kadar kasaya girmez.
+  const settles = COLLECTION_METHOD_SETTLES[method];
+  const accounts = useQuery({
+    queryKey: ["cash-accounts-picker"],
+    queryFn: () => apiGet<{ accounts: AccountOption[] }>("/api/cash-accounts"),
+    staleTime: 300_000,
+  });
+  const accountOptions = accounts.data?.accounts ?? [];
 
   const payments = useQuery({
     queryKey: ["payments", companyId],
@@ -70,6 +90,7 @@ export function CollectionPanel({
       amount: number;
       collectionMethod: CollectionMethod;
       description?: string;
+      cashAccountId?: string;
     }) => apiPost<RecordPaymentResult>("/api/payments", body),
     onSuccess: () => {
       setAmount("");
@@ -152,6 +173,31 @@ export function CollectionPanel({
           </div>
         </div>
 
+        {settles ? (
+          <div className="mt-4 sm:max-w-xs">
+            <Label htmlFor="tahsilat-kasa" hint="(boş bırakılırsa varsayılan)">
+              Hangi kasaya girdi?
+            </Label>
+            <Select
+              id="tahsilat-kasa"
+              value={cashAccountId}
+              onChange={(e) => setCashAccountId(e.target.value)}
+            >
+              <option value="">Varsayılan kasa</option>
+              {accountOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-neutral-500">
+            {COLLECTION_METHOD_LABELS[method]} carinin borcunu kapatır, ancak
+            tahsil edilene kadar kasaya girmez — kasa bakiyesi değişmez.
+          </p>
+        )}
+
         {confirming && valid ? (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
             <p className="text-sm text-amber-900 dark:text-amber-200">
@@ -177,6 +223,8 @@ export function CollectionPanel({
                     amount: parsed,
                     collectionMethod: method,
                     description: description.trim() || undefined,
+                    cashAccountId:
+                      settles && cashAccountId ? cashAccountId : undefined,
                   })
                 }
               >

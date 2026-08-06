@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
+Son güncelleme: 2026-08-06 · Adım 27 (kasa & banka defteri) sonu
 
 ---
 
@@ -38,6 +38,9 @@ Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
 | 22 | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu) | ✅ |
 | 23 | Saha işlemleri web'de: tahsilat girişi + iptal kaydı, ziyaret aç/kapat, tahsilat şekli ayrı enum | ✅ |
 | 24 | Ödeme yöntemi + vade: 5 yöntem, isimli vade tanımları, firmaya özel menü, ödemede seçim | ✅ |
+| 25 | Hacim iskontosu: ciroyla hak edilen genel merdiven, firma başına otomatik/elle mod, siparişte anlık görüntü | ✅ |
+| 26 | Kuruluş kimliği + kiracı klasörü: `tenants/<slug>/tenant.json`, belgede satıcı bloğu, marka dosyaları | ✅ |
+| 27 | Kasa & banka defteri: peşin siparişin ve tahsilatın hesaba girmesi, elle giriş/çıkış, aktarım, gün sonu | ✅ |
 
 ---
 
@@ -71,6 +74,9 @@ Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
 | `Invoice` / `InvoiceItem` | Fatura başlığı + faturalanan miktarlar; para yeniden hesaplanmaz, sipariş satırından pay alınır. Vade tarihi burada doğar |
 | `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır. Tahsilatta `collectionMethod` (nakit/havale/çek…), iptal kaydında `reversalOfId` (tekil — bir tahsilat iki kez iptal edilemez) |
 | `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) + `source` (MOBILE/WEB — sunucu belirler) |
+| `CashAccount` | Kasa / banka hesabı / POS: para birimi, devir bakiyesi, güncel bakiye, varsayılan işareti. Cari defterden **ayrı** — bu bizim paramız |
+| `CashMovement` | Kasa defteri satırı: yön (IN/OUT), kaynak (sipariş/tahsilat/elle/aktarım), `occurredAt` (girildiği gün değil, olduğu gün), siparişe ve cari satırına bağ, `reversalOfId` + `counterpartId` (ikisi de tekil) |
+| `PaymentMethodAccount` | Ödeme yöntemi → hesap eşlemesi. Birincil anahtar yöntemin kendisi: yöntem başına tek hesap, veritabanı garantisi |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
 | `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
 | `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
@@ -78,7 +84,7 @@ Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
 | `PasswordResetToken` | "Şifremi unuttum" bileti: yalnızca token'ın SHA-256'sı, son kullanma ve harcanma zamanı |
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
-- `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration.
+- `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration. Aynı gerekçeyle `CashAccount_single_default_key`: varsayılan kasa tek olmak zorunda.
 - `Order.promotionTotal` + `Order.couponCode` ve `OrderItem.promotionDiscount`: kampanya indirimi de fiyat gibi sipariş anında donuyor.
 - Seed: 4 rol için demo kullanıcı, 1 firma, kategoriler, ürün + varyantlar, grup fiyatları, 4 örnek rapor tanımı, 2 örnek kampanya. Tümü upsert — yeniden çalıştırılabilir.
 
@@ -894,7 +900,98 @@ süreç ne okuyabiliyorsa okurdu). Logo genelde SVG ve SVG script taşıyabilir 
 canlıda sınandı: `tenant.json` bozulunca belge kırmızı uyarıyla çıkıyor, eski
 unvan önbellekten **sızmıyor**, dosya geri konunca yeniden başlatmadan düzeliyor.
 
-## 27. Web Portal (`apps/web`)
+## 27. Kasa & Banka Defteri (Adım 27)
+
+Cari defter (`Transaction`) **müşterinin borcunu** tutar. Peşin bir sipariş borç
+doğurmadığı için oraya hiç yazılmıyordu — yani nakit/havale/kart bir sipariş
+onaylandığında **para sistemde hiçbir iz bırakmıyordu**. "Bugün kasaya ne girdi"
+sorusunun cevabı yoktu. Bu adım ikinci defteri kuruyor: **bizim paramız, nerede
+duruyor.**
+
+### İki tablo, iki soru
+
+| Tablo | Cevapladığı soru |
+|-------|------------------|
+| `Transaction` | Bu müşteri ne kadar borçlu? |
+| `CashMovement` | Elimizde ne kadar para var, hangi hesapta? |
+
+`CashAccount` üç türde olur: **kasa** (elde nakit), **banka hesabı**, **POS**.
+POS ayrı bir tür çünkü kart satışı *kazanılmış ama henüz elde olmayan* paradır;
+bankaya karıştırmak, banka satırını bankanın kendi ekstresiyle çelişir hâle
+getirirdi.
+
+### Hangi para kasaya girer — tek karar noktası
+
+`paymentMethodMeta()` tablosuna **ikinci bir alan** eklendi:
+`settlesToCashAccount`. Bilerek `!createsReceivable` diye yazılmadı: ikisi farklı
+soruları cevaplar (biri borç, diğeri eldeki para) ve bir yöntem **ikisine birden
+hayır** diyebilir — konsinye ya da teminatlı satış gibi. Ayrı tutmak, böyle bir
+yöntemin bir satır olarak eklenmesini sağlar, her yerde istisna olmasını değil.
+
+| Yöntem | Cariye borç | Kasaya giriş |
+|--------|-------------|--------------|
+| Açık hesap | ✅ | — |
+| Çek | ✅ | — |
+| Nakit / Havale / Kredi kartı | — | ✅ |
+
+Tahsilat tarafında da aynı ayrım var: **çek ve senet kasaya girmez.** Kabul etmek
+müşterinin borcunu kapatır, ama tahsil edilene kadar kasada para yoktur — nakit
+saymak, kasada olmayan bakiyeyi rapor etmek olurdu. (Çek/senet portföyü sonraki
+adım; o gelene kadar cariyi kapatıp kasaya dokunmamak en azından yalan değil.)
+
+### Hangi hesaba
+
+- **Sipariş:** `PaymentMethodAccount` eşlemesi (yöntem → hesap, birincil anahtar
+  yöntem olduğu için "yöntem başına tek hesap" veritabanı garantisi). Eşleme
+  yoksa **varsayılan hesaba** düşer. Sipariş gece yarısı müşterinin kendi
+  tarayıcısından gelebilir; soracak kasiyer yok, karar önceden verilmiş olmalı.
+  Eşleme yok diye siparişi reddetmek, muhasebe boşluğunu satış kaybına çevirirdi.
+- **Tahsilat:** formda **açıkça seçilir** (boş bırakılırsa varsayılan). Burada bir
+  insan var; mobil uygulamada seçici olmadığı için alan opsiyonel.
+
+### Defter ekle-only
+
+Cari defterden ödünç alınan iki kural:
+
+- Yanlış kayıt **silinmez**, kendisine bağlı **ters kayıtla** iptal edilir
+  (`reversalOfId`, unique — aynı hareket iki kez iptal edilemez, kontrolü kod
+  değil veritabanı yapar). Kapanmış bir günün gün sonu sonradan sessizce
+  değişemez.
+- Bakiye ile hareketler **aynı veritabanı işleminde** yazılır.
+  `CashAccount.currentBalance` bir kolaylıktır; başka yerden yazıldığı an yalan
+  olur.
+
+Sipariş ve tahsilat kaynaklı hareketler **elle iptal edilemez**: diğer yarısı bir
+cari satırı ya da sipariş durumudur, tek başına geri alınırsa iki defter aynı
+olay hakkında farklı şey söyler. Onlar siparişten/tahsilattan iptal edilir, ikisi
+birlikte döner. İptal, parayı **girdiği hesaptan** çıkarır — eşleme sonradan
+değişmiş olabilir, kayıt okunur, yöntemden tahmin edilmez.
+
+### Aktarım
+
+Kasadan bankaya yatırma **iki satırdır** (bir OUT, bir IN), birbirine bağlı. Tek
+"transfer" satırı olsaydı her hesap ekstresi bazı satırların hangi yönden
+okunduğuna göre ters sayılması gerektiğini bilmek zorunda kalırdı. Bir bacağın
+iptali diğerini de iptal eder.
+
+### Ekranlar
+
+| Yer | Ne yapılır |
+|-----|------------|
+| `/admin/kasa` → Gün sonu | Tarih aralığı, toplam giriş/çıkış/net, hesaba ve kaynağa göre kırılım |
+| `/admin/kasa` → Hareketler | Filtreli defter, elle giriş/çıkış (açıklama zorunlu), hesaplar arası aktarım, ters kayıtla iptal |
+| `/admin/kasa` → Hesaplar | Hesap açma (devir bakiyesiyle), varsayılan seçimi, kapatma, yöntem → hesap eşlemesi |
+| `/rep/tahsilat` | "Hangi kasaya girdi?" seçici; çek/senet seçilince yerine "kasaya girmez" açıklaması |
+| Rapor tasarımcısı | **Kasa defteri** veri kümesi (yön, kaynak, hesap, hesap türü, sipariş, firma, kaydeden) — yalnız süper admin |
+
+Devir bakiyesi (`openingBalance`) hesap açılırken **bir kez** verilir ve
+düzenlenemez: bakiyeye doğrudan toplanır, hareketi yoktur; sonradan değiştirmek
+izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzeltilir.
+
+**Doğrulama:** 4 birim + 13 entegrasyon testi (toplam **240**), typecheck + lint
++ build temiz.
+
+## 28. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -935,7 +1032,7 @@ unvan önbellekten **sızmıyor**, dosya geri konunca yeniden başlatmadan düze
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 28. Mobil Uygulama (`apps/mobile`)
+## 29. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -950,7 +1047,7 @@ unvan önbellekten **sızmıyor**, dosya geri konunca yeniden başlatmadan düze
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 29. API Uçları
+## 30. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -1029,6 +1126,15 @@ unvan önbellekten **sızmıyor**, dosya geri konunca yeniden başlatmadan düze
 | GET · POST | `/api/admin/volume-tiers` | süper admin |
 | PATCH · DELETE | `/api/admin/volume-tiers/:id` | süper admin (firmaya atanmış basamak silinemez) |
 | GET | `/api/volume-status?companyId=` | 4 rol (yalnız gösterim — oran her fiyatlamada sunucuda çözülür) |
+| GET · POST | `/api/admin/cash-accounts` | süper admin (hesaplar + yöntem eşlemesi) |
+| PATCH · DELETE | `/api/admin/cash-accounts/:id` | süper admin (hareketi olan hesap silinmez, kapatılır) |
+| POST | `/api/admin/cash-accounts/:id/default` | süper admin (diğerlerinin bayrağını temizler) |
+| PUT | `/api/admin/cash-accounts/bindings` | süper admin (yöntem → hesap; `null` varsayılana döndürür) |
+| GET · POST | `/api/admin/cash-movements?accountId&source&direction&from&to` | süper admin (defter / elle giriş-çıkış) |
+| POST | `/api/admin/cash-movements/transfer` | süper admin (iki bacak tek işlemde) |
+| POST | `/api/admin/cash-movements/:id/reverse` | süper admin (yalnız elle/aktarım kaydı) |
+| GET | `/api/admin/cash-movements/summary?from&to` | süper admin (gün sonu) |
+| GET | `/api/cash-accounts` | plasiyer, süper admin (tahsilat seçicisi — bakiye göstermez) |
 | GET | `/api/branding/<dosya>` | herkes (kiracı klasöründeki logo/favicon — oturum taşımayan `<img>` ve yazdırılan belge için) |
 | GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
 | GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
@@ -1088,8 +1194,9 @@ söz değildir.
 Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 - ~~**Satıcı kimliği yok**~~ — Adım 26'da kapatıldı.
-- **Peşin satışın parası hiçbir deftere girmiyor** — nakit/havale/kart siparişi cariye borç yazmıyor (doğru, para alınmış sayılıyor) ama **alındığını da kimse yazmıyor**: kasa hesabı yok, banka hesabı yok, `Transaction` satırı yok. "Bugün kasaya ne girdi" sorusunun cevabı sistemde yok.
-- **Sanal POS yok** — `CREDIT_CARD` yalnızca bir etiket; iyzico/PayTR/VPOS entegrasyonu hiç yok. Üstteki maddeyle birleşince kredi kartı siparişi ne tahsil ediliyor ne borçlandırılıyor. Sağlayıcı müşteriye göre değişeceği için kayıt defteri/eklenti olarak yazılmalı, sabit kodlanmamalı.
+- ~~**Peşin satışın parası hiçbir deftere girmiyor**~~ — Adım 27'de kapatıldı: kasa/banka defteri, yöntem → hesap eşlemesi, gün sonu.
+- **Sanal POS yok** — `CREDIT_CARD` yalnızca bir etiket; iyzico/PayTR/VPOS entegrasyonu hiç yok. Kart siparişinin bedeli artık POS hesabına yazılıyor (Adım 27) ama **hiçbir yerde tahsil edilmiyor**: kaydı var, çekimi yok. Sağlayıcı müşteriye göre değişeceği için kayıt defteri/eklenti olarak yazılmalı, sabit kodlanmamalı.
+- **Çek/senet portföyü yok** — çek tahsilatı cariyi kapatıyor ama kasaya girmiyor (doğru), yine de çekin kendisi hiçbir yerde durmuyor: vade takibi, tahsil/karşılıksız durumu, ciro edilmesi yok. Kasa defteri bu boşluğu görünür kıldı, kapatmadı.
 - **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
 - **Dağıtım hikâyesi yok** — `Dockerfile` yok; `docker-compose.yml` yalnızca geliştirme postgres'i. Üretim imajı, kiracı klasörünün bağlanması, yedekleme, sağlık kontrolü ve uzaktan güncelleme akışı yok.
 

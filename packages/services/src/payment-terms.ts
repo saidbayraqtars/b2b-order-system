@@ -1,16 +1,20 @@
 import { Prisma, prisma } from "@repo/database";
 import {
+  COLLECTION_METHOD_LABELS,
+  COLLECTION_METHOD_SETTLES,
   PAYMENT_METHOD_LABELS,
   PaymentMethodEnum,
+  type CollectionMethod,
   type PaymentMethod,
 } from "@repo/types";
 import { BusinessError } from "./errors";
 
 // Ödeme yöntemi ve vade: ne seçilebilir, ve seçilen ne anlama gelir.
 //
-// Two questions live here and nowhere else:
+// Three questions live here and nowhere else:
 //  1. Which methods/terms may *this* customer pick? (Company restrictions.)
 //  2. Does the chosen method create a cari receivable? (paymentMethodMeta.)
+//  3. Does money actually reach a till when it is used? (Same table.)
 //
 // Question 2 used to be answered by `paymentMethod === "OPEN_ACCOUNT"` written
 // out in four places. With five methods that would have become twenty
@@ -22,19 +26,49 @@ export interface PaymentMethodMeta {
   /**
    * True when the order is sold on credit: it is checked against the limit,
    * books a DEBIT on the cari and carries a vade. False means the money is
-   * taken at order time and the ledger never hears about it.
+   * taken at order time and the cari ledger never hears about it.
    */
   createsReceivable: boolean;
+  /**
+   * True when confirming the order puts money into a kasa/banka account.
+   *
+   * Deliberately not written as `!createsReceivable`. They answer different
+   * questions — one is about debt, the other about cash in hand — and a method
+   * can say no to both: a consignment or a bank-guaranteed order books no
+   * receivable and hands over no money either. Keeping them separate means such
+   * a method is one row here instead of an exception everywhere.
+   */
+  settlesToCashAccount: boolean;
 }
 
 const META: Record<PaymentMethod, PaymentMethodMeta> = {
-  OPEN_ACCOUNT: { label: PAYMENT_METHOD_LABELS.OPEN_ACCOUNT, createsReceivable: true },
+  OPEN_ACCOUNT: {
+    label: PAYMENT_METHOD_LABELS.OPEN_ACCOUNT,
+    createsReceivable: true,
+    settlesToCashAccount: false,
+  },
   // A cheque is a promise to pay later — cari debt with a vade, same as açık
   // hesap. Whether the cheque itself clears is the collection's problem.
-  CHEQUE: { label: PAYMENT_METHOD_LABELS.CHEQUE, createsReceivable: true },
-  CREDIT_CARD: { label: PAYMENT_METHOD_LABELS.CREDIT_CARD, createsReceivable: false },
-  BANK_TRANSFER: { label: PAYMENT_METHOD_LABELS.BANK_TRANSFER, createsReceivable: false },
-  CASH: { label: PAYMENT_METHOD_LABELS.CASH, createsReceivable: false },
+  CHEQUE: {
+    label: PAYMENT_METHOD_LABELS.CHEQUE,
+    createsReceivable: true,
+    settlesToCashAccount: false,
+  },
+  CREDIT_CARD: {
+    label: PAYMENT_METHOD_LABELS.CREDIT_CARD,
+    createsReceivable: false,
+    settlesToCashAccount: true,
+  },
+  BANK_TRANSFER: {
+    label: PAYMENT_METHOD_LABELS.BANK_TRANSFER,
+    createsReceivable: false,
+    settlesToCashAccount: true,
+  },
+  CASH: {
+    label: PAYMENT_METHOD_LABELS.CASH,
+    createsReceivable: false,
+    settlesToCashAccount: true,
+  },
 };
 
 export function paymentMethodMeta(method: PaymentMethod): PaymentMethodMeta {
@@ -44,6 +78,45 @@ export function paymentMethodMeta(method: PaymentMethod): PaymentMethodMeta {
 /** Does this order go on the cari, or is it paid at order time? */
 export function createsReceivable(method: PaymentMethod): boolean {
   return META[method].createsReceivable;
+}
+
+/** Does confirming this order put money into a kasa/banka account? */
+export function settlesToCashAccount(method: PaymentMethod): boolean {
+  return META[method].settlesToCashAccount;
+}
+
+// ─────────────────────────────────────────────
+// TAHSİLAT YÖNTEMİ: KASAYA GİRER Mİ?
+// ─────────────────────────────────────────────
+
+export interface CollectionMethodMeta {
+  label: string;
+  /**
+   * True when the collection is money we can spend today.
+   *
+   * A cheque or a senet is not: the customer's debt is settled the moment we
+   * accept it, but nothing has reached the till until it clears. Those
+   * instruments belong in a çek/senet portföyü, which is a later step — until
+   * then they settle the cari and leave the till alone, which is at least not
+   * a lie.
+   *
+   * The table itself is in @repo/types, because the collection form reads it to
+   * decide whether to ask which drawer the money went into and that form runs
+   * in a browser. This is its accessor; nothing else may branch on a member.
+   */
+  entersCashAccount: boolean;
+}
+
+export function collectionMethodMeta(method: CollectionMethod): CollectionMethodMeta {
+  return {
+    label: COLLECTION_METHOD_LABELS[method],
+    entersCashAccount: COLLECTION_METHOD_SETTLES[method],
+  };
+}
+
+/** Does this collection put money into a kasa/banka account? */
+export function entersCashAccount(method: CollectionMethod): boolean {
+  return COLLECTION_METHOD_SETTLES[method];
 }
 
 export const ALL_PAYMENT_METHODS = PaymentMethodEnum.options;

@@ -77,6 +77,71 @@ export const COLLECTION_METHOD_LABELS: Record<CollectionMethod, string> = {
   OTHER: "Diğer",
 };
 
+/**
+ * Which collections are money we can spend today, and therefore land in a
+ * kasa/banka account.
+ *
+ * A cheque or a senet is not: accepting it settles the customer's debt, but
+ * nothing has reached the till until it clears, and counting it as cash would
+ * report a balance the safe does not contain.
+ *
+ * This table lives here rather than beside its PaymentMethod sibling in
+ * @repo/services because the collection form has to read it — it decides
+ * whether to ask which drawer the money went into — and that form runs in a
+ * browser, where the services package cannot go. `entersCashAccount()` in
+ * @repo/services is the accessor; nothing else may branch on a member by name.
+ */
+export const COLLECTION_METHOD_SETTLES: Record<CollectionMethod, boolean> = {
+  CASH: true,
+  BANK_TRANSFER: true,
+  CREDIT_CARD: true,
+  CHEQUE: false,
+  PROMISSORY_NOTE: false,
+  // "Diğer" is whatever the operator could not name — mahsup, barter, a
+  // correction. Not assumed to be money.
+  OTHER: false,
+};
+
+/**
+ * Where money we hold physically sits.
+ *
+ * POS is its own kind on purpose: a card sale is money we have earned but do
+ * not have yet, and mixing it into the bank balance would make the bank line
+ * disagree with the bank's own statement until the provider settles.
+ */
+export const CashAccountKindEnum = z.enum(["CASH", "BANK", "POS"]);
+export type CashAccountKind = z.infer<typeof CashAccountKindEnum>;
+
+export const CASH_ACCOUNT_KIND_LABELS: Record<CashAccountKind, string> = {
+  CASH: "Kasa",
+  BANK: "Banka hesabı",
+  POS: "POS / sanal POS",
+};
+
+export const CashDirectionEnum = z.enum(["IN", "OUT"]);
+export type CashDirection = z.infer<typeof CashDirectionEnum>;
+
+export const CASH_DIRECTION_LABELS: Record<CashDirection, string> = {
+  IN: "Giriş",
+  OUT: "Çıkış",
+};
+
+/** Why a till entry exists. Reports group by it. */
+export const CashMovementSourceEnum = z.enum([
+  "ORDER",
+  "COLLECTION",
+  "MANUAL",
+  "TRANSFER",
+]);
+export type CashMovementSource = z.infer<typeof CashMovementSourceEnum>;
+
+export const CASH_MOVEMENT_SOURCE_LABELS: Record<CashMovementSource, string> = {
+  ORDER: "Peşin sipariş",
+  COLLECTION: "Tahsilat",
+  MANUAL: "Elle giriş",
+  TRANSFER: "Hesaplar arası aktarım",
+};
+
 /** Which application wrote a field record (visit, collection). */
 export const FieldEntrySourceEnum = z.enum(["MOBILE", "WEB"]);
 export type FieldEntrySource = z.infer<typeof FieldEntrySourceEnum>;

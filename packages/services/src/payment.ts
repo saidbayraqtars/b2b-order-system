@@ -1,5 +1,6 @@
 import { prisma } from "@repo/database";
 import type { CollectionMethod } from "@repo/types";
+import { postCollectionCashIn, reverseCollectionCash } from "./cash";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
 
@@ -7,18 +8,31 @@ import { Dec, round2 } from "./money";
 // cari (open account). Writes a CREDIT ledger entry and decrements the cached
 // currentBalance in a single transaction so the two never diverge.
 // Company authorization is enforced at the route layer.
+//
+// Since step 27 it also writes the other side: the money has to arrive
+// somewhere, and which kasa/banka account it arrives in is part of the same
+// transaction. A cheque is the exception — it settles the debt without being
+// spendable yet — and that decision lives in payment-terms.ts, not here.
 
 export interface RecordPaymentInput {
   companyId: string;
   amount: number;
   collectionMethod: CollectionMethod;
   description?: string;
+  /**
+   * Which till the money went into. Optional: the mobile app does not ask, and
+   * a rep collecting in the field has one drawer anyway, so an omitted account
+   * means the default one.
+   */
+  cashAccountId?: string | null;
 }
 
 export interface RecordPaymentResult {
   transactionId: string;
   amount: string;
   newBalance: string;
+  /** Null when the method is not spendable money yet (çek, senet). */
+  cashMovementId: string | null;
 }
 
 export async function recordPayment(
@@ -30,7 +44,7 @@ export async function recordPayment(
   return prisma.$transaction(async (tx) => {
     const company = await tx.company.findUnique({
       where: { id: input.companyId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!company) {
       throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı");
@@ -54,10 +68,20 @@ export async function recordPayment(
       select: { currentBalance: true },
     });
 
+    const cash = await postCollectionCashIn(tx, {
+      transactionId: txn.id,
+      collectionMethod: input.collectionMethod,
+      amount,
+      accountId: input.cashAccountId ?? null,
+      companyName: company.name,
+      actorId: recordedById,
+    });
+
     return {
       transactionId: txn.id,
       amount: amount.toFixed(2),
       newBalance: updated.currentBalance.toFixed(2),
+      cashMovementId: cash?.id ?? null,
     };
   });
 }
@@ -210,6 +234,15 @@ export async function reversePayment(
       where: { id: original.companyId },
       data: { currentBalance: { increment: amount } },
       select: { currentBalance: true },
+    });
+
+    // The till side, if this collection ever reached one. Reads the entry that
+    // exists rather than the method, so a cheque — which never entered a till —
+    // does not take money out of one on the way back.
+    await reverseCollectionCash(tx, {
+      originalTransactionId: original.id,
+      reversalTransactionId: reversal.id,
+      actorId: reversedById,
     });
 
     return {

@@ -15,6 +15,7 @@ export * from "./promotion-engine";
 export * from "./promotion-admin";
 export * from "./checkin";
 export * from "./payment";
+export * from "./cash";
 export * from "./slug";
 export * from "./catalog-admin";
 export * from "./pricing-admin";

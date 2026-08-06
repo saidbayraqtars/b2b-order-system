@@ -1,5 +1,10 @@
 import type { Prisma } from "@repo/database";
-import { PaymentMethodEnum } from "@repo/types";
+import {
+  CashAccountKindEnum,
+  CashDirectionEnum,
+  CashMovementSourceEnum,
+  PaymentMethodEnum,
+} from "@repo/types";
 import type {
   Aggregate,
   ColumnFormat,
@@ -92,7 +97,13 @@ export interface DatasetSql {
 export interface DatasetDef {
   label: string;
   /** Prisma delegate key on the client. */
-  model: "order" | "orderItem" | "transaction" | "company" | "checkIn";
+  model:
+    | "order"
+    | "orderItem"
+    | "transaction"
+    | "company"
+    | "checkIn"
+    | "cashMovement";
   sql: DatasetSql;
   fields: Record<string, ReportFieldDef>;
   defaultSort: { field: string; direction: "asc" | "desc" };
@@ -120,6 +131,9 @@ const ORDER_STATUSES = [
 
 const PAYMENT_METHODS = PaymentMethodEnum.options;
 const TRANSACTION_TYPES = ["DEBIT", "CREDIT"] as const;
+const CASH_DIRECTIONS = CashDirectionEnum.options;
+const CASH_SOURCES = CashMovementSourceEnum.options;
+const CASH_ACCOUNT_KINDS = CashAccountKindEnum.options;
 
 /** A company user with no company matches nothing rather than everything. */
 const ownCompany = (ctx: ReportContext) => ctx.companyId ?? "__none__";
@@ -576,6 +590,67 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
           return { companyId: ownCompany(ctx) };
       }
     },
+  },
+
+  CASH: {
+    label: "Kasa defteri",
+    model: "cashMovement",
+    sql: {
+      table: "CashMovement",
+      alias: "cm",
+      joins: [
+        { prefix: "account", table: "CashAccount", alias: "ca", on: 'ca."id" = cm."accountId"' },
+        { prefix: "order", table: "Order", alias: "o", on: 'o."id" = cm."orderId"' },
+        {
+          prefix: "order.company",
+          table: "Company",
+          alias: "oc",
+          on: 'oc."id" = o."companyId"',
+        },
+        {
+          prefix: "recordedBy",
+          table: "User",
+          alias: "rb",
+          on: 'rb."id" = cm."recordedById"',
+        },
+      ],
+    },
+    defaultSort: { field: "occurredAt", direction: "desc" },
+    fields: {
+      ...dateParts("occurredAt", "Tarih"),
+      direction: {
+        label: "Yön",
+        type: "enum",
+        path: "direction",
+        groupable: true,
+        enumValues: CASH_DIRECTIONS,
+      },
+      amount: money("Tutar", "amount"),
+      source: {
+        label: "Kaynak",
+        type: "enum",
+        path: "source",
+        groupable: true,
+        enumValues: CASH_SOURCES,
+      },
+      description: text("Açıklama", "description", false),
+      accountName: text("Hesap", "account.name", true, "Hesap"),
+      accountKind: {
+        label: "Hesap türü",
+        type: "enum",
+        path: "account.kind",
+        groupable: true,
+        enumValues: CASH_ACCOUNT_KINDS,
+        source: "Hesap",
+      },
+      orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
+      companyName: text("Firma", "order.company.name", true, "Sipariş"),
+      recordedByName: text("Kaydeden", "recordedBy.name", true, "Kullanıcı"),
+    },
+    // The till is the seller's own money. A customer has no business reading it
+    // and a rep only ever adds to it, so there is no narrower scope to grant —
+    // anyone but a super admin sees nothing.
+    scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
   },
 };
 

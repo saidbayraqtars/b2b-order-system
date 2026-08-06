@@ -1,5 +1,6 @@
 import { Prisma, prisma } from "@repo/database";
 import type { CreateOrderInput, OrderStatus, Role } from "@repo/types";
+import { postOrderCashIn } from "./cash";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
 import { buildQuote } from "./order-quote";
@@ -215,6 +216,19 @@ async function buildOrder(
     await tx.company.update({
       where: { id: company.id },
       data: { currentBalance: { increment: grandTotal } },
+    });
+  }
+
+  // 11. Kasa/banka girişi for the other kind of order: the money is taken now,
+  //    so the cari never hears about it and something else has to. Decided by
+  //    the same table as step 10, from the opposite side.
+  if (status === "CONFIRMED") {
+    await postOrderCashIn(tx, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      paymentMethod: quote.terms.method,
+      grandTotal,
+      actorId: ctx.createdById,
     });
   }
 
