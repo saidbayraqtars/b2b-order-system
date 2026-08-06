@@ -76,6 +76,14 @@ export default function OrderDetailScreen({
       <Card>
         <Row label="Ara toplam" value={formatMoney(o.subtotal, o.currency)} />
         <Row label="İskonto" value={formatMoney(o.discountTotal, o.currency)} />
+        {o.volumeTier ? (
+          // Already part of "İskonto" above — shown so the customer can see why
+          // the price moved, not as a further deduction.
+          <Row
+            label={`↳ Hacim: ${o.volumeTier.name}`}
+            value={`%${o.volumeTier.percent} · dahil`}
+          />
+        ) : null}
         <Row label="KDV" value={formatMoney(o.taxTotal, o.currency)} />
         <Row
           label="Genel toplam"

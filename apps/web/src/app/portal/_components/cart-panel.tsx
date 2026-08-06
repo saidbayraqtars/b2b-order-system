@@ -278,6 +278,16 @@ export function CartPanel({ companyId }: { companyId: string }) {
                 priced ? Number(q.subtotal) - Number(q.discountTotal) : localTotals.subtotal,
               )}
             />
+            {priced && q.volumeDiscount && (
+              // Named, not subtracted: "Ara toplam" above is already net of it.
+              // Showing it as its own deduction row would read as a second
+              // discount the customer never gets.
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                Hacim iskontosu — {q.volumeDiscount.tierName} (%
+                {q.volumeDiscount.percent}), ara toplama dahil: −
+                {formatTRY(Number(q.volumeDiscount.amount))}
+              </p>
+            )}
             {priced &&
               q.promotions.map((p) => (
                 <Row

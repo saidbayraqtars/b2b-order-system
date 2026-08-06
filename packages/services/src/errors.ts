@@ -76,7 +76,11 @@ export type BusinessErrorCode =
   | "PAYMENT_TERM_NOT_ALLOWED"
   | "PAYMENT_TERM_NOT_FOUND"
   | "PAYMENT_TERM_IN_USE"
-  | "PAYMENT_TERM_NAME_TAKEN";
+  | "PAYMENT_TERM_NAME_TAKEN"
+  // ── hacim iskontosu ──
+  | "VOLUME_TIER_NOT_FOUND"
+  | "VOLUME_TIER_IN_USE"
+  | "VOLUME_TIER_NAME_TAKEN";
 
 export class BusinessError extends Error {
   constructor(

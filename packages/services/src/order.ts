@@ -100,6 +100,7 @@ async function buildOrder(
       caseCount: l.caseCount,
       unitPrice: l.unitPrice,
       discount: l.discountPerUnit,
+      volumeDiscount: l.volumeDiscountPerUnit,
       promotionDiscount: l.promotionDiscount,
       vatRate: l.vatRate,
       lineTotal: l.lineNet,
@@ -168,6 +169,10 @@ async function buildOrder(
       // Already validated against this customer's menu; null falls back to the
       // company's default term.
       paymentTermDays: quote.terms.paymentTermDays,
+      // Snapshot, not a reference: the rung may be renamed or retired, and this
+      // order has to keep explaining its own prices.
+      volumeTierName: quote.volumeDiscount?.tierName ?? null,
+      volumeDiscountPercent: quote.volumeDiscount?.percent ?? 0,
       items: { create: itemsData },
     },
     select: { id: true, orderNumber: true, status: true },

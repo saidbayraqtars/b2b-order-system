@@ -55,13 +55,15 @@ Son güncelleme: 2026-08-06 · Adım 24 (ödeme yöntemi & vade) sonu
 |-------|-------|
 | `User` | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`), oturum sürümü (`tokenVersion`), giriş telemetrisi ve kilit alanları |
 | `AuditLog` | Salt-ekleme güvenlik kaydı: kim, ne yaptı, hangi kayda, IP + tarayıcı. Kullanıcı silinse de e-posta denormalize saklandığı için okunabilir kalır |
-| `Company` | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer |
+| `Company` | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer, ödeme yöntemi/vade menüsü, hacim iskontosu modu |
+| `PaymentTerm` | İsimli vade tanımı ("30 gün"); firmalara m-n bağlanır, sipariş gün sayısını kopyalar |
+| `VolumeTier` | Hacim iskontosu basamağı: dönem (ay), alt ciro sınırı, oran. Merdiven geneldir, firma hak ettiği en yüksek oranı alır |
 | `Address` | Firma adresleri, varsayılan adres işareti |
 | `CustomerGroup` | Fiyat kademesi grubu (Bayi, Toptancı, Zincir Market) |
 | `Category` | Ağaç yapılı kategori (self-referans `parentId`) |
 | `Product` / `ProductVariant` | Ürün + varyant (SKU, barkod, renk, beden, koli adedi, min sipariş, stok) |
 | `Price` | Varyant × müşteri grubu × miktar kademesi fiyatı |
-| `CompanyDiscount` | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) |
+| `CompanyDiscount` | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) — pazarlıkla verilen oran; cirodan kazanılan `VolumeTier` |
 | `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; nakliye bedeli/indirimi, kargo/takip no, sevk/teslim/iptal zaman damgaları. Kalemde sevk edilen/faturalanan miktar ve hediye işareti |
 | `OrderStatusHistory` | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only) |
 | `DocumentSeries` | Belge serisi: tür (irsaliye/fatura), ön ek, basamak, son verilen numara, varsayılan mı, numarayı ERP mi veriyor (`externalOnly`) |
@@ -733,7 +735,98 @@ enum'un yanında duruyor, yeni bir yöntem eklendiğinde derleyici onu kullanan
 alıcının uydurduğu 365 gün 422, peşine vade 422, seçilen 60 gün siparişe
 yazılıyor, alıcı başka firmanın menüsünü okuyamıyor (403).
 
-## 25. Web Portal (`apps/web`)
+## 25. Hacim İskontosu (Adım 25)
+
+"Cariye özel iskonto" zaten vardı (`CompanyDiscount` — kategori ya da ürün
+bazında, pazarlıkla verilen oran). Eksik olan ikincisiydi: **işlem hacmine göre
+iskonto** — müşterinin kendi cirosuyla hak ettiği oran.
+
+### Merdiven herkese aynı teklif
+
+`VolumeTier` — "son 12 ayda 500.000 ₺ alana %5". Tanımlar geneldir
+(`/admin/volume-tiers`); tek bir cariye özel oran vermek isteyen kişi basamak
+değil `CompanyDiscount` yazmalı. Ayrım önemli: basamak yazmak **tüm defteri**
+yeniden fiyatlar.
+
+Her firma, **hak ettiği en yüksek oranı** alır — en yüksek eşiği değil.
+Basamakların dönemi farklı olabildiği için ("yılda 500.000" ile "ayda 80.000"
+iki dürüst tekliftir) harcanan paraya göre sıralamak yılı ayla kıyaslamak
+olurdu. Eşitlikte zor eşik kazanır, sonra id — aynı girdi hep aynı fiyatı
+versin diye.
+
+### Ciro ne demek
+
+`subtotal − discountTotal − promotionTotal`, yani **fiilen ödenen mal bedeli**.
+
+- **KDV yok:** devletin parası bizim ciromuz değil.
+- **Navlun yok:** ağır mal alan müşteri, aynı değerde hafif mal alandan hızlı
+  tırmanırdı.
+- **Verilmiş iskonto düşülür:** müşteriyi kendisine verdiğimiz indirimle
+  ödüllendirmek olurdu.
+- **Taslak, iptal ve red sayılmaz** — kampanya motorunun `FIRST_ORDER` koşuluyla
+  **aynı** küme (`order-status.ts`). Kampanyanın "eski müşteri" saydığı biri
+  burada sıfır cirolu olamaz.
+
+### Oran, firma iskontosunun üstüne biner
+
+`resolvePrice` sırası: grup/adet kademesi → firma iskontosu → **hacim oranı**.
+Üçüncü adım ikincinin kalanına uygulanır: %20 sonra %5, toplamda **%24** —
+ticarette söylendiği gibi iskonto üstüne iskonto. Oranları toplasaydık cömert
+bir özel anlaşma + üst basamak %100'e ulaşıp malı bedavaya verebilirdi.
+
+`discountPerUnit` **toplam** iskonto olarak kaldı (`unitPrice − netUnitPrice`),
+çünkü faturalama ve raporlama onu adetle çarpıyor. Hangi kısmın nereden geldiği
+ayrı alanlarda: `companyDiscountPerUnit` / `volumeDiscountPerUnit`.
+
+### Kazanılmış mı, söz verilmiş mi
+
+`Company.volumeDiscountMode`:
+
+| Mod | Davranış |
+|-----|----------|
+| `AUTO` (varsayılan) | Her fiyatlamada cirodan yeniden hesaplanır. Merdiven boşken herkes %0 alır, yani özellik açılmadan önce hiçbir fiyat değişmez |
+| `MANUAL` | `volumeTierId` neyse odur; ciroya **hiç bakılmaz**. Boş bırakmak "bu cari hacim iskontosu almaz" demektir |
+
+`MANUAL` pasife alınmış bir basamağı da onurlandırır: basamağı merdivenden
+kaldırmak, onu bir müşteriye söz vermiş olmakla aynı şey değil — sözleşme
+ortasında sessizce yeniden fiyatlamak daha kötü bir hata olurdu.
+
+### Sipariş anlık görüntü alır
+
+`Order.volumeTierName` + `volumeDiscountPercent`, `OrderItem.volumeDiscount`.
+FK yok — vadede olduğu gibi: gelecek yıl "Altın %5"i emekliye ayırmak, bugün
+kesilmiş bir siparişin fiyatını açıklayamaz hâle getirmemeli.
+
+### Ekranlar
+
+| Yer | Ne yapılır |
+|-----|------------|
+| `/admin/volume-tiers` | Basamak ekle/düzenle/pasife al. Firmaya atanmış basamak **silinemez** — pasife alınır, o müşteri söz verilen oranı kaybetmesin diye |
+| `/admin/companies/[id]` | Mod seçimi + elle basamak ataması. Başlıkta **canlı** durum: hangi oran geçerli, son N ayın cirosu ne, bir üst basamağa ne kadar kaldı |
+| Sepet paneli (web + mobil) | "Hacim iskontosu — Altın (%5), ara toplama dahil: −1.240 ₺". Ayrı bir indirim satırı değil: ara toplam zaten net, ikinci kez düşülüyormuş gibi okunmasın |
+| Sipariş detayı | O gün geçerli olan basamağın adı ve oranı |
+| Rapor tasarımcısı | `volumeTierName`, `volumeDiscountPercent`, satır bazında `volumeDiscount` |
+
+Ciro `GET /api/volume-status` ile de okunabilir — yalnızca **gösterim**:
+fiyatlanan oran her istekte sunucuda çözülüyor, bu uç atlanarak ya da
+kandırılarak iskonto kazanılamaz.
+
+**Aynı bayatlık üç yerde daha bulundu ve düzeltildi:** sipariş detayı ödemeyi
+`=== "OPEN_ACCOUNT" ? "Açık hesap" : "Kredi kartı"` diye yazıyordu (çek "Kredi
+kartı" görünüyordu), kampanya kural editörü ödeme yöntemi olarak yalnız iki
+seçenek sunuyordu (çek/nakit/havaleye kampanya kurulamıyordu), iki rapor ekranı
+da kendi iki üyeli etiket haritasını tutuyordu. Hepsi artık
+`PAYMENT_METHOD_LABELS` / `PaymentMethodEnum` okuyor.
+
+**Doğrulama:** 19 birim + 9 entegrasyon testi (toplam **202**). Entegrasyon
+tarafı gerçek veritabanında kanıtlıyor: sıfır ciroda tam fiyat, eşik aşılınca
+**sonraki** sipariş indirimli (eşiği aşan siparişin kendisi değil), katalogla
+sepet aynı fiyatı gösteriyor, basamak siparişe yazılıyor, basamak emekliye
+ayrılınca eski sipariş açıklanabilir kalıyor ama yeni sipariş kazanamıyor,
+**siparişi iptal etmek iskontoyu geri alıyor**, ve `MANUAL` cari hiç alışveriş
+yapmadan söz verilen oranla fiyatlanıyor.
+
+## 26. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -774,7 +867,7 @@ yazılıyor, alıcı başka firmanın menüsünü okuyamıyor (403).
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 26. Mobil Uygulama (`apps/mobile`)
+## 27. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -789,7 +882,7 @@ yazılıyor, alıcı başka firmanın menüsünü okuyamıyor (403).
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 27. API Uçları
+## 28. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -862,6 +955,12 @@ yazılıyor, alıcı başka firmanın menüsünü okuyamıyor (403).
 | GET | `/api/admin/promotions/rules` | süper admin (kural kataloğu) |
 | GET · POST | `/api/admin/announcements` | süper admin |
 | PATCH · DELETE | `/api/admin/announcements/:id` | süper admin |
+| GET · POST | `/api/admin/payment-terms` | süper admin |
+| PATCH · DELETE | `/api/admin/payment-terms/:id` | süper admin (firmaya tanımlı vade silinemez) |
+| GET | `/api/payment-options?companyId=` | 4 rol (yalnız gösterim — asıl kontrol `buildQuote`'ta) |
+| GET · POST | `/api/admin/volume-tiers` | süper admin |
+| PATCH · DELETE | `/api/admin/volume-tiers/:id` | süper admin (firmaya atanmış basamak silinemez) |
+| GET | `/api/volume-status?companyId=` | 4 rol (yalnız gösterim — oran her fiyatlamada sunucuda çözülür) |
 | GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
 | GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
 | GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
@@ -933,8 +1032,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
-- **Cariye göre ödeme yöntemi ve vade seçenekleri:** `PaymentMethod` bugün iki değerli bir enum; firmaya bağlı seçenek listesi ve sepette 30/60/90 vade seçimi yok.
-- **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok.
+- **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok. Hacim merdiveninin ciro toplayıcısı (`companyTurnover`) burada da işe yarar — ölçtüğü şey aynı.
 - **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PaymentMethodEnum, RoleEnum } from "./enums";
+import { PaymentMethodEnum, RoleEnum, VolumeDiscountModeEnum } from "./enums";
 
 // Company, address, user and customer-group administration.
 // Role rules (who may create what) live in the service layer — these schemas
@@ -54,6 +54,9 @@ export const createCompanySchema = z.object({
   salesRepId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
   allowedPaymentMethods: allowedPaymentMethods.default([]),
   paymentTermIds: paymentTermIds.default([]),
+  /** AUTO earns the hacim tier from turnover; MANUAL pins `volumeTierId`. */
+  volumeDiscountMode: VolumeDiscountModeEnum.default("AUTO"),
+  volumeTierId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
 });
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 
@@ -79,6 +82,9 @@ export const updateCompanySchema = z
     salesRepId: z.string().cuid().nullable().optional(),
     allowedPaymentMethods: allowedPaymentMethods.optional(),
     paymentTermIds: paymentTermIds.optional(),
+    volumeDiscountMode: VolumeDiscountModeEnum.optional(),
+    /** Nullable: clearing the pin under MANUAL is how the ladder is turned off. */
+    volumeTierId: z.string().cuid().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
@@ -106,6 +112,46 @@ export const updatePaymentTermSchema = z
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdatePaymentTermInput = z.infer<typeof updatePaymentTermSchema>;
+
+// ─────────────────────────────────────────────
+// VOLUME TIER (hacim iskontosu basamağı)
+// ─────────────────────────────────────────────
+
+/**
+ * Capped at 90 so a mistyped rate cannot hand the goods away, and at two
+ * decimals because that is what the column stores — a 5.005 typed here would
+ * round on write and quietly price differently from what the admin approved.
+ */
+const discountPercent = z.coerce
+  .number()
+  .min(0.01, "İskonto oranı sıfırdan büyük olmalı")
+  .max(90, "İskonto oranı en fazla %90 olabilir")
+  .multipleOf(0.01, "En fazla iki ondalık basamak");
+
+/** Rolling window the turnover is measured over. One month to five years. */
+const windowMonths = z.coerce.number().int().min(1).max(60);
+
+export const createVolumeTierSchema = z.object({
+  name: z.string().trim().min(1, "Basamak adı gerekli").max(80),
+  minRevenue: money,
+  windowMonths: windowMonths.default(12),
+  discountPercent,
+  isActive: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+});
+export type CreateVolumeTierInput = z.infer<typeof createVolumeTierSchema>;
+
+export const updateVolumeTierSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    minRevenue: money.optional(),
+    windowMonths: windowMonths.optional(),
+    discountPercent: discountPercent.optional(),
+    isActive: z.boolean().optional(),
+    sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
+export type UpdateVolumeTierInput = z.infer<typeof updateVolumeTierSchema>;
 
 // ─────────────────────────────────────────────
 // ADDRESS

@@ -235,6 +235,14 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         groupable: true,
         enumValues: PAYMENT_METHODS,
       },
+      volumeTierName: text("Hacim basamağı", "volumeTierName", true),
+      volumeDiscountPercent: {
+        label: "Hacim iskontosu %",
+        type: "number",
+        path: "volumeDiscountPercent",
+        groupable: true,
+        format: "percent",
+      },
       ...dateParts("createdAt", "Sipariş tarihi"),
       ...dateParts("shippedAt", "Sevk tarihi"),
       ...dateParts("deliveredAt", "Teslim tarihi"),
@@ -341,6 +349,9 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         format: "number",
       },
       promotionDiscount: money("Kampanya indirimi", "promotionDiscount"),
+      // Part of "Birim iskonto" above, carried separately so a report can total
+      // what the turnover ladder actually cost without re-deriving it.
+      volumeDiscount: money("Birim hacim iskontosu", "volumeDiscount"),
       quantityShipped: {
         label: "Sevk edilen",
         type: "number",

@@ -115,6 +115,7 @@ export async function getCart(
         productId: v.product.id,
         categoryId: v.product.categoryId,
         discounts: ctx.discounts,
+        volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
       });
       netUnitPrice = priced.netUnitPrice.toFixed(2);
     } catch {

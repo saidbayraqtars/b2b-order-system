@@ -298,6 +298,10 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   PAYMENT_TERM_NOT_FOUND: 404,
   PAYMENT_TERM_IN_USE: 409,
   PAYMENT_TERM_NAME_TAKEN: 409,
+  // hacim iskontosu — all admin-side; a buyer never names a tier itself.
+  VOLUME_TIER_NOT_FOUND: 404,
+  VOLUME_TIER_IN_USE: 409,
+  VOLUME_TIER_NAME_TAKEN: 409,
 };
 
 /**

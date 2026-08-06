@@ -13,6 +13,7 @@ import {
   loadEligiblePromotions,
   normalizeCoupon,
 } from "./promotion";
+import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
 
 // Pricing a cart is one calculation, used twice: the buyer previews it from the
 // portal, then places the order and the same numbers get frozen into the
@@ -49,8 +50,10 @@ export interface QuotedLine {
   vatRate: number;
   /** List/group price per unit, before any discount. */
   unitPrice: Money;
-  /** Company discount per unit. */
+  /** Company discount plus hacim tier, per unit. */
   discountPerUnit: Money;
+  /** The hacim tier's share of `discountPerUnit`, per unit. */
+  volumeDiscountPerUnit: Money;
   /** unitPrice × quantity. */
   lineGross: Money;
   /** discountPerUnit × quantity. */
@@ -106,6 +109,12 @@ export interface OrderQuote {
   coupon: string | null;
   company: QuoteCompany;
   terms: QuoteTerms;
+  /**
+   * The hacim rung this cart was priced under, and what it took off in total.
+   * Already inside `discountTotal` — carried separately only so the cart can
+   * name it, the way a campaign line names itself.
+   */
+  volumeDiscount: (ResolvedVolumeDiscount & { amount: Money }) | null;
 }
 
 /**
@@ -133,6 +142,8 @@ export async function buildQuote(
       customerGroupId: true,
       paymentTermDays: true,
       allowedPaymentMethods: true,
+      volumeDiscountMode: true,
+      volumeTierId: true,
       paymentTerms: {
         where: { isActive: true },
         select: { id: true, name: true, days: true },
@@ -163,6 +174,11 @@ export async function buildQuote(
     paymentTermDaysOverride: input.paymentTermDays ?? null,
     isSeller: input.isSeller ?? false,
   });
+
+  // Resolved once for the whole cart: the rung belongs to the customer, not to
+  // a line, and it is also what the order snapshots.
+  const volumeDiscount = await resolveVolumeDiscount(client, company);
+  const volumePercent = volumeDiscount?.percent ?? null;
 
   const variants = await client.productVariant.findMany({
     where: { id: { in: input.items.map((i) => i.variantId) } },
@@ -220,6 +236,7 @@ export async function buildQuote(
       productId: v.product.id,
       categoryId: v.product.categoryId,
       discounts: company.discounts,
+      volumeDiscountPercent: volumePercent,
     });
 
     lines.push({
@@ -233,6 +250,7 @@ export async function buildQuote(
       vatRate: v.product.vatRate,
       unitPrice: r.unitPrice,
       discountPerUnit: r.discountPerUnit,
+      volumeDiscountPerUnit: r.volumeDiscountPerUnit,
       lineGross: round2(r.unitPrice.mul(item.quantity)),
       lineDiscount: round2(r.discountPerUnit.mul(item.quantity)),
       promotionDiscount: ZERO,
@@ -296,6 +314,7 @@ export async function buildQuote(
         gifts: result.gifts,
         customerGroupId: company.customerGroupId,
         discounts: company.discounts,
+        volumeDiscountPercent: volumePercent,
         // A gift of something already in the cart must not eat the stock the
         // paid line is holding.
         reserved: lines.reduce<Map<string, number>>((map, l) => {
@@ -322,11 +341,13 @@ export async function buildQuote(
   // 3. VAT is charged on what is actually paid — i.e. after the promotion.
   let subtotal = ZERO;
   let discountTotal = ZERO;
+  let volumeTotal = ZERO;
   let taxTotal = ZERO;
   for (const line of lines) {
     line.lineTax = round2(line.lineNet.mul(line.vatRate).div(100));
     subtotal = subtotal.add(line.lineGross);
     discountTotal = discountTotal.add(line.lineDiscount);
+    volumeTotal = volumeTotal.add(line.volumeDiscountPerUnit.mul(line.quantity));
     taxTotal = taxTotal.add(line.lineTax);
   }
 
@@ -374,6 +395,9 @@ export async function buildQuote(
       effectiveTermDays: resolvedTerm.paymentTermDays ?? company.paymentTermDays,
       createsReceivable: createsReceivable(resolvedTerm.method),
     },
+    volumeDiscount: volumeDiscount
+      ? { ...volumeDiscount, amount: round2(volumeTotal) }
+      : null,
   };
 }
 
@@ -403,6 +427,8 @@ async function priceGifts(
       discountType: "PERCENTAGE" | "FIXED";
       value: Prisma.Decimal;
     }>;
+    /** Same rung as the paid lines — a gift is valued at what the customer pays. */
+    volumeDiscountPercent: Prisma.Decimal | null;
     reserved: Map<string, number>;
   },
 ): Promise<PricedGift[]> {
@@ -445,6 +471,7 @@ async function priceGifts(
         productId: v.product.id,
         categoryId: v.product.categoryId,
         discounts: params.discounts,
+        volumeDiscountPercent: params.volumeDiscountPercent,
       });
     } catch {
       continue; // no price for this company — nothing to put on the invoice
@@ -468,6 +495,7 @@ async function priceGifts(
         vatRate: v.product.vatRate,
         unitPrice: priced.unitPrice,
         discountPerUnit: priced.discountPerUnit,
+        volumeDiscountPerUnit: priced.volumeDiscountPerUnit,
         lineGross: round2(priced.unitPrice.mul(quantity)),
         lineDiscount: round2(priced.discountPerUnit.mul(quantity)),
         promotionDiscount: value,
@@ -522,6 +550,12 @@ export interface OrderQuoteView {
   paymentTermDays: number;
   /** Whether this order will be booked as cari debt. */
   createsReceivable: boolean;
+  /**
+   * The hacim rung this price includes, named so the cart can show it as its
+   * own line. Its `amount` is already part of `discountTotal` — the panel must
+   * not subtract it again.
+   */
+  volumeDiscount: { tierName: string; percent: string; amount: string } | null;
 }
 
 /** Price a cart for the portal without touching stock, orders or the ledger. */
@@ -558,5 +592,12 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
     paymentMethod: quote.terms.method,
     paymentTermDays: quote.terms.effectiveTermDays,
     createsReceivable: quote.terms.createsReceivable,
+    volumeDiscount: quote.volumeDiscount
+      ? {
+          tierName: quote.volumeDiscount.tierName,
+          percent: quote.volumeDiscount.percent.toFixed(2),
+          amount: quote.volumeDiscount.amount.toFixed(2),
+        }
+      : null,
   };
 }

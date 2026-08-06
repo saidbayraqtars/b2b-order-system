@@ -83,3 +83,17 @@ export type FieldEntrySource = z.infer<typeof FieldEntrySourceEnum>;
 
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
+
+/**
+ * Whether a customer's hacim (turnover) tier is earned from its own orders or
+ * granted by an admin. Under MANUAL the pinned tier is the whole answer and
+ * turnover is never consulted — including "pinned to nothing", which is how the
+ * ladder is switched off for a single cari.
+ */
+export const VolumeDiscountModeEnum = z.enum(["AUTO", "MANUAL"]);
+export type VolumeDiscountMode = z.infer<typeof VolumeDiscountModeEnum>;
+
+export const VOLUME_DISCOUNT_MODE_LABELS: Record<VolumeDiscountMode, string> = {
+  AUTO: "Otomatik (ciroya göre)",
+  MANUAL: "Elle atanmış",
+};

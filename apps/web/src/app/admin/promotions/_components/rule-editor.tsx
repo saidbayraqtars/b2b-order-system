@@ -1,6 +1,12 @@
 "use client";
 
-import type { PromotionRuleInput, RuleMeta, RuleParamMeta } from "@repo/types";
+import {
+  PAYMENT_METHOD_LABELS,
+  PaymentMethodEnum,
+  type PromotionRuleInput,
+  type RuleMeta,
+  type RuleParamMeta,
+} from "@repo/types";
 import { Button, Label, Select, TextInput } from "@/components/form";
 
 // The builder does not know the rule catalogue: it renders whatever
@@ -187,8 +193,14 @@ function ParamField({
           onChange={(e) => onChange(e.target.value || undefined)}
         >
           <option value="">Seçin…</option>
-          <option value="OPEN_ACCOUNT">Açık hesap (cari)</option>
-          <option value="CREDIT_CARD">Kredi kartı</option>
+          {/* Driven by the enum: this list was written when there were two
+              methods and never grew, so a campaign could not be aimed at çek,
+              nakit or havale even though the engine accepts them. */}
+          {PaymentMethodEnum.options.map((m) => (
+            <option key={m} value={m}>
+              {PAYMENT_METHOD_LABELS[m]}
+            </option>
+          ))}
         </Select>
       </label>
     );

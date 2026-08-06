@@ -9,6 +9,7 @@ import {
   AGGREGATE_LABELS,
   CHART_TYPE_LABELS,
   FILTER_OPERATOR_LABELS,
+  PAYMENT_METHOD_LABELS,
   REPORT_DATASET_LABELS,
   type Aggregate,
   type ChartType,
@@ -36,8 +37,9 @@ const ENUM_LABELS: Record<string, string> = {
   DELIVERED: "Teslim edildi",
   CANCELLED: "İptal",
   REJECTED: "Reddedildi",
-  OPEN_ACCOUNT: "Açık hesap",
-  CREDIT_CARD: "Kredi kartı",
+  // Settlement methods come from the enum's own map: spelled out here, they
+  // stopped at two and left the rest showing as raw enum names in filters.
+  ...PAYMENT_METHOD_LABELS,
   DEBIT: "Borç",
   CREDIT: "Alacak",
 };

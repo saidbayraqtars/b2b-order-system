@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCompany } from "@repo/services";
+import { getCompany, getVolumeStatus } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { formatTRY } from "@/lib/format";
 import { AdminNav } from "../../_components/admin-nav";
@@ -18,6 +18,10 @@ export default async function AdminCompanyPage({
 
   const company = await getCompany(params.id).catch(() => null);
   if (!company) notFound();
+
+  // Read live rather than from the company row: under AUTO the rung in force is
+  // whatever turnover earns right now, and a form field cannot show that.
+  const volume = await getVolumeStatus(company.id);
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
@@ -41,6 +45,24 @@ export default async function AdminCompanyPage({
             Bakiye {formatTRY(company.currentBalance)} / limit{" "}
             {formatTRY(company.creditLimit)} · vade {company.paymentTermDays} gün ·{" "}
             {company.counts.orders} sipariş
+          </p>
+          <p className="text-sm text-neutral-500">
+            Hacim iskontosu:{" "}
+            {volume.current ? (
+              <strong>
+                %{volume.current.percent} · {volume.current.name}
+              </strong>
+            ) : (
+              "yok"
+            )}
+            {volume.mode === "MANUAL"
+              ? " (elle atanmış)"
+              : volume.turnover !== null
+                ? ` · son ${volume.windowMonths} ay cirosu ${formatTRY(volume.turnover)}`
+                : ""}
+            {volume.next
+              ? ` · ${volume.next.name} (%${volume.next.percent}) için ${formatTRY(volume.next.remaining)} kaldı`
+              : ""}
           </p>
         </div>
         <Link
@@ -68,6 +90,8 @@ export default async function AdminCompanyPage({
           salesRepId: company.salesRep?.id ?? "",
           allowedPaymentMethods: company.allowedPaymentMethods,
           paymentTermIds: company.paymentTerms.map((t) => t.id),
+          volumeDiscountMode: company.volumeDiscountMode,
+          volumeTierId: company.volumeTier?.id ?? "",
         }}
       />
 

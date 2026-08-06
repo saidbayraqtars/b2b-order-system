@@ -93,6 +93,8 @@ export interface OrderDetail {
   currency: string;
   /** Vade in days, company default already folded in. 0 = peşin. */
   paymentTermDays: number;
+  /** The hacim rung this order was sold under, snapshotted at order time. */
+  volumeTier: { name: string; percent: string } | null;
   note: string | null;
   carrier: string | null;
   trackingNumber: string | null;
@@ -166,6 +168,11 @@ export interface OrderQuote {
   /** Vade in days including the company default — 0 means peşin. */
   paymentTermDays: number;
   createsReceivable: boolean;
+  /**
+   * The hacim rung folded into this price. `amount` is already inside
+   * `discountTotal` — the cart names it, it must not subtract it again.
+   */
+  volumeDiscount: { tierName: string; percent: string; amount: string } | null;
 }
 
 export interface RecordPaymentResult {

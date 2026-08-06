@@ -316,6 +316,12 @@ export interface OrderDetail {
   currency: string;
   /** Vade in days: the order's own override, else the company's. */
   paymentTermDays: number;
+  /**
+   * The hacim rung this order was sold under, as it stood that day. Null when
+   * none applied; the rung may since have been renamed or retired, which is
+   * exactly why the name is snapshotted rather than joined.
+   */
+  volumeTier: { name: string; percent: string } | null;
   couponCode: string | null;
   /** Campaigns that were applied when the order was placed. */
   promotions: OrderPromotionRow[];
@@ -361,6 +367,8 @@ export async function getOrderDetail(
       grandTotal: true,
       currency: true,
       paymentTermDays: true,
+      volumeTierName: true,
+      volumeDiscountPercent: true,
       couponCode: true,
       note: true,
       carrier: true,
@@ -426,6 +434,9 @@ export async function getOrderDetail(
     grandTotal: o.grandTotal.toFixed(2),
     currency: o.currency,
     paymentTermDays: o.paymentTermDays ?? o.company.paymentTermDays,
+    volumeTier: o.volumeTierName
+      ? { name: o.volumeTierName, percent: o.volumeDiscountPercent.toFixed(2) }
+      : null,
     couponCode: o.couponCode,
     promotions,
     note: o.note,

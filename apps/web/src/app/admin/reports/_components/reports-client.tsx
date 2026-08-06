@@ -10,7 +10,7 @@ import type {
   RepPerformance,
   SalesSummary,
 } from "@repo/services";
-import type { OrderStatus } from "@repo/types";
+import { PAYMENT_METHOD_LABELS, type OrderStatus } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 
@@ -39,9 +39,11 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Reddedildi",
 };
 
+// Reads through the enum's own map, plus the bucket the SQL uses for rows with
+// no method. A local copy stopped at two members once, which left çek, nakit and
+// havale showing as raw enum names in the reports.
 const METHOD_LABEL: Record<string, string> = {
-  OPEN_ACCOUNT: "Açık hesap",
-  CREDIT_CARD: "Kredi kartı",
+  ...PAYMENT_METHOD_LABELS,
   DIGER: "Diğer",
 };
 

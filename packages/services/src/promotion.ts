@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
 import type { Money } from "./money";
+import { UNTRADED_ORDER_STATUSES } from "./order-status";
 import type { AppliedPromotion, CompiledPromotion } from "./promotion-engine";
 import {
   compileAction,
@@ -170,7 +171,7 @@ export async function buildEngineContext(
   const previousOrderCount = await client.order.count({
     where: {
       companyId: params.companyId,
-      status: { notIn: ["CANCELLED", "REJECTED", "DRAFT"] },
+      status: { notIn: [...UNTRADED_ORDER_STATUSES] },
     },
   });
 

@@ -1,6 +1,7 @@
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
 import { resolvePrice, type DiscountRow } from "./pricing";
+import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
 
 // ── Company pricing context (loaded once per request) ──
 
@@ -8,6 +9,8 @@ export interface CompanyPricingContext {
   companyId: string;
   customerGroupId: string | null;
   discounts: DiscountRow[];
+  /** The hacim rung in force, or null. Resolved once — it costs a query. */
+  volumeDiscount: ResolvedVolumeDiscount | null;
 }
 
 export async function loadCompanyPricingContext(
@@ -18,6 +21,8 @@ export async function loadCompanyPricingContext(
     select: {
       id: true,
       customerGroupId: true,
+      volumeDiscountMode: true,
+      volumeTierId: true,
       discounts: {
         select: {
           categoryId: true,
@@ -37,6 +42,10 @@ export async function loadCompanyPricingContext(
     companyId: company.id,
     customerGroupId: company.customerGroupId,
     discounts: company.discounts,
+    // Once per request, not once per line: the rung is a property of the
+    // customer, and a catalogue page of 24 products would otherwise aggregate
+    // the same turnover 24 times.
+    volumeDiscount: await resolveVolumeDiscount(prisma, company),
   };
 }
 
@@ -165,6 +174,7 @@ function toCatalogProduct(
           productId: p.id,
           categoryId: p.categoryId,
           discounts: ctx.discounts,
+          volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
         });
         return {
           ...base,

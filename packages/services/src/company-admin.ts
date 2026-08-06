@@ -5,6 +5,7 @@ import type {
   PaymentMethod,
   UpdateAddressInput,
   UpdateCompanyInput,
+  VolumeDiscountMode,
 } from "@repo/types";
 import { auditActor, recordAudit, type AuditContext } from "./audit";
 import { BusinessError } from "./errors";
@@ -35,6 +36,13 @@ export interface CompanyRow {
   allowedPaymentMethods: PaymentMethod[];
   /** The vade menu this customer picks from. Empty = default term applies. */
   paymentTerms: { id: string; name: string; days: number }[];
+  /** AUTO earns the hacim rung from turnover; MANUAL uses `volumeTier` as-is. */
+  volumeDiscountMode: VolumeDiscountMode;
+  /**
+   * The pinned rung. Meaningful only under MANUAL — under AUTO the rung in
+   * force is whatever turnover earns, which `getVolumeStatus` answers live.
+   */
+  volumeTier: { id: string; name: string; discountPercent: string } | null;
   counts: { orders: number; users: number; addresses: number };
 }
 
@@ -77,6 +85,8 @@ const companySelect = {
     select: { id: true, name: true, days: true },
     orderBy: [{ sortOrder: "asc" }, { days: "asc" }],
   },
+  volumeDiscountMode: true,
+  volumeTier: { select: { id: true, name: true, discountPercent: true } },
   _count: { select: { orders: true, members: true, addresses: true } },
 } satisfies Prisma.CompanySelect;
 
@@ -100,6 +110,14 @@ function toRow(c: CompanyPayload): CompanyRow {
     salesRep: c.salesRep,
     allowedPaymentMethods: c.allowedPaymentMethods,
     paymentTerms: c.paymentTerms,
+    volumeDiscountMode: c.volumeDiscountMode,
+    volumeTier: c.volumeTier
+      ? {
+          id: c.volumeTier.id,
+          name: c.volumeTier.name,
+          discountPercent: c.volumeTier.discountPercent.toFixed(2),
+        }
+      : null,
     counts: {
       orders: c._count.orders,
       users: c._count.members,
@@ -169,7 +187,17 @@ async function assertReferences(input: {
   customerGroupId?: string | null;
   salesRepId?: string | null;
   paymentTermIds?: string[];
+  volumeTierId?: string | null;
 }): Promise<void> {
+  if (input.volumeTierId) {
+    const tier = await prisma.volumeTier.findUnique({
+      where: { id: input.volumeTierId },
+      select: { id: true },
+    });
+    if (!tier) {
+      throw new BusinessError("VOLUME_TIER_NOT_FOUND", "Hacim basamağı bulunamadı");
+    }
+  }
   if (input.paymentTermIds && input.paymentTermIds.length > 0) {
     // Checked here rather than left to Prisma: `connect`/`set` on a missing row
     // raises P2025 with no indication of *which* id was wrong, and the admin
@@ -240,6 +268,8 @@ export async function createCompany(
       customerGroupId: input.customerGroupId ?? null,
       salesRepId: input.salesRepId ?? null,
       allowedPaymentMethods: input.allowedPaymentMethods,
+      volumeDiscountMode: input.volumeDiscountMode,
+      volumeTierId: input.volumeTierId ?? null,
       ...(input.paymentTermIds.length > 0
         ? { paymentTerms: { connect: input.paymentTermIds.map((id) => ({ id })) } }
         : {}),
@@ -295,6 +325,10 @@ export async function updateCompany(
       ...(input.paymentTermIds !== undefined
         ? { paymentTerms: { set: input.paymentTermIds.map((id) => ({ id })) } }
         : {}),
+      ...(input.volumeDiscountMode !== undefined
+        ? { volumeDiscountMode: input.volumeDiscountMode }
+        : {}),
+      ...(input.volumeTierId !== undefined ? { volumeTierId: input.volumeTierId } : {}),
     },
     select: companySelect,
   });

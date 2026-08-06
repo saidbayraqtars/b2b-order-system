@@ -3,8 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { CompanyRow, CustomerGroupRow, PaymentTermRow } from "@repo/services";
-import { PAYMENT_METHOD_LABELS, PaymentMethodEnum, type PaymentMethod } from "@repo/types";
+import type {
+  CompanyRow,
+  CustomerGroupRow,
+  PaymentTermRow,
+  VolumeTierRow,
+} from "@repo/services";
+import {
+  PAYMENT_METHOD_LABELS,
+  PaymentMethodEnum,
+  VOLUME_DISCOUNT_MODE_LABELS,
+  VolumeDiscountModeEnum,
+  type PaymentMethod,
+  type VolumeDiscountMode,
+} from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 
@@ -28,6 +40,10 @@ export interface CompanyFormValues {
   allowedPaymentMethods: PaymentMethod[];
   /** Empty = no vade menu; the default term above applies silently. */
   paymentTermIds: string[];
+  /** AUTO earns the hacim rung from turnover; MANUAL pins the one below. */
+  volumeDiscountMode: VolumeDiscountMode;
+  /** Only read under MANUAL; empty there means "no hacim discount at all". */
+  volumeTierId: string;
 }
 
 export function CompanyForm({ company }: { company?: CompanyFormValues }) {
@@ -50,6 +66,8 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       salesRepId: "",
       allowedPaymentMethods: [],
       paymentTermIds: [],
+      volumeDiscountMode: "AUTO",
+      volumeTierId: "",
     },
   );
   const set = <K extends keyof CompanyFormValues>(k: K, val: CompanyFormValues[K]) =>
@@ -81,6 +99,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
     queryFn: () =>
       apiGet<{ salesReps: { id: string; name: string }[] }>("/api/admin/sales-reps"),
   });
+  const tiers = useQuery({
+    queryKey: ["admin-volume-tiers"],
+    queryFn: () => apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -104,6 +126,15 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         // the whole set — so omitting it would make un-ticking impossible.
         allowedPaymentMethods: v.allowedPaymentMethods,
         paymentTermIds: v.paymentTermIds,
+        volumeDiscountMode: v.volumeDiscountMode,
+        // Cleared deliberately when the mode is AUTO: leaving a stale pin behind
+        // would make the company page claim a rung the pricing path ignores.
+        volumeTierId:
+          v.volumeDiscountMode === "MANUAL" && v.volumeTierId
+            ? v.volumeTierId
+            : editing
+              ? null
+              : undefined,
       };
       if (editing) {
         await apiPatch(`/api/admin/companies/${company!.id}`, body);
@@ -256,6 +287,58 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             <span className="text-sm text-neutral-500">
               Henüz vade tanımı yok.
             </span>
+          )}
+        </div>
+      </fieldset>
+
+      <fieldset className="mt-5 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+        <legend className="px-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+          Hacim iskontosu
+        </legend>
+        <p className="mb-3 text-xs text-neutral-500">
+          Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı kendiliğinden
+          alır. Elle atadığınızda ciroya hiç bakılmaz — sözleşmeyle söz verilmiş
+          bir oran, düşük geçen bir çeyrekte kaybolmasın diye. Basamak
+          seçmezseniz bu firma hacim iskontosu almaz. Tanımlar{" "}
+          <strong>Hacim</strong> sayfasında yapılır.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label>
+            <Label>Belirleme şekli</Label>
+            <Select
+              value={v.volumeDiscountMode}
+              onChange={(e) =>
+                set("volumeDiscountMode", e.target.value as VolumeDiscountMode)
+              }
+            >
+              {VolumeDiscountModeEnum.options.map((m) => (
+                <option key={m} value={m}>
+                  {VOLUME_DISCOUNT_MODE_LABELS[m]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {v.volumeDiscountMode === "MANUAL" && (
+            <label>
+              <Label hint="boş = iskonto yok">Basamak</Label>
+              <Select
+                value={v.volumeTierId}
+                onChange={(e) => set("volumeTierId", e.target.value)}
+              >
+                <option value="">— yok —</option>
+                {(tiers.data?.tiers ?? [])
+                  // A retired rung stays selectable while it is the one in
+                  // force: the customer keeps the rate, and the admin can see
+                  // what that rate is instead of an empty box.
+                  .filter((t) => t.isActive || t.id === v.volumeTierId)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} (%{t.discountPercent})
+                      {t.isActive ? "" : " — pasif"}
+                    </option>
+                  ))}
+              </Select>
+            </label>
           )}
         </div>
       </fieldset>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderDetail } from "@repo/services";
-import type { OrderStatus, Role } from "@repo/types";
+import { PAYMENT_METHOD_LABELS, type OrderStatus, type Role } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { FulfilmentPanel } from "./fulfilment-panel";
@@ -156,6 +156,14 @@ export function OrderDetailView({
         <div className="space-y-1 text-sm">
           <Row label="Ara toplam" value={formatTRY(o.subtotal)} />
           <Row label="İskonto" value={formatTRY(o.discountTotal)} />
+          {o.volumeTier && (
+            // Part of "İskonto" above, not a further deduction — named because
+            // a customer asking why the price moved deserves the reason.
+            <Row
+              label={`↳ Hacim: ${o.volumeTier.name} (%${o.volumeTier.percent})`}
+              value="iskontoya dahil"
+            />
+          )}
           {o.promotions.map((p) => (
             <Row
               key={p.promotionId}
@@ -175,10 +183,10 @@ export function OrderDetailView({
           <Row label="KDV" value={formatTRY(o.taxTotal)} />
           <Row label="Genel toplam" value={formatTRY(o.grandTotal)} strong />
           <Row label="Vade" value={`${o.paymentTermDays} gün`} />
-          <Row
-            label="Ödeme"
-            value={o.paymentMethod === "OPEN_ACCOUNT" ? "Açık hesap" : "Kredi kartı"}
-          />
+          {/* One label map, next to the enum: this used to branch on
+              OPEN_ACCOUNT and call everything else "Kredi kartı", so a çek
+              order showed the wrong settlement. */}
+          <Row label="Ödeme" value={PAYMENT_METHOD_LABELS[o.paymentMethod]} />
         </div>
 
         <div className="space-y-1 text-sm">

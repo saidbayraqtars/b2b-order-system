@@ -11,6 +11,7 @@ import {
   Percent,
   ShieldCheck,
   Tags,
+  TrendingUp,
   Users,
   Wand2,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const LINKS: NavLink[] = [
   { href: "/admin/customer-groups", label: "Gruplar", icon: Layers },
   { href: "/admin/promotions", label: "Kampanyalar", icon: Percent },
   { href: "/admin/payment-terms", label: "Vadeler", icon: CalendarClock },
+  { href: "/admin/volume-tiers", label: "Hacim", icon: TrendingUp },
   { href: "/admin/announcements", label: "Duyurular", icon: Megaphone },
   { href: "/admin/documents", label: "Belgeler", icon: FileText },
   { href: "/admin/reports", label: "Raporlar", icon: BarChart3 },

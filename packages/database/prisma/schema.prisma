@@ -76,6 +76,12 @@ enum DiscountType {
   FIXED
 }
 
+/// Whether a customer's hacim (turnover) tier is earned or granted.
+enum VolumeDiscountMode {
+  AUTO // recomputed from the customer's own turnover, every time it is priced
+  MANUAL // pinned by an admin; turnover is not consulted at all
+}
+
 /// Which serial a document draws from. Waybill = irsaliye, invoice = fatura.
 enum DocumentType {
   WAYBILL
@@ -184,6 +190,18 @@ model Company {
   /// order behaved before terms existed.
   paymentTerms PaymentTerm[] @relation("CompanyPaymentTerms")
 
+  /// How this customer's hacim (turnover) discount is decided — see VolumeTier.
+  /// AUTO earns it from actual turnover on every pricing request; MANUAL freezes
+  /// it to the pin below, so a tier promised in a contract survives a slow
+  /// quarter. Nothing is cached: the price a customer sees is always computed.
+  volumeDiscountMode VolumeDiscountMode @default(AUTO)
+
+  /// The pinned tier. Read **only** under MANUAL, where null means "no hacim
+  /// discount for this customer" — that is how the feature is switched off for
+  /// one cari without touching the ladder everyone else is on.
+  volumeTierId String?
+  volumeTier   VolumeTier? @relation(fields: [volumeTierId], references: [id])
+
   // If true, COMPANY_STAFF orders go to PENDING_APPROVAL before credit check.
   requiresOrderApproval Boolean @default(false)
 
@@ -210,6 +228,7 @@ model Company {
 
   @@index([customerGroupId])
   @@index([salesRepId])
+  @@index([volumeTierId])
 }
 
 model Address {
@@ -248,6 +267,45 @@ model PaymentTerm {
   sortOrder Int     @default(0)
 
   companies Company[] @relation("CompanyPaymentTerms")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+/// A rung on the turnover ladder: "buy at least `minRevenue` worth of goods in
+/// the last `windowMonths` months and every line gets `discountPercent` off".
+///
+/// The ladder is global — it is the same offer to everyone, which is what makes
+/// it a hacim iskontosu rather than a private deal (that is CompanyDiscount).
+/// A customer gets the *best* rung it qualifies for, so rungs with different
+/// windows can coexist: "500.000 in a year" and "80.000 in a month" are two
+/// honest offers, and whichever pays the customer more is the one that applies.
+model VolumeTier {
+  id   String @id @default(cuid())
+  /// Shown on the order and in the cart. Unique so two rungs cannot share a
+  /// name and become impossible to tell apart on an old order.
+  name String @unique
+
+  /// Net goods turnover to reach — VAT and freight excluded, because neither is
+  /// the seller's revenue and charging a customer's own VAT towards its tier
+  /// would make the ladder depend on the product mix.
+  minRevenue Decimal @db.Decimal(14, 2)
+
+  /// Rolling window in months, counted back from the moment of pricing.
+  windowMonths Int @default(12)
+
+  /// Percent off, applied *after* the customer's own CompanyDiscount — iskonto
+  /// üstüne iskonto, the way it is quoted in trade.
+  discountPercent Decimal @db.Decimal(5, 2)
+
+  /// Retired without deleting: orders sold on this rung stay explainable, and
+  /// an inactive rung is simply never awarded.
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  companies Company[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -665,6 +723,12 @@ model Order {
   /// from here, and aging uses it for debts not yet invoiced.
   paymentTermDays Int?
 
+  /// The hacim tier this order was priced under, snapshotted by name and rate.
+  /// No FK on purpose, exactly as with the vade: retiring "Altın %5" next year
+  /// must not rewrite what a customer was charged today. Zero = none applied.
+  volumeTierName        String?
+  volumeDiscountPercent Decimal @default(0) @db.Decimal(5, 2)
+
   /// The coupon the buyer typed, kept for the record even after the campaign ends.
   couponCode String?
 
@@ -727,7 +791,14 @@ model OrderItem {
   quantity    Int // total units
   caseCount   Int? // number of cases (if case-based)
   unitPrice   Decimal @db.Decimal(12, 2)
-  discount    Decimal @default(0) @db.Decimal(12, 2) // company discount, per unit
+  /// **Total** discount per unit off `unitPrice`: the company's own discount
+  /// plus whatever the hacim tier added. Invoicing and reporting multiply this
+  /// by the quantity, so it must stay the whole figure.
+  discount    Decimal @default(0) @db.Decimal(12, 2)
+  /// The part of `discount` that came from the hacim tier — carried separately
+  /// so a report can answer "what did the turnover ladder cost us" without
+  /// re-deriving it from a percentage that may since have changed.
+  volumeDiscount Decimal @default(0) @db.Decimal(12, 2)
   /// Promotion discount for the whole line (not per unit) — promotions are
   /// allocated to lines, so this is what the campaign took off this line.
   promotionDiscount Decimal @default(0) @db.Decimal(14, 2)

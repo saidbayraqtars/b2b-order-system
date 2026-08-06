@@ -40,3 +40,5 @@ export * from "./activity";
 export * from "./principal-cache";
 export * from "./announcement";
 export * from "./payment-terms";
+export * from "./order-status";
+export * from "./volume-discount";

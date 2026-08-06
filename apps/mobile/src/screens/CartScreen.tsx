@@ -231,6 +231,14 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
             )}
           </Text>
         </View>
+        {q?.volumeDiscount ? (
+          // Named, not deducted: the ara toplam above is already net of it.
+          <Text className="text-xs text-emerald-700 dark:text-emerald-400">
+            Hacim iskontosu — {q.volumeDiscount.tierName} (%
+            {q.volumeDiscount.percent}), ara toplama dahil: −
+            {formatMoney(q.volumeDiscount.amount)}
+          </Text>
+        ) : null}
         {q?.promotions.map((p) => (
           <View key={p.promotionId} className="flex-row justify-between">
             <Text className="flex-1 text-emerald-700 dark:text-emerald-400">

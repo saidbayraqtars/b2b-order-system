@@ -31,13 +31,27 @@ export interface ResolvePriceInput {
   categoryId: string;
   /** The buying company's discounts (all of them; matching happens here). */
   discounts: DiscountRow[];
+  /**
+   * Hacim (turnover) tier rate for this company, or null/0 when none applies.
+   * Resolved once per request — see `resolveVolumeDiscount` — because it is a
+   * property of the customer, not of the line.
+   */
+  volumeDiscountPercent?: Decimal | null;
 }
 
 export interface ResolvedPrice {
-  /** Base group/list price before company discount, per unit. */
+  /** Base group/list price before any discount, per unit. */
   unitPrice: Decimal;
-  /** Discount applied per unit (>= 0). */
+  /**
+   * **Total** discount per unit: the company's own plus the hacim tier's.
+   * Always `unitPrice - netUnitPrice`, which is what the order snapshot,
+   * invoicing and the catalogue all read.
+   */
   discountPerUnit: Decimal;
+  /** The share of `discountPerUnit` from CompanyDiscount alone. */
+  companyDiscountPerUnit: Decimal;
+  /** The share of `discountPerUnit` from the hacim tier alone. */
+  volumeDiscountPerUnit: Decimal;
   /** unitPrice - discountPerUnit, floored at 0, per unit. */
   netUnitPrice: Decimal;
   /** netUnitPrice * quantity, excl. VAT. */
@@ -66,11 +80,20 @@ function pickTier(rows: PriceRow[], quantity: number): Decimal | null {
 
 /**
  * Resolve the net unit price for a variant given quantity, the company's
- * customer group, and the company's discounts.
+ * customer group, its discounts and its hacim tier.
  *
  * Precedence:
  *  1. Base price = group-specific tier if present, else default (null-group) tier.
  *  2. Company discount = product-specific if present, else category-specific.
+ *  3. Hacim tier percent, off what is left after step 2.
+ *
+ * Step 3 compounds rather than adding to step 2 — iskonto üstüne iskonto, the
+ * way it is quoted in trade: 20% then 5% is 24% off, not 25%. Adding the rates
+ * instead would let a generous private deal plus a top tier reach 100% and give
+ * the goods away.
+ *
+ * Every screen that shows a price goes through here (catalogue, cart, quote,
+ * order), so the number a customer sees browsing is the number it is charged.
  *
  * Throws BusinessError("NO_PRICE") if neither a group nor a default price exists.
  */
@@ -97,17 +120,32 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
     });
   }
 
-  const discountPerUnit = round2(
+  const unitPrice = round2(base);
+  const companyDiscountPerUnit = round2(
     computeDiscount(base, productId, categoryId, discounts),
   );
-  const unitPrice = round2(base);
-  let netUnitPrice = unitPrice.sub(discountPerUnit);
+
+  // Floored before the tier is applied: a FIXED discount larger than the price
+  // would otherwise make the tier's percentage negative and *add* money back.
+  let afterCompany = unitPrice.sub(companyDiscountPerUnit);
+  if (afterCompany.lt(ZERO)) afterCompany = ZERO;
+
+  const percent = input.volumeDiscountPercent;
+  const volumeDiscountPerUnit =
+    percent && percent.gt(ZERO)
+      ? round2(afterCompany.mul(percent).div(100))
+      : ZERO;
+
+  const discountPerUnit = companyDiscountPerUnit.add(volumeDiscountPerUnit);
+  let netUnitPrice = afterCompany.sub(volumeDiscountPerUnit);
   if (netUnitPrice.lt(ZERO)) netUnitPrice = ZERO;
   netUnitPrice = round2(netUnitPrice);
 
   return {
     unitPrice,
     discountPerUnit,
+    companyDiscountPerUnit,
+    volumeDiscountPerUnit,
     netUnitPrice,
     lineNet: round2(netUnitPrice.mul(quantity)),
   };

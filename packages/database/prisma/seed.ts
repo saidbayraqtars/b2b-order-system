@@ -53,6 +53,32 @@ async function main() {
     ),
   );
 
+  // ── Hacim iskontosu merdiveni ──
+  // The same offer to everyone; each company earns the best rung its own
+  // turnover reaches. Seeded with a yearly ladder plus one short-window rung,
+  // because "best rate wins" is only really exercised when the windows differ.
+  const tiers = await Promise.all(
+    [
+      { name: "Bronz", minRevenue: 100_000, windowMonths: 12, discountPercent: 1.5 },
+      { name: "Gümüş", minRevenue: 300_000, windowMonths: 12, discountPercent: 3 },
+      { name: "Altın", minRevenue: 750_000, windowMonths: 12, discountPercent: 5 },
+      { name: "Çeyrek Atağı", minRevenue: 120_000, windowMonths: 3, discountPercent: 4 },
+    ].map((t) =>
+      prisma.volumeTier.upsert({
+        where: { name: t.name },
+        // Refreshed on re-run, like the vade menu: `update: {}` would leave an
+        // already-seeded database describing thresholds it does not have.
+        update: {
+          minRevenue: t.minRevenue,
+          windowMonths: t.windowMonths,
+          discountPercent: t.discountPercent,
+          isActive: true,
+        },
+        create: { ...t, sortOrder: Math.round(t.minRevenue / 1000) },
+      }),
+    ),
+  );
+
   // ── Company (cari) ──
   // Upsert, not create: the rest of the seed is idempotent, and re-running it to
   // pick up new fixtures must not duplicate the company or reset its balance.
@@ -92,7 +118,11 @@ async function main() {
   // görmemeli, adına sipariş girememeli.
   await prisma.company.upsert({
     where: { taxNumber: "9876543210" },
-    update: { allowedPaymentMethods: ["CASH", "BANK_TRANSFER"] },
+    update: {
+      allowedPaymentMethods: ["CASH", "BANK_TRANSFER"],
+      volumeDiscountMode: "MANUAL",
+      volumeTierId: tiers.find((t) => t.name === "Gümüş")?.id ?? null,
+    },
     create: {
       name: "Beta Dağıtım Ltd.",
       taxNumber: "9876543210",
@@ -103,6 +133,11 @@ async function main() {
       // that proves the restriction bites (açık hesap must be refused here) and
       // that a vade cannot be attached to a cash sale.
       allowedPaymentMethods: ["CASH", "BANK_TRANSFER"],
+      // Pinned rather than earned: this is the fixture for a rate promised in a
+      // contract. It must price at %3 with zero turnover, and it must keep
+      // pricing at %3 if "Gümüş" is later retired from the ladder.
+      volumeDiscountMode: "MANUAL",
+      volumeTierId: tiers.find((t) => t.name === "Gümüş")?.id ?? null,
       addresses: {
         create: {
           label: "Merkez",
