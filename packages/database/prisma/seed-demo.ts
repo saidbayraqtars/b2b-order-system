@@ -133,14 +133,14 @@ interface SeedUser {
  * kişinin ayrılması diğerlerinin girişini etkilemiyor.
  */
 const USERS: SeedUser[] = [
-  { email: "patron@ozdemirkaya.local", name: "Mehmet Özdemirkaya", role: Role.SUPER_ADMIN, title: "Patron" },
-  { email: "it@ozdemirkaya.local", name: "IT Ekibi", role: Role.SUPER_ADMIN, title: "IT" },
-  { email: "satismudur@ozdemirkaya.local", name: "Satış Müdürü", role: Role.SUPER_ADMIN, title: "Satış müdürü" },
-  { email: "muhasebe@ozdemirkaya.local", name: "Muhasebe", role: Role.SUPER_ADMIN, title: "Muhasebe" },
+  { email: "patron@bayraktar.local", name: "Said Bayraktar", role: Role.SUPER_ADMIN, title: "Patron" },
+  { email: "it@bayraktar.local", name: "IT Ekibi", role: Role.SUPER_ADMIN, title: "IT" },
+  { email: "satismudur@bayraktar.local", name: "Satış Müdürü", role: Role.SUPER_ADMIN, title: "Satış müdürü" },
+  { email: "muhasebe@bayraktar.local", name: "Muhasebe", role: Role.SUPER_ADMIN, title: "Muhasebe" },
 
-  { email: "temsilci1@ozdemirkaya.local", name: "Ahmet Yılmaz", role: Role.SALES_REP, title: "Satış temsilcisi" },
-  { email: "temsilci2@ozdemirkaya.local", name: "Ayşe Demir", role: Role.SALES_REP, title: "Satış temsilcisi" },
-  { email: "temsilci3@ozdemirkaya.local", name: "Kemal Arslan", role: Role.SALES_REP, title: "Satış temsilcisi" },
+  { email: "temsilci1@bayraktar.local", name: "Ahmet Yılmaz", role: Role.SALES_REP, title: "Satış temsilcisi" },
+  { email: "temsilci2@bayraktar.local", name: "Ayşe Demir", role: Role.SALES_REP, title: "Satış temsilcisi" },
+  { email: "temsilci3@bayraktar.local", name: "Kemal Arslan", role: Role.SALES_REP, title: "Satış temsilcisi" },
 
   { email: "yonetici@akbayi.local", name: "Ak Bayi Yöneticisi", role: Role.COMPANY_ADMIN, company: "Ak Bayi Ticaret", title: "Müşteri yöneticisi" },
   { email: "personel@akbayi.local", name: "Ak Bayi Personeli", role: Role.COMPANY_STAFF, company: "Ak Bayi Ticaret", title: "Müşteri personeli" },
