@@ -3,7 +3,18 @@ import { RoleEnum } from "./enums";
 
 export const loginSchema = z.object({
   email: z.string().email("Geçerli bir e-posta girin"),
-  password: z.string().min(8, "Şifre en az 8 karakter olmalı"),
+  /**
+   * Yalnızca boş olmamalı — uzunluk/karmaşıklık kuralı **burada değil**.
+   *
+   * Şifre gücü, şifre *belirlenirken* denetlenir (`passwordSchema`). Giriş
+   * formunda aynı kuralı tekrarlamak yalnızca bir şeye yarar: veritabanında
+   * zaten duran geçerli bir şifreyle girişi engellemeye. Saldırıyı durduran
+   * şey bu değil — giriş hız sınırı ve hesap kilidi (bkz. security.ts).
+   *
+   * Bu ayrım pratikte de gerekli: kurallar sıkılaştığında eski şifreler
+   * aniden "giriş yapılamaz" hâle gelmemeli.
+   */
+  password: z.string().min(1, "Şifre gerekli").max(128),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
