@@ -10,7 +10,7 @@ import { parseQuery } from "@/lib/validate";
 // logins and denied requests across the whole system, which is not theirs.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "audit.view");
     const query = parseQuery(req, auditQuerySchema);
     return Response.json(await listAudit(query));
   });

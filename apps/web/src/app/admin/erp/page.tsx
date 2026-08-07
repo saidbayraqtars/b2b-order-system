@@ -1,15 +1,13 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { AgentsPanel } from "./_components/agents-panel";
 import { SyncRunsPanel } from "./_components/sync-runs-panel";
 
 export default async function AdminErpPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "erp.manage");
 
   return (
     <div>
-      <AdminNav email={user.email} current="/admin/erp" />
-      <main className="mx-auto max-w-5xl space-y-5 px-4 pb-8">
+      <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
         <h1 className="text-xl font-bold">ERP Bağlantısı</h1>
         <SyncRunsPanel />
         <AgentsPanel />

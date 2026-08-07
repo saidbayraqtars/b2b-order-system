@@ -7,7 +7,7 @@ import { UserManager } from "@/components/user-manager";
 // write to their company and refuses the two system roles, so this screen
 // cannot be used to reach outside the firm.
 export default async function PortalUsersPage() {
-  const user = await requirePage(["COMPANY_ADMIN"]);
+  const user = await requirePage(["COMPANY_ADMIN"], "users.manage");
 
   if (!user.companyId) {
     return (
@@ -29,6 +29,7 @@ export default async function PortalUsersPage() {
     <div>
       <PortalNav
         role={user.role}
+        permissions={user.permissions}
         companyName={company?.name ?? user.name}
         userName={user.name}
         current="/portal/users"
@@ -39,6 +40,7 @@ export default async function PortalUsersPage() {
           currentUserId={user.id}
           fixedCompanyId={user.companyId}
           allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
+          grantablePermissions={user.permissions}
         />
         <p className="mt-4 text-sm text-neutral-500">
           Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir;

@@ -8,7 +8,7 @@ import { parseBody } from "@/lib/validate";
 // sends that method back to the default till.
 export function PUT(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.manage");
     const input = await parseBody(req, setMethodBindingSchema);
     await setMethodBinding(input.method, input.accountId);
     return new Response(null, { status: 204 });

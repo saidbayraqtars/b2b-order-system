@@ -9,7 +9,7 @@ export default async function RepDashboardPage() {
 
   return (
     <div>
-      <RepNav userName={user.name} current="/rep" />
+      <RepNav userName={user.name} permissions={user.permissions} current="/rep" />
       <div className="mx-auto max-w-5xl px-4 pb-6">
         <RepDashboard />
       </div>

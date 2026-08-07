@@ -1,4 +1,5 @@
 import { PrismaClient, Role } from "@prisma/client";
+import { defaultPermissionsFor } from "@repo/types";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -15,6 +16,7 @@ async function main() {
       name: "Super Admin",
       passwordHash: password,
       role: Role.SUPER_ADMIN,
+      permissions: defaultPermissionsFor("SUPER_ADMIN"),
     },
   });
 
@@ -27,6 +29,7 @@ async function main() {
       name: "Plasiyer Ali",
       passwordHash: password,
       role: Role.SALES_REP,
+      permissions: defaultPermissionsFor("SALES_REP"),
     },
   });
 
@@ -159,6 +162,7 @@ async function main() {
       name: "Firma Yöneticisi",
       passwordHash: password,
       role: Role.COMPANY_ADMIN,
+      permissions: defaultPermissionsFor("COMPANY_ADMIN"),
       companyId: company.id,
     },
   });
@@ -170,6 +174,7 @@ async function main() {
       name: "Satın Almacı",
       passwordHash: password,
       role: Role.COMPANY_STAFF,
+      permissions: defaultPermissionsFor("COMPANY_STAFF"),
       companyId: company.id,
     },
   });

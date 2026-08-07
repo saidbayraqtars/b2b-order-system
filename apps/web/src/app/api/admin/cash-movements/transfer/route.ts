@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // like. Writes both legs in one database transaction; neither exists alone.
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "cash.manage");
     const input = await parseBody(req, cashTransferSchema);
     return Response.json(await transferBetweenAccounts(input, user.id), { status: 201 });
   });

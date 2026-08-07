@@ -9,7 +9,7 @@ export function GET() {
       "COMPANY_STAFF",
       "SALES_REP",
       "SUPER_ADMIN",
-    ]);
+    ], "products.view");
     const categories = await listCategoryTree();
     return Response.json({ categories });
   });

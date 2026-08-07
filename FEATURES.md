@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-06 · Adım 28 (sanal POS / ödeme sağlayıcı) sonu
+Son güncelleme: 2026-08-07 · Adım 30 (kullanıcı bazlı yetki + kenar çubuğu) sonu
 
 ---
 
@@ -42,6 +42,8 @@ Son güncelleme: 2026-08-06 · Adım 28 (sanal POS / ödeme sağlayıcı) sonu
 | 26 | Kuruluş kimliği + kiracı klasörü: `tenants/<slug>/tenant.json`, belgede satıcı bloğu, marka dosyaları | ✅ |
 | 27 | Kasa & banka defteri: peşin siparişin ve tahsilatın hesaba girmesi, elle giriş/çıkış, aktarım, gün sonu | ✅ |
 | 28 | Sanal POS: ödeme sağlayıcı kayıt defteri, ödeme niyeti, kart parası tahsil edilene kadar kasaya girmez | ✅ |
+| 29 | ERP köprüsü: müşterinin makinesindeki ajan, eşler-oluşturmaz, ERP bakiyesi ayrı kolonda | ✅ |
+| 30 | Kullanıcı bazlı yetki (29 adlandırılmış izin, tik tik seçim) + yönetim panelinde gruplu kenar çubuğu | ✅ |
 
 ---
 
@@ -1095,7 +1097,78 @@ ikinci kez yazamaz.
 **Doğrulama:** 11 birim + 10 entegrasyon testi (toplam **261**), typecheck +
 lint + build temiz.
 
-## 29. Web Portal (`apps/web`)
+## 29. Kullanıcı Bazlı Yetki & Yönetim Kabuğu (Adım 30)
+
+Rol tek yetki kaynağıydı: `SUPER_ADMIN` her şeyi yapar, `COMPANY_STAFF` sipariş
+girer, arası yok. Gerçek işletmede arası var — muhasebeci kasayı görür ama ürün
+fiyatına dokunmaz, satış müdürü katalogu yönetir ama denetim kaydını dışa
+aktarmaz. Bu adım yetkiyi rolden ayırdı.
+
+### İzin kayıt defteri
+
+`@repo/types/permission.ts` **29 adlandırılmış izin** tanımlar (`products.manage`,
+`cash.view`, `orders.approve`, `audit.manage` …), altı grupta. Rol iki kaba işi
+yapmaya devam eder — hangi bölüme (admin/portal/rep) girilir ve kullanıcı bir
+firmaya bağlı mıdır — ama "neyi yapabilir" sorusunun cevabı artık kullanıcı
+satırındaki `User.permissions` kümesidir.
+
+- **Rol bir şablon, sınır değil.** Yeni kullanıcı formunda rol seçilince tikler
+  o rolün varsayılanıyla dolar; sonrası tek tek açılıp kapatılır. Elle bir tik
+  atıldıktan sonra rol değişse bile küme ezilmez.
+- **Süper admin de izinlere tabi.** Rol bypass'ı olsaydı "her şeyi yapan ama
+  kasaya giremeyen yönetici" imkânsız olurdu.
+- **Enum değil `String[]`.** Ekran eklendikçe izin listesi büyüyor; her ekleme
+  için migration yazmak listeyi kullanılamaz yapardı. Bilinmeyen anahtarlar
+  okuma anında `sanitizePermissions` ile atılır.
+
+### Yetki devrinin iki sınırı
+
+| Koruma | Kural |
+|--------|-------|
+| `assertMayGrant` | **Kendinde olmayanı veremezsin.** Aksi hâlde kasaya erişimi olmayan firma yöneticisi kendine ikinci hesap açıp `cash.manage` verirdi. |
+| `assertNotSelfLockout` | Kendi `users.manage` iznini kaldıramazsın — geri verecek kimse kalmaz. Rol/pasife alma tarafındaki `SELF_TARGET` korumasının izin karşılığı. |
+
+Yetki kümesi değişince hedefin **oturumları sonlandırılır** (`tokenVersion`
+artar) ve principal önbelleği düşer: kısılan yetki bir sonraki istekte hissedilir,
+token süresi dolduğunda değil. Değişiklik `USER_PERMISSIONS_CHANGED` olarak
+denetim kaydına verilen/kaldırılan izinlerle ayrı ayrı yazılır ve güvenlik
+ekranında varsayılan olarak listelenir.
+
+### Uygulama noktası
+
+İzin kontrolü tek kapıda: `requireUser(roller?, izin?)` (API) ve
+`requirePage(roller, izin?)` (ekran). Rol reddi ile izin reddi ayrı kaydedilir —
+biri yapılandırma hatasına, diğeri çoğu zaman birinin yetkisinin kısılmasına
+işaret eder. İzin eksikse ekran `/403?perm=…` sayfasına gider ve **hangi**
+yetkinin eksik olduğunu söyler; kullanıcı yöneticisinden ne isteyeceğini bilir.
+
+Bağlanan uçlar: 52 admin route dosyası + portal/saha/rapor uçları (siparişten
+tahsilata, belgeden rapora). Menüler de izne göre süzülür — ama bu yalnızca
+görgüseldir, ekranın kendisi ayrıca kapalıdır.
+
+### Yükseltme güvenliği
+
+Migration kolonu boş dizi ile ekler ama **her satırı o anki rolünün şablonuyla
+doldurur**. Aksi hâlde migration'ın kendisi süper admin dâhil herkesi sistemden
+kilitlerdi. Bir test, backfill listesinin kayıt defteriyle aynı kaldığını
+doğrular: kayıt defterine izin eklenip backfill'e eklenmezse, yükselten
+müşteride o yetki kimsede olmaz ve kimse geri veremez.
+
+### Yönetim panelinde kenar çubuğu
+
+18 düz bağlantı üst barda üç satıra sarıyordu: hiyerarşi yok, hepsi eşit
+ağırlıkta, alan bitince satır ekleniyor. Yerine **gruplu sol kenar çubuğu**
+(`SidebarShell`) geldi — Genel / Katalog / Müşteriler / Finans / Belge & Rapor /
+Sistem. Kabuk 23 sayfada tek tek çizilmek yerine `admin/layout.tsx`'te bir kez
+çiziliyor; aktif bağlantı `usePathname` ile en uzun eşleşen yoldan bulunuyor, yani
+alt kırılımlar (firma detayı, ürün düzenleme) kendiliğinden üst bölümü işaretliyor.
+Mobilde çekmece olur ve gezinme sonrası kapanır. Alıcı portalı ve saha ekranları
+(5-6 bağlantı) üst barda kaldı.
+
+**Doğrulama:** 11 yeni birim testi (kayıt defteri bütünlüğü + backfill tutarlılığı),
+typecheck + lint temiz.
+
+## 30. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1136,7 +1209,7 @@ lint + build temiz.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 30. Mobil Uygulama (`apps/mobile`)
+## 31. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1151,7 +1224,7 @@ lint + build temiz.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 31. API Uçları
+## 32. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|

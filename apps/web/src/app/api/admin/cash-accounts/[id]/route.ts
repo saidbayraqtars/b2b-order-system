@@ -7,7 +7,7 @@ type Params = { params: { id: string } };
 
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.manage");
     const input = await parseBody(req, updateCashAccountSchema);
     await updateCashAccount(params.id, input);
     return new Response(null, { status: 204 });
@@ -19,7 +19,7 @@ export function PATCH(req: Request, { params }: Params) {
 // for it to be closed instead.
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.manage");
     await deleteCashAccount(params.id);
     return new Response(null, { status: 204 });
   });

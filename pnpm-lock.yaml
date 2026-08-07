@@ -259,6 +259,9 @@ importers:
       '@repo/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@repo/types':
+        specifier: workspace:*
+        version: link:../types
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6

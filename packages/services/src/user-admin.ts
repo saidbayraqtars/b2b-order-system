@@ -1,6 +1,13 @@
 import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
-import type { CreateUserInput, Role, UpdateUserInput } from "@repo/types";
+import {
+  defaultPermissionsFor,
+  sanitizePermissions,
+  type CreateUserInput,
+  type Permission,
+  type Role,
+  type UpdateUserInput,
+} from "@repo/types";
 import { recordAudit, type RequestMeta } from "./audit";
 import { BusinessError } from "./errors";
 import { evictPrincipal } from "./principal-cache";
@@ -27,6 +34,11 @@ export interface UserAdminContext {
   email: string;
   role: Role;
   companyId: string | null;
+  /**
+   * Çağıranın *kendi* izin kümesi. Yetki devrinin üst sınırı: kimse
+   * kendisinde olmayan bir izni başkasına veremez (bkz. assertMayGrant).
+   */
+  permissions: readonly Permission[];
   /** Client IP / user agent, recorded with every mutation. */
   meta?: RequestMeta;
 }
@@ -45,6 +57,7 @@ function privilegeChanged(
   input: UpdateUserInput,
   existing: { role: Role; isActive: boolean; companyId: string | null },
   nextCompanyId: string | null | undefined,
+  permissionsChanged: boolean,
 ): boolean {
   if (input.role !== undefined && input.role !== existing.role) return true;
   if (input.isActive !== undefined && input.isActive !== existing.isActive) {
@@ -53,7 +66,14 @@ function privilegeChanged(
   if (nextCompanyId !== undefined && nextCompanyId !== existing.companyId) {
     return true;
   }
-  return false;
+  // İzin kümesi artık yetkinin kendisi; kısıldığında eski oturumun yaşamaya
+  // devam etmesi rol düşürmenin yaşamaya devam etmesinden farksız olurdu.
+  return permissionsChanged;
+}
+
+/** Sıralı iki küme aynı mı — sanitize edilmiş listeler zaten sıralı geliyor. */
+function samePermissions(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((p, i) => p === b[i]);
 }
 
 export interface UserRow {
@@ -63,6 +83,8 @@ export interface UserRow {
   phone: string | null;
   role: Role;
   isActive: boolean;
+  /** Kayıtlı izin kümesi — düzenleme ekranındaki tiklerin kaynağı. */
+  permissions: Permission[];
   company: { id: string; name: string } | null;
   /** Portfolio size, for sales reps. */
   managedCompanyCount: number;
@@ -78,6 +100,7 @@ const userSelect = {
   phone: true,
   role: true,
   isActive: true,
+  permissions: true,
   createdAt: true,
   company: { select: { id: true, name: true } },
   _count: { select: { managedCompanies: true } },
@@ -90,6 +113,7 @@ function toRow(u: {
   phone: string | null;
   role: Role;
   isActive: boolean;
+  permissions: string[];
   createdAt: Date;
   company: { id: string; name: string } | null;
   _count: { managedCompanies: number };
@@ -101,6 +125,7 @@ function toRow(u: {
     phone: u.phone,
     role: u.role,
     isActive: u.isActive,
+    permissions: sanitizePermissions(u.permissions),
     company: u.company,
     managedCompanyCount: u._count.managedCompanies,
     createdAt: u.createdAt.toISOString(),
@@ -125,6 +150,50 @@ function assertMayAssign(ctx: UserAdminContext, role: Role): void {
       "FORBIDDEN",
       "Bu rolü atama yetkiniz yok",
       { role },
+    );
+  }
+}
+
+/**
+ * Yetki devrinin üst sınırı: **kendinde olmayanı veremezsin.**
+ *
+ * Tek satırlık kural ama sistemin izin modelini ayakta tutan şey bu. Aksi
+ * hâlde kasaya erişimi olmayan bir firma yöneticisi kendine ikinci bir hesap
+ * açıp `cash.manage` verir ve rol ayrımı bir dakika içinde anlamsızlaşır.
+ * `users.manage` iznine sahip olmak "her yetkiyi dağıtabilirim" demek değil.
+ */
+function assertMayGrant(
+  ctx: UserAdminContext,
+  requested: readonly Permission[],
+): void {
+  const own = new Set<Permission>(ctx.permissions);
+  const excess = requested.filter((p) => !own.has(p));
+  if (excess.length > 0) {
+    throw new BusinessError(
+      "FORBIDDEN",
+      "Kendinizde olmayan yetkiyi veremezsiniz",
+      { permissions: excess },
+    );
+  }
+}
+
+/**
+ * Yetki kümesi değişirken kendini kilitlemeye karşı koruma.
+ *
+ * `users.manage`'i kendinden almak geri dönüşü olmayan tek hamle: onu
+ * kaybeden kişi kendi yetkisini geri veremez, kimseye de veremez. Rol ve
+ * pasife alma tarafında aynı korumanın (SELF_TARGET) izin tarafındaki karşılığı.
+ */
+function assertNotSelfLockout(
+  ctx: UserAdminContext,
+  targetId: string,
+  next: readonly Permission[],
+): void {
+  if (targetId !== ctx.userId) return;
+  if (!next.includes("users.manage")) {
+    throw new BusinessError(
+      "SELF_TARGET",
+      "Kendi kullanıcı yönetimi yetkinizi kaldıramazsınız",
     );
   }
 }
@@ -268,6 +337,12 @@ export async function createUser(
   ctx: UserAdminContext,
 ): Promise<UserRow> {
   assertMayAssign(ctx, input.role);
+  // İzin verilmediyse rolün şablonu. "Rol seçtim, tik seçmedim" hâli boş yetkili
+  // ve dolayısıyla işe yaramaz bir hesap üretmesin.
+  const permissions = sanitizePermissions(
+    input.permissions ?? defaultPermissionsFor(input.role),
+  );
+  assertMayGrant(ctx, permissions);
   const companyId = resolveCompanyId(ctx, input.role, input.companyId);
   await assertEmailFree(input.email);
 
@@ -286,6 +361,7 @@ export async function createUser(
       phone: input.phone ?? null,
       role: input.role,
       isActive: input.isActive,
+      permissions,
       companyId,
       passwordHash: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
       passwordChangedAt: new Date(),
@@ -296,12 +372,12 @@ export async function createUser(
   await recordAudit({
     actor: actorOf(ctx),
     action: "USER_CREATED",
-    summary: `Kullanıcı oluşturuldu: ${created.email} (${created.role})`,
+    summary: `Kullanıcı oluşturuldu: ${created.email} (${created.role}, ${permissions.length} yetki)`,
     entity: "User",
     entityId: created.id,
     ip: ctx.meta?.ip,
     userAgent: ctx.meta?.userAgent,
-    meta: { role: created.role, companyId },
+    meta: { role: created.role, companyId, permissions },
   });
 
   return toRow(created);
@@ -334,6 +410,22 @@ export async function updateUser(
     await assertEmailFree(input.email, id);
   }
 
+  // Yetki kümesi. Rol değişse bile tikler otomatik sıfırlanmıyor: rol şablonu
+  // yalnızca formda ön-doldurma yapar, kaydedilen küme burada gelen listedir.
+  // Böylece "plasiyer yaptım ama kasa yetkisi kalsın" gibi bilinçli ayarlar
+  // sessizce geri alınmaz.
+  const nextPermissions =
+    input.permissions !== undefined
+      ? sanitizePermissions(input.permissions)
+      : undefined;
+  if (nextPermissions) {
+    assertMayGrant(ctx, nextPermissions);
+    assertNotSelfLockout(ctx, id, nextPermissions);
+  }
+  const permissionsChanged =
+    nextPermissions !== undefined &&
+    !samePermissions(existing.permissions, nextPermissions);
+
   // Recomputed whenever the role or the company changes, so the
   // role ⇄ companyId invariant can never drift.
   const companyChanged = input.companyId !== undefined;
@@ -362,7 +454,7 @@ export async function updateUser(
 
   // Role, company and activation decide what a session may do, so any of them
   // changing has to invalidate the sessions already issued to this account.
-  const revoke = privilegeChanged(input, existing, companyId);
+  const revoke = privilegeChanged(input, existing, companyId, permissionsChanged);
 
   const updated = await prisma.user.update({
     where: { id },
@@ -372,6 +464,7 @@ export async function updateUser(
       ...(input.phone !== undefined ? { phone: input.phone ?? null } : {}),
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(nextPermissions !== undefined ? { permissions: nextPermissions } : {}),
       ...(companyId !== undefined ? { companyId } : {}),
       ...(revoke ? { tokenVersion: { increment: 1 } } : {}),
       // Re-enabling an account also clears whatever brute-force lock it carried.
@@ -404,6 +497,22 @@ export async function updateUser(
       ...audit,
       action: input.isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",
       summary: `${updated.email} ${input.isActive ? "aktifleştirildi" : "pasife alındı"}`,
+    });
+  }
+  if (permissionsChanged) {
+    // Eklenen/kaldırılan ayrı ayrı yazılıyor: "yetkiler değişti" satırı denetim
+    // için işe yaramaz, kimin neyi ne zaman aldığı işe yarar.
+    const before = new Set<string>(existing.permissions);
+    const after = new Set<string>(nextPermissions!);
+    const granted = nextPermissions!.filter((p) => !before.has(p));
+    const revoked = existing.permissions.filter((p) => !after.has(p));
+    await recordAudit({
+      ...audit,
+      action: "USER_PERMISSIONS_CHANGED",
+      summary:
+        `${updated.email}: ${granted.length} yetki verildi, ` +
+        `${revoked.length} yetki kaldırıldı`,
+      meta: { granted, revoked, result: nextPermissions },
     });
   }
   await recordAudit({

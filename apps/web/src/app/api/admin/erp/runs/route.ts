@@ -8,7 +8,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // rows looks fine on its own.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "erp.manage");
     const [runs, mapping] = await Promise.all([listSyncRuns(), getMappingStatus()]);
     return Response.json({ runs, mapping });
   });

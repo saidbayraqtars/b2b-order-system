@@ -10,7 +10,7 @@ type Params = { params: { id: string } };
 // POST /api/orders/:id/invoices — bill selected despatches, or everything left.
 export function GET(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    const user = await requireUser(undefined, "documents.view");
     await assertOrderVisible(user, params.id);
 
     return Response.json({ invoices: await listInvoices(params.id) });
@@ -19,7 +19,7 @@ export function GET(_req: Request, { params }: Params) {
 
 export function POST(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "orders.fulfil");
     const input = await parseBody(req, createInvoiceSchema);
 
     const invoice = await createInvoice(params.id, input, {

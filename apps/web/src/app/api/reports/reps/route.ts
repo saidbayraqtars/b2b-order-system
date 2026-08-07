@@ -7,7 +7,7 @@ import { parseQuery } from "@/lib/validate";
 // Super admin only: it compares reps against each other.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "reports.view");
     const query = parseQuery(req, reportQuerySchema);
 
     return Response.json(await getRepPerformance(query));

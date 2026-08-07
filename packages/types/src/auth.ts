@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RoleEnum } from "./enums";
+import { PermissionEnum } from "./permission";
 
 export const loginSchema = z.object({
   email: z.string().email("Geçerli bir e-posta girin"),
@@ -34,5 +35,13 @@ export const sessionUserSchema = z.object({
   name: z.string(),
   role: RoleEnum,
   companyId: z.string().nullable(),
+  /**
+   * İzin kümesi. Varsayılanı boş dizi, çünkü *token'dan gelen* değere hiçbir
+   * yerde güvenilmiyor: her istekte `loadPrincipal` satırı yeniden okuyup bu
+   * alanı ezer (bkz. security.ts). Buradaki alan yalnızca tipin tam olması ve
+   * izinler daha yeni olan bir kurulumda basılmış eski bir token'ın parse
+   * edilebilmesi için var.
+   */
+  permissions: z.array(PermissionEnum).default([]),
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;

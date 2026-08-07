@@ -11,7 +11,7 @@ type Params = { params: { id: string } };
 // it idempotent so a double-clicked button cannot book the amount twice.
 export function POST(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "cash.manage");
     return Response.json(await capturePaymentIntent(params.id, user.id));
   });
 }

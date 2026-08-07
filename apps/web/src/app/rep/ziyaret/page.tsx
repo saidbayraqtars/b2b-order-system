@@ -15,7 +15,7 @@ type Props = { searchParams: { companyId?: string } };
  * firma seçtiren bir duvar yerine geçmiş listelenir ve açık ziyaret gösterilir.
  */
 export default async function RepVisitPage({ searchParams }: Props) {
-  const user = await requirePage(["SALES_REP", "SUPER_ADMIN"]);
+  const user = await requirePage(["SALES_REP", "SUPER_ADMIN"], "visits.manage");
 
   // Firma verilmişse yetkilendirmeden geçir (portföy dışı firma → /403).
   const ctx = searchParams.companyId
@@ -26,6 +26,7 @@ export default async function RepVisitPage({ searchParams }: Props) {
     <div>
       <RepNav
         userName={user.name}
+        permissions={user.permissions}
         current="/rep/ziyaret"
         companyId={ctx?.companyId}
         companyName={ctx?.companyName}

@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:^",
+    "@repo/types": "workspace:*",
     "@repo/tsconfig": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^2.4.3",

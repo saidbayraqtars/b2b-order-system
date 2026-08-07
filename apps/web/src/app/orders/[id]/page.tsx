@@ -13,7 +13,7 @@ export default async function OrderDetailPage({
     "COMPANY_STAFF",
     "SALES_REP",
     "SUPER_ADMIN",
-  ]);
+  ], "orders.view");
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">

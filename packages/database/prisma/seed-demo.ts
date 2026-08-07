@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { PrismaClient, Role } from "@prisma/client";
+import { defaultPermissionsFor, type Permission } from "@repo/types";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -122,6 +123,12 @@ interface SeedUser {
   /** Hangi müşteri firmasına bağlı — yalnızca alıcı roller için. */
   company?: string;
   title: string;
+  /**
+   * Verilmezse rolün şablonu uygulanır. Elle verilen küme, aynı roldeki iki
+   * hesabın farklı yetkilerle çalışabildiğini gösterir — muhasebeci her şeyi
+   * gören bir yönetici değil.
+   */
+  permissions?: Permission[];
 }
 
 /**
@@ -135,8 +142,31 @@ interface SeedUser {
 const USERS: SeedUser[] = [
   { email: "patron@bayraktar.local", name: "Said Bayraktar", role: Role.SUPER_ADMIN, title: "Patron" },
   { email: "it@bayraktar.local", name: "IT Ekibi", role: Role.SUPER_ADMIN, title: "IT" },
-  { email: "satismudur@bayraktar.local", name: "Satış Müdürü", role: Role.SUPER_ADMIN, title: "Satış müdürü" },
-  { email: "muhasebe@bayraktar.local", name: "Muhasebe", role: Role.SUPER_ADMIN, title: "Muhasebe" },
+  {
+    email: "satismudur@bayraktar.local",
+    name: "Satış Müdürü",
+    role: Role.SUPER_ADMIN,
+    title: "Satış müdürü",
+    // Katalog, müşteri ve sipariş; kasa ve sistem ayarları dışında.
+    permissions: [
+      "products.view", "products.manage", "categories.manage", "pricing.manage",
+      "promotions.manage", "companies.view", "companies.manage", "groups.manage",
+      "orders.view", "orders.create", "orders.approve", "orders.fulfil",
+      "documents.view", "reports.view", "reports.build", "volume_tiers.manage",
+    ],
+  },
+  {
+    email: "muhasebe@bayraktar.local",
+    name: "Muhasebe",
+    role: Role.SUPER_ADMIN,
+    title: "Muhasebe",
+    // Para ve belge; ürün fiyatına ve kullanıcı yönetimine dokunmaz.
+    permissions: [
+      "companies.view", "orders.view", "cash.view", "cash.manage",
+      "payments.view", "payment_terms.manage", "documents.view",
+      "documents.manage", "reports.view", "reports.build",
+    ],
+  },
 
   { email: "temsilci1@bayraktar.local", name: "Ahmet Yılmaz", role: Role.SALES_REP, title: "Satış temsilcisi" },
   { email: "temsilci2@bayraktar.local", name: "Ayşe Demir", role: Role.SALES_REP, title: "Satış temsilcisi" },
@@ -192,8 +222,20 @@ async function seedUsers(): Promise<void> {
     if (user.role !== Role.SALES_REP) continue;
     const row = await prisma.user.upsert({
       where: { email: user.email },
-      update: { name: user.name, passwordHash, role: user.role, isActive: true },
-      create: { email: user.email, name: user.name, passwordHash, role: user.role },
+      update: {
+        name: user.name,
+        passwordHash,
+        role: user.role,
+        permissions: user.permissions ?? defaultPermissionsFor(user.role),
+        isActive: true,
+      },
+      create: {
+        email: user.email,
+        name: user.name,
+        passwordHash,
+        role: user.role,
+        permissions: user.permissions ?? defaultPermissionsFor(user.role),
+      },
       select: { id: true },
     });
     reps.push(row.id);
@@ -230,13 +272,21 @@ async function seedUsers(): Promise<void> {
     const companyId = user.company ? (companyIds.get(user.company) ?? null) : null;
     await prisma.user.upsert({
       where: { email: user.email },
-      update: { name: user.name, passwordHash, role: user.role, companyId, isActive: true },
+      update: {
+        name: user.name,
+        passwordHash,
+        role: user.role,
+        companyId,
+        permissions: user.permissions ?? defaultPermissionsFor(user.role),
+        isActive: true,
+      },
       create: {
         email: user.email,
         name: user.name,
         passwordHash,
         role: user.role,
         companyId,
+        permissions: user.permissions ?? defaultPermissionsFor(user.role),
       },
     });
   }

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../../../_components/admin-nav";
 import { StatementView } from "@/components/statement-view";
 
 export default async function AdminCompanyStatementPage({
@@ -10,7 +9,7 @@ export default async function AdminCompanyStatementPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "companies.view");
 
   const company = await prisma.company.findUnique({
     where: { id: params.id },
@@ -20,7 +19,6 @@ export default async function AdminCompanyStatementPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
-      <AdminNav email={user.email} current="/admin" />
       <Link
         href={`/admin/companies/${company.id}`}
         className="mb-3 inline-block text-sm text-neutral-500 hover:underline"

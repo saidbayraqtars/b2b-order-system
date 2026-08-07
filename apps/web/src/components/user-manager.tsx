@@ -3,9 +3,23 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserRow } from "@repo/services";
-import { ROLE_LABELS, type Role } from "@repo/types";
+import {
+  defaultPermissionsFor,
+  PERMISSION_LABELS,
+  ROLE_LABELS,
+  type Permission,
+  type Role,
+} from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import { PermissionPicker } from "@/components/permission-picker";
+
+/** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
+function samePermissionSet(a: readonly Permission[], b: readonly Permission[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(b);
+  return a.every((p) => set.has(p));
+}
 
 // Shared user administration surface.
 //
@@ -19,6 +33,7 @@ export function UserManager({
   allowedRoles,
   companies,
   currentUserId,
+  grantablePermissions,
 }: {
   /** Pin every read and write to one company (company detail page / portal). */
   fixedCompanyId?: string;
@@ -27,6 +42,11 @@ export function UserManager({
   companies?: { id: string; name: string }[];
   /** Used to grey out the self-destructive actions the API would reject anyway. */
   currentUserId: string;
+  /**
+   * Çağıranın kendi izin kümesi = dağıtabileceğinin üst sınırı. Sunucu aynı
+   * kuralı yeniden uygular (assertMayGrant), bu yalnızca formu dürüst tutar.
+   */
+  grantablePermissions: readonly Permission[];
 }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -64,6 +84,7 @@ export function UserManager({
           allowedRoles={allowedRoles}
           companies={companies}
           fixedCompanyId={fixedCompanyId}
+          grantablePermissions={grantablePermissions}
           onDone={() => {
             setCreating(false);
             invalidate();
@@ -110,6 +131,7 @@ export function UserManager({
                   key={u.id}
                   user={u}
                   allowedRoles={allowedRoles}
+                  grantablePermissions={grantablePermissions}
                   showCompany={!fixedCompanyId}
                   isSelf={u.id === currentUserId}
                   onChanged={invalidate}
@@ -137,19 +159,37 @@ function CreateUserForm({
   allowedRoles,
   companies,
   fixedCompanyId,
+  grantablePermissions,
   onDone,
 }: {
   allowedRoles: readonly Role[];
   companies?: { id: string; name: string }[];
   fixedCompanyId?: string;
+  grantablePermissions: readonly Permission[];
   onDone: () => void;
 }) {
+  const initialRole = allowedRoles[0] ?? "COMPANY_STAFF";
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<Role>(allowedRoles[0] ?? "COMPANY_STAFF");
+  const [role, setRole] = useState<Role>(initialRole);
   const [companyId, setCompanyId] = useState(fixedCompanyId ?? "");
   const [password, setPassword] = useState("");
+  // Yeni hesap: rolün şablonuyla başla, sonra tek tek düzelt. Elle bir tik
+  // atıldıktan sonra rol değişse bile küme ezilmez (bkz. handleRoleChange).
+  const [permissions, setPermissions] = useState<Permission[]>(() =>
+    defaultPermissionsFor(initialRole).filter((p) => grantablePermissions.includes(p)),
+  );
+  const [touchedPermissions, setTouchedPermissions] = useState(false);
+
+  const changeRole = (next: Role) => {
+    setRole(next);
+    if (!touchedPermissions) {
+      setPermissions(
+        defaultPermissionsFor(next).filter((p) => grantablePermissions.includes(p)),
+      );
+    }
+  };
 
   // Only the two company roles carry a company; the picker would be misleading
   // for a super admin or a sales rep.
@@ -163,6 +203,7 @@ function CreateUserForm({
         phone: phone || undefined,
         role,
         password,
+        permissions,
         companyId: needsCompany ? (fixedCompanyId ?? companyId) : undefined,
       }),
     onSuccess: () => {
@@ -194,8 +235,8 @@ function CreateUserForm({
           <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} />
         </label>
         <label>
-          <Label>Rol</Label>
-          <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <Label hint="yetki şablonunu belirler">Rol</Label>
+          <Select value={role} onChange={(e) => changeRole(e.target.value as Role)}>
             {allowedRoles.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
@@ -227,6 +268,18 @@ function CreateUserForm({
       </div>
 
       <div className="mt-3">
+        <PermissionPicker
+          value={permissions}
+          role={role}
+          grantable={grantablePermissions}
+          onChange={(next) => {
+            setPermissions(next);
+            setTouchedPermissions(true);
+          }}
+        />
+      </div>
+
+      <div className="mt-3">
         <Button
           disabled={
             create.isPending ||
@@ -239,6 +292,11 @@ function CreateUserForm({
         >
           Oluştur
         </Button>
+        {permissions.length === 0 && (
+          <span className="ml-3 text-xs text-amber-600 dark:text-amber-400">
+            Hiç yetki seçilmedi — bu hesap giriş yapar ama hiçbir ekranı açamaz.
+          </span>
+        )}
       </div>
       <ErrorLine error={create.error} />
     </div>
@@ -248,12 +306,14 @@ function CreateUserForm({
 function UserRowView({
   user,
   allowedRoles,
+  grantablePermissions,
   showCompany,
   isSelf,
   onChanged,
 }: {
   user: UserRow;
   allowedRoles: readonly Role[];
+  grantablePermissions: readonly Permission[];
   showCompany: boolean;
   isSelf: boolean;
   onChanged: () => void;
@@ -262,6 +322,7 @@ function UserRowView({
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone ?? "");
   const [role, setRole] = useState<Role>(user.role);
+  const [permissions, setPermissions] = useState<Permission[]>(user.permissions);
   const [password, setPassword] = useState("");
 
   const patch = useMutation({
@@ -333,6 +394,20 @@ function UserRowView({
                 className="w-44"
               />
             </label>
+            <div className="w-full">
+              <PermissionPicker
+                value={permissions}
+                role={role}
+                grantable={grantablePermissions}
+                onChange={setPermissions}
+              />
+              {isSelf && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Kendi hesabınızı düzenliyorsunuz: kullanıcı yönetimi yetkisini
+                  kaldıramazsınız, aksi hâlde geri açacak kimse kalmaz.
+                </p>
+              )}
+            </div>
             <Button
               disabled={patch.isPending || setPass.isPending}
               onClick={async () => {
@@ -341,6 +416,12 @@ function UserRowView({
                   name,
                   phone: phone || null,
                   ...(role !== user.role ? { role } : {}),
+                  // Değişmediyse gönderilmiyor: her kaydetmede izin yazmak
+                  // denetim kaydını anlamsız "yetki değişti" satırlarıyla
+                  // doldurur ve oturumları boşuna sonlandırır.
+                  ...(samePermissionSet(permissions, user.permissions)
+                    ? {}
+                    : { permissions }),
                 });
               }}
             >
@@ -367,6 +448,18 @@ function UserRowView({
             {user.managedCompanyCount} firma
           </span>
         )}
+        {/* Rol artık yetkiyi anlatmadığı için sayısı da yazılıyor: aynı roldeki
+            iki hesabın farklı yetkileri olabilir. */}
+        <span
+          className="ml-2 text-xs text-neutral-400"
+          title={
+            user.permissions.length > 0
+              ? user.permissions.map((p) => PERMISSION_LABELS[p]).join("\n")
+              : "Hiç yetki yok"
+          }
+        >
+          {user.permissions.length} yetki
+        </span>
       </td>
       {showCompany && (
         <td className="px-3 py-2 text-neutral-500">{user.company?.name ?? "—"}</td>

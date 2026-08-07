@@ -7,7 +7,7 @@ import { REPORT_BUILDER_ROLES, reportContext } from "@/lib/report-context";
 // own portfolio and an admin everything, from the same definition.
 export function GET(_req: Request, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.view");
     return Response.json(
       await runReportDefinition(params.id, reportContext(user)),
     );

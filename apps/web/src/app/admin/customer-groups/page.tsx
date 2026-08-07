@@ -1,13 +1,11 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { GroupsManager } from "./_components/groups-manager";
 
 export default async function AdminCustomerGroupsPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "companies.view");
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <AdminNav email={user.email} current="/admin/customer-groups" />
       <h1 className="mb-5 text-xl font-bold">Müşteri Grupları</h1>
       <GroupsManager />
       <p className="mt-4 text-sm text-neutral-500">

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
 import type { CatalogProduct, CategoryNode } from "@repo/services";
-import type { Role } from "@repo/types";
+import type { Permission, Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
@@ -20,6 +20,7 @@ interface Props {
   companyName: string;
   userName: string;
   role: Role;
+  permissions: readonly Permission[];
   /** Plasiyer / süper admin müşteri adına mı çalışıyor? */
   isProxy?: boolean;
   availableCredit?: string | null;
@@ -63,6 +64,7 @@ export function PortalClient({
   companyName,
   userName,
   role,
+  permissions,
   isProxy = false,
   availableCredit = null,
 }: Props) {
@@ -121,6 +123,7 @@ export function PortalClient({
     <div className="min-h-screen tech-paper">
       <PortalNav
         role={role}
+        permissions={permissions}
         companyName={companyName}
         userName={userName}
         current="/portal"

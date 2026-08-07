@@ -63,6 +63,7 @@ export const AuditActionEnum = z.enum([
   "USER_CREATED",
   "USER_UPDATED",
   "USER_ROLE_CHANGED",
+  "USER_PERMISSIONS_CHANGED",
   "USER_DEACTIVATED",
   "USER_ACTIVATED",
   "USER_DELETED",
@@ -92,6 +93,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   USER_CREATED: "Kullanıcı oluşturuldu",
   USER_UPDATED: "Kullanıcı güncellendi",
   USER_ROLE_CHANGED: "Rol değiştirildi",
+  USER_PERMISSIONS_CHANGED: "Yetkiler değiştirildi",
   USER_DEACTIVATED: "Kullanıcı pasife alındı",
   USER_ACTIVATED: "Kullanıcı aktifleştirildi",
   USER_DELETED: "Kullanıcı silindi",
@@ -110,6 +112,9 @@ export const SECURITY_ACTIONS: readonly AuditAction[] = [
   "SESSION_REVOKED",
   "ACCESS_DENIED",
   "USER_ROLE_CHANGED",
+  // Rol değişikliği kadar önemli: yetki artık asıl kaynak, bir izin sessizce
+  // eklenirse güvenlik ekranında görünmemesi kör nokta olurdu.
+  "USER_PERMISSIONS_CHANGED",
   "PASSWORD_RESET",
   "PASSWORD_RESET_COMPLETED",
   "USER_DELETED",

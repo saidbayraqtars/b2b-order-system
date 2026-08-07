@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // POST /api/admin/products/:id/variants — SKU and barcode must be free.
 export function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, createVariantSchema);
     const variant = await createVariant(params.id, input);
     return Response.json({ variant }, { status: 201 });

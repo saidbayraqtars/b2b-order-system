@@ -1,6 +1,6 @@
 import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
-import type { Role, SessionUser } from "@repo/types";
+import { sanitizePermissions, type Role, type SessionUser } from "@repo/types";
 import { recordAudit, type RequestMeta } from "./audit";
 import { checkIpThrottle } from "./rate-limit";
 import {
@@ -55,10 +55,16 @@ export async function loadPrincipal(userId: string): Promise<Principal | null> {
       companyId: true,
       isActive: true,
       tokenVersion: true,
+      permissions: true,
     },
   });
-  setCachedPrincipal(userId, row ?? null);
-  return row ?? null;
+  // Kolon String[]; bilinmeyen anahtarlar burada, tek girişte atılır. Böylece
+  // kaldırılmış bir izin adı veritabanında kalsa bile hiçbir kontrole yem olmaz.
+  const principal: Principal | null = row
+    ? { ...row, permissions: sanitizePermissions(row.permissions) }
+    : null;
+  setCachedPrincipal(userId, principal);
+  return principal;
 }
 
 export type PrincipalRejection = "UNKNOWN" | "DISABLED" | "STALE";
@@ -260,6 +266,7 @@ export async function attemptLogin(
       name: user.name,
       role: user.role,
       companyId: user.companyId,
+      permissions: sanitizePermissions(user.permissions),
     },
   };
 }

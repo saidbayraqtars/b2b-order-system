@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // GET /api/admin/categories — flat list with product/child counts.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.view");
     const categories = await listCategoriesAdmin();
     return Response.json({ categories });
   });
@@ -16,7 +16,7 @@ export function GET() {
 // POST /api/admin/categories — slug is derived from the name when omitted.
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "categories.manage");
     const input = await parseBody(req, createCategorySchema);
     const category = await createCategory(input);
     return Response.json({ category }, { status: 201 });

@@ -10,7 +10,7 @@ const FIELD_ROLES = ["SALES_REP", "SUPER_ADMIN"] as const;
 // and decrements the company's cached balance.
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(FIELD_ROLES);
+    const user = await requireUser(FIELD_ROLES, "cash.manage");
 
     const json = await req.json().catch(() => null);
     const parsed = recordPaymentSchema.safeParse(json);
@@ -33,7 +33,7 @@ export function POST(req: NextRequest) {
 // collect today" list. There is no unscoped listing.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(FIELD_ROLES);
+    const user = await requireUser(FIELD_ROLES, "cash.view");
     const requested = new URL(req.url).searchParams.get("companyId");
 
     const payments = requested

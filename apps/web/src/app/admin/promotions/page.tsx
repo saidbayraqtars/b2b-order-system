@@ -1,13 +1,11 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { PromotionsManager } from "./_components/promotions-manager";
 
 export default async function AdminPromotionsPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "promotions.manage");
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
-      <AdminNav email={user.email} current="/admin/promotions" />
       <h1 className="mb-5 text-xl font-bold">Kampanyalar</h1>
       <PromotionsManager />
       <p className="mt-4 text-sm text-neutral-500">

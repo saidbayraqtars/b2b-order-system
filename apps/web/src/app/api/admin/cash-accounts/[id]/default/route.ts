@@ -9,7 +9,7 @@ type Params = { params: { id: string } };
 // from renaming one.
 export function POST(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.manage");
     await setDefaultCashAccount(params.id);
     return new Response(null, { status: 204 });
   });

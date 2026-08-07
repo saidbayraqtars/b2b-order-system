@@ -17,7 +17,7 @@ export default async function PortalStatementPage({ searchParams }: Props) {
     "COMPANY_STAFF",
     "SALES_REP",
     "SUPER_ADMIN",
-  ]);
+  ], "companies.view");
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
   if (!ctx.companyId) redirect("/portal");
@@ -26,6 +26,7 @@ export default async function PortalStatementPage({ searchParams }: Props) {
     <div>
       <PortalNav
         role={user.role}
+        permissions={user.permissions}
         companyName={ctx.companyName}
         userName={user.name}
         current="/portal/statement"

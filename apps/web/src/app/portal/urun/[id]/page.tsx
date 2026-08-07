@@ -22,7 +22,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     "COMPANY_STAFF",
     "SALES_REP",
     "SUPER_ADMIN",
-  ]);
+  ], "products.view");
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
 
@@ -47,6 +47,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     <div className="min-h-screen tech-paper">
       <PortalNav
         role={user.role}
+        permissions={user.permissions}
         companyName={ctx.companyName}
         userName={user.name}
         current="/portal"

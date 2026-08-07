@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethodEnum, RoleEnum, VolumeDiscountModeEnum } from "./enums";
+import { permissionListSchema } from "./permission";
 
 // Company, address, user and customer-group administration.
 // Role rules (who may create what) live in the service layer — these schemas
@@ -201,6 +202,12 @@ export const createUserSchema = z.object({
   password: passwordSchema,
   companyId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
   isActive: z.boolean().default(true),
+  /**
+   * Tek tek seçilen yetkiler. Yokluğu "yetki verme" değil, "rolün şablonunu
+   * kullan" demek (bkz. createUser) — yoksa bu alanı bilmeyen eski bir istemci
+   * yetkisiz, işe yaramaz hesaplar açardı.
+   */
+  permissions: permissionListSchema.optional(),
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
@@ -212,6 +219,8 @@ export const updateUserSchema = z
     role: RoleEnum.optional(),
     companyId: z.string().cuid().nullable().optional(),
     isActive: z.boolean().optional(),
+    /** Verilirse kümenin tamamı bununla değiştirilir — kısmi ekleme/çıkarma yok. */
+    permissions: permissionListSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

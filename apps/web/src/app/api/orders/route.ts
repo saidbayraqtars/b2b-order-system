@@ -20,7 +20,7 @@ const ALL_BUYERS = [
 // POST /api/orders — create an order for the caller's authorized company.
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_BUYERS);
+    const user = await requireUser(ALL_BUYERS, "orders.create");
 
     const json = await req.json().catch(() => null);
     const parsed = createOrderSchema.safeParse(json);
@@ -70,7 +70,7 @@ export function POST(req: NextRequest) {
 // GET /api/orders?companyId= — list orders visible to the caller.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_BUYERS);
+    const user = await requireUser(ALL_BUYERS, "orders.view");
     const { searchParams } = new URL(req.url);
     const requested = searchParams.get("companyId");
     const statusParam = OrderStatusEnum.safeParse(searchParams.get("status"));

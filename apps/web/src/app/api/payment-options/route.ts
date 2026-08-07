@@ -22,7 +22,7 @@ const ALL_BUYERS = [
 // call gains nothing.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_BUYERS);
+    const user = await requireUser(ALL_BUYERS, "orders.create");
     const { searchParams } = new URL(req.url);
     const companyId = await resolveCompanyId(user, searchParams.get("companyId"));
 

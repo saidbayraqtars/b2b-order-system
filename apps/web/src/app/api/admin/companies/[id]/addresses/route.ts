@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // becomes its default whether or not the caller asked for it.
 export function POST(req: Request, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "companies.manage");
     const input = await parseBody(req, createAddressSchema);
 
     return Response.json(

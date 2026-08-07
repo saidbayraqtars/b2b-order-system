@@ -19,7 +19,7 @@ const ALL_BUYERS = [
 // shows is what the order will charge.
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_BUYERS);
+    const user = await requireUser(ALL_BUYERS, "orders.create");
     const input = await parseBody(req, quoteOrderSchema);
 
     await resolveCompanyId(user, input.companyId);

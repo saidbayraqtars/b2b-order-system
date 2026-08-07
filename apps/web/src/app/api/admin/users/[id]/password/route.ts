@@ -9,7 +9,7 @@ import { userAdminContext, USER_ADMIN_ROLES } from "@/lib/user-admin-context";
 // effect of saving a form. Returns no body; the new password is never echoed.
 export function POST(req: Request, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     const { password } = await parseBody(req, setPasswordSchema);
 
     await setUserPassword(params.id, password, userAdminContext(user));

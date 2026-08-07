@@ -10,7 +10,7 @@ type Params = { params: { id: string } };
 // POST /api/orders/:id/shipments — record a (possibly partial) despatch.
 export function GET(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    const user = await requireUser(undefined, "documents.view");
     await assertOrderVisible(user, params.id);
 
     const [shipments, openLines] = await Promise.all([
@@ -23,7 +23,7 @@ export function GET(_req: Request, { params }: Params) {
 
 export function POST(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "orders.fulfil");
     const input = await parseBody(req, createShipmentSchema);
 
     return Response.json(

@@ -12,7 +12,7 @@ type Params = { params: { id: string } };
 
 export function GET(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     return Response.json({
       definition: await getReportDefinition(params.id, reportContext(user)),
     });
@@ -21,7 +21,7 @@ export function GET(_req: Request, { params }: Params) {
 
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     const input = await parseBody(req, updateReportDefinitionSchema);
 
     return Response.json(
@@ -32,7 +32,7 @@ export function PATCH(req: Request, { params }: Params) {
 
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     await deleteReportDefinition(params.id, reportContext(user));
     return new Response(null, { status: 204 });
   });

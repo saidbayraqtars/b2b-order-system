@@ -9,7 +9,7 @@ type Params = { params: { id: string } };
 // GET /api/admin/products/:id — full detail incl. variants and their price tiers.
 export function GET(_req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.view");
     const product = await getProductAdmin(params.id);
     return Response.json({ product });
   });
@@ -18,7 +18,7 @@ export function GET(_req: NextRequest, { params }: Params) {
 // PATCH /api/admin/products/:id
 export function PATCH(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, updateProductSchema);
     const product = await updateProduct(params.id, input);
     return Response.json({ product });
@@ -29,7 +29,7 @@ export function PATCH(req: NextRequest, { params }: Params) {
 // deactivate via PATCH { isActive: false } instead.
 export function DELETE(_req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.manage");
     await deleteProduct(params.id);
     return new Response(null, { status: 204 });
   });

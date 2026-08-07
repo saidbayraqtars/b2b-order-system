@@ -9,7 +9,7 @@ type Params = { params: { id: string } };
 // GET /api/admin/variants/:id/prices
 export function GET(_req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.view");
     const prices = await listVariantPrices(params.id);
     return Response.json({ prices });
   });
@@ -19,7 +19,7 @@ export function GET(_req: NextRequest, { params }: Params) {
 // re-posting the same tier updates its amount rather than erroring.
 export function POST(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, upsertPriceSchema);
     const price = await upsertPrice(params.id, input);
     return Response.json({ price }, { status: price.created ? 201 : 200 });

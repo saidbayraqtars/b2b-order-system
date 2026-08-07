@@ -7,7 +7,7 @@ import {
   ShoppingBag,
   Users,
 } from "lucide-react";
-import type { Role } from "@repo/types";
+import { hasPermission, type Permission, type Role } from "@repo/types";
 import { AppHeader, type NavLink } from "@/components/app-shell";
 import { CompanySwitcher } from "@/components/storefront/company-switcher";
 
@@ -25,6 +25,7 @@ import { CompanySwitcher } from "@/components/storefront/company-switcher";
  */
 export function PortalNav({
   role,
+  permissions,
   companyName,
   userName,
   current,
@@ -33,6 +34,8 @@ export function PortalNav({
   companyId,
 }: {
   role: Role;
+  /** Hesabın izin kümesi; menü buna göre süzülür (ekranlar ayrıca kapalıdır). */
+  permissions: readonly Permission[];
   companyName: string | null;
   userName: string;
   current: string;
@@ -43,20 +46,34 @@ export function PortalNav({
   // Vekil kullanıcıda seçili firma her bağlantıda korunur.
   const q =
     isProxy && companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
+  const can = (p: Permission) => hasPermission(permissions, p);
 
-  const links: NavLink[] = [
-    { href: `/portal${q}`, label: "Katalog", icon: ShoppingBag },
-    { href: `/portal/orders${q}`, label: "Siparişler", icon: ClipboardList },
-    { href: `/portal/statement${q}`, label: "Ekstre", icon: Receipt },
-  ];
-
-  if (!isProxy && role === "COMPANY_ADMIN") {
-    links.push(
-      { href: "/portal/approvals", label: "Onaylar", icon: CheckSquare },
-      { href: "/portal/users", label: "Kullanıcılar", icon: Users },
-    );
+  const links: NavLink[] = [];
+  if (can("products.view")) {
+    links.push({ href: `/portal${q}`, label: "Katalog", icon: ShoppingBag });
   }
-  if (role === "COMPANY_ADMIN" || role === "SUPER_ADMIN" || role === "SALES_REP") {
+  if (can("orders.view")) {
+    links.push({
+      href: `/portal/orders${q}`,
+      label: "Siparişler",
+      icon: ClipboardList,
+    });
+  }
+  if (can("companies.view")) {
+    links.push({ href: `/portal/statement${q}`, label: "Ekstre", icon: Receipt });
+  }
+
+  // Rol *ve* izin: onay/kullanıcı ekranları müşterinin kendi iç işleyişi
+  // olduğu için vekile hiç gösterilmez, yetkisi olsa bile.
+  if (!isProxy && role === "COMPANY_ADMIN") {
+    if (can("orders.approve")) {
+      links.push({ href: "/portal/approvals", label: "Onaylar", icon: CheckSquare });
+    }
+    if (can("users.manage")) {
+      links.push({ href: "/portal/users", label: "Kullanıcılar", icon: Users });
+    }
+  }
+  if (can("reports.build")) {
     links.push({ href: "/reports", label: "Raporlar", icon: BarChart3 });
   }
 

@@ -112,6 +112,15 @@ model User {
   role         Role    @default(COMPANY_STAFF)
   isActive     Boolean @default(true)
 
+  /// Ne yapabileceğini belirleyen adlandırılmış izinler (@repo/types
+  /// PermissionEnum). Rol yalnızca hangi bölüme girildiğini ve firma bağını
+  /// söyler; yetkiyi bu küme söyler. Hesap açılırken rolün şablonuyla dolar,
+  /// sonra tek tek açılıp kapatılır. Boş küme = hiçbir yönetim ekranı yok.
+  /// Enum[] değil String[]: izin listesi ekran eklendikçe büyüyor ve her
+  /// ekleme için migration yazmak listeyi kullanılamaz yapardı — bilinmeyen
+  /// anahtarlar okunurken `sanitizePermissions` ile atılır.
+  permissions String[] @default([])
+
   /// Bumped whenever the account's privileges or password change. Every issued
   /// session (web cookie JWT and mobile bearer token) carries the value it was
   /// minted with; a mismatch invalidates it on the next request. Without this,
@@ -1429,6 +1438,7 @@ enum AuditAction {
   USER_CREATED
   USER_UPDATED
   USER_ROLE_CHANGED
+  USER_PERMISSIONS_CHANGED // yetki kümesi kısıldı/genişletildi
   USER_DEACTIVATED
   USER_ACTIVATED
   USER_DELETED

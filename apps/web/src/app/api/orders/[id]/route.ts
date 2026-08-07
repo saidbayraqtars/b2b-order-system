@@ -14,7 +14,7 @@ const ALL_ROLES = [
 // GET /api/orders/:id — full detail, scoped to what the caller may see.
 export function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_ROLES);
+    const user = await requireUser(ALL_ROLES, "orders.view");
 
     // Authorize through the order's company so reps stay inside their portfolio.
     const order = await prisma.order.findUnique({

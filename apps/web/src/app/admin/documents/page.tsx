@@ -1,13 +1,11 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { SeriesManager } from "./_components/series-manager";
 
 export default async function AdminDocumentsPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "documents.view");
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <AdminNav email={user.email} current="/admin/documents" />
       <h1 className="mb-5 text-xl font-bold">Belge Serileri</h1>
       <SeriesManager />
       <p className="mt-4 text-sm text-neutral-500">

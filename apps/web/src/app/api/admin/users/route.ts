@@ -12,7 +12,7 @@ import { userAdminContext, USER_ADMIN_ROLES } from "@/lib/user-admin-context";
 // system roles, so the wider role list here does not widen what they can do.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     const params = new URL(req.url).searchParams;
 
     const users = await listUsers(userAdminContext(user), {
@@ -26,7 +26,7 @@ export function GET(req: Request) {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     const input = await parseBody(req, createUserSchema);
 
     return Response.json(

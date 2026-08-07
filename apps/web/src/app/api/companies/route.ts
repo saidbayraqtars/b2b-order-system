@@ -8,7 +8,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // Used by the mobile rep app to pick a customer for orders / check-in / collection.
 export function GET() {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    const user = await requireUser(undefined, "companies.view");
 
     let where: Prisma.CompanyWhereInput;
     switch (user.role) {

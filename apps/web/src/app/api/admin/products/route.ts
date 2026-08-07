@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // GET /api/admin/products?search=&categoryId=&onlyActive=1
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.view");
     const { searchParams } = new URL(req.url);
     const products = await listProductsAdmin({
       search: searchParams.get("search") ?? undefined,
@@ -21,7 +21,7 @@ export function GET(req: NextRequest) {
 // POST /api/admin/products
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, createProductSchema);
     const product = await createProduct(input);
     return Response.json({ product }, { status: 201 });

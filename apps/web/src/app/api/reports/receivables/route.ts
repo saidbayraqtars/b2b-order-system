@@ -5,7 +5,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // A SALES_REP sees only their own portfolio; a super admin sees everyone.
 export function GET() {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"]);
+    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"], "reports.view");
 
     return Response.json(
       await getReceivables(

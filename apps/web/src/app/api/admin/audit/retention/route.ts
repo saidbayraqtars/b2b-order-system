@@ -12,7 +12,7 @@ import { parseBody } from "@/lib/validate";
 
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "audit.view");
     return Response.json(await auditStats());
   });
 }
@@ -26,7 +26,7 @@ const purgeSchema = z.object({
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "audit.manage");
     const input = await parseBody(req, purgeSchema);
 
     const before = new Date(Date.now() - input.retentionDays * 24 * 60 * 60_000);

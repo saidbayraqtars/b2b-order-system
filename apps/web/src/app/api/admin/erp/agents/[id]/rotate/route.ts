@@ -10,7 +10,7 @@ type Params = { params: { id: string } };
 // while" is precisely what must not be true.
 export function POST(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "erp.manage");
     return Response.json(await rotateErpAgentToken(params.id));
   });
 }

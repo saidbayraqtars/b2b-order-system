@@ -1,13 +1,11 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { TiersManager } from "./_components/tiers-manager";
 
 export default async function AdminVolumeTiersPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "volume_tiers.manage");
 
   return (
     <div>
-      <AdminNav email={user.email} current="/admin/volume-tiers" />
       <main className="mx-auto max-w-4xl px-4 pb-6">
         <h1 className="mb-5 text-xl font-bold">Hacim İskontosu</h1>
         <TiersManager />

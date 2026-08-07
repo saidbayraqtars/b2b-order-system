@@ -16,7 +16,7 @@ export function POST(
   { params }: { params: { id: string } },
 ) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SALES_REP", "SUPER_ADMIN"]);
+    const user = await requireUser(["SALES_REP", "SUPER_ADMIN"], "cash.manage");
 
     const json = await req.json().catch(() => null);
     const parsed = reversePaymentSchema.safeParse(json);

@@ -10,7 +10,7 @@ type Params = { params: { id: string } };
 // card to finish the mapping.
 export function GET(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "erp.manage");
     return Response.json({ issues: await listSyncIssues(params.id) });
   });
 }

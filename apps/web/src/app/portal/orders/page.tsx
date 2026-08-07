@@ -16,7 +16,7 @@ export default async function PortalOrdersPage({ searchParams }: Props) {
     "COMPANY_STAFF",
     "SALES_REP",
     "SUPER_ADMIN",
-  ]);
+  ], "orders.view");
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
   if (!ctx.companyId) redirect("/portal");
@@ -25,6 +25,7 @@ export default async function PortalOrdersPage({ searchParams }: Props) {
     <div>
       <PortalNav
         role={user.role}
+        permissions={user.permissions}
         companyName={ctx.companyName}
         userName={user.name}
         current="/portal/orders"

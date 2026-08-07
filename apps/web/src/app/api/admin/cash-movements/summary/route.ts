@@ -12,7 +12,7 @@ const rangeSchema = z.object({
 // today, which is the question this screen is opened to answer.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.view");
     const range = parseQuery(req, rangeSchema);
     return Response.json(await getCashSummary(range));
   });

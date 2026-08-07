@@ -12,7 +12,7 @@ export function GET(req: NextRequest) {
       "COMPANY_STAFF",
       "SALES_REP",
       "SUPER_ADMIN",
-    ]);
+    ], "products.view");
     const { searchParams } = new URL(req.url);
     const companyId = await resolveCompanyId(user, searchParams.get("companyId"));
 

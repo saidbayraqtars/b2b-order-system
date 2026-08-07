@@ -15,7 +15,7 @@ export function GET(req: NextRequest) {
       "SUPER_ADMIN",
       "SALES_REP",
       "COMPANY_ADMIN",
-    ]);
+    ], "activity.view");
     const params = new URL(req.url).searchParams;
 
     const date = (value: string | null): Date | undefined => {

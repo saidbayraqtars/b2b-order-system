@@ -18,7 +18,7 @@ const ALL_BUYERS = [
 // gate the checkout endpoints use.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(ALL_BUYERS);
+    const user = await requireUser(ALL_BUYERS, "orders.view");
     const { searchParams } = new URL(req.url);
     const companyId = await resolveCompanyId(user, searchParams.get("companyId"));
 

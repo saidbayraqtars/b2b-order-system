@@ -6,7 +6,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // stay on the server, where they are also the security boundary.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "promotions.manage");
     return Response.json(promotionRuleCatalog());
   });
 }

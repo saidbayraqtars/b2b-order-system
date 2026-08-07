@@ -9,7 +9,7 @@ type Params = { params: { id: string } };
 // there is no grace period, because disabling happens when something is wrong.
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "erp.manage");
     const { isActive } = await parseBody(req, updateErpAgentSchema);
     await setErpAgentActive(params.id, isActive);
     return new Response(null, { status: 204 });
@@ -18,7 +18,7 @@ export function PATCH(req: Request, { params }: Params) {
 
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "erp.manage");
     await deleteErpAgent(params.id);
     return new Response(null, { status: 204 });
   });

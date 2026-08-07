@@ -10,7 +10,7 @@ import { parseBody } from "@/lib/validate";
 // (Company.paymentTerms), so these two operations are super-admin only.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "payment_terms.manage");
     const terms = await listPaymentTerms();
     return Response.json({ terms });
   });
@@ -18,7 +18,7 @@ export function GET() {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "payment_terms.manage");
     const input = await parseBody(req, createPaymentTermSchema);
 
     return Response.json(await createPaymentTerm(input), { status: 201 });

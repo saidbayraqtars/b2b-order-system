@@ -12,7 +12,7 @@ import { parseBody } from "@/lib/validate";
 // dataset registry before it is written).
 export function GET() {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     return Response.json({
       definitions: await listReportDefinitions(reportContext(user)),
     });
@@ -21,7 +21,7 @@ export function GET() {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     const input = await parseBody(req, createReportDefinitionSchema);
 
     const created = await createReportDefinition(input, reportContext(user));

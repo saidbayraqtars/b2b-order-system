@@ -1,17 +1,15 @@
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 import { AccountsPanel } from "./_components/accounts-panel";
 import { CardPaymentsPanel } from "./_components/card-payments-panel";
 import { CashSummaryPanel } from "./_components/cash-summary-panel";
 import { MovementsPanel } from "./_components/movements-panel";
 
 export default async function AdminKasaPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "cash.view");
 
   return (
     <div>
-      <AdminNav email={user.email} current="/admin/kasa" />
-      <main className="mx-auto max-w-5xl space-y-5 px-4 pb-8">
+      <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
         <h1 className="text-xl font-bold">Kasa & Banka</h1>
         <CashSummaryPanel />
         <CardPaymentsPanel />

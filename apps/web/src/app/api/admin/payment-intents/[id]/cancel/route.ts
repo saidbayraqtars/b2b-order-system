@@ -11,7 +11,7 @@ type Params = { params: { id: string } };
 // marking it cancelled would lose the fact that it has to go back.
 export function POST(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "cash.manage");
     const { reason } = await parseBody(req, cancelPaymentIntentSchema);
     await cancelPaymentIntent(params.id, reason, user.id);
     return new Response(null, { status: 204 });

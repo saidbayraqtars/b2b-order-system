@@ -5,7 +5,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // DELETE /api/admin/discounts/:id
 export function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "pricing.manage");
     await deleteCompanyDiscount(params.id);
     return new Response(null, { status: 204 });
   });

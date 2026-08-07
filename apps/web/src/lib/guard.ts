@@ -10,7 +10,13 @@ import {
   type BusinessErrorCode,
   type PrincipalRejection,
 } from "@repo/services";
-import type { Role, SessionUser } from "@repo/types";
+import {
+  hasPermission,
+  PERMISSION_LABELS,
+  type Permission,
+  type Role,
+  type SessionUser,
+} from "@repo/types";
 import { verifyMobileToken } from "./mobile-token";
 import { requestMeta } from "./request-meta";
 
@@ -69,6 +75,10 @@ async function readClaim(): Promise<SessionClaim | null> {
       name: s.name ?? "",
       role: s.role,
       companyId: s.companyId,
+      // Boş: token'daki izin listesi hiçbir zaman okunmuyor, resolvePrincipal
+      // aşağıda satırdan geleni koyuyor. Burada bir şey taşımak "cookie'de ne
+      // yazıyorsa o" riskini bedava açardı.
+      permissions: [],
     },
     tokenVersion: s.tokenVersion ?? 0,
     channel: "web",
@@ -118,6 +128,9 @@ const resolvePrincipal = cache(async (): Promise<
       name: user!.name,
       role: user!.role,
       companyId: user!.companyId,
+      // Rol gibi: izinler de token'dan değil satırdan. Yetkisi az önce kısılan
+      // bir kullanıcının açık sekmesi bir sonraki istekte bunu hisseder.
+      permissions: user!.permissions,
     },
   };
 });
@@ -146,14 +159,50 @@ async function rejectPrincipal(
   );
 }
 
+/** Bir uç/ekranın istediği izin: tek anahtar ya da "hepsi gerekli" listesi. */
+export type PermissionRequirement = Permission | readonly Permission[];
+
+function missingPermissions(
+  user: SessionUser,
+  needed: PermissionRequirement | undefined,
+): Permission[] {
+  if (!needed) return [];
+  const list = Array.isArray(needed) ? needed : [needed];
+  return list.filter((p) => !hasPermission(user.permissions, p));
+}
+
+async function recordDenial(
+  user: SessionUser,
+  channel: "web" | "mobile",
+  detail: Record<string, unknown>,
+): Promise<void> {
+  const meta = requestMeta(channel);
+  await recordAudit({
+    actor: { id: user.id, email: user.email, role: user.role },
+    action: "ACCESS_DENIED",
+    summary: `Yetkisiz istek: ${headers().get("x-pathname") ?? "bilinmeyen uç"}`,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+    meta: detail,
+  });
+}
+
 /**
  * Server-side guard for route handlers / server actions.
  * Accepts either a mobile bearer token (Authorization header) or an Auth.js
  * cookie session — so the same endpoints serve the web portal and the app.
  * Throws AuthError(401) if unauthenticated/revoked, AuthError(403) if the
  * account's *current* role is not allowed. Returns the live session user.
+ *
+ * `needed` ikinci bir, daha ince kapı: rol bölüme girer, izin işi yapar. İkisi
+ * ayrı tutuluyor çünkü aynı ucu iki rol farklı kapsamda kullanabiliyor
+ * (kullanıcı yönetimi hem süper adminin hem firma yöneticisinin ucudur) —
+ * kapsamı servis, yeteneği bu izin belirler.
  */
-export async function requireUser(allowed?: readonly Role[]): Promise<SessionUser> {
+export async function requireUser(
+  allowed?: readonly Role[],
+  needed?: PermissionRequirement,
+): Promise<SessionUser> {
   const result = await resolvePrincipal();
 
   if (!result.ok) {
@@ -164,20 +213,26 @@ export async function requireUser(allowed?: readonly Role[]): Promise<SessionUse
   }
 
   if (allowed && !hasRole(result.user.role, allowed)) {
-    const meta = requestMeta(result.channel);
-    await recordAudit({
-      actor: {
-        id: result.user.id,
-        email: result.user.email,
-        role: result.user.role,
-      },
-      action: "ACCESS_DENIED",
-      summary: `Yetkisiz istek: ${headers().get("x-pathname") ?? "bilinmeyen uç"}`,
-      ip: meta.ip,
-      userAgent: meta.userAgent,
-      meta: { required: allowed, actual: result.user.role },
+    await recordDenial(result.user, result.channel, {
+      required: allowed,
+      actual: result.user.role,
     });
     throw new AuthError(403, "Yetkisiz erişim", "FORBIDDEN");
+  }
+
+  const missing = missingPermissions(result.user, needed);
+  if (missing.length > 0) {
+    // Ayrı kaydediliyor: rol reddi yapılandırma hatasına, izin reddi çoğu zaman
+    // birinin yetkisinin kısılmış olmasına işaret eder.
+    await recordDenial(result.user, result.channel, {
+      missingPermissions: missing,
+      role: result.user.role,
+    });
+    throw new AuthError(
+      403,
+      `Bu işlem için yetkiniz yok (${missing.map((p) => PERMISSION_LABELS[p]).join(", ")})`,
+      "FORBIDDEN",
+    );
   }
 
   return result.user;
@@ -202,7 +257,10 @@ export async function requestChannel(): Promise<"web" | "mobile"> {
  * caller's own default landing route. The same live-account check applies, so
  * an open browser tab loses access the moment the account is changed.
  */
-export async function requirePage(allowed: readonly Role[]): Promise<SessionUser> {
+export async function requirePage(
+  allowed: readonly Role[],
+  needed?: PermissionRequirement,
+): Promise<SessionUser> {
   const result = await resolvePrincipal();
 
   if (!result.ok) {
@@ -214,6 +272,18 @@ export async function requirePage(allowed: readonly Role[]): Promise<SessionUser
 
   if (!hasRole(result.user.role, allowed)) {
     redirect(defaultRouteForRole(result.user.role));
+  }
+
+  const missing = missingPermissions(result.user, needed);
+  if (missing.length > 0) {
+    await recordDenial(result.user, result.channel, {
+      missingPermissions: missing,
+      role: result.user.role,
+    });
+    // Bölüme girmeye hakkı var, bu ekrana yok: kendi bölümünün köküne değil,
+    // "yetki yok" sayfasına gider — aksi hâlde menüden tıklayan kişi sessizce
+    // panele geri atılır ve nedenini hiç öğrenmez.
+    redirect(`/403?perm=${missing[0]}`);
   }
   return result.user;
 }

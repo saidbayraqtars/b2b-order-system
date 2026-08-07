@@ -18,13 +18,13 @@ type Props = { searchParams: { companyId?: string } };
  * pahalıdır.
  */
 export default async function RepCollectionPage({ searchParams }: Props) {
-  const user = await requirePage(["SALES_REP", "SUPER_ADMIN"]);
+  const user = await requirePage(["SALES_REP", "SUPER_ADMIN"], "cash.manage");
   const ctx = await resolvePortalContext(user, searchParams.companyId);
 
   if (!ctx.companyId) {
     return (
       <div>
-        <RepNav userName={user.name} current="/rep/tahsilat" showCompany />
+        <RepNav userName={user.name} permissions={user.permissions} current="/rep/tahsilat" showCompany />
         <CompanyPicker
           basePath="/rep/tahsilat"
           eyebrow="Tahsilat girilecek firma"
@@ -38,6 +38,7 @@ export default async function RepCollectionPage({ searchParams }: Props) {
     <div>
       <RepNav
         userName={user.name}
+        permissions={user.permissions}
         current="/rep/tahsilat"
         companyId={ctx.companyId}
         companyName={ctx.companyName}

@@ -8,14 +8,14 @@ type Params = { params: { id: string } };
 
 export function GET(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     return Response.json({ user: await getUser(params.id, userAdminContext(user)) });
   });
 }
 
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     const input = await parseBody(req, updateUserSchema);
 
     return Response.json({
@@ -26,7 +26,7 @@ export function PATCH(req: Request, { params }: Params) {
 
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(USER_ADMIN_ROLES);
+    const user = await requireUser(USER_ADMIN_ROLES, "users.manage");
     await deleteUser(params.id, userAdminContext(user));
     return new Response(null, { status: 204 });
   });

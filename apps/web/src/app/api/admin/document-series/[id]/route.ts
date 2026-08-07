@@ -7,7 +7,7 @@ type Params = { params: { id: string } };
 
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "documents.manage");
     const input = await parseBody(req, updateDocumentSeriesSchema);
 
     return Response.json(await updateDocumentSeries(params.id, input));
@@ -16,7 +16,7 @@ export function PATCH(req: Request, { params }: Params) {
 
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "documents.manage");
     await deleteDocumentSeries(params.id);
     return new Response(null, { status: 204 });
   });

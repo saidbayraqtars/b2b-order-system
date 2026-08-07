@@ -16,6 +16,9 @@ export function userAdminContext(user: SessionUser): UserAdminContext {
     email: user.email,
     role: user.role,
     companyId: user.companyId,
+    // Canlı satırdan gelen küme (bkz. guard.ts resolvePrincipal). Yetki devrinin
+    // üst sınırı bu; istekle taşınan bir liste olsaydı sınır olmazdı.
+    permissions: user.permissions,
     meta: requestMeta(),
   };
 }

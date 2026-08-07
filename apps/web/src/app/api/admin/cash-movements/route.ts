@@ -7,7 +7,7 @@ import { parseBody, parseQuery } from "@/lib/validate";
 // POST /api/admin/cash-movements — elle giriş/çıkış (kasa gideri, devir farkı).
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.view");
     const filter = parseQuery(req, cashMovementFilterSchema);
     return Response.json({ movements: await listCashMovements(filter) });
   });
@@ -15,7 +15,7 @@ export function GET(req: Request) {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "cash.manage");
     const input = await parseBody(req, manualMovementSchema);
     return Response.json(await recordManualMovement(input, user.id), { status: 201 });
   });

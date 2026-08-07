@@ -9,7 +9,7 @@ import { parseQuery } from "@/lib/validate";
 // it is every collection, optionally filtered by rep or company.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"]);
+    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"], "reports.view");
     const query = parseQuery(req, reportQuerySchema);
 
     return Response.json(await getCollections(reportScopeFor(user, query)));

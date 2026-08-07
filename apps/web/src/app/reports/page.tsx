@@ -5,7 +5,7 @@ import { REPORT_BUILDER_ROLES } from "@/lib/report-context";
 import { ReportsList } from "./_components/reports-list";
 
 export default async function ReportsPage() {
-  const user = await requirePage(REPORT_BUILDER_ROLES);
+  const user = await requirePage(REPORT_BUILDER_ROLES, "reports.build");
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">

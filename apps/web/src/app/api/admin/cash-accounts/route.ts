@@ -11,7 +11,7 @@ import { parseBody } from "@/lib/validate";
 // only ever touches it indirectly by recording a collection.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.view");
     const [accounts, bindings] = await Promise.all([
       listCashAccounts(),
       listMethodBindings(),
@@ -22,7 +22,7 @@ export function GET() {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "cash.manage");
     const input = await parseBody(req, createCashAccountSchema);
     const id = await createCashAccount(input);
     return Response.json({ id }, { status: 201 });

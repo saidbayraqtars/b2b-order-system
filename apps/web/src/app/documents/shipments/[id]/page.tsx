@@ -24,7 +24,7 @@ export default async function ShipmentDocumentPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage(ALL_ROLES);
+  const user = await requirePage(ALL_ROLES, "documents.view");
   await assertShipmentVisible(user, params.id);
 
   // A waybill carries goods, not money: quantities and addresses only. Prices

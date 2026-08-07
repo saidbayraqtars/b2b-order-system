@@ -8,7 +8,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // sitting in them. Only open accounts, only what fits in a <select>.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SALES_REP", "SUPER_ADMIN"]);
+    await requireUser(["SALES_REP", "SUPER_ADMIN"], "cash.view");
     const accounts = await listCashAccounts(false);
     return Response.json({
       accounts: accounts.map((a) => ({

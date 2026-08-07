@@ -14,7 +14,7 @@ const FIELD_ROLES = ["SALES_REP", "SUPER_ADMIN"] as const;
 // POST /api/checkins — open a field visit at a company in the rep's portfolio.
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(FIELD_ROLES);
+    const user = await requireUser(FIELD_ROLES, "visits.manage");
 
     const json = await req.json().catch(() => null);
     const parsed = checkInSchema.safeParse(json);
@@ -42,7 +42,7 @@ export function POST(req: NextRequest) {
 // scanning the list would break as soon as the list is filtered or paged).
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(FIELD_ROLES);
+    const user = await requireUser(FIELD_ROLES, "visits.manage");
     const { searchParams } = new URL(req.url);
     const requested = searchParams.get("companyId");
 

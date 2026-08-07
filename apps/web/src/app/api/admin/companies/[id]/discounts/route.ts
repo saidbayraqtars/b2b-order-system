@@ -9,7 +9,7 @@ type Params = { params: { id: string } };
 // GET /api/admin/companies/:id/discounts
 export function GET(_req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "companies.view");
     const discounts = await listCompanyDiscounts(params.id);
     return Response.json({ discounts });
   });
@@ -19,7 +19,7 @@ export function GET(_req: NextRequest, { params }: Params) {
 // never both (resolution is product-over-category).
 export function POST(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "companies.manage");
     const input = await parseBody(req, createCompanyDiscountSchema);
     const discount = await createCompanyDiscount(params.id, input);
     return Response.json({ discount }, { status: 201 });

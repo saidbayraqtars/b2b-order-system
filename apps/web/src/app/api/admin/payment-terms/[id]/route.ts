@@ -7,7 +7,7 @@ type Params = { params: { id: string } };
 
 export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "payment_terms.manage");
     const input = await parseBody(req, updatePaymentTermSchema);
 
     return Response.json(await updatePaymentTerm(params.id, input));
@@ -19,7 +19,7 @@ export function PATCH(req: Request, { params }: Params) {
 // sold on it stay explainable.
 export function DELETE(_req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "payment_terms.manage");
     await deletePaymentTerm(params.id);
     return new Response(null, { status: 204 });
   });

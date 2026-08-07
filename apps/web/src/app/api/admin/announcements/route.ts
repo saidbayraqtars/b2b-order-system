@@ -7,14 +7,14 @@ import { parseBody } from "@/lib/validate";
 // POST /api/admin/announcements
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "announcements.manage");
     return Response.json({ announcements: await listAllAnnouncements() });
   });
 }
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "announcements.manage");
     const input = await parseBody(req, createAnnouncementSchema);
 
     return Response.json(await createAnnouncement(input), { status: 201 });

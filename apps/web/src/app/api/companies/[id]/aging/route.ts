@@ -5,7 +5,7 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // GET /api/companies/:id/aging — one company's receivables aged by days past due.
 export function GET(_req: Request, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    const user = await requireUser(undefined, "companies.view");
     const companyId = await resolveCompanyId(user, params.id);
 
     return Response.json(await getCompanyAging(companyId));

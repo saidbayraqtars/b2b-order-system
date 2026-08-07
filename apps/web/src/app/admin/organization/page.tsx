@@ -1,6 +1,5 @@
 import { brandingUrl, loadTenant, tenantDir } from "@repo/services";
 import { requirePage } from "@/lib/guard";
-import { AdminNav } from "../_components/admin-nav";
 
 // Kuruluş bilgileri — who this installation prints documents as.
 //
@@ -10,7 +9,7 @@ import { AdminNav } from "../_components/admin-nav";
 // hand-over would silently revert the change. Editing happens in the folder.
 
 export default async function AdminOrganizationPage() {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  await requirePage(["SUPER_ADMIN"], "organization.manage");
 
   let tenant: Awaited<ReturnType<typeof loadTenant>> | null = null;
   let problem: string | null = null;
@@ -24,7 +23,6 @@ export default async function AdminOrganizationPage() {
 
   return (
     <div>
-      <AdminNav email={user.email} current="/admin/organization" />
       <main className="mx-auto max-w-4xl space-y-5 px-4 pb-6">
         <div>
           <h1 className="text-xl font-bold">Kuruluş</h1>

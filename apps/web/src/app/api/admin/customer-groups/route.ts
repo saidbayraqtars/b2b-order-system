@@ -7,7 +7,7 @@ import { parseBody } from "@/lib/validate";
 // POST /api/admin/customer-groups
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "companies.view");
     const groups = await listCustomerGroups();
     return Response.json({ groups });
   });
@@ -15,7 +15,7 @@ export function GET() {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "groups.manage");
     const input = await parseBody(req, createCustomerGroupSchema);
 
     return Response.json(await createCustomerGroup(input), { status: 201 });

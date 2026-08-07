@@ -5,6 +5,7 @@ import {
   ShoppingBag,
   Wallet,
 } from "lucide-react";
+import { hasPermission, type Permission } from "@repo/types";
 import { AppHeader, type NavLink } from "@/components/app-shell";
 import { CompanySwitcher } from "@/components/storefront/company-switcher";
 
@@ -20,6 +21,7 @@ import { CompanySwitcher } from "@/components/storefront/company-switcher";
  */
 export function RepNav({
   userName,
+  permissions,
   current,
   companyId,
   companyName,
@@ -27,20 +29,31 @@ export function RepNav({
   showCompany = false,
 }: {
   userName: string;
+  /** Hesabın izin kümesi; menü buna göre süzülür (ekranlar ayrıca kapalıdır). */
+  permissions: readonly Permission[];
   current: string;
   companyId?: string | null;
   companyName?: string | null;
   showCompany?: boolean;
 }) {
   const q = companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
+  const can = (p: Permission) => hasPermission(permissions, p);
 
-  const links: NavLink[] = [
-    { href: "/rep", label: "Panel", icon: LayoutDashboard },
-    { href: `/portal${q}`, label: "Sipariş gir", icon: ShoppingBag },
-    { href: `/rep/tahsilat${q}`, label: "Tahsilat", icon: Wallet },
-    { href: `/rep/ziyaret${q}`, label: "Ziyaret", icon: MapPin },
-    { href: "/reports", label: "Raporlar", icon: BarChart3 },
-  ];
+  // Panel her zaman durur: yetkisi kısılmış bir plasiyerin de gidebileceği bir
+  // yer kalmalı, aksi hâlde menü tamamen boşalır.
+  const links: NavLink[] = [{ href: "/rep", label: "Panel", icon: LayoutDashboard }];
+  if (can("orders.create")) {
+    links.push({ href: `/portal${q}`, label: "Sipariş gir", icon: ShoppingBag });
+  }
+  if (can("cash.manage")) {
+    links.push({ href: `/rep/tahsilat${q}`, label: "Tahsilat", icon: Wallet });
+  }
+  if (can("visits.manage")) {
+    links.push({ href: `/rep/ziyaret${q}`, label: "Ziyaret", icon: MapPin });
+  }
+  if (can("reports.build")) {
+    links.push({ href: "/reports", label: "Raporlar", icon: BarChart3 });
+  }
 
   return (
     <AppHeader

@@ -8,7 +8,7 @@ import { parseBody } from "@/lib/validate";
 // This is what the builder's live preview calls.
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(REPORT_BUILDER_ROLES);
+    const user = await requireUser(REPORT_BUILDER_ROLES, "reports.view");
     const { dataset, config } = await parseBody(req, runReportSchema);
 
     return Response.json(await runReport(dataset, config, reportContext(user)));

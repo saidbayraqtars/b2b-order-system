@@ -8,7 +8,7 @@ import { parseBody } from "@/lib/validate";
 // POST /api/admin/companies — onboard a new customer.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "companies.view");
     const params = new URL(req.url).searchParams;
 
     const companies = await listCompanies({
@@ -21,7 +21,7 @@ export function GET(req: Request) {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "companies.manage");
     const input = await parseBody(req, createCompanySchema);
 
     return Response.json(

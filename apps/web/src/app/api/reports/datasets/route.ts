@@ -7,7 +7,7 @@ import { REPORT_BUILDER_ROLES } from "@/lib/report-context";
 // operators and enum values each field accepts.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(REPORT_BUILDER_ROLES);
+    await requireUser(REPORT_BUILDER_ROLES, "reports.build");
     return Response.json({ datasets: describeDatasets() });
   });
 }

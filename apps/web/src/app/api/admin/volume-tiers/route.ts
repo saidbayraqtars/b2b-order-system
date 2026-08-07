@@ -11,7 +11,7 @@ import { parseBody } from "@/lib/validate";
 // CompanyDiscount, not a rung here.
 export function GET() {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "volume_tiers.manage");
     const tiers = await listVolumeTiers();
     return Response.json({ tiers });
   });
@@ -19,7 +19,7 @@ export function GET() {
 
 export function POST(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "volume_tiers.manage");
     const input = await parseBody(req, createVolumeTierSchema);
 
     return Response.json(await createVolumeTier(input), { status: 201 });

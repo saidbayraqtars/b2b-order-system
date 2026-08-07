@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getCompany, getVolumeStatus } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { formatTRY } from "@/lib/format";
-import { AdminNav } from "../../_components/admin-nav";
 import { CompanyForm } from "../_components/company-form";
 import { CompanyAddresses } from "./_components/company-addresses";
 import { CompanyDiscounts } from "./_components/company-discounts";
@@ -14,7 +13,7 @@ export default async function AdminCompanyPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage(["SUPER_ADMIN"]);
+  const user = await requirePage(["SUPER_ADMIN"], "companies.view");
 
   const company = await getCompany(params.id).catch(() => null);
   if (!company) notFound();
@@ -25,7 +24,6 @@ export default async function AdminCompanyPage({
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
-      <AdminNav email={user.email} current="/admin/companies" />
       <Link
         href="/admin/companies"
         className="inline-block text-sm text-neutral-500 hover:underline"
@@ -101,6 +99,7 @@ export default async function AdminCompanyPage({
         currentUserId={user.id}
         fixedCompanyId={company.id}
         allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
+        grantablePermissions={user.permissions}
       />
 
       <CompanyDiscounts companyId={company.id} />

@@ -26,7 +26,7 @@ export default async function InvoiceDocumentPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage(ALL_ROLES);
+  const user = await requirePage(ALL_ROLES, "documents.view");
   await assertInvoiceVisible(user, params.id);
 
   const invoice = await getInvoice(params.id).catch(() => null);

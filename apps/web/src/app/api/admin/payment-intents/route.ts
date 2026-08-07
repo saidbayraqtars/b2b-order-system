@@ -11,7 +11,7 @@ import { parseQuery } from "@/lib/validate";
 // reference, which together are enough to reconcile — or dispute — a charge.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"]);
+    await requireUser(["SUPER_ADMIN"], "payments.view");
     const filter = parseQuery(req, paymentIntentFilterSchema);
     const settings = await paymentSettings();
 

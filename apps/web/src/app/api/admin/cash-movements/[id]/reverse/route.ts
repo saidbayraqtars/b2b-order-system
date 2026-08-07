@@ -11,7 +11,7 @@ type Params = { params: { id: string } };
 // ledgers move together.
 export function POST(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "cash.manage");
     const { reason } = await parseBody(req, reverseCashMovementSchema);
     return Response.json(
       await reverseCashMovement({ movementId: params.id, reason }, user.id),

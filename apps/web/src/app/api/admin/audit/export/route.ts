@@ -10,7 +10,7 @@ import { requestMeta } from "@/lib/request-meta";
 // takes the server down.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN"]);
+    const user = await requireUser(["SUPER_ADMIN"], "audit.manage");
     const params = new URL(req.url).searchParams;
 
     const parseDate = (value: string | null): Date | undefined => {

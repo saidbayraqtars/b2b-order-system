@@ -7,7 +7,7 @@ import { parseQuery } from "@/lib/validate";
 // GET /api/reports/products?from&to&companyId&limit — best sellers by revenue.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
-    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"]);
+    const user = await requireUser(["SUPER_ADMIN", "SALES_REP"], "reports.view");
     const query = parseQuery(req, reportQuerySchema);
 
     return Response.json(await getTopProducts(reportScopeFor(user, query)));

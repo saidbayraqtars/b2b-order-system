@@ -9,7 +9,7 @@ export default async function ReportPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage(REPORT_BUILDER_ROLES);
+  const user = await requirePage(REPORT_BUILDER_ROLES, "reports.build");
 
   // Loaded server-side so the designer opens with the saved design already in
   // place. A missing report and one the caller may not see are both 404 here —
