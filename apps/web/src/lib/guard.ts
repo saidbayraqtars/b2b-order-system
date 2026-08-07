@@ -436,6 +436,12 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // depo & stok
   WAREHOUSE_NOT_FOUND: 404,
   INVALID_STOCK: 422,
+  // çek/senet portföyü
+  CHEQUE_NOT_FOUND: 404,
+  // 422: istenen geçiş kâğıdın bulunduğu durumdan mümkün değil — girdi hatası.
+  INVALID_CHEQUE_TRANSITION: 422,
+  // 409: kâğıt işlem görmüş; tahsilat iptali artık bir durum çatışması.
+  CHEQUE_ALREADY_SETTLED: 409,
 };
 
 /**

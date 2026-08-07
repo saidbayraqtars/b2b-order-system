@@ -122,6 +122,10 @@ suite("kasa & banka defteri integration", () => {
     await prisma.cashMovement.deleteMany({
       where: { accountId: { in: [tillId, bankId] } },
     });
+    // Çek/senet tahsilatı portföye bir kâğıt açıyor ve o kâğıt tahsilat
+    // satırına bağlı; önce kâğıt düşmeden cari hareketleri silinemez.
+    await prisma.chequeEvent.deleteMany({ where: { cheque: { companyId } } });
+    await prisma.cheque.deleteMany({ where: { companyId } });
     await prisma.transaction.deleteMany({ where: { companyId } });
     await prisma.orderStatusHistory.deleteMany({ where: { orderId: { in: orderIds } } });
     await prisma.order.deleteMany({ where: { id: { in: orderIds } } });

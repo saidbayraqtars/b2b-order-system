@@ -150,6 +150,7 @@ model User {
   invoicesIssued Invoice[]     @relation("InvoiceCreatedBy")
   checkIns       CheckIn[]
   transactions   Transaction[] @relation("TransactionRecordedBy")
+  chequeEvents   ChequeEvent[] @relation("ChequeEventActor")
   cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
   paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
   paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
@@ -245,6 +246,7 @@ model Company {
   addresses    Address[]
   orders       Order[]
   transactions Transaction[]
+  cheques      Cheque[]
   discounts    CompanyDiscount[]
   checkIns     CheckIn[]
   carts        Cart[]
@@ -1043,6 +1045,10 @@ model Transaction {
   /// arrived. A cheque collection has no counterpart here — see CashMovement.
   cashMovement CashMovement?
 
+  /// Bu tahsilatın doğurduğu kâğıt. Çek/senet tahsilatı kasaya girmiyor ama
+  /// portföyde bir satır açıyor; ikisi tek işlemde yazılır.
+  cheque Cheque?
+
   createdAt DateTime @default(now())
 
   @@index([companyId])
@@ -1083,6 +1089,7 @@ enum CashMovementSource {
   COLLECTION // cariden tahsilat
   MANUAL // elle girilen gelir/gider
   TRANSFER // hesaplar arası aktarım
+  CHEQUE // tahsil edilen çek/senet — para kâğıdın vadesinde giriyor
 }
 
 model CashAccount {
@@ -1171,6 +1178,98 @@ model CashMovement {
   @@index([occurredAt])
   @@index([orderId])
   @@index([source, occurredAt])
+}
+
+// ─────────────────────────────────────────────
+// ÇEK / SENET PORTFÖYÜ
+// ─────────────────────────────────────────────
+//
+// Çekle yapılan tahsilat cariyi kapatır ama kasaya girmez: kâğıt henüz para
+// değil. Bu iki tablo o kâğıdın kendisini tutuyor — vadesi, kimin, nerede ve
+// sonunda ne olduğu. Para kasaya **tahsil edildiğinde** giriyor; karşılıksız
+// çıktığında kapanan borç geri açılıyor.
+
+enum ChequeKind {
+  CHEQUE
+  PROMISSORY_NOTE
+}
+
+enum ChequeStatus {
+  PORTFOLIO // elimizde, vadesini bekliyor
+  DEPOSITED // tahsile verildi
+  CLEARED // tahsil edildi — kasaya bu adımda girer
+  BOUNCED // karşılıksız — borç geri açılır
+  ENDORSED // ciro edildi
+  RETURNED // müşteriye iade — borç geri açılır
+  CANCELLED // altındaki tahsilat iptal edildi
+}
+
+model Cheque {
+  id   String       @id @default(cuid())
+  kind ChequeKind   @default(CHEQUE)
+  status ChequeStatus @default(PORTFOLIO)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  /// Kâğıdı doğuran tahsilat. Zorunlu ve tekil: portföyde cariyi kapatmamış
+  /// bir çek satırı olamaz, bir tahsilat da iki kâğıt doğuramaz.
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  amount Decimal @db.Decimal(14, 2)
+
+  /// Künye. Hepsi boş bırakılabilir: sahada yalnızca tutar giriliyor, gerisi
+  /// ofiste tamamlanıyor. Vadesi boş olan kâğıt ekranda eksik işaretlenir.
+  serialNumber String?
+  bankName     String?
+  branchName   String?
+  drawerName   String?
+  dueDate      DateTime?
+  notes        String?
+
+  /// Tahsil edildiğinde parayı alan hesap ve yazılan kasa hareketi.
+  cashAccountId String?
+  cashMovementId String? @unique
+
+  /// Ciro edilen taraf. Serbest metin: çoğu zaman bizim sistemimizde kayıtlı
+  /// olmayan bir tedarikçi.
+  endorsedTo String?
+
+  /// Karşılıksız/iade durumunda borcu geri açan ters kayıt.
+  reopenTransactionId String? @unique
+
+  settledAt DateTime?
+
+  events ChequeEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, dueDate])
+  @@index([companyId, status])
+  @@index([dueDate])
+}
+
+/// Kâğıdın geçmişi. Durum kolonu son hâli söyler, bu tablo yolu: "ne zaman
+/// tahsile verildi, kim karşılıksız işaretledi" soruları tek kolondan
+/// yanıtlanamıyor ve bu bilgi ihtilafta gereken şey.
+model ChequeEvent {
+  id       String @id @default(cuid())
+  chequeId String
+  cheque   Cheque @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+
+  fromStatus ChequeStatus?
+  toStatus   ChequeStatus
+  note       String?
+
+  actorId String?
+  actor   User?   @relation("ChequeEventActor", fields: [actorId], references: [id])
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([chequeId, occurredAt])
 }
 
 // ─────────────────────────────────────────────

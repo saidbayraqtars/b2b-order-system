@@ -110,7 +110,11 @@ export type BusinessErrorCode =
   | "LABEL_TEMPLATE_NOT_FOUND"
   // ── depo & stok ──
   | "WAREHOUSE_NOT_FOUND"
-  | "INVALID_STOCK";
+  | "INVALID_STOCK"
+  // ── çek/senet portföyü ──
+  | "CHEQUE_NOT_FOUND"
+  | "INVALID_CHEQUE_TRANSITION"
+  | "CHEQUE_ALREADY_SETTLED";
 
 export class BusinessError extends Error {
   constructor(

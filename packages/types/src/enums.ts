@@ -138,6 +138,12 @@ export const CashMovementSourceEnum = z.enum([
   "COLLECTION",
   "MANUAL",
   "TRANSFER",
+  /**
+   * Vadesi gelip tahsil edilen çek/senet. Tahsilattan ayrı bir kaynak: para
+   * bugün girdi ama borç aylar önce kapanmıştı, ve gün sonu ikisini aynı
+   * satırda göstermemeli.
+   */
+  "CHEQUE",
 ]);
 export type CashMovementSource = z.infer<typeof CashMovementSourceEnum>;
 
@@ -146,6 +152,7 @@ export const CASH_MOVEMENT_SOURCE_LABELS: Record<CashMovementSource, string> = {
   COLLECTION: "Tahsilat",
   MANUAL: "Elle giriş",
   TRANSFER: "Hesaplar arası aktarım",
+  CHEQUE: "Çek/senet tahsili",
 };
 
 /**

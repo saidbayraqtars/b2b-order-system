@@ -16,3 +16,4 @@ export * from "./cash";
 export * from "./erp";
 export * from "./field-ops";
 export * from "./label";
+export * from "./cheque";

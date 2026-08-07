@@ -1,6 +1,11 @@
 import { prisma } from "@repo/database";
-import type { CollectionMethod } from "@repo/types";
+import type { ChequeDetailsInput, CollectionMethod } from "@repo/types";
 import { postCollectionCashIn, reverseCollectionCash } from "./cash";
+import {
+  assertCollectionReversible,
+  cancelChequeForReversal,
+  createChequeForCollection,
+} from "./cheque";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
 
@@ -25,6 +30,11 @@ export interface RecordPaymentInput {
    * means the default one.
    */
   cashAccountId?: string | null;
+  /**
+   * Kâğıdın künyesi — yalnızca çek/senet tahsilatında. Zorunlu değil: sahada
+   * yalnızca tutar giriliyor, seri/banka/vade ofiste tamamlanıyor.
+   */
+  cheque?: ChequeDetailsInput;
 }
 
 export interface RecordPaymentResult {
@@ -33,6 +43,8 @@ export interface RecordPaymentResult {
   newBalance: string;
   /** Null when the method is not spendable money yet (çek, senet). */
   cashMovementId: string | null;
+  /** Çek/senet tahsilatının portföye açtığı kâğıt. */
+  chequeId: string | null;
 }
 
 export async function recordPayment(
@@ -77,11 +89,29 @@ export async function recordPayment(
       actorId: recordedById,
     });
 
+    // Kâğıt tarafı. Çek/senet kasaya girmiyor ama portföyde bir satır açıyor:
+    // aynı işlemde yazılmazsa cariyi kapatmış ama hiçbir yerde durmayan bir
+    // kâğıt kalır — Adım 27'nin açtığı boşluk tam olarak buydu.
+    const cheque =
+      input.collectionMethod === "CHEQUE" ||
+      input.collectionMethod === "PROMISSORY_NOTE"
+        ? await createChequeForCollection(tx, {
+            transactionId: txn.id,
+            companyId: input.companyId,
+            amount,
+            kind:
+              input.collectionMethod === "CHEQUE" ? "CHEQUE" : "PROMISSORY_NOTE",
+            details: input.cheque,
+            actorId: recordedById,
+          })
+        : null;
+
     return {
       transactionId: txn.id,
       amount: amount.toFixed(2),
       newBalance: updated.currentBalance.toFixed(2),
       cashMovementId: cash?.id ?? null,
+      chequeId: cheque?.id ?? null,
     };
   });
 }
@@ -216,6 +246,10 @@ export async function reversePayment(
       throw new BusinessError("INVALID_STATE", "Bu tahsilat zaten iptal edilmiş");
     }
 
+    // Kâğıt hareket ettiyse tahsilat iptal edilemez: tahsil edilmiş çekin
+    // parası kasaya girdi, ciro edilmiş çek elimizde değil.
+    await assertCollectionReversible(tx, original.id);
+
     const amount = new Dec(original.amount);
 
     const reversal = await tx.transaction.create({
@@ -244,6 +278,10 @@ export async function reversePayment(
       reversalTransactionId: reversal.id,
       actorId: reversedById,
     });
+
+    // Portföydeki kâğıt da düşer; aksi hâlde iptal edilmiş bir tahsilatın çeki
+    // vadesini beklemeye devam ederdi.
+    await cancelChequeForReversal(tx, original.id, reversedById);
 
     return {
       reversalId: reversal.id,

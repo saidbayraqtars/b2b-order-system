@@ -100,6 +100,14 @@ suite("field operations: collection and visits", () => {
     await prisma.checkIn.deleteMany({
       where: { salesRepId: { in: [repId, otherRepId] } },
     });
+    // Çek/senet tahsilatı portföye bir kâğıt açıyor ve o kâğıt tahsilat
+    // satırına bağlı; önce kâğıt düşmeden cari hareketleri silinemez.
+    await prisma.chequeEvent.deleteMany({
+      where: { cheque: { companyId: { in: [companyId, otherCompanyId] } } },
+    });
+    await prisma.cheque.deleteMany({
+      where: { companyId: { in: [companyId, otherCompanyId] } },
+    });
     // Reversals point at the collections they undo, so the pointing rows go first.
     await prisma.transaction.deleteMany({
       where: { companyId: { in: [companyId, otherCompanyId] }, reversalOfId: { not: null } },

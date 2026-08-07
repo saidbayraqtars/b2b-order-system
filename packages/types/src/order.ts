@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { chequeDetailsSchema } from "./cheque";
 import { CollectionMethodEnum, OrderStatusEnum, PaymentMethodEnum } from "./enums";
 import { couponCodeSchema } from "./promotion";
 
@@ -49,6 +50,11 @@ export const recordPaymentSchema = z.object({
    * omitted account means the default till rather than a rejected collection.
    */
   cashAccountId: z.string().cuid().nullable().optional(),
+  /**
+   * Çek/senet künyesi. Yalnızca o iki yöntemde okunur, hiçbir alanı zorunlu
+   * değildir — sahada tutar giriliyor, gerisi ofiste tamamlanıyor.
+   */
+  cheque: chequeDetailsSchema.optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 

@@ -53,6 +53,7 @@ export const PermissionEnum = z.enum([
   "payment_terms.manage",
   "volume_tiers.manage",
   "payments.view",
+  "cheques.manage",
   // belge & rapor
   "documents.view",
   "documents.manage",
@@ -94,6 +95,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "payment_terms.manage": "Vadeleri yönet",
   "volume_tiers.manage": "Hacim iskontosunu yönet",
   "payments.view": "Kart tahsilatlarını görüntüle",
+  "cheques.manage": "Çek/senet portföyünü yönet",
   "documents.view": "Belgeleri görüntüle",
   "documents.manage": "Belge serilerini yönet",
   "reports.view": "Raporları görüntüle",
@@ -121,6 +123,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "delivery.confirm":
     "Kendisine düşen sevkiyatı teslim edildi işaretler, imzalı belgeyi yükler",
   "labels.manage": "Kargo etiketi ve 80 mm fiş tasarımlarını düzenler",
+  "cheques.manage":
+    "Kâğıdı tahsile verir, tahsil/karşılıksız/ciro işaretler. Karşılıksızda kapanan borç geri açılır",
 };
 
 /** Onay kutularının gruplandığı başlıklar — sıralama ekranda korunur. */
@@ -160,6 +164,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "cash.view",
       "cash.manage",
       "payments.view",
+      "cheques.manage",
       "payment_terms.manage",
       "volume_tiers.manage",
     ],
@@ -374,6 +379,10 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "payment_terms.manage": ["SELLER"],
   "volume_tiers.manage": ["SELLER"],
   "payments.view": ["SELLER"],
+  // Portföy satıcının alacağı. Saha çek *toplar* (tahsilat kaydı) ama kâğıdın
+  // tahsile verilmesi, karşılıksız işaretlenmesi ve ciro edilmesi ofisin işi:
+  // her biri kasayı ya da cariyi doğrudan değiştiriyor.
+  "cheques.manage": ["SELLER"],
 
   // Kurye irsaliyeyi/teslim fişini açabilmeli.
   "documents.view": ["SELLER", "DEALER", "FIELD", "DELIVERY"],
