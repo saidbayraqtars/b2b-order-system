@@ -239,6 +239,32 @@ export async function requireUser(
 }
 
 /**
+ * "Şu izinlerden **en az biri**" kapısı.
+ *
+ * `requireUser(roles, [a, b])` hepsini ister; bazı ekranlar ise iki farklı
+ * kişiye birden hizmet ediyor — teslimat listesini hem kurye (delivery.confirm)
+ * hem sevkiyatı yöneten (orders.fulfil) görür ve kimsenin ikisine birden sahip
+ * olması beklenmez. İki ayrı uç açmak, aynı listeyi iki yerde kopyalamak
+ * demekti.
+ *
+ * Ret, izin reddi olarak kaydedilir — rol reddiyle karıştırılmasın.
+ */
+export async function requireAnyPermission(
+  needed: readonly Permission[],
+  allowed?: readonly Role[],
+): Promise<SessionUser> {
+  const user = await requireUser(allowed);
+  if (needed.some((p) => hasPermission(user.permissions, p))) return user;
+
+  await recordDenial(user, await requestChannel(), {
+    missingPermissions: needed,
+    anyOf: true,
+    role: user.role,
+  });
+  throw new AuthError(403, "Yetkisiz erişim", "FORBIDDEN");
+}
+
+/**
  * Which application the current request came from, decided by the credential it
  * carried: a bearer token is the phone app, a cookie is a browser.
  *
@@ -392,6 +418,24 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   ERP_AGENT_NOT_FOUND: 404,
   ERP_AGENT_NAME_TAKEN: 409,
   ERP_RUN_NOT_FOUND: 404,
+  // saha hedefleri
+  TARGET_NOT_FOUND: 404,
+  INVALID_TARGET: 422,
+  // ziyaret çağrısı
+  VISIT_REQUEST_NOT_FOUND: 404,
+  COMPANY_INACTIVE: 409,
+  // dağıtım
+  //
+  // 409, not 422: teslim edilmiş bir sevkiyatı yeniden teslim etmek geçersiz
+  // bir girdi değil, geçersiz bir *durum* — iki kurye aynı işi aynı anda
+  // kapatmaya çalıştığında ikincisi bunu görür.
+  SHIPMENT_ALREADY_DELIVERED: 409,
+  INVALID_COURIER: 422,
+  // etiket / fiş şablonları
+  LABEL_TEMPLATE_NOT_FOUND: 404,
+  // depo & stok
+  WAREHOUSE_NOT_FOUND: 404,
+  INVALID_STOCK: 422,
 };
 
 /**

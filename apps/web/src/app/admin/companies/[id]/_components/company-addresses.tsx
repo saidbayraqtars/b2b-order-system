@@ -26,6 +26,8 @@ export function CompanyAddresses({
     city: "",
     district: "",
     postalCode: "",
+    latitude: "",
+    longitude: "",
   });
   const set = (k: keyof typeof form, v: string) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -39,9 +41,22 @@ export function CompanyAddresses({
         city: form.city,
         district: form.district || undefined,
         postalCode: form.postalCode || undefined,
+        // Boş bırakılabilir; girilirse ziyaret haritası ve yol tarifi bu
+        // noktayı kullanır.
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
       }),
     onSuccess: () => {
-      setForm({ label: "", line1: "", line2: "", city: "", district: "", postalCode: "" });
+      setForm({
+        label: "",
+        line1: "",
+        line2: "",
+        city: "",
+        district: "",
+        postalCode: "",
+        latitude: "",
+        longitude: "",
+      });
       setAdding(false);
       router.refresh();
     },
@@ -99,6 +114,24 @@ export function CompanyAddresses({
                 onChange={(e) => set("postalCode", e.target.value)}
               />
             </label>
+            <label>
+              <Label hint="Haritadan kopyalanır, zorunlu değil">Enlem</Label>
+              <TextInput
+                value={form.latitude}
+                inputMode="decimal"
+                placeholder="41.0151"
+                onChange={(e) => set("latitude", e.target.value)}
+              />
+            </label>
+            <label>
+              <Label hint="Haritadan kopyalanır, zorunlu değil">Boylam</Label>
+              <TextInput
+                value={form.longitude}
+                inputMode="decimal"
+                placeholder="28.9795"
+                onChange={(e) => set("longitude", e.target.value)}
+              />
+            </label>
           </div>
           <div className="mt-3">
             <Button
@@ -141,6 +174,14 @@ export function CompanyAddresses({
                   {a.district ? `${a.district}, ` : ""}
                   {a.city}
                   {a.postalCode ? ` ${a.postalCode}` : ""}
+                </p>
+                {/* Koordinat, ziyaret haritasının tek girdisi. Eksikse
+                    plasiyer haritada pin göremez — bunu burada söylemek,
+                    sahada fark edilmesinden iyidir. */}
+                <p className="mt-1 text-xs text-neutral-400">
+                  {a.latitude != null && a.longitude != null
+                    ? `Konum: ${a.latitude}, ${a.longitude}`
+                    : "Konum girilmedi — haritada görünmez"}
                 </p>
               </div>
               <div className="flex gap-1">

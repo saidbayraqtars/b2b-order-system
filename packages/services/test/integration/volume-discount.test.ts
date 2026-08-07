@@ -30,12 +30,36 @@ let pinCompanyId: string;
 let buyerId: string;
 let adminId: string;
 let ADMIN_CTX: { userId: string; role: "SUPER_ADMIN"; companyId: null };
+/**
+ * Askıya alınan diğer basamaklar.
+ *
+ * Merdiven bilerek geneldir: bir firmanın hangi basamağa oturduğu **tüm** aktif
+ * basamaklara bakılarak bulunur. Bu yüzden seed'lenmiş bir veritabanında bu
+ * paketin "hiçbir basamak kazanılmadı" varsayımı tutmaz — 2.000.000 ₺'lik test
+ * siparişi seed'deki 750.000 ₺'lik basamağı da geçirir ve iskonto sıfır
+ * beklenen yerde 5 çıkar. Paket süresince diğerleri pasife alınıp sonunda
+ * aynen geri veriliyor; merdivenin genel olması bir kural, testin görmezden
+ * geleceği bir ayrıntı değil.
+ */
+let suspendedTierIds: string[] = [];
 
 /** 100,00 × 20.000 = 2.000.000 — one order that clears the threshold twice over. */
 const BIG = 20_000;
 
 suite("hacim iskontosu integration", () => {
   beforeAll(async () => {
+    const others = await prisma.volumeTier.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    suspendedTierIds = others.map((t) => t.id);
+    if (suspendedTierIds.length > 0) {
+      await prisma.volumeTier.updateMany({
+        where: { id: { in: suspendedTierIds } },
+        data: { isActive: false },
+      });
+    }
+
     const group = await prisma.customerGroup.create({ data: { name: `Grup ${TAG}` } });
     groupId = group.id;
 
@@ -138,6 +162,12 @@ suite("hacim iskontosu integration", () => {
     await prisma.company.deleteMany({ where: { id: { in: companies } } });
     await prisma.customerGroup.deleteMany({ where: { id: groupId } });
     await prisma.volumeTier.deleteMany({ where: { id: tierId } });
+    if (suspendedTierIds.length > 0) {
+      await prisma.volumeTier.updateMany({
+        where: { id: { in: suspendedTierIds } },
+        data: { isActive: true },
+      });
+    }
     await prisma.$disconnect();
   });
 

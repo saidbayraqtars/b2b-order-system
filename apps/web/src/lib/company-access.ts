@@ -39,5 +39,10 @@ export async function resolveCompanyId(
       if (!requested) throw new InputError("companyId gerekli");
       return requested;
     }
+    // Kuryenin firma kavramı yok: gördüğü şey kendisine atanmış sevkiyat, o da
+    // sevkiyat kimliğinden çözülüyor. Firma üzerinden gelen hiçbir ekran ona
+    // açılmamalı.
+    case "COURIER":
+      throw new AuthError(403, "Bu ekran kurye hesabına kapalı");
   }
 }

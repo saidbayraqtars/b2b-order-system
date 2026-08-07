@@ -8,6 +8,12 @@ export const RoleEnum = z.enum([
   "COMPANY_ADMIN",
   "COMPANY_STAFF",
   "SALES_REP",
+  /**
+   * Malı kapıya götüren kişi. Plasiyerden ayrı bir rol, çünkü işi de yetkisi de
+   * farklı: sipariş girmez, fiyat görmez, tahsilat yapmaz — kendisine düşen
+   * sevkiyatı teslim eder ve imzalı belgenin fotoğrafını yükler.
+   */
+  "COURIER",
 ]);
 export type Role = z.infer<typeof RoleEnum>;
 
@@ -166,6 +172,66 @@ export const PAYMENT_INTENT_STATUS_LABELS: Record<PaymentIntentStatus, string> =
   FAILED: "Başarısız",
   CANCELLED: "İptal edildi",
   REFUNDED: "İade edildi",
+};
+
+/**
+ * Saha hedefinin hangi büyüklüğü ölçtüğü.
+ *
+ * İkisi ayrı satırlar, tek bir "hedef" satırının iki kolonu değil: bir
+ * temsilciye yalnızca ziyaret hedefi konması sık rastlanan bir durum ve boş
+ * bırakılmış ciro kolonu "hedef yok" mu "hedef sıfır" mı belli olmazdı.
+ */
+export const TargetMetricEnum = z.enum(["VISITS", "REVENUE"]);
+export type TargetMetric = z.infer<typeof TargetMetricEnum>;
+
+export const TARGET_METRIC_LABELS: Record<TargetMetric, string> = {
+  VISITS: "Ziyaret noktası",
+  REVENUE: "Ciro",
+};
+
+export const TargetPeriodEnum = z.enum([
+  "DAILY",
+  "WEEKLY",
+  "MONTHLY",
+  "YEARLY",
+]);
+export type TargetPeriod = z.infer<typeof TargetPeriodEnum>;
+
+export const TARGET_PERIOD_LABELS: Record<TargetPeriod, string> = {
+  DAILY: "Günlük",
+  WEEKLY: "Haftalık",
+  MONTHLY: "Aylık",
+  YEARLY: "Yıllık",
+};
+
+/** Bayinin "uğrayın" çağrısının durumu. */
+export const VisitRequestStatusEnum = z.enum([
+  "OPEN",
+  "PLANNED",
+  "DONE",
+  "CANCELLED",
+]);
+export type VisitRequestStatus = z.infer<typeof VisitRequestStatusEnum>;
+
+export const VISIT_REQUEST_STATUS_LABELS: Record<VisitRequestStatus, string> = {
+  OPEN: "Bekliyor",
+  PLANNED: "Güne alındı",
+  DONE: "Ziyaret edildi",
+  CANCELLED: "İptal",
+};
+
+/** Etiket/fiş şablonunun hangi iş için basıldığı. */
+export const LabelTemplateKindEnum = z.enum([
+  "CARGO_LABEL",
+  "ORDER_RECEIPT",
+  "DELIVERY_RECEIPT",
+]);
+export type LabelTemplateKind = z.infer<typeof LabelTemplateKindEnum>;
+
+export const LABEL_TEMPLATE_KIND_LABELS: Record<LabelTemplateKind, string> = {
+  CARGO_LABEL: "Kargo etiketi",
+  ORDER_RECEIPT: "Sipariş fişi (80 mm)",
+  DELIVERY_RECEIPT: "Teslim fişi (80 mm)",
 };
 
 /** Which application wrote a field record (visit, collection). */

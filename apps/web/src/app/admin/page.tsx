@@ -31,6 +31,7 @@ export default async function AdminDashboard() {
           </h2>
           <OrdersBoard
             canApproveCredit={hasPermission(user.permissions, "orders.approve")}
+            canPrint={hasPermission(user.permissions, "documents.view")}
           />
         </section>
       )}

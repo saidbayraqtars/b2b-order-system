@@ -90,6 +90,11 @@ export function GET(req: NextRequest) {
       case "SUPER_ADMIN":
         where = requested ? { companyId: requested } : {};
         break;
+      // Kurye yalnızca kendisine atanmış sevkiyatı olan siparişleri görür —
+      // firma seçemez, portföyü yoktur.
+      case "COURIER":
+        where = { shipments: { some: { courierId: user.id } } };
+        break;
     }
     where = { ...where, ...statusFilter };
 

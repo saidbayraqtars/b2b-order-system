@@ -96,7 +96,21 @@ export type BusinessErrorCode =
   // ── ERP köprüsü ──
   | "ERP_AGENT_NOT_FOUND"
   | "ERP_AGENT_NAME_TAKEN"
-  | "ERP_RUN_NOT_FOUND";
+  | "ERP_RUN_NOT_FOUND"
+  // ── saha hedefleri ──
+  | "TARGET_NOT_FOUND"
+  | "INVALID_TARGET"
+  // ── ziyaret çağrısı ──
+  | "VISIT_REQUEST_NOT_FOUND"
+  | "COMPANY_INACTIVE"
+  // ── dağıtım ──
+  | "SHIPMENT_ALREADY_DELIVERED"
+  | "INVALID_COURIER"
+  // ── etiket / fiş şablonları ──
+  | "LABEL_TEMPLATE_NOT_FOUND"
+  // ── depo & stok ──
+  | "WAREHOUSE_NOT_FOUND"
+  | "INVALID_STOCK";
 
 export class BusinessError extends Error {
   constructor(

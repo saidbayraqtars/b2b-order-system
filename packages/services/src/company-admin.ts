@@ -62,6 +62,9 @@ export interface AddressRow {
   district: string | null;
   postalCode: string | null;
   isDefault: boolean;
+  /** Ziyaret haritasının ve yol tarifinin okuduğu nokta. Girilmemiş olabilir. */
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const companySelect = {
@@ -163,6 +166,8 @@ export async function getCompany(id: string): Promise<CompanyDetail> {
           district: true,
           postalCode: true,
           isDefault: true,
+          latitude: true,
+          longitude: true,
         },
         orderBy: [{ isDefault: "desc" }, { label: "asc" }],
       },
@@ -447,6 +452,8 @@ export async function createAddress(
         city: input.city,
         district: input.district ?? null,
         postalCode: input.postalCode ?? null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
         isDefault,
       },
       select: {
@@ -458,6 +465,8 @@ export async function createAddress(
         district: true,
         postalCode: true,
         isDefault: true,
+        latitude: true,
+        longitude: true,
       },
     });
   });
@@ -485,6 +494,8 @@ export async function updateAddress(
         ...(input.district !== undefined ? { district: input.district ?? null } : {}),
         ...(input.postalCode !== undefined ? { postalCode: input.postalCode ?? null } : {}),
         ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+        ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
+        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
       },
       select: {
         id: true,
@@ -495,6 +506,8 @@ export async function updateAddress(
         district: true,
         postalCode: true,
         isDefault: true,
+        latitude: true,
+        longitude: true,
       },
     });
   });

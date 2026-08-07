@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Printer } from "lucide-react";
 import type { OrderStatus, PaymentMethod } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
@@ -48,6 +50,7 @@ export function OrdersBoard({
   canApproveCredit,
   canAct = true,
   companyId,
+  canPrint = false,
 }: {
   /** SUPER_ADMIN may confirm PENDING_CREDIT orders; company admins may not. */
   canApproveCredit: boolean;
@@ -59,8 +62,14 @@ export function OrdersBoard({
    * The server authorizes it either way.
    */
   companyId?: string;
+  /** Fiş/etiket basımı sütunu çıksın mı (`documents.view`). */
+  canPrint?: boolean;
 }) {
   const qc = useQueryClient();
+  // Toplu basım seçimi. Ekranda tutuluyor, sunucuya yalnızca basım anında
+  // kimlik listesi olarak gidiyor — "seçili siparişler" diye kalıcı bir kavram
+  // yaratmanın karşılığı yok.
+  const [selected, setSelected] = useState<string[]>([]);
   const ordersQuery = useQuery({
     queryKey: ["orders", companyId ?? null],
     queryFn: () =>
@@ -103,10 +112,54 @@ export function OrdersBoard({
           {(action.error as Error).message}
         </p>
       )}
+      {canPrint && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+          <span className="text-xs text-neutral-500">
+            {selected.length > 0
+              ? `${selected.length} sipariş seçili`
+              : "Toplu basım için satırları işaretleyin"}
+          </span>
+          <a
+            href={`/documents/labels?kind=ORDER_RECEIPT&orders=${selected.join(",")}`}
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={selected.length === 0}
+            className={
+              selected.length === 0
+                ? "pointer-events-none inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs opacity-40 dark:border-neutral-700"
+                : "inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
+            }
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Sipariş fişi (80 mm)
+          </a>
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="text-xs text-neutral-500 hover:underline"
+            >
+              Seçimi temizle
+            </button>
+          )}
+        </div>
+      )}
       <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
           <tr>
+            {canPrint && (
+              <th className="w-8 px-3 py-2">
+                <input
+                  type="checkbox"
+                  aria-label="Tümünü seç"
+                  checked={selected.length > 0 && selected.length === orders.length}
+                  onChange={(e) =>
+                    setSelected(e.target.checked ? orders.map((o) => o.id) : [])
+                  }
+                />
+              </th>
+            )}
             <th className="px-3 py-2">Sipariş</th>
             <th className="px-3 py-2">Firma</th>
             <th className="px-3 py-2">Oluşturan</th>
@@ -125,6 +178,22 @@ export function OrdersBoard({
               (o.status === "PENDING_CREDIT" && canApproveCredit);
             return (
               <tr key={o.id}>
+                {canPrint && (
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`${o.orderNumber} seç`}
+                      checked={selected.includes(o.id)}
+                      onChange={(e) =>
+                        setSelected((prev) =>
+                          e.target.checked
+                            ? [...prev, o.id]
+                            : prev.filter((id) => id !== o.id),
+                        )
+                      }
+                    />
+                  </td>
+                )}
                 <td className="px-3 py-2 font-medium">
                   <Link href={`/orders/${o.id}`} className="hover:underline">
                     {o.orderNumber}
@@ -144,6 +213,17 @@ export function OrdersBoard({
                   <Badge tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
                 </td>
                 <td className="px-3 py-2 text-right">
+                  {canPrint && (
+                    <a
+                      href={`/documents/labels?kind=ORDER_RECEIPT&orders=${o.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Sipariş fişi"
+                      className="mr-2 inline-flex text-neutral-500 hover:text-brand-600"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </a>
+                  )}
                   {pending && (
                     <div className="flex justify-end gap-2">
                       {canApprove && (

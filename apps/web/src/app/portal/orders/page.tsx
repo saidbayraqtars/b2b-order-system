@@ -40,6 +40,7 @@ export default async function PortalOrdersPage({ searchParams }: Props) {
           companyId={ctx.companyId}
           canApproveCredit={user.role === "SUPER_ADMIN"}
           canAct={user.role !== "COMPANY_STAFF"}
+          canPrint={user.permissions.includes("documents.view")}
         />
       </div>
     </div>

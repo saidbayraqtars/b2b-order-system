@@ -1,5 +1,5 @@
 import { PrismaClient, Role } from "@prisma/client";
-import { defaultPermissionsFor } from "@repo/types";
+import { DEFAULT_LABEL_TEMPLATES, defaultPermissionsFor } from "@repo/types";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -110,6 +110,9 @@ async function main() {
           line1: "Bağdat Cad. No:1",
           city: "İstanbul",
           district: "Kadıköy",
+          // Ziyaret haritasının ve yol tarifinin okuduğu nokta.
+          latitude: 40.9903,
+          longitude: 29.0275,
           isDefault: true,
         },
       },
@@ -147,6 +150,8 @@ async function main() {
           line1: "Atatürk Bul. No:42",
           city: "Ankara",
           district: "Çankaya",
+          latitude: 39.9208,
+          longitude: 32.8541,
           isDefault: true,
         },
       },
@@ -229,6 +234,7 @@ async function main() {
   await seedPromotions(group.id);
   await seedDocumentSeries();
   await seedAnnouncements();
+  await seedLabelTemplates();
 
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
 }
@@ -249,6 +255,35 @@ async function seedDocumentSeries() {
     if (existing) continue;
     await prisma.documentSeries.create({
       data: { type: s.type, prefix: s.prefix, padding: 6, isDefault: true },
+    });
+  }
+}
+
+/**
+ * Hazır etiket ve fiş tasarımları.
+ *
+ * Basım motoru bunlar olmadan da çalışıyor (kod içindeki hazır tasarıma
+ * düşüyor), ama veritabanına yazmak tasarımcının düzenleyebileceği bir
+ * başlangıç noktası veriyor — kullanıcı sıfırdan satır dizmek zorunda kalmıyor.
+ * Aynı türde bir şablon zaten varsa dokunulmaz: kurulum sonrası yapılan
+ * düzenleme her seed çalıştırmasında geri alınmamalı.
+ */
+async function seedLabelTemplates() {
+  for (const t of DEFAULT_LABEL_TEMPLATES) {
+    const existing = await prisma.labelTemplate.findFirst({
+      where: { kind: t.kind },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.labelTemplate.create({
+      data: {
+        kind: t.kind,
+        name: t.name,
+        widthMm: t.widthMm,
+        heightMm: t.heightMm ?? null,
+        blocks: t.blocks,
+        isDefault: true,
+      },
     });
   }
 }

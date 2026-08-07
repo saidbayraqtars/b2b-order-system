@@ -21,6 +21,10 @@ const EMPTY_VARIANT = {
   unitsPerCase: "1",
   moqUnits: "1",
   stock: "0",
+  unit: "",
+  costPrice: "",
+  minStock: "",
+  shelfCode: "",
 };
 
 export function VariantList({
@@ -49,6 +53,10 @@ export function VariantList({
         unitsPerCase: Number(draft.unitsPerCase),
         moqUnits: Number(draft.moqUnits),
         stock: Number(draft.stock),
+        unit: draft.unit.trim() || null,
+        costPrice: draft.costPrice ? Number(draft.costPrice) : null,
+        minStock: draft.minStock ? Number(draft.minStock) : null,
+        shelfCode: draft.shelfCode.trim() || null,
       }),
     onSuccess: () => {
       setDraft(EMPTY_VARIANT);
@@ -136,7 +144,12 @@ export function VariantList({
               </div>
 
               {expanded && (
-                <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+                <div className="space-y-4 border-t border-neutral-200 p-3 dark:border-neutral-800">
+                  <StockCard
+                    variant={v}
+                    pending={update.isPending}
+                    onSave={(body) => update.mutate({ id: v.id, body })}
+                  />
                   <PriceEditor variantId={v.id} productId={productId} />
                 </div>
               )}
@@ -207,6 +220,36 @@ export function VariantList({
               onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
             />
           </div>
+          <div>
+            <Label hint="ADET, KG, KOLİ…">Birim</Label>
+            <TextInput
+              value={draft.unit}
+              onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label hint="Müşteriye gösterilmez">Alış fiyatı</Label>
+            <TextInput
+              value={draft.costPrice}
+              inputMode="decimal"
+              onChange={(e) => setDraft({ ...draft, costPrice: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
+            <TextInput
+              value={draft.minStock}
+              inputMode="numeric"
+              onChange={(e) => setDraft({ ...draft, minStock: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>Raf kodu</Label>
+            <TextInput
+              value={draft.shelfCode}
+              onChange={(e) => setDraft({ ...draft, shelfCode: e.target.value })}
+            />
+          </div>
           <div className="flex items-end">
             <Button
               disabled={!draft.sku.trim() || create.isPending}
@@ -255,5 +298,96 @@ function StockInput({
       }}
       className="w-20 text-right"
     />
+  );
+}
+
+/**
+ * Stok kartının ERP alanları.
+ *
+ * Ayrı bir bölüm: bunlar siparişi değil *depoyu* ilgilendiriyor ve çoğu
+ * kurulumda ERP köprüsü tarafından doldurulacak. Elle girildiğinde bir
+ * sonraki eşleşmede köprü üzerine yazabilir — bu yüzden burada "kaydet"
+ * düğmesi var, alan alan otomatik yazma yok.
+ */
+function StockCard({
+  variant,
+  pending,
+  onSave,
+}: {
+  variant: AdminVariantDetail;
+  pending: boolean;
+  onSave: (body: Record<string, unknown>) => void;
+}) {
+  const [form, setForm] = useState({
+    unit: variant.unit ?? "",
+    costPrice: variant.costPrice ?? "",
+    minStock: variant.minStock != null ? String(variant.minStock) : "",
+    shelfCode: variant.shelfCode ?? "",
+    isActive: variant.isActive,
+  });
+
+  return (
+    <div className="rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+      <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
+        Stok kartı
+      </p>
+      <div className="grid gap-2 sm:grid-cols-4">
+        <div>
+          <Label hint="ADET, KG, KOLİ…">Birim</Label>
+          <TextInput
+            value={form.unit}
+            onChange={(e) => setForm({ ...form, unit: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label hint="Müşteriye gösterilmez">Alış fiyatı</Label>
+          <TextInput
+            value={form.costPrice}
+            inputMode="decimal"
+            onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
+          <TextInput
+            value={form.minStock}
+            inputMode="numeric"
+            onChange={(e) => setForm({ ...form, minStock: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label>Raf kodu</Label>
+          <TextInput
+            value={form.shelfCode}
+            onChange={(e) => setForm({ ...form, shelfCode: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.isActive}
+            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+          />
+          Aktif (pasif varyant katalogda görünmez)
+        </label>
+        <Button
+          disabled={pending}
+          onClick={() =>
+            onSave({
+              unit: form.unit.trim() || null,
+              costPrice: form.costPrice ? Number(form.costPrice) : null,
+              minStock: form.minStock ? Number(form.minStock) : null,
+              shelfCode: form.shelfCode.trim() || null,
+              isActive: form.isActive,
+            })
+          }
+        >
+          Stok kartını kaydet
+        </Button>
+      </div>
+    </div>
   );
 }

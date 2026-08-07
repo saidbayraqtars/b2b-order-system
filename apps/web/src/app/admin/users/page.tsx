@@ -16,7 +16,13 @@ export default async function AdminUsersPage() {
       <h1 className="mb-5 text-xl font-bold">Kullanıcılar</h1>
       <UserManager
         currentUserId={user.id}
-        allowedRoles={["SUPER_ADMIN", "COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP"]}
+        allowedRoles={[
+          "SUPER_ADMIN",
+          "COMPANY_ADMIN",
+          "COMPANY_STAFF",
+          "SALES_REP",
+          "COURIER",
+        ]}
         companies={companies}
         grantablePermissions={user.permissions}
       />

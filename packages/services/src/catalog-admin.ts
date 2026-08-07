@@ -307,6 +307,12 @@ export interface AdminVariantDetail {
   moqUnits: number;
   stock: number;
   weightGram: number | null;
+  /** ERP stok kartı alanları; köprü bağlı değilse boş kalırlar. */
+  costPrice: string | null;
+  unit: string | null;
+  minStock: number | null;
+  shelfCode: string | null;
+  isActive: boolean;
   /** How many order lines reference this variant — non-zero blocks deletion. */
   orderItemCount: number;
   prices: AdminPriceRow[];
@@ -349,6 +355,11 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
           moqUnits: true,
           stock: true,
           weightGram: true,
+          costPrice: true,
+          unit: true,
+          minStock: true,
+          shelfCode: true,
+          isActive: true,
           _count: { select: { orderItems: true } },
           prices: {
             select: {
@@ -388,6 +399,11 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
       moqUnits: v.moqUnits,
       stock: v.stock,
       weightGram: v.weightGram,
+      costPrice: v.costPrice?.toFixed(2) ?? null,
+      unit: v.unit,
+      minStock: v.minStock,
+      shelfCode: v.shelfCode,
+      isActive: v.isActive,
       orderItemCount: v._count.orderItems,
       prices: v.prices.map((pr) => ({
         id: pr.id,
@@ -539,6 +555,11 @@ export async function createVariant(productId: string, input: CreateVariantInput
       moqUnits: input.moqUnits,
       stock: input.stock,
       weightGram: input.weightGram ?? null,
+      costPrice: input.costPrice ?? null,
+      unit: input.unit ?? null,
+      minStock: input.minStock ?? null,
+      shelfCode: input.shelfCode ?? null,
+      isActive: input.isActive ?? true,
     },
     select: { id: true, sku: true },
   });
@@ -570,6 +591,17 @@ export async function updateVariant(id: string, input: UpdateVariantInput) {
       ...(input.weightGram !== undefined
         ? { weightGram: input.weightGram ?? null }
         : {}),
+      ...(input.costPrice !== undefined
+        ? { costPrice: input.costPrice ?? null }
+        : {}),
+      ...(input.unit !== undefined ? { unit: input.unit ?? null } : {}),
+      ...(input.minStock !== undefined
+        ? { minStock: input.minStock ?? null }
+        : {}),
+      ...(input.shelfCode !== undefined
+        ? { shelfCode: input.shelfCode ?? null }
+        : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     },
     select: { id: true, sku: true, stock: true },
   });

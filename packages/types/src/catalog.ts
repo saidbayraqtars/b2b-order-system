@@ -58,6 +58,22 @@ export const createVariantSchema = z.object({
   moqUnits: z.number().int().positive("Minimum sipariş en az 1 olmalı").default(1),
   stock: z.number().int().min(0, "Stok negatif olamaz").default(0),
   weightGram: z.number().int().positive().nullish(),
+
+  /**
+   * ERP stok kartından gelen alanlar (VegaDB F0101TBLSTOKLAR karşılıkları).
+   * Hepsi opsiyonel: köprü bağlı olmayan bir kurulumda katalog bunlarsız da
+   * çalışıyor ve elle giriş yapan kullanıcı boş bırakabilmeli.
+   */
+  /** Alış fiyatı. Müşteriye gösterilmez; kâr raporu ve iskonto sınırı içindir. */
+  costPrice: z.number().nonnegative().nullish(),
+  /** Satış birimi: ADET, KG, KOLİ, MT… */
+  unit: z.string().max(16).nullish(),
+  /** Kritik stok eşiği. Altına düşen satır uyarı listesine girer. */
+  minStock: z.number().int().min(0).nullish(),
+  /** Raf/lokasyon kodu — toplayıcının aradığı bilgi. */
+  shelfCode: z.string().max(40).nullish(),
+  /** Pasif varyant katalogda görünmez, siparişe eklenemez; silinmez. */
+  isActive: z.boolean().optional(),
 });
 export type CreateVariantInput = z.infer<typeof createVariantSchema>;
 

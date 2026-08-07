@@ -344,7 +344,14 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
         </p>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
+      {/*
+        Üç sütun: alan paleti · tasarım · önizleme.
+        Önizleme daha önce tasarım sütununun **en altındaydı**; sütun/filtre
+        listesi uzayınca ekranın dışına kayıyor ve "önizleme yok" gibi
+        görünüyordu. Artık geniş ekranda kendi sütununda ve yapışkan — her
+        değişiklikten sonra sonucu görmek için kaydırmak gerekmiyor.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_minmax(380px,0.95fr)]">
         {/* ── field palette ── */}
         <section className="rounded-lg border border-neutral-200 dark:border-neutral-800">
           <header className="border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
@@ -746,7 +753,23 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             </div>
           </Panel>
 
-          <Panel title="Önizleme">
+        </div>
+
+        {/* ── live preview ── */}
+        <div className="xl:sticky xl:top-4 xl:self-start">
+          <Panel
+            title="Önizleme"
+            action={
+              <button
+                type="button"
+                onClick={() => preview.mutate({ dataset, config })}
+                disabled={config.columns.length === 0 || preview.isPending}
+                className="h-7 rounded-md border border-neutral-300 px-2 text-xs disabled:opacity-40 dark:border-neutral-700"
+              >
+                {preview.isPending ? "Çalışıyor…" : "Yenile"}
+              </button>
+            }
+          >
             {previewError ? (
               <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
                 {previewError}
@@ -754,10 +777,13 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             ) : preview.isPending && !result ? (
               <p className="text-sm text-neutral-500">Çalıştırılıyor…</p>
             ) : result ? (
-              <ReportPreview result={result} title={name || "rapor"} />
+              <div className="max-h-[70vh] overflow-y-auto">
+                <ReportPreview result={result} title={name || "rapor"} />
+              </div>
             ) : (
               <p className="text-sm text-neutral-500">
-                Sütun ekleyince sonuç burada görünür.
+                Soldaki alan listesinden <strong>sütun</strong> ekleyin —
+                sonuç anında burada görünür.
               </p>
             )}
           </Panel>
@@ -997,15 +1023,19 @@ function FilterValue({
 
 function Panel({
   title,
+  action,
   children,
 }: {
   title: string;
+  /** Başlığın sağına düşen düğme (önizlemeyi elle yenilemek gibi). */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-neutral-200 dark:border-neutral-800">
-      <header className="border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
         <h2 className="text-sm font-semibold">{title}</h2>
+        {action}
       </header>
       <div className="p-4">{children}</div>
     </section>

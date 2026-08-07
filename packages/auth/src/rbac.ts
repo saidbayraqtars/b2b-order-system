@@ -13,6 +13,9 @@ import type { Role } from "@repo/types";
 const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/admin", roles: ["SUPER_ADMIN"] },
   { prefix: "/rep", roles: ["SALES_REP", "SUPER_ADMIN"] },
+  // Kurye masası. Süper admin de girer (kuryenin gördüğünü görmeden sorun
+  // çözülemiyor); listeyi servis kendi sevkiyatlarıyla sınırlar.
+  { prefix: "/kurye", roles: ["COURIER", "SUPER_ADMIN"] },
   // Plasiyer ve süper admin de buraya girer: müşteri adına sipariş girmek
   // (telefonla gelen sipariş, saha ziyareti) toptan işin normal akışı. Hangi
   // firma adına çalışıldığı ?companyId ile taşınır ve her istekte
@@ -35,19 +38,40 @@ const ROUTE_ACCESS: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = 
   // treated as public; every authenticated role owns an account.
   {
     prefix: "/hesabim",
-    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    roles: [
+      "COMPANY_ADMIN",
+      "COMPANY_STAFF",
+      "SALES_REP",
+      "SUPER_ADMIN",
+      "COURIER",
+    ],
   },
   // Printable waybills and invoices. Same shape as /orders: one page per role,
   // and the document itself is authorized against its company server-side.
   {
     prefix: "/documents",
-    roles: ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    roles: [
+      "COMPANY_ADMIN",
+      "COMPANY_STAFF",
+      "SALES_REP",
+      "SUPER_ADMIN",
+      "COURIER",
+    ],
   },
 ];
 
-/** Roles allowed for a pathname, or null if the path is not gated. */
+/**
+ * Roles allowed for a pathname, or null if the path is not gated.
+ *
+ * The prefix has to end on a path boundary. Plain `startsWith` looked right and
+ * was not: `/reports` starts with `/rep`, so the report designer was being
+ * gated by the sales-rep rule and every company admin bounced to /403 — a page
+ * their own role list allows. A prefix only matches the whole segment.
+ */
 export function allowedRolesFor(pathname: string): readonly Role[] | null {
-  const match = ROUTE_ACCESS.find((r) => pathname.startsWith(r.prefix));
+  const match = ROUTE_ACCESS.find(
+    (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`),
+  );
   return match ? match.roles : null;
 }
 
@@ -75,6 +99,8 @@ export function defaultRouteForRole(role: Role): string {
       return "/admin";
     case "SALES_REP":
       return "/rep";
+    case "COURIER":
+      return "/kurye";
     case "COMPANY_ADMIN":
     case "COMPANY_STAFF":
       return "/portal";

@@ -15,8 +15,11 @@ import {
   Percent,
   Plug,
   ShieldCheck,
+  Sticker,
   Tags,
+  Target,
   TrendingUp,
+  Truck,
   Users,
   Wallet,
   Wand2,
@@ -63,6 +66,13 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
     ],
   },
   {
+    title: "Saha & Dağıtım",
+    links: [
+      { href: "/admin/targets", label: "Hedefler", icon: Target, permission: "targets.manage" },
+      { href: "/admin/deliveries", label: "Dağıtım", icon: Truck, permission: "orders.fulfil" },
+    ],
+  },
+  {
     title: "Finans",
     links: [
       { href: "/admin/kasa", label: "Kasa & Banka", icon: Wallet, permission: "cash.view" },
@@ -74,6 +84,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
     title: "Belge & Rapor",
     links: [
       { href: "/admin/documents", label: "Belgeler", icon: FileText, permission: "documents.view" },
+      { href: "/admin/labels", label: "Etiket & fiş", icon: Sticker, permission: "labels.manage" },
       { href: "/admin/reports", label: "Raporlar", icon: BarChart3, permission: "reports.view" },
       { href: "/reports", label: "Rapor tasarımcısı", icon: Wand2, permission: "reports.build" },
     ],

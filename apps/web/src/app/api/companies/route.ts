@@ -23,6 +23,12 @@ export function GET() {
       case "SUPER_ADMIN":
         where = {};
         break;
+      // Kuryeye `companies.view` verilemez (kapsam dışı), yani buraya
+      // düşmemesi gerekir — düşerse boş liste döner, sessizce her firmayı
+      // göstermez.
+      case "COURIER":
+        where = { id: "__none__" };
+        break;
     }
 
     const rows = await prisma.company.findMany({

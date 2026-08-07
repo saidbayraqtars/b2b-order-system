@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-07 · Adım 31 (yetki kapsamı) sonu
+Son güncelleme: 2026-08-07 · Adım 32-39 (saha, dağıtım, etiket, stok) sonu
 
 ---
 
@@ -45,6 +45,14 @@ Son güncelleme: 2026-08-07 · Adım 31 (yetki kapsamı) sonu
 | 29 | ERP köprüsü: müşterinin makinesindeki ajan, eşler-oluşturmaz, ERP bakiyesi ayrı kolonda | ✅ |
 | 30 | Kullanıcı bazlı yetki (29 adlandırılmış izin, tik tik seçim) + yönetim panelinde gruplu kenar çubuğu | ✅ |
 | 31 | Yetki kapsamı: izin ↔ hesap tipi (bayi/şirket/saha), kullanıcı ekranı hesap tipine göre ayrıldı | ✅ |
+| 32 | Rapor tasarımcısına rol kabuğu (menü kaybolmuyor) + önizleme kendi sütununda | ✅ |
+| 33 | Cari ekstre yazdırma görünümü (PDF olarak kaydet) | ✅ |
+| 34 | Temsilci hedefleri: ziyaret + ciro, günlük/haftalık/aylık/yıllık, `targets.manage` izni | ✅ |
+| 35 | Ziyaret çağrısı: bayi çağırır, plasiyerin gününe düşer, elle sıralanır | ✅ |
+| 36 | Adres koordinatı + ziyaret ekranında harita ve sıralı rota / yol tarifi | ✅ |
+| 37 | Etiket & fiş motoru: kargo etiketi + 80 mm fişler, tek/toplu basım, şablon tasarımcısı | ✅ |
+| 38 | Kurye rolü: teslim listesi, imzalı belge fotoğrafı, teslim fişi, dağıtım ekranı | ✅ |
+| 39 | Stok kartı alanları: alış fiyatı, birim, kritik stok, raf, pasif kart + depo bazlı stok | ✅ |
 
 ---
 
@@ -1219,7 +1227,129 @@ firma detayında ve portalda liste zaten tek tip.
 `organization.manage` ve `orders.fulfil` 403, `reports.view` 200. Mevcut veritabanında
 kapsam ihlali taşıyan hesap yok.
 
-## 31. Web Portal (`apps/web`)
+## 31. Paylaşılan Kabuk & Rapor Tasarımcısı (Adım 32-33)
+
+Rapor tasarımcısı üç rol ailesine birden açık olduğu için hiçbir kabuğun içinde
+değildi: içeri giren kullanıcı gezinme çubuğunu kaybediyor, elinde yalnızca çıkış
+düğmesi kalıyordu.
+
+- `RoleShell` rolüne göre doğru çerçeveyi çiziyor (süper admin → yönetim kenar
+  çubuğu, plasiyer → plasiyer üst barı, bayi → portal üst barı) ve
+  `app/reports/layout.tsx` bunu tüm `/reports` altına uyguluyor.
+- **Önizleme kendi sütununa taşındı.** Bileşen zaten vardı ama tasarım sütununun en
+  altındaydı; sütun/filtre listesi uzayınca ekranın dışına kayıyor ve "önizleme yok"
+  gibi görünüyordu. Artık geniş ekranda üçüncü sütunda ve yapışkan; ayrıca elle
+  "Yenile" düğmesi var.
+- **Ekstre yazdırma görünümü** `/documents/statement/[companyId]` (tarih aralığı
+  bağlantıda taşınıyor). Sunucu tarafı PDF üretilmiyor: tarayıcının "PDF olarak
+  kaydet" adımı her makinede var, Türkçe karakterle sorun çıkarmıyor ve ekstrenin
+  biçimi diğer belgelerle aynı kalıyor. İkinci bir düzen (ve font derdi) eklemek,
+  ekstre değiştiğinde iki yerde birden değişmesi demekti.
+
+## 32. Saha Hedefleri (Adım 34)
+
+`SalesTarget(salesRepId, metric, period, periodStart, targetValue)`. İki ölçü
+(**ziyaret noktası**, **ciro**) × dört dönem (günlük/haftalık/aylık/yıllık).
+
+- **Dönem, tarih çifti değil "başlangıç + periyot"**: `periodStart` periyoda göre
+  normalleştiriliyor (hafta pazartesi, ay ayın 1'i), `@@unique` bu sayede gerçekten
+  "aynı dönem" demek. Aksi hâlde aynı ay iki farklı aralıkla iki kez tanımlanır ve
+  hangisinin geçerli olduğu belirsiz kalırdı.
+- **Gerçekleşen saklanmıyor**, her okunuşta hareketlerden hesaplanıyor: ziyaret =
+  *kapanmış* check-in sayısı (açık check-in henüz ziyaret değil), ciro = temsilcinin
+  girdiği iptal/ret/taslak dışı siparişlerin genel toplamı. Saklansaydı iptal edilen
+  bir sipariş hedefi olduğundan iyi göstermeye devam ederdi.
+- **`elapsed` ayrı bir sayı**: ayın 3'ünde %10 iyi, 28'inde felakettir; yüzde tek
+  başına bu farkı gizler. Kart dönemin yüzde kaçının geçtiğini yanında yazıyor ve
+  geride kalan hedefi sarıya çeviriyor.
+- **Yeni izin `targets.manage`** (kapsam: yalnızca şirket). Hedefini *görmek* izin
+  gerektirmiyor — temsilcinin paneli kendi karnesini her hâlükârda gösteriyor.
+
+Ekranlar: `/admin/targets` (koyma + liste + dönem durumu), `/rep` üstünde karne.
+
+## 33. Ziyaret Çağrısı & Harita (Adım 35-36)
+
+`VisitRequest(companyId, salesRepId, requestedFor, note, status, sortIndex)`.
+
+- Bayi `/portal/ziyaret` ekranından çağırıyor; çağrı o anki portföy sahibinin gününe
+  düşüyor. **Aynı firmanın ikinci çağrısı yeni satır açmıyor**, mevcut olanı
+  güncelliyor: "gelmediniz" diye üç kez basan bayi listeyi üç satırla doldurmamalı.
+- Çağrı ≠ ziyaret. `CheckIn` kanıt, `VisitRequest` talep. Check-out yapıldığında o
+  firmanın açık çağrısı `checkInId` ile eşleşerek kapanıyor — plasiyer aynı işi iki
+  kez işaretlemiyor, karşılanmış çağrı listede "gelmediler" gibi durmuyor.
+- **Sıra sunucuda** (`sortIndex`), tarayıcıda değil: sabah masaüstünde yapılan plan
+  gün içinde telefonda aynı sırayla görünmeli. Sıralama isteği listenin tamamını
+  gönderiyor; tek tek taşıma olsaydı araya giren bir değişiklikte sıra bozulurdu.
+- **Adres koordinatı** (`Address.latitude/longitude`) eklendi. `CheckIn` zaten konum
+  taşıyordu ama o *ziyaret olduktan sonraki* kanıt — güne başlarken haritada
+  gösterilecek nokta yoktu.
+- Ziyaret ekranında seçili durağın haritası (OpenStreetMap gömme görünümü), tek durak
+  için yol tarifi ve **listedeki sırayla** çok duraklı rota bağlantısı. Harita
+  kütüphanesi eklenmedi: ekranda gereken şey "burası neresi" ve "nasıl giderim";
+  sürüklenebilir bir motor gerçek bir ihtiyaç çıkana kadar fazladan bağımlılık olurdu.
+
+## 34. Etiket & Fiş Motoru (Adım 37)
+
+`LabelTemplate(kind, name, widthMm, heightMm, blocks JSON)` + `/documents/labels`
+basım görünümü.
+
+- **Tasarım satır listesi**, mutlak koordinatlı kutular değil: 80 mm termal yazıcı
+  satır satır basıyor, yüksekliği içerik belirliyor ve aynı mutlak konum iki yazıcıda
+  iki farklı yere düşüyor. Satır türleri: metin, ayraç, boşluk, barkod, karekod,
+  kalem tablosu, toplamlar, imza satırı.
+- Alanlar `{{siparis.no}}` gibi işaretlerle yazılıyor; **tanınmayan işaret boş
+  basılıyor**, olduğu gibi bırakılmıyor — müşterinin eline geçen fişte `{{firma.ad}}`
+  yazması, o satırın hiç olmamasından kötü.
+- Tür başına doldurulabilir alan listesi ayrı (`LABEL_FIELDS`): kargo etiketinde
+  "teslim alan" yok, teslim fişinde kargo firması yok.
+- **Tek uç, üç tür, toplu basım**: `?kind=ORDER_RECEIPT&orders=a,b` ya da
+  `?kind=CARGO_LABEL&shipments=a,b`. Toplu basım ayrı bir ekran değil, aynı sayfaya
+  birden çok kimlik verilmesi — iki farklı çıktı düzeni oluşmasın diye.
+- Kâğıt ölçüsü `@page` ile şablondan geliyor; sipariş listesinde satır seçip toplu
+  fiş, sipariş detayında sevkiyat başına kargo etiketi ve teslim fişi basılıyor.
+- **Şablon tasarımcısı** `/admin/labels` (`labels.manage`): satır ekle/taşı/hizala/
+  büyüt, kâğıt önizlemesi, "hazır tasarımdan yeni". Şablon hiç yoksa motor koddaki
+  hazır tasarıma düşüyor — şablon tanımlanmadı diye fiş basılamaması kabul edilebilir
+  değil.
+
+## 35. Kurye & Dağıtım (Adım 38)
+
+Yeni rol `COURIER`, yeni rol ailesi `DELIVERY`.
+
+- **Neden ayrı aile**: kurye sahaya değil dağıtıma ait. Plasiyerle aynı ailede olsaydı
+  sipariş girme, tahsilat ve ziyaret yetkileri ona da *verilebilir* hâle gelirdi; oysa
+  kuryenin eline müşteri fiyatı bile geçmemeli. Kapsamı üç izin: `orders.view`,
+  `documents.view`, `delivery.confirm`.
+- `Shipment.courierId / deliveredAt / receivedByName / proofPhotoUrl / deliveryNote`.
+  Depodan çıkaran (`shippedBy`) ile kapıya götüren ayrı: **teslim kanıtı götürene ait**.
+- Teslim **bir kez** yazılıyor; teslim edilmiş sevkiyat yeniden teslim edilemiyor —
+  imza kanıtının üstüne yazılabilmesi kanıt olmasını bitirirdi.
+- Siparişin *tüm* sevkiyatları teslim edildiğinde sipariş `DELIVERED`'a geçiyor. Kısmi
+  teslimde durum değişmiyor: yarısı kapıda olan sipariş "teslim edildi" sayılamaz.
+- İmzalı belge fotoğrafı zorunlu değil (bazı teslimatlarda kâğıt hiç imzalanmıyor ve
+  zorunlu alan sahte kayda iter), **teslim alanın adı zorunlu**. Yükleme kendi ucundan
+  (`/api/deliveries/uploads`) geçiyor: ürün görseli ucu `products.manage` istiyor ve
+  kuryeye katalog yetkisi vermek kabul edilemez.
+- Ekranlar: `/kurye` (tek liste — yol tarifi, ara, teslim et, 80 mm fiş) ve
+  `/admin/deliveries` (kurye atama, tümünü izleme).
+
+## 36. Stok Kartı & Depo (Adım 39)
+
+- `ProductVariant`: `costPrice` (alış fiyatı — müşteriye gösterilmez), `unit`,
+  `minStock` (kritik eşik), `shelfCode` (raf), `isActive` (ERP'de pasife çekilen kart).
+  Pasif varyant katalogda **hiç** görünmüyor ve siparişe eklenemiyor; satır
+  silinmiyor çünkü geçmiş siparişler ona bakıyor.
+- `Warehouse` + `VariantStock(onHand, reserved)`: ERP'de birden çok ambar var ve
+  "stok var" cevabı hangi ambarda olduğuna göre değişiyor. `reserved` onaylanmış ama
+  sevk edilmemiş siparişlerin tuttuğu adet; satılabilir = `onHand − reserved`. Tek
+  kolona indirmek "stok var" deyip sevk edememe hatasını doğuruyordu.
+- `ProductVariant.stock` toplam olarak kalıyor ve kırılım her değiştiğinde **tek
+  yerden** yeniden yazılıyor (`setVariantStock`): katalog listesi tek satırda "var mı"
+  sorusunu depo tablosuna gitmeden cevaplayabilmeli.
+- Kritik stok listesi yalnızca eşiği **tanımlı** satırları alıyor: eşiksiz her ürünü
+  listelemek uyarı listesi değil, ürün listesi olurdu.
+
+## 37. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1260,7 +1390,7 @@ kapsam ihlali taşıyan hesap yok.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 32. Mobil Uygulama (`apps/mobile`)
+## 38. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1275,7 +1405,7 @@ kapsam ihlali taşıyan hesap yok.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 33. API Uçları
+## 39. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|

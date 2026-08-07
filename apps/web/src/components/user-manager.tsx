@@ -126,6 +126,7 @@ export function UserManager({
               ["SELLER", ROLE_FAMILY_LABELS.SELLER, countOf("SELLER")],
               ["DEALER", ROLE_FAMILY_LABELS.DEALER, countOf("DEALER")],
               ["FIELD", ROLE_FAMILY_LABELS.FIELD, countOf("FIELD")],
+              ["DELIVERY", ROLE_FAMILY_LABELS.DELIVERY, countOf("DELIVERY")],
             ] as const
           ).map(([key, label, count]) => (
             <button

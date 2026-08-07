@@ -166,6 +166,13 @@ export const createAddressSchema = z.object({
   district: optionalText(80),
   postalCode: optionalText(20),
   isDefault: z.boolean().default(false),
+  /**
+   * Kapının koordinatı. Boş bırakılabilir — koordinatı olmayan adres ziyaret
+   * listesinde kalır, yalnızca haritada pin düşmez ve yol tarifi yazılı adresle
+   * açılır.
+   */
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 export type CreateAddressInput = z.infer<typeof createAddressSchema>;
 
@@ -178,6 +185,8 @@ export const updateAddressSchema = z
     district: optionalText(80).nullable(),
     postalCode: optionalText(20).nullable(),
     isDefault: z.boolean().optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdateAddressInput = z.infer<typeof updateAddressSchema>;
@@ -252,4 +261,5 @@ export const ROLE_LABELS: Record<z.infer<typeof RoleEnum>, string> = {
   COMPANY_ADMIN: "Firma yöneticisi",
   COMPANY_STAFF: "Firma personeli",
   SALES_REP: "Plasiyer",
+  COURIER: "Kurye",
 };

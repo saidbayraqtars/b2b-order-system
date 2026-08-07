@@ -181,6 +181,20 @@ export function StatementView({ companyId }: { companyId: string }) {
         >
           CSV indir
         </button>
+        {/*
+          PDF, belgenin yazdırma görünümünden alınır: tarayıcının "PDF olarak
+          kaydet" adımı her makinede var ve Türkçe karakterlerle sorun çıkarmaz.
+          Seçili tarih aralığı bağlantıda taşınır — ekranda görülen ekstre ile
+          çıkan kâğıt aynı olmalı.
+        */}
+        <a
+          href={`/documents/statement/${companyId}${suffix}`}
+          target="_blank"
+          rel="noreferrer"
+          className="h-9 rounded-md border border-neutral-300 px-3 text-sm leading-9 dark:border-neutral-700"
+        >
+          PDF / Yazdır
+        </a>
       </section>
 
       <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">

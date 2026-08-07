@@ -143,7 +143,8 @@ function toRow(u: {
 /** Which roles this caller may assign. */
 function assignableRoles(ctx: UserAdminContext): readonly Role[] {
   if (ctx.role === "SUPER_ADMIN") {
-    return ["SUPER_ADMIN", "COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP"];
+    // Kurye satıcının kendi personeli; bayi yöneticisi kurye hesabı açamaz.
+    return ["SUPER_ADMIN", "COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "COURIER"];
   }
   return ["COMPANY_ADMIN", "COMPANY_STAFF"];
 }

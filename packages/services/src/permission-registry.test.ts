@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -25,7 +25,13 @@ import {
 // koruyor. Yeni bir izin eklerken etiketini yazmayı ya da bir gruba koymayı
 // unutmak, ekranda adsız/görünmez bir yetki üretir — çalışma zamanında sessizce.
 
-const ROLES: Role[] = ["SUPER_ADMIN", "COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP"];
+const ROLES: Role[] = [
+  "SUPER_ADMIN",
+  "COMPANY_ADMIN",
+  "COMPANY_STAFF",
+  "SALES_REP",
+  "COURIER",
+];
 
 describe("yetki kayıt defteri", () => {
   it("her iznin görünür bir adı var", () => {
@@ -131,13 +137,27 @@ describe("kapsam — hangi izin hangi hesap tipine verilebilir", () => {
       "announcements.manage",
       "audit.view",
       "audit.manage",
+      "targets.manage",
+      "labels.manage",
     ];
     for (const p of sadeceSatici) {
       expect(PERMISSION_SCOPE[p], p).toEqual(["SELLER"]);
       expect(isPermissionGrantableTo(p, "COMPANY_ADMIN"), p).toBe(false);
       expect(isPermissionGrantableTo(p, "COMPANY_STAFF"), p).toBe(false);
       expect(isPermissionGrantableTo(p, "SALES_REP"), p).toBe(false);
+      expect(isPermissionGrantableTo(p, "COURIER"), p).toBe(false);
     }
+  });
+
+  it("kurye kapsamı yalnızca teslimatla ilgili", () => {
+    // Kuryenin eline müşteri fiyatı, kasa ya da sipariş girme yetkisi
+    // geçmemeli: taşıdığı işi görsün ve teslim etsin, o kadar.
+    const kurye = grantablePermissionsFor("COURIER");
+    expect(kurye.sort()).toEqual(
+      ["orders.view", "documents.view", "delivery.confirm"].sort(),
+    );
+    expect(isPermissionGrantableTo("delivery.confirm", "SALES_REP")).toBe(false);
+    expect(isPermissionGrantableTo("delivery.confirm", "COMPANY_ADMIN")).toBe(false);
   });
 
   it("kasa bayiye kapalı, sahaya açık", () => {
@@ -178,19 +198,30 @@ describe("kapsam — hangi izin hangi hesap tipine verilebilir", () => {
 });
 
 describe("migration backfill", () => {
-  it("süper admin listesi kayıt defteriyle aynı", () => {
+  it("süper admine yazılan izinler kayıt defteriyle aynı", () => {
     // Backfill mevcut kurulumları yükseltirken yetkiyi koruyan tek yer. Kayıt
-    // defterine izin eklenip buraya eklenmezse, yükselten müşteride o yetki
-    // kimsede olmaz ve kimse geri veremez.
-    const sql = readFileSync(
-      path.join(
-        __dirname,
-        "../../database/prisma/migrations/20260807090000_user_permissions/migration.sql",
-      ),
-      "utf8",
-    );
-    const blok = sql.split("WHERE \"role\" = 'SUPER_ADMIN'")[0] ?? "";
-    const yazili = [...blok.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]);
-    expect(yazili.sort()).toEqual([...PERMISSIONS].sort());
+    // defterine izin eklenip migration yazılmazsa, yükselten müşteride o yetki
+    // kimsede olmaz ve kimse geri veremez (kendinde olmayan izin verilemiyor).
+    //
+    // Tek bir dosyaya değil, **tüm** migration'lara bakılıyor: ilk sürümdeki
+    // liste dondu, sonradan eklenen her izin kendi migration'ında geliyor.
+    // Birleşimleri kayıt defterinin tamamını vermeli.
+    const dir = path.join(__dirname, "../../database/prisma/migrations");
+    const yazili = new Set<string>();
+
+    for (const name of readdirSync(dir)) {
+      const file = path.join(dir, name, "migration.sql");
+      if (!existsSync(file)) continue;
+      const sql = readFileSync(file, "utf8");
+      // Yalnızca süper admine yazan ifadeler sayılır.
+      for (const stmt of sql.split(";")) {
+        if (!stmt.includes(`"role" = 'SUPER_ADMIN'`)) continue;
+        for (const m of stmt.matchAll(/'([a-z_]+\.[a-z_]+)'/g)) {
+          if (m[1]) yazili.add(m[1]);
+        }
+      }
+    }
+
+    expect([...yazili].sort()).toEqual([...PERMISSIONS].sort());
   });
 });

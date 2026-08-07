@@ -172,6 +172,11 @@ const USERS: SeedUser[] = [
   { email: "temsilci2@bayraktar.local", name: "Ayşe Demir", role: Role.SALES_REP, title: "Satış temsilcisi" },
   { email: "temsilci3@bayraktar.local", name: "Kemal Arslan", role: Role.SALES_REP, title: "Satış temsilcisi" },
 
+  // Kurye: yalnızca kendi teslimatını görür. Şablonu zaten dar (sipariş
+  // görüntüleme, belge, teslim onayı) — elle kısıtlamaya gerek yok.
+  { email: "kurye1@bayraktar.local", name: "Murat Şen", role: Role.COURIER, title: "Kurye" },
+  { email: "kurye2@bayraktar.local", name: "Hasan Kaya", role: Role.COURIER, title: "Kurye" },
+
   { email: "yonetici@akbayi.local", name: "Ak Bayi Yöneticisi", role: Role.COMPANY_ADMIN, company: "Ak Bayi Ticaret", title: "Müşteri yöneticisi" },
   { email: "personel@akbayi.local", name: "Ak Bayi Personeli", role: Role.COMPANY_STAFF, company: "Ak Bayi Ticaret", title: "Müşteri personeli" },
   { email: "yonetici@sahintoptan.local", name: "Şahin Toptan Yöneticisi", role: Role.COMPANY_ADMIN, company: "Şahin Toptan", title: "Müşteri yöneticisi" },
@@ -186,12 +191,47 @@ interface SeedCompany {
   creditLimit: number;
   paymentTermDays: number;
   requiresOrderApproval: boolean;
+  /**
+   * Sevk adresi. Koordinatlı: ziyaret haritası ve kargo etiketi ancak gerçek
+   * bir adres varsa gösterilebilir hâle geliyor — gösterim verisinin görevi de
+   * bu, ekranın boş görünmemesi değil, çalıştığının görülmesi.
+   */
+  address: {
+    label: string;
+    line1: string;
+    district: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+  };
 }
 
 const COMPANIES: SeedCompany[] = [
-  { name: "Ak Bayi Ticaret", group: "Bayi", externalCode: "A10001", creditLimit: 500_000, paymentTermDays: 30, requiresOrderApproval: false },
-  { name: "Şahin Toptan", group: "Toptancı", externalCode: "A10002", creditLimit: 2_000_000, paymentTermDays: 60, requiresOrderApproval: true },
-  { name: "Anadolu Zincir Market", group: "Zincir Market", externalCode: "A10003", creditLimit: 5_000_000, paymentTermDays: 90, requiresOrderApproval: true },
+  {
+    name: "Ak Bayi Ticaret", group: "Bayi", externalCode: "A10001",
+    creditLimit: 500_000, paymentTermDays: 30, requiresOrderApproval: false,
+    address: {
+      label: "Merkez", line1: "Atatürk Cad. No:42", district: "Bahçelievler",
+      city: "İstanbul", latitude: 40.9982, longitude: 28.8564,
+    },
+  },
+  {
+    name: "Şahin Toptan", group: "Toptancı", externalCode: "A10002",
+    creditLimit: 2_000_000, paymentTermDays: 60, requiresOrderApproval: true,
+    address: {
+      label: "Depo", line1: "Sanayi Mah. 12. Sok. No:7", district: "Bayrampaşa",
+      city: "İstanbul", latitude: 41.0421, longitude: 28.9067,
+    },
+  },
+  {
+    name: "Anadolu Zincir Market", group: "Zincir Market", externalCode: "A10003",
+    creditLimit: 5_000_000, paymentTermDays: 90, requiresOrderApproval: true,
+    address: {
+      label: "Merkez depo", line1: "Organize Sanayi Bölgesi 3. Cad. No:15",
+      district: "Ümraniye", city: "İstanbul",
+      latitude: 41.0255, longitude: 29.1244,
+    },
+  },
 ];
 
 const GROUPS = [
@@ -265,6 +305,27 @@ async function seedUsers(): Promise<void> {
       select: { id: true },
     });
     companyIds.set(company.name, row.id);
+
+    // Adres upsert'i yok (bileşik anahtarı yok): etiket varsa dokunulmuyor,
+    // yoksa açılıyor. Böylece seed tekrar çalıştığında adres ikizlenmiyor.
+    const existingAddress = await prisma.address.findFirst({
+      where: { companyId: row.id, label: company.address.label },
+      select: { id: true },
+    });
+    if (!existingAddress) {
+      await prisma.address.create({
+        data: {
+          companyId: row.id,
+          label: company.address.label,
+          line1: company.address.line1,
+          district: company.address.district,
+          city: company.address.city,
+          latitude: company.address.latitude,
+          longitude: company.address.longitude,
+          isDefault: true,
+        },
+      });
+    }
   }
 
   for (const user of USERS) {
@@ -351,6 +412,8 @@ async function seedCatalogue(sourcePath: string): Promise<void> {
     externalCode: string;
     productId: string;
     stock: number;
+    costPrice: number;
+    unit: string;
   }> = [];
   const prices: Array<{
     variantId: string;
@@ -387,6 +450,10 @@ async function seedCatalogue(sourcePath: string): Promise<void> {
       externalCode: code,
       productId,
       stock: Math.max(0, row.stock),
+      // Alış fiyatı ERP'den geliyor ve müşteriye gösterilmiyor; kâr raporunun
+      // ve iskonto sınırının okuduğu değer bu.
+      costPrice: row.cost,
+      unit: "ADET",
     });
 
     prices.push({

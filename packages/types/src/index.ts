@@ -14,3 +14,5 @@ export * from "./announcement";
 export * from "./tenant";
 export * from "./cash";
 export * from "./erp";
+export * from "./field-ops";
+export * from "./label";

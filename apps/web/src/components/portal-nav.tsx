@@ -3,6 +3,7 @@ import {
   BarChart3,
   CheckSquare,
   ClipboardList,
+  MapPin,
   Receipt,
   ShoppingBag,
   Users,
@@ -61,6 +62,7 @@ export function PortalNav({
   }
   if (can("companies.view")) {
     links.push({ href: `/portal/statement${q}`, label: "Ekstre", icon: Receipt });
+    links.push({ href: `/portal/ziyaret${q}`, label: "Ziyaret", icon: MapPin });
   }
 
   // Rol *ve* izin: onay/kullanıcı ekranları müşterinin kendi iç işleyişi

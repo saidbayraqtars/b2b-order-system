@@ -44,6 +44,9 @@ export const PermissionEnum = z.enum([
   "orders.approve",
   "orders.fulfil",
   "visits.manage",
+  "targets.manage",
+  "delivery.confirm",
+  "labels.manage",
   // finans
   "cash.view",
   "cash.manage",
@@ -83,6 +86,9 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "orders.approve": "Sipariş ve kredi onayı",
   "orders.fulfil": "Sevkiyat ve faturalama",
   "visits.manage": "Saha ziyareti aç/kapat",
+  "targets.manage": "Temsilci hedeflerini belirle",
+  "delivery.confirm": "Teslimatı onayla",
+  "labels.manage": "Etiket ve fiş şablonlarını yönet",
   "cash.view": "Kasa ve bankayı görüntüle",
   "cash.manage": "Kasa hareketi işle",
   "payment_terms.manage": "Vadeleri yönet",
@@ -110,6 +116,11 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "targets.manage":
+    "Ziyaret ve ciro hedefi koyar. Hedefini görmek için gerekmez — yalnızca koymak için",
+  "delivery.confirm":
+    "Kendisine düşen sevkiyatı teslim edildi işaretler, imzalı belgeyi yükler",
+  "labels.manage": "Kargo etiketi ve 80 mm fiş tasarımlarını düzenler",
 };
 
 /** Onay kutularının gruplandığı başlıklar — sıralama ekranda korunur. */
@@ -139,6 +150,8 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "orders.approve",
       "orders.fulfil",
       "visits.manage",
+      "targets.manage",
+      "delivery.confirm",
     ],
   },
   {
@@ -153,7 +166,13 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
   },
   {
     title: "Belge & Rapor",
-    permissions: ["documents.view", "documents.manage", "reports.view", "reports.build"],
+    permissions: [
+      "documents.view",
+      "documents.manage",
+      "labels.manage",
+      "reports.view",
+      "reports.build",
+    ],
   },
   {
     title: "Sistem",
@@ -206,6 +225,10 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "reports.view",
     "reports.build",
   ],
+  // Kurye: kendisine düşen sevkiyatı görür ve teslim eder. Sipariş girmez,
+  // fiyat görmez, tahsilat yapmaz — eline geçen tek şey teslim listesi ve
+  // basacağı fiş. `documents.view` fişi/irsaliyeyi açabilmesi için.
+  COURIER: ["orders.view", "documents.view", "delivery.confirm"],
 };
 
 /**
@@ -277,6 +300,13 @@ export const RoleFamilyEnum = z.enum([
   "DEALER",
   /** Saha: plasiyer. */
   "FIELD",
+  /**
+   * Dağıtım: kurye. Sahadan ayrı bir aile, çünkü işi tek bir şey — malı
+   * teslim etmek. Plasiyerle aynı aileye konsaydı sipariş girme, tahsilat ve
+   * ziyaret yetkileri ona da *verilebilir* hâle gelirdi; oysa kuryenin eline
+   * müşteri fiyatı bile geçmemeli.
+   */
+  "DELIVERY",
 ]);
 export type RoleFamily = z.infer<typeof RoleFamilyEnum>;
 
@@ -285,12 +315,14 @@ export const ROLE_FAMILY: Record<Role, RoleFamily> = {
   COMPANY_ADMIN: "DEALER",
   COMPANY_STAFF: "DEALER",
   SALES_REP: "FIELD",
+  COURIER: "DELIVERY",
 };
 
 export const ROLE_FAMILY_LABELS: Record<RoleFamily, string> = {
   SELLER: "Şirket",
   DEALER: "Bayi",
   FIELD: "Satış temsilcisi",
+  DELIVERY: "Kurye",
 };
 
 /**
@@ -316,7 +348,10 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "users.manage": ["SELLER", "DEALER"],
   "groups.manage": ["SELLER"],
 
-  "orders.view": ["SELLER", "DEALER", "FIELD"],
+  // Kurye taşıdığı siparişin içeriğini görmek zorunda — neyi teslim ettiğini
+  // bilmeden imza alamaz. Gördüğü satırlar servis tarafında kendi
+  // sevkiyatlarıyla sınırlı.
+  "orders.view": ["SELLER", "DEALER", "FIELD", "DELIVERY"],
   "orders.create": ["SELLER", "DEALER", "FIELD"],
   // Firma içi onay bayinin kendi işleyişi; kredi onayı tarafını servis satıcıya
   // saklıyor.
@@ -325,6 +360,13 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // siparişini sevk edilmiş/faturalanmış gösterebilir.
   "orders.fulfil": ["SELLER"],
   "visits.manage": ["SELLER", "FIELD"],
+  // Hedefi *koymak* satıcının işi. Temsilci kendi hedefini bu izin olmadan da
+  // görür — görmek yetki değil, panelinin parçası.
+  "targets.manage": ["SELLER"],
+  // Teslim onayı kuryenin tek işi; depoda çalışan satıcı personeli de
+  // kullanabilsin diye SELLER de var.
+  "delivery.confirm": ["SELLER", "DELIVERY"],
+  "labels.manage": ["SELLER"],
 
   // Kasa satıcının parası. Saha tahsilat işlediği için orada da var.
   "cash.view": ["SELLER", "FIELD"],
@@ -333,7 +375,8 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "volume_tiers.manage": ["SELLER"],
   "payments.view": ["SELLER"],
 
-  "documents.view": ["SELLER", "DEALER", "FIELD"],
+  // Kurye irsaliyeyi/teslim fişini açabilmeli.
+  "documents.view": ["SELLER", "DEALER", "FIELD", "DELIVERY"],
   "documents.manage": ["SELLER"],
   "reports.view": ["SELLER", "DEALER", "FIELD"],
   "reports.build": ["SELLER", "DEALER", "FIELD"],

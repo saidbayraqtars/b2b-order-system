@@ -96,6 +96,10 @@ const CATALOG_SELECT = {
   vatRate: true,
   categoryId: true,
   variants: {
+    // Pasif varyant katalogda hiç görünmez. Satır silinmiyor çünkü geçmiş
+    // siparişler ona bakıyor; ERP'de pasife çekilen kart burada da satılamaz
+    // hâle gelmeli, aksi hâlde satılamayacak mal sipariş edilirdi.
+    where: { isActive: true },
     select: {
       id: true,
       sku: true,

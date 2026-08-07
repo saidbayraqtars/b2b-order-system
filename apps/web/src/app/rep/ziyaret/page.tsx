@@ -2,6 +2,7 @@ import { requirePage } from "@/lib/guard";
 import { resolvePortalContext } from "@/lib/portal-context";
 import { RepNav } from "@/components/rep-nav";
 import { VisitPanel } from "./_components/visit-panel";
+import { VisitPlan } from "./_components/visit-plan";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,9 @@ export default async function RepVisitPage({ searchParams }: Props) {
         showCompany
       />
       <div className="mx-auto max-w-4xl px-4 pb-10">
+        {/* Gün planı üstte: ekranı açan plasiyerin ilk sorusu "bugün nereye
+            gideceğim", "geçmiş ziyaretlerim ne" değil. */}
+        <VisitPlan />
         <VisitPanel
           companyId={ctx?.companyId ?? null}
           companyName={ctx?.companyName ?? null}

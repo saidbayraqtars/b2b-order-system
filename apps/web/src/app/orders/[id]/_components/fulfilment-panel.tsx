@@ -82,9 +82,28 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                     {s.invoiceNumber ? ` · fatura ${s.invoiceNumber}` : " · faturasız"}
                   </p>
                 </div>
-                {isAdmin && !s.invoiceId && (
-                  <CancelShipmentButton id={s.id} onDone={refresh} />
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Kargo etiketi ve teslim fişi sevkiyattan basılır: koliye
+                      yapıştırılan etiket bir siparişin değil, bir sevkiyatın
+                      etiketi (kısmi sevkte iki koli, iki etiket). */}
+                  <Link
+                    href={`/documents/labels?kind=CARGO_LABEL&shipments=${s.id}`}
+                    target="_blank"
+                    className="rounded border border-neutral-300 px-2 py-0.5 text-xs dark:border-neutral-700"
+                  >
+                    Kargo etiketi
+                  </Link>
+                  <Link
+                    href={`/documents/labels?kind=DELIVERY_RECEIPT&shipments=${s.id}`}
+                    target="_blank"
+                    className="rounded border border-neutral-300 px-2 py-0.5 text-xs dark:border-neutral-700"
+                  >
+                    Teslim fişi
+                  </Link>
+                  {isAdmin && !s.invoiceId && (
+                    <CancelShipmentButton id={s.id} onDone={refresh} />
+                  )}
+                </div>
               </div>
               <ul className="mt-2 space-y-0.5 text-xs text-neutral-500">
                 {s.items.map((i) => (
