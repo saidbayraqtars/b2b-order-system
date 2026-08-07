@@ -11,7 +11,17 @@ export interface PriceRow {
   /** null = default list price (no group). */
   customerGroupId: string | null;
   minQuantity: number;
+  /**
+   * **TL cinsinden** birim fiyat. Yabancı para birimindeki satırlar buraya
+   * gelmeden önce çevriliyor (`convertPriceRows`), böylece iskonto, hacim
+   * kademesi ve KDV tek para biriminde hesaplanıyor ve bu dosya döviz diye bir
+   * şey bilmiyor.
+   */
   price: Decimal;
+  /** Listelendiği para birimi; yoksa TL. Yalnızca belgeye basmak için taşınır. */
+  currency?: string | null;
+  /** O para birimindeki orijinal tutar; yoksa `price`. */
+  listPrice?: Decimal;
 }
 
 export interface DiscountRow {
@@ -56,6 +66,10 @@ export interface ResolvedPrice {
   netUnitPrice: Decimal;
   /** netUnitPrice * quantity, excl. VAT. */
   lineNet: Decimal;
+  /** Seçilen kademenin listelendiği para birimi ("TRY" ise dövizsiz satır). */
+  listCurrency: string;
+  /** O para birimindeki birim liste fiyatı — belgede "100 USD" diye basılan. */
+  listUnitPrice: Decimal;
 }
 
 /**
@@ -63,7 +77,7 @@ export interface ResolvedPrice {
  * the row with the highest minQuantity that is still <= quantity.
  * Tie-break: the lowest price. Returns null if none applies.
  */
-function pickTier(rows: PriceRow[], quantity: number): Decimal | null {
+function pickTier(rows: PriceRow[], quantity: number): PriceRow | null {
   let best: PriceRow | null = null;
   for (const row of rows) {
     if (row.minQuantity > quantity) continue;
@@ -75,7 +89,9 @@ function pickTier(rows: PriceRow[], quantity: number): Decimal | null {
       best = row;
     }
   }
-  return best ? best.price : null;
+  // Satırın kendisi dönüyor, yalnızca fiyatı değil: hangi kademenin seçildiği
+  // belgeye basılacak para birimini de belirliyor.
+  return best;
 }
 
 /**
@@ -113,13 +129,14 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
     quantity,
   );
 
-  const base = groupTier ?? defaultTier;
-  if (base === null) {
+  const chosen = groupTier ?? defaultTier;
+  if (chosen === null) {
     throw new BusinessError("NO_PRICE", "Ürün için fiyat tanımlı değil", {
       productId,
     });
   }
 
+  const base = chosen.price;
   const unitPrice = round2(base);
   const companyDiscountPerUnit = round2(
     computeDiscount(base, productId, categoryId, discounts),
@@ -148,6 +165,8 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
     volumeDiscountPerUnit,
     netUnitPrice,
     lineNet: round2(netUnitPrice.mul(quantity)),
+    listCurrency: chosen.currency ?? "TRY",
+    listUnitPrice: chosen.listPrice ?? unitPrice,
   };
 }
 

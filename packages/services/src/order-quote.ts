@@ -4,6 +4,7 @@ import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
 import { createsReceivable, resolvePaymentTerm } from "./payment-terms";
+import { convertPriceRows, currentRatesTx, rateFor } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
 import { applyPromotions, type AppliedPromotion } from "./promotion-engine";
 import type { EngineLine } from "./promotion-registry";
@@ -65,6 +66,12 @@ export interface QuotedLine {
   lineTax: Money;
   /** True for a line a campaign added free of charge. */
   isGift: boolean;
+  /** Fiyatın listelendiği para birimi ("TRY" ise dövizsiz). */
+  listCurrency: string;
+  /** O para birimindeki birim liste fiyatı. */
+  listUnitPrice: Money;
+  /** Çevrimde kullanılan kur — siparişe donuyor. */
+  exchangeRate: Money;
 }
 
 export interface QuoteCompany {
@@ -180,6 +187,10 @@ export async function buildQuote(
   const volumeDiscount = await resolveVolumeDiscount(client, company);
   const volumePercent = volumeDiscount?.percent ?? null;
 
+  // Kur bir kez okunuyor: aynı sepetteki iki satırın farklı kurdan
+  // fiyatlanması, toplamın hangi ana ait olduğunu belirsiz bırakırdı.
+  const rates = await currentRatesTx(client, undefined);
+
   const variants = await client.productVariant.findMany({
     where: { id: { in: input.items.map((i) => i.variantId) } },
     select: {
@@ -192,7 +203,12 @@ export async function buildQuote(
         select: { id: true, name: true, vatRate: true, categoryId: true },
       },
       prices: {
-        select: { customerGroupId: true, minQuantity: true, price: true },
+        select: {
+          customerGroupId: true,
+          minQuantity: true,
+          price: true,
+          currency: true,
+        },
       },
     },
   });
@@ -230,7 +246,7 @@ export async function buildQuote(
     }
 
     const r = resolvePrice({
-      prices: v.prices,
+      prices: convertPriceRows(v.prices, rates),
       customerGroupId: company.customerGroupId,
       quantity: item.quantity,
       productId: v.product.id,
@@ -251,6 +267,9 @@ export async function buildQuote(
       unitPrice: r.unitPrice,
       discountPerUnit: r.discountPerUnit,
       volumeDiscountPerUnit: r.volumeDiscountPerUnit,
+      listCurrency: r.listCurrency,
+      listUnitPrice: r.listUnitPrice,
+      exchangeRate: rateFor(r.listCurrency, rates),
       lineGross: round2(r.unitPrice.mul(item.quantity)),
       lineDiscount: round2(r.discountPerUnit.mul(item.quantity)),
       promotionDiscount: ZERO,
@@ -445,10 +464,18 @@ async function priceGifts(
       sku: true,
       stock: true,
       product: { select: { id: true, name: true, vatRate: true, categoryId: true } },
-      prices: { select: { customerGroupId: true, minQuantity: true, price: true } },
+      prices: {
+        select: {
+          customerGroupId: true,
+          minQuantity: true,
+          price: true,
+          currency: true,
+        },
+      },
     },
   });
   const vmap = new Map(variants.map((v) => [v.id, v]));
+  const giftRates = await currentRatesTx(client, undefined);
 
   const out: PricedGift[] = [];
   const taken = new Map(params.reserved);
@@ -465,7 +492,7 @@ async function priceGifts(
     let priced;
     try {
       priced = resolvePrice({
-        prices: v.prices,
+        prices: convertPriceRows(v.prices, giftRates),
         customerGroupId: params.customerGroupId,
         quantity,
         productId: v.product.id,
@@ -496,6 +523,9 @@ async function priceGifts(
         unitPrice: priced.unitPrice,
         discountPerUnit: priced.discountPerUnit,
         volumeDiscountPerUnit: priced.volumeDiscountPerUnit,
+        listCurrency: priced.listCurrency,
+        listUnitPrice: priced.listUnitPrice,
+        exchangeRate: rateFor(priced.listCurrency, giftRates),
         lineGross: round2(priced.unitPrice.mul(quantity)),
         lineDiscount: round2(priced.discountPerUnit.mul(quantity)),
         promotionDiscount: value,
@@ -522,6 +552,11 @@ export interface QuoteLineView {
   lineNet: string;
   vatRate: number;
   isGift: boolean;
+  /** Fiyatın listelendiği para birimi; "TRY" ise sepet hiçbir şey göstermez. */
+  listCurrency: string;
+  /** O para birimindeki birim liste fiyatı ve kullanılan kur. */
+  listUnitPrice: string;
+  exchangeRate: string;
 }
 
 export interface OrderQuoteView {
@@ -564,6 +599,9 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
 
   return {
     lines: quote.lines.map((l) => ({
+      listCurrency: l.listCurrency,
+      listUnitPrice: l.listUnitPrice.toFixed(2),
+      exchangeRate: l.exchangeRate.toFixed(4),
       variantId: l.variantId,
       sku: l.sku,
       productName: l.productName,

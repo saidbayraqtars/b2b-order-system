@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import type { SetCartInput, UpsertCartItemInput } from "@repo/types";
 import { loadCompanyPricingContext } from "./catalog";
 import { BusinessError } from "./errors";
+import { convertPriceRows } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
 
 // The cart, kept on the server.
@@ -73,7 +74,12 @@ export async function getCart(
               moqUnits: true,
               stock: true,
               prices: {
-                select: { customerGroupId: true, minQuantity: true, price: true },
+                select: {
+                  customerGroupId: true,
+                  minQuantity: true,
+                  price: true,
+                  currency: true,
+                },
               },
               product: {
                 select: {
@@ -109,7 +115,7 @@ export async function getCart(
     let netUnitPrice: string | null = null;
     try {
       const priced = resolvePrice({
-        prices: v.prices,
+        prices: convertPriceRows(v.prices, ctx.rates),
         customerGroupId: ctx.customerGroupId,
         quantity: item.quantity,
         productId: v.product.id,

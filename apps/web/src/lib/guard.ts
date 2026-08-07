@@ -442,6 +442,11 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   INVALID_CHEQUE_TRANSITION: 422,
   // 409: kâğıt işlem görmüş; tahsilat iptali artık bir durum çatışması.
   CHEQUE_ALREADY_SETTLED: 409,
+  // döviz
+  //
+  // 409, 422 değil: girdi doğru, eksik olan kurulumun kendisi. Operatörün
+  // yapması gereken şey kuru girmek — istediği ürünü değiştirmek değil.
+  MISSING_EXCHANGE_RATE: 409,
 };
 
 /**

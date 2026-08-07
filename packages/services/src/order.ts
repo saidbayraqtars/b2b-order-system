@@ -117,6 +117,12 @@ async function buildOrder(
       vatRate: l.vatRate,
       lineTotal: l.lineNet,
       isGift: l.isGift,
+      // Kur burada donuyor: tutarlar zaten TL, bu üç kolon yalnızca belgede
+      // "100 USD × 34,2150" satırını basmak için. Kur yarın değişse de bu
+      // siparişin sayıları değişmiyor.
+      listCurrency: l.listCurrency,
+      exchangeRate: l.exchangeRate,
+      listUnitPrice: l.listUnitPrice,
     }),
   );
   const stockUpdates = quote.lines.map((l) => ({

@@ -23,6 +23,7 @@ import {
   Users,
   Wallet,
   ScrollText,
+  Coins,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -78,6 +79,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
     links: [
       { href: "/admin/kasa", label: "Kasa & Banka", icon: Wallet, permission: "cash.view" },
       { href: "/admin/cekler", label: "Çek & senet", icon: ScrollText, permission: "cheques.manage" },
+      { href: "/admin/kurlar", label: "Döviz kurları", icon: Coins, permission: "pricing.manage" },
       { href: "/admin/payment-terms", label: "Vadeler", icon: CalendarClock, permission: "payment_terms.manage" },
       { href: "/admin/volume-tiers", label: "Hacim iskontosu", icon: TrendingUp, permission: "volume_tiers.manage" },
     ],

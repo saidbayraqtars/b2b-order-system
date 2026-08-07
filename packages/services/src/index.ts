@@ -56,3 +56,4 @@ export * from "./label-render";
 export * from "./stock-admin";
 export * from "./runtime-env";
 export * from "./cheque";
+export * from "./exchange-rate";

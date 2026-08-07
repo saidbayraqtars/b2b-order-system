@@ -114,7 +114,9 @@ export type BusinessErrorCode =
   // ── çek/senet portföyü ──
   | "CHEQUE_NOT_FOUND"
   | "INVALID_CHEQUE_TRANSITION"
-  | "CHEQUE_ALREADY_SETTLED";
+  | "CHEQUE_ALREADY_SETTLED"
+  // ── döviz ──
+  | "MISSING_EXCHANGE_RATE";
 
 export class BusinessError extends Error {
   constructor(

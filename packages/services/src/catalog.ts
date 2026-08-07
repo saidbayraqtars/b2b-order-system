@@ -1,5 +1,6 @@
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
+import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
 import { resolvePrice, type DiscountRow } from "./pricing";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
 
@@ -11,6 +12,12 @@ export interface CompanyPricingContext {
   discounts: DiscountRow[];
   /** The hacim rung in force, or null. Resolved once — it costs a query. */
   volumeDiscount: ResolvedVolumeDiscount | null;
+  /**
+   * Geçerli kurlar. Bağlamda duruyor çünkü 24 ürünlük bir katalog sayfası
+   * aksi hâlde satır başına bir sorgu daha atardı — ve hepsinin aynı anın
+   * kurunu kullanması, listede iki ürünün farklı kurdan görünmemesi demek.
+   */
+  rates: RateMap;
 }
 
 export async function loadCompanyPricingContext(
@@ -38,10 +45,13 @@ export async function loadCompanyPricingContext(
       companyId,
     });
   }
+  const rates = await currentRates();
+
   return {
     companyId: company.id,
     customerGroupId: company.customerGroupId,
     discounts: company.discounts,
+    rates,
     // Once per request, not once per line: the rung is a property of the
     // customer, and a catalogue page of 24 products would otherwise aggregate
     // the same turnover 24 times.
@@ -64,6 +74,13 @@ export interface CatalogVariant {
   unitPrice: string | null;
   discountPerUnit: string | null;
   netUnitPrice: string | null;
+  /**
+   * Fiyatın listelendiği para birimi. Tutarların hepsi **TL**; bu alan yalnızca
+   * vitrinde "≈ 12,50 USD" notunu basmak için — müşteri dolarla anlaştıysa
+   * hangi sayıdan çevrildiğini görmek istiyor.
+   */
+  listCurrency: string | null;
+  listUnitPrice: string | null;
 }
 
 export interface CatalogProduct {
@@ -114,6 +131,7 @@ const CATALOG_SELECT = {
           customerGroupId: true,
           minQuantity: true,
           price: true,
+          currency: true,
         },
       },
     },
@@ -172,7 +190,12 @@ function toCatalogProduct(
       };
       try {
         const r = resolvePrice({
-          prices: v.prices as Parameters<typeof resolvePrice>[0]["prices"],
+          // Döviz satırları fiyatlamadan önce TL'ye çevriliyor; iskonto ve KDV
+          // tek para biriminde hesaplanıyor.
+          prices: convertPriceRows(
+            v.prices as Array<{ customerGroupId: string | null; minQuantity: number; price: import("@prisma/client").Prisma.Decimal; currency?: string | null }>,
+            ctx.rates,
+          ),
           customerGroupId: ctx.customerGroupId,
           quantity: v.moqUnits,
           productId: p.id,
@@ -185,10 +208,20 @@ function toCatalogProduct(
           unitPrice: r.unitPrice.toFixed(2),
           discountPerUnit: r.discountPerUnit.toFixed(2),
           netUnitPrice: r.netUnitPrice.toFixed(2),
+          // Vitrinde "≈ 100 USD" notunu basabilmek için; tutarın kendisi TL.
+          listCurrency: r.listCurrency,
+          listUnitPrice: r.listUnitPrice.toFixed(2),
         };
       } catch {
         // No price defined for this company/variant → not orderable, priced null.
-        return { ...base, unitPrice: null, discountPerUnit: null, netUnitPrice: null };
+        return {
+          ...base,
+          unitPrice: null,
+          discountPerUnit: null,
+          netUnitPrice: null,
+          listCurrency: null,
+          listUnitPrice: null,
+        };
       }
     }),
   };

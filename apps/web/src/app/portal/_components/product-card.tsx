@@ -108,6 +108,16 @@ export function ProductCard({
               <div className="flex shrink-0 items-center gap-2">
                 <span className="tech-num text-xs font-semibold">
                   {v.netUnitPrice !== null ? formatTRY(v.netUnitPrice) : "—"}
+                  {/*
+                    Dövizle listelenen ürünün orijinal fiyatı: müşteri dolarla
+                    anlaştıysa hangi sayıdan çevrildiğini görmek istiyor.
+                    Tahsil edilen tutar her zaman yukarıdaki TL.
+                  */}
+                  {v.listCurrency && v.listCurrency !== "TRY" && v.listUnitPrice ? (
+                    <span className="ml-1 font-normal text-neutral-500">
+                      ({v.listUnitPrice} {v.listCurrency})
+                    </span>
+                  ) : null}
                 </span>
                 <button
                   type="button"

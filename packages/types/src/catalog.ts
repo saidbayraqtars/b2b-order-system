@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CurrencyEnum } from "./currency";
 import { DiscountTypeEnum } from "./enums";
 
 // Admin-side catalog input contracts. Slugs are optional everywhere — the
@@ -87,7 +88,12 @@ export const upsertPriceSchema = z.object({
   customerGroupId: z.string().cuid().nullish(),
   minQuantity: z.number().int().positive("Miktar kademesi en az 1 olmalı").default(1),
   price: z.number().nonnegative("Fiyat negatif olamaz"),
-  currency: z.string().length(3).default("TRY"),
+  /**
+   * Kayıt defterindeki para birimleriyle sınırlı. Serbest üç harf kabul etmek,
+   * kuru hiç girilemeyecek bir para biriminde fiyat oluşturmak demekti — ürün
+   * sessizce satılamaz hâle gelirdi.
+   */
+  currency: CurrencyEnum.default("TRY"),
 });
 export type UpsertPriceInput = z.infer<typeof upsertPriceSchema>;
 

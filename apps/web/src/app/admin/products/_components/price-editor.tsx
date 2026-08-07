@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminPriceRow, CustomerGroupRow } from "@repo/services";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
+import { CURRENCIES, CURRENCY_SYMBOLS, type Currency } from "@repo/types";
 import { formatTRY } from "@/lib/format";
 import { Button, ErrorLine, Select, TextInput } from "@/components/form";
 
@@ -23,6 +24,7 @@ export function PriceEditor({
   const [groupId, setGroupId] = useState("");
   const [minQuantity, setMinQuantity] = useState("1");
   const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState<Currency>("TRY");
 
   const groups = useQuery({
     queryKey: ["admin", "customer-groups"],
@@ -51,6 +53,7 @@ export function PriceEditor({
         minQuantity: Number(minQuantity),
         // Turkish keyboards produce a comma; the API wants a JSON number.
         price: Number(price.replace(",", ".")),
+        currency,
       }),
     onSuccess: () => {
       setPrice("");
@@ -105,7 +108,9 @@ export function PriceEditor({
                 </td>
                 <td className="py-1 text-right tabular-nums">{p.minQuantity}</td>
                 <td className="py-1 text-right tabular-nums">
-                  {formatTRY(p.price)}
+                  {p.currency === "TRY"
+                    ? formatTRY(p.price)
+                    : `${p.price} ${CURRENCY_SYMBOLS[p.currency as Currency] ?? p.currency}`}
                 </td>
                 <td className="py-1 text-right">
                   <button
@@ -150,6 +155,21 @@ export function PriceEditor({
           className="w-28"
           placeholder="Fiyat"
         />
+        {/*
+          Para birimi kademe başına: aynı ürünün liste fiyatı dolarla, bayi
+          fiyatı TL ile verilebiliyor. Sipariş anında hepsi TL'ye çevriliyor.
+        */}
+        <Select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as Currency)}
+          className="w-24"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
         <Button
           variant="secondary"
           disabled={!canSave || save.isPending}
