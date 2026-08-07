@@ -122,15 +122,27 @@ function Block({ block, data }: { block: LabelBlock; data: LabelData }) {
         </table>
       );
 
-    case "signature":
+    case "signature": {
+      // Teslim kaydedilmişse imza satırının altına *kaydedilen* isim basılır.
+      // Aynı fiş iki anda basılıyor: kapıya giderken (boş satır, elle imza) ve
+      // teslimden sonra (kimin aldığı zaten yazılı). İkincisinde boş bırakmak,
+      // fişi kanıt olarak dosyalayan kişiye hiçbir şey söylemez.
+      const recorded = data.fields["teslim.alan"]?.trim();
       return (
         <div className="mt-2">
           <p style={{ fontSize: "3mm" }}>
             {fillTokens(block.value || "İmza", data.fields)}:
           </p>
           <div className="mt-6 border-t border-black" />
+          {recorded && (
+            <p style={{ fontSize: "2.8mm" }}>
+              {recorded}
+              {data.fields["teslim.tarih"] ? ` · ${data.fields["teslim.tarih"]}` : ""}
+            </p>
+          )}
         </div>
       );
+    }
   }
 }
 
