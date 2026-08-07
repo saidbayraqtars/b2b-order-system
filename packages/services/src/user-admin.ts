@@ -2,6 +2,10 @@ import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import {
   defaultPermissionsFor,
+  isPermissionGrantableTo,
+  outOfScopePermissions,
+  ROLE_FAMILY,
+  ROLE_FAMILY_LABELS,
   sanitizePermissions,
   type CreateUserInput,
   type Permission,
@@ -155,16 +159,23 @@ function assertMayAssign(ctx: UserAdminContext, role: Role): void {
 }
 
 /**
- * Yetki devrinin üst sınırı: **kendinde olmayanı veremezsin.**
+ * Yetki devrinin iki sınırı.
  *
- * Tek satırlık kural ama sistemin izin modelini ayakta tutan şey bu. Aksi
- * hâlde kasaya erişimi olmayan bir firma yöneticisi kendine ikinci bir hesap
- * açıp `cash.manage` verir ve rol ayrımı bir dakika içinde anlamsızlaşır.
- * `users.manage` iznine sahip olmak "her yetkiyi dağıtabilirim" demek değil.
+ * 1. **Kendinde olmayanı veremezsin.** Aksi hâlde kasaya erişimi olmayan bir
+ *    firma yöneticisi kendine ikinci bir hesap açıp `cash.manage` verir ve rol
+ *    ayrımı bir dakika içinde anlamsızlaşır. `users.manage` iznine sahip olmak
+ *    "her yetkiyi dağıtabilirim" demek değil.
+ *
+ * 2. **Hesap tipinin dışına çıkamazsın.** Süper adminde her izin var, ama bir
+ *    bayi personeline `organization.manage` ya da `orders.fulfil` vermek —
+ *    yanlışlıkla bile — müşteriye satıcının ekranlarını ve uçlarını açar.
+ *    Kapsam kayıt defterinde duruyor (`PERMISSION_SCOPE`), böylece ekranda
+ *    pasif görünen kutu ile sunucunun reddettiği izin ayrışamaz.
  */
 function assertMayGrant(
   ctx: UserAdminContext,
   requested: readonly Permission[],
+  targetRole: Role,
 ): void {
   const own = new Set<Permission>(ctx.permissions);
   const excess = requested.filter((p) => !own.has(p));
@@ -173,6 +184,15 @@ function assertMayGrant(
       "FORBIDDEN",
       "Kendinizde olmayan yetkiyi veremezsiniz",
       { permissions: excess },
+    );
+  }
+
+  const outOfScope = outOfScopePermissions(requested, targetRole);
+  if (outOfScope.length > 0) {
+    throw new BusinessError(
+      "FORBIDDEN",
+      `Bu yetkiler ${ROLE_FAMILY_LABELS[ROLE_FAMILY[targetRole]].toLowerCase()} hesabına verilemez`,
+      { permissions: outOfScope, role: targetRole },
     );
   }
 }
@@ -342,7 +362,7 @@ export async function createUser(
   const permissions = sanitizePermissions(
     input.permissions ?? defaultPermissionsFor(input.role),
   );
-  assertMayGrant(ctx, permissions);
+  assertMayGrant(ctx, permissions, input.role);
   const companyId = resolveCompanyId(ctx, input.role, input.companyId);
   await assertEmailFree(input.email);
 
@@ -414,12 +434,24 @@ export async function updateUser(
   // yalnızca formda ön-doldurma yapar, kaydedilen küme burada gelen listedir.
   // Böylece "plasiyer yaptım ama kasa yetkisi kalsın" gibi bilinçli ayarlar
   // sessizce geri alınmaz.
-  const nextPermissions =
+  let nextPermissions =
     input.permissions !== undefined
       ? sanitizePermissions(input.permissions)
       : undefined;
+
+  // Tek istisna: rol *hesap tipini* değiştiriyorsa (satıcı → bayi gibi) eski
+  // kümeyi olduğu gibi bırakmak, kapsam kuralını arka kapıdan delerdi — hesap
+  // artık bayi ama üzerinde `organization.manage` duruyor olurdu. Bu durumda
+  // yeni tipe verilemeyen izinler düşürülür ve denetim kaydına yazılır.
+  if (nextPermissions === undefined && nextRole !== existing.role) {
+    const kept = sanitizePermissions(existing.permissions).filter((p) =>
+      isPermissionGrantableTo(p, nextRole),
+    );
+    if (kept.length !== existing.permissions.length) nextPermissions = kept;
+  }
+
   if (nextPermissions) {
-    assertMayGrant(ctx, nextPermissions);
+    assertMayGrant(ctx, nextPermissions, nextRole);
     assertNotSelfLockout(ctx, id, nextPermissions);
   }
   const permissionsChanged =

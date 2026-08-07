@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-07 · Adım 30 (kullanıcı bazlı yetki + kenar çubuğu) sonu
+Son güncelleme: 2026-08-07 · Adım 31 (yetki kapsamı) sonu
 
 ---
 
@@ -44,6 +44,7 @@ Son güncelleme: 2026-08-07 · Adım 30 (kullanıcı bazlı yetki + kenar çubu�
 | 28 | Sanal POS: ödeme sağlayıcı kayıt defteri, ödeme niyeti, kart parası tahsil edilene kadar kasaya girmez | ✅ |
 | 29 | ERP köprüsü: müşterinin makinesindeki ajan, eşler-oluşturmaz, ERP bakiyesi ayrı kolonda | ✅ |
 | 30 | Kullanıcı bazlı yetki (29 adlandırılmış izin, tik tik seçim) + yönetim panelinde gruplu kenar çubuğu | ✅ |
+| 31 | Yetki kapsamı: izin ↔ hesap tipi (bayi/şirket/saha), kullanıcı ekranı hesap tipine göre ayrıldı | ✅ |
 
 ---
 
@@ -1168,7 +1169,57 @@ Mobilde çekmece olur ve gezinme sonrası kapanır. Alıcı portalı ve saha ekr
 **Doğrulama:** 11 yeni birim testi (kayıt defteri bütünlüğü + backfill tutarlılığı),
 typecheck + lint temiz.
 
-## 30. Web Portal (`apps/web`)
+## 30. Yetki Kapsamı — Hangi İzin Hangi Hesaba (Adım 31)
+
+Adım 30 yetkiyi rolden ayırdı ama yetki *verme* tarafında tek sınır vardı:
+"kendinde olmayanı veremezsin". Süper adminde her izin olduğu için bu, bir bayi
+personeline `organization.manage` ya da `orders.fulfil` vermeyi engellemiyordu.
+Rol kapısı zararın bir kısmını tutuyordu (`/admin` yalnızca `SUPER_ADMIN`), ama
+rol listesi olmayan uçlar — `requireUser(undefined, "orders.fulfil")` gibi —
+doğrudan açıktı: müşteri hesabı satıcının sevkiyat ve fatura uçlarına
+erişebiliyordu.
+
+### Hesap tipi (rol ailesi)
+
+| Aile | Roller | Ne demek |
+|------|--------|----------|
+| `SELLER` | SUPER_ADMIN | Kurulumun sahibi, satıcının iç ekibi |
+| `DEALER` | COMPANY_ADMIN, COMPANY_STAFF | Müşteri tarafı |
+| `FIELD` | SALES_REP | Saha |
+
+`PERMISSION_SCOPE` her izne verilebileceği aileleri yazar. Yalnızca `SELLER`
+olanlar satıcıya aittir: katalog ve fiyatlandırma, kasa **yönetimi** dışındaki
+finans ayarları, sevkiyat/faturalama, sistem ayarları, denetim kaydı.
+
+Kapsam **aile** düzeyinde, tek tek rol düzeyinde değil. Amaç bayi ↔ satıcı ↔ saha
+sınırını korumak; aynı ailenin içindeki daha ince ayrım (firma yöneticisi onaylar,
+personel onaylamaz) rol kapısının işi ve orada kalıyor.
+
+### Üç yerde aynı kural
+
+- **Servis:** `assertMayGrant(ctx, izinler, hedefRol)` artık iki şeye bakıyor —
+  çağıranın kendi kümesi *ve* hedefin hesap tipi. İhlal 403 döner ve hangi izinler
+  olduğunu söyler.
+- **Rol değişimi arka kapıyı kapatır:** rol satıcıdan bayiye çekilirken izin
+  listesi gönderilmezse, yeni tipe verilemeyen izinler **düşürülür** ve denetim
+  kaydına yazılır. Aksi hâlde "rolü düşür, yetkileri bırak" kapsamı delerdi.
+- **Ekran:** kapsam dışı kutu **pasif** durur ve nedenini söyler ("Bayi hesabına
+  verilemez"); tamamı kapalı bir grup tek satıra iner. Gizlemek yerine pasif
+  göstermek bilinçli — "burada bir şey yok" ile "burası bu hesaba kapalı" aynı şey
+  değil. Çağıranın kendisinde olmayan izin ise hiç görünmez: orada kapalı olan şey
+  hesap tipi değil, çağıranın yetkisi.
+
+### Kullanıcı ekranı hesap tipine göre ayrıldı
+
+Liste artık **Tümü / Şirket / Bayi / Satış temsilcisi** sekmeleri taşıyor (sayılarla),
+her satırda hesap tipi etiketi var. Sekmeler yalnızca her firmayı gören ekranda;
+firma detayında ve portalda liste zaten tek tip.
+
+**Doğrulama:** 7 yeni birim testi (18 toplam) + uçtan uca kontrol: bayi personeline
+`organization.manage` ve `orders.fulfil` 403, `reports.view` 200. Mevcut veritabanında
+kapsam ihlali taşıyan hesap yok.
+
+## 31. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1209,7 +1260,7 @@ typecheck + lint temiz.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 31. Mobil Uygulama (`apps/mobile`)
+## 32. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1224,7 +1275,7 @@ typecheck + lint temiz.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 32. API Uçları
+## 33. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|

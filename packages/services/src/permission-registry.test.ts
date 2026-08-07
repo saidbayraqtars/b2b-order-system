@@ -4,12 +4,16 @@ import { describe, expect, it } from "vitest";
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS,
+  PERMISSION_SCOPE,
   PERMISSIONS,
   ROLE_DEFAULT_PERMISSIONS,
   defaultPermissionsFor,
+  grantablePermissionsFor,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
+  isPermissionGrantableTo,
+  outOfScopePermissions,
   sanitizePermissions,
   type Permission,
   type Role,
@@ -101,6 +105,78 @@ describe("izin kontrolü", () => {
   });
 });
 
+describe("kapsam — hangi izin hangi hesap tipine verilebilir", () => {
+  it("her iznin en az bir hesap tipi var", () => {
+    const bosluk = PERMISSIONS.filter((p) => PERMISSION_SCOPE[p].length === 0);
+    expect(bosluk).toEqual([]);
+  });
+
+  it("satıcıya ait yetkiler bayi ve sahaya kapalı", () => {
+    // Bu liste bilinçli: müşteri hesabına verildiğinde satıcının kendi
+    // işleyişini (katalog, fiyat, sistem, denetim, sevkiyat) açan izinler.
+    const sadeceSatici: Permission[] = [
+      "products.manage",
+      "categories.manage",
+      "pricing.manage",
+      "promotions.manage",
+      "companies.manage",
+      "groups.manage",
+      "orders.fulfil",
+      "payment_terms.manage",
+      "volume_tiers.manage",
+      "payments.view",
+      "documents.manage",
+      "organization.manage",
+      "erp.manage",
+      "announcements.manage",
+      "audit.view",
+      "audit.manage",
+    ];
+    for (const p of sadeceSatici) {
+      expect(PERMISSION_SCOPE[p], p).toEqual(["SELLER"]);
+      expect(isPermissionGrantableTo(p, "COMPANY_ADMIN"), p).toBe(false);
+      expect(isPermissionGrantableTo(p, "COMPANY_STAFF"), p).toBe(false);
+      expect(isPermissionGrantableTo(p, "SALES_REP"), p).toBe(false);
+    }
+  });
+
+  it("kasa bayiye kapalı, sahaya açık", () => {
+    // Plasiyer tahsilat işliyor; bayi satıcının kasasını hiç görmemeli.
+    for (const p of ["cash.view", "cash.manage"] as Permission[]) {
+      expect(isPermissionGrantableTo(p, "SALES_REP"), p).toBe(true);
+      expect(isPermissionGrantableTo(p, "COMPANY_ADMIN"), p).toBe(false);
+    }
+  });
+
+  it("rol şablonları kendi kapsamının dışına çıkmaz", () => {
+    // Şablon kapsamı aşarsa hesap açılışında sunucu kendi verdiği kümeyi
+    // reddederdi — form da, seed de kullanılamaz hâle gelirdi.
+    for (const role of ROLES) {
+      expect(outOfScopePermissions(defaultPermissionsFor(role), role), role).toEqual([]);
+    }
+  });
+
+  it("süper adminin kapsamı her izni içerir", () => {
+    expect(grantablePermissionsFor("SUPER_ADMIN").sort()).toEqual([...PERMISSIONS].sort());
+  });
+
+  it("bayi kapsamı sahadan farklı", () => {
+    const bayi = grantablePermissionsFor("COMPANY_ADMIN");
+    const saha = grantablePermissionsFor("SALES_REP");
+    expect(bayi).toContain("users.manage");
+    expect(bayi).not.toContain("visits.manage");
+    expect(saha).toContain("visits.manage");
+    expect(saha).not.toContain("users.manage");
+  });
+
+  it("outOfScopePermissions yalnızca ihlalleri döner", () => {
+    expect(
+      outOfScopePermissions(["orders.view", "organization.manage"], "COMPANY_STAFF"),
+    ).toEqual(["organization.manage"]);
+    expect(outOfScopePermissions(["orders.view"], "COMPANY_STAFF")).toEqual([]);
+  });
+});
+
 describe("migration backfill", () => {
   it("süper admin listesi kayıt defteriyle aynı", () => {
     // Backfill mevcut kurulumları yükseltirken yetkiyi koruyan tek yer. Kayıt
@@ -113,7 +189,7 @@ describe("migration backfill", () => {
       ),
       "utf8",
     );
-    const blok = sql.split("WHERE \"role\" = 'SUPER_ADMIN'")[0];
+    const blok = sql.split("WHERE \"role\" = 'SUPER_ADMIN'")[0] ?? "";
     const yazili = [...blok.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]);
     expect(yazili.sort()).toEqual([...PERMISSIONS].sort());
   });

@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  isPermissionGrantableTo,
   PERMISSION_GROUPS,
   PERMISSION_HINTS,
   PERMISSION_LABELS,
+  ROLE_FAMILY,
+  ROLE_FAMILY_LABELS,
   defaultPermissionsFor,
   type Permission,
   type Role,
@@ -18,9 +21,18 @@ import { cn } from "@/lib/utils";
  * çeker, sonrası elle. Rol değişince tikleri kendiliğinden ezmiyoruz — bilinçli
  * bir ayar (ör. "plasiyer ama kasa kapalı") sessizce geri alınmasın.
  *
- * `grantable` çağıranın kendi izin kümesi: kendinde olmayan bir izin burada
- * kilitli görünür. Sunucu aynı kuralı yeniden uyguluyor (assertMayGrant); bu
- * yalnızca reddedilecek bir isteği yazmaktan kurtarır.
+ * İki ayrı kısıt var ve ekranda ayrı görünürler:
+ *
+ *  - **Kapsam** (`role`): izin bu hesap tipine verilebilir mi? Verilemeyen kutu
+ *    **pasif** durur ve nedenini söyler — bayi hesabı açan kişi satıcı
+ *    yetkilerinin var olduğunu görür ama seçemez. Gizlemek yerine pasif
+ *    göstermek bilinçli: "burada bir şey yok" ile "burası sana kapalı" farklı.
+ *  - **Devir sınırı** (`grantable`): çağıranın kendi kümesi. Kendisinde olmayan
+ *    izin hiç gösterilmez, çünkü onun için "bu hesap tipine kapalı" demek yanlış
+ *    olurdu — kapalı olan şey çağıranın yetkisi.
+ *
+ * Sunucu ikisini de yeniden uygular (`assertMayGrant`); bu yalnızca reddedilecek
+ * bir isteği yazmaktan kurtarır.
  */
 export function PermissionPicker({
   value,
@@ -31,13 +43,16 @@ export function PermissionPicker({
 }: {
   value: readonly Permission[];
   onChange: (next: Permission[]) => void;
-  /** Şablon düğmesinin kaynağı. */
+  /** Hedef hesabın rolü: hem şablonun hem kapsamın kaynağı. */
   role: Role;
   grantable: readonly Permission[];
   disabled?: boolean;
 }) {
   const selected = new Set(value);
-  const allowed = new Set(grantable);
+  const own = new Set(grantable);
+  const familyLabel = ROLE_FAMILY_LABELS[ROLE_FAMILY[role]];
+  const inScope = (perm: Permission) => isPermissionGrantableTo(perm, role);
+  const usable = (perm: Permission) => own.has(perm) && inScope(perm);
 
   const toggle = (perm: Permission) => {
     const next = new Set(selected);
@@ -47,10 +62,12 @@ export function PermissionPicker({
   };
 
   const applyTemplate = () => {
-    // Şablonun çağıranda olmayan izinleri düşer — aksi hâlde form sunucunun
-    // kesin olarak reddedeceği bir küme üretirdi.
-    onChange(defaultPermissionsFor(role).filter((p) => allowed.has(p)));
+    // Şablon zaten rolün kendi şablonu, ama çağıranda olmayan izinleri düşer —
+    // aksi hâlde form sunucunun kesin olarak reddedeceği bir küme üretirdi.
+    onChange(defaultPermissionsFor(role).filter(usable));
   };
+
+  const blockedCount = [...own].filter((p) => !inScope(p)).length;
 
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-neutral-800">
@@ -65,6 +82,15 @@ export function PermissionPicker({
           <p className="mt-0.5 text-[11px] text-neutral-500">
             Rol yalnızca hangi bölüme girileceğini belirler; ne yapılabileceğini
             bu tikler belirler.
+            {blockedCount > 0 && (
+              <>
+                {" "}
+                <span className="text-neutral-400">
+                  {blockedCount} yetki {familyLabel.toLowerCase()} hesabına
+                  verilemediği için pasif.
+                </span>
+              </>
+            )}
           </p>
         </div>
         <div className="flex gap-1">
@@ -84,11 +110,27 @@ export function PermissionPicker({
 
       <div className="grid gap-x-6 gap-y-3 p-3 sm:grid-cols-2">
         {PERMISSION_GROUPS.map((group) => {
-          // Çağıranın hiç veremediği grup gösterilmez; kilitli bir liste
-          // "burada bir şey var ama sana kapalı"dan başka bir şey söylemez.
-          const visible = group.permissions.filter((p) => allowed.has(p));
+          // Çağıranın hiç veremediği izin gösterilmez; kalanlar arasında kapsam
+          // dışı olanlar pasif durur.
+          const visible = group.permissions.filter((p) => own.has(p));
           if (visible.length === 0) return null;
-          const groupSelected = visible.filter((p) => selected.has(p)).length;
+          const selectable = visible.filter(inScope);
+          if (selectable.length === 0) {
+            // Grubun tamamı bu hesap tipine kapalı (bayide "Sistem" gibi):
+            // 15 pasif satır basmak yerine tek satır yazıyoruz.
+            return (
+              <fieldset key={group.title} className="min-w-0 opacity-60">
+                <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                  {group.title}
+                </legend>
+                <p className="text-xs text-neutral-500">
+                  Bu bölümün yetkileri {familyLabel.toLowerCase()} hesabına
+                  verilemez.
+                </p>
+              </fieldset>
+            );
+          }
+          const groupSelected = selectable.filter((p) => selected.has(p)).length;
 
           return (
             <fieldset key={group.title} className="min-w-0">
@@ -101,45 +143,59 @@ export function PermissionPicker({
                   onClick={() => {
                     const next = new Set(selected);
                     // Grubun tamamı seçiliyse düğme "kaldır" gibi davranır.
-                    if (groupSelected === visible.length) {
-                      visible.forEach((p) => next.delete(p));
+                    // Yalnızca seçilebilir olanlara dokunur.
+                    if (groupSelected === selectable.length) {
+                      selectable.forEach((p) => next.delete(p));
                     } else {
-                      visible.forEach((p) => next.add(p));
+                      selectable.forEach((p) => next.add(p));
                     }
                     onChange([...next]);
                   }}
                 >
-                  {groupSelected === visible.length ? "kaldır" : "tümü"}
+                  {groupSelected === selectable.length ? "kaldır" : "tümü"}
                 </button>
               </legend>
 
               <div className="space-y-1">
                 {visible.map((perm) => {
                   const hint = PERMISSION_HINTS[perm];
+                  const blocked = !inScope(perm);
                   return (
                     <label
                       key={perm}
+                      title={
+                        blocked
+                          ? `Bu yetki ${familyLabel.toLowerCase()} hesabına verilemez`
+                          : undefined
+                      }
                       className={cn(
-                        "flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1 text-sm",
-                        "hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
-                        disabled && "cursor-not-allowed opacity-60",
+                        "flex items-start gap-2 rounded-md px-1.5 py-1 text-sm",
+                        blocked || disabled
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
                       )}
                     >
                       <input
                         type="checkbox"
                         className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-brand-600 focus:ring-brand-500/30 dark:border-neutral-600"
-                        checked={selected.has(perm)}
-                        disabled={disabled}
+                        checked={selected.has(perm) && !blocked}
+                        disabled={disabled || blocked}
                         onChange={() => toggle(perm)}
                       />
                       <span className="min-w-0">
                         <span className="block text-neutral-800 dark:text-neutral-200">
                           {PERMISSION_LABELS[perm]}
                         </span>
-                        {hint && (
+                        {blocked ? (
                           <span className="block text-[11px] leading-snug text-neutral-500">
-                            {hint}
+                            {familyLabel} hesabına verilemez
                           </span>
+                        ) : (
+                          hint && (
+                            <span className="block text-[11px] leading-snug text-neutral-500">
+                              {hint}
+                            </span>
+                          )
                         )}
                       </span>
                     </label>

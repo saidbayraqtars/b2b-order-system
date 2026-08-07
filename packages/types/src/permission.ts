@@ -250,3 +250,121 @@ export const permissionListSchema = z.array(PermissionEnum).max(PERMISSIONS.leng
 export function defaultPermissionsFor(role: Role): Permission[] {
   return [...ROLE_DEFAULT_PERMISSIONS[role]];
 }
+
+// ─────────────────────────────────────────────
+// KAPSAM: HANGİ İZİN HANGİ HESAP TİPİNE VERİLEBİLİR
+// ─────────────────────────────────────────────
+//
+// `hasPermission` bir hesabın *ne yapabileceğini* söyler. Buradaki kapsam ise
+// bambaşka bir soruyu yanıtlar: bir izin bu hesap tipine **verilebilir mi**?
+//
+// İkisi ayrı olmak zorunda. Yetki verme tarafındaki tek sınır "kendinde olmayanı
+// veremezsin" olduğu sürece, süper admin bir bayi personeline `organization.manage`
+// ya da `audit.manage` verebiliyordu — yanlışlıkla ya da bilmeden. Rol kapısı
+// (`/admin` yalnızca SUPER_ADMIN) bunun bir kısmını durduruyordu, ama rol listesi
+// olmayan uçlar (`requireUser(undefined, "orders.fulfil")` gibi) açıktı: bayi
+// hesabı satıcının sevkiyat/fatura uçlarına erişebiliyordu.
+//
+// Kapsam **hesap tipi** (rol ailesi) düzeyinde, tek tek rol düzeyinde değil.
+// Amaç bayi ↔ satıcı ↔ saha arasındaki sınırı korumak; aynı aile içindeki daha
+// ince ayrım (firma yöneticisi onaylar, personel onaylamaz) rol kapısının ve
+// servis kurallarının işi ve orada kalıyor.
+
+export const RoleFamilyEnum = z.enum([
+  /** Satıcının kendi iç ekibi — kurulumun sahibi. */
+  "SELLER",
+  /** Müşteri tarafı: firma yöneticisi ve personeli. */
+  "DEALER",
+  /** Saha: plasiyer. */
+  "FIELD",
+]);
+export type RoleFamily = z.infer<typeof RoleFamilyEnum>;
+
+export const ROLE_FAMILY: Record<Role, RoleFamily> = {
+  SUPER_ADMIN: "SELLER",
+  COMPANY_ADMIN: "DEALER",
+  COMPANY_STAFF: "DEALER",
+  SALES_REP: "FIELD",
+};
+
+export const ROLE_FAMILY_LABELS: Record<RoleFamily, string> = {
+  SELLER: "Şirket",
+  DEALER: "Bayi",
+  FIELD: "Satış temsilcisi",
+};
+
+/**
+ * Her iznin verilebileceği hesap tipleri.
+ *
+ * Yalnızca `SELLER` olanlar kurulumun sahibine ait yetkilerdir: katalog,
+ * fiyatlandırma, kasa yönetimi, sistem ayarları, denetim. Bir bayi ya da saha
+ * hesabına hiçbir koşulda verilemezler.
+ */
+export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
+  // Katalogu satıcı yönetir; bayi ve saha yalnızca görür.
+  "products.view": ["SELLER", "DEALER", "FIELD"],
+  "products.manage": ["SELLER"],
+  "categories.manage": ["SELLER"],
+  "pricing.manage": ["SELLER"],
+  "promotions.manage": ["SELLER"],
+
+  // Bayi kendi cari/firma bilgisini görür (ekstre); firma kartını satıcı yönetir.
+  "companies.view": ["SELLER", "DEALER", "FIELD"],
+  "companies.manage": ["SELLER"],
+  // Firma yöneticisi kendi personelini açar — bu yüzden bayide de var. Kimin
+  // kimi yönetebileceğini servis ayrıca kısıtlıyor (kendi firması, iki rol).
+  "users.manage": ["SELLER", "DEALER"],
+  "groups.manage": ["SELLER"],
+
+  "orders.view": ["SELLER", "DEALER", "FIELD"],
+  "orders.create": ["SELLER", "DEALER", "FIELD"],
+  // Firma içi onay bayinin kendi işleyişi; kredi onayı tarafını servis satıcıya
+  // saklıyor.
+  "orders.approve": ["SELLER", "DEALER"],
+  // Sevkiyat ve faturalama satıcının işi — bayiye verilirse müşteri kendi
+  // siparişini sevk edilmiş/faturalanmış gösterebilir.
+  "orders.fulfil": ["SELLER"],
+  "visits.manage": ["SELLER", "FIELD"],
+
+  // Kasa satıcının parası. Saha tahsilat işlediği için orada da var.
+  "cash.view": ["SELLER", "FIELD"],
+  "cash.manage": ["SELLER", "FIELD"],
+  "payment_terms.manage": ["SELLER"],
+  "volume_tiers.manage": ["SELLER"],
+  "payments.view": ["SELLER"],
+
+  "documents.view": ["SELLER", "DEALER", "FIELD"],
+  "documents.manage": ["SELLER"],
+  "reports.view": ["SELLER", "DEALER", "FIELD"],
+  "reports.build": ["SELLER", "DEALER", "FIELD"],
+
+  "organization.manage": ["SELLER"],
+  "erp.manage": ["SELLER"],
+  "announcements.manage": ["SELLER"],
+  // Hareket akışı kendi kapsamına göre süzülüyor (bayi kendi firmasını görür).
+  "activity.view": ["SELLER", "DEALER", "FIELD"],
+  "audit.view": ["SELLER"],
+  "audit.manage": ["SELLER"],
+};
+
+/** Bu izin, bu rolde bir hesaba verilebilir mi? */
+export function isPermissionGrantableTo(perm: Permission, role: Role): boolean {
+  return PERMISSION_SCOPE[perm].includes(ROLE_FAMILY[role]);
+}
+
+/** Bu roldeki bir hesaba verilebilecek izinlerin tamamı. */
+export function grantablePermissionsFor(role: Role): Permission[] {
+  return PERMISSIONS.filter((p) => isPermissionGrantableTo(p, role));
+}
+
+/**
+ * İstenen kümenin bu role verilemeyecek üyeleri. Boş dizi = sorun yok.
+ * Hem form hem servis aynı listeyi üretir, böylece ekranda pasif görünen bir
+ * kutu ile sunucunun reddettiği izin hiçbir zaman ayrışamaz.
+ */
+export function outOfScopePermissions(
+  requested: readonly Permission[],
+  role: Role,
+): Permission[] {
+  return requested.filter((p) => !isPermissionGrantableTo(p, role));
+}

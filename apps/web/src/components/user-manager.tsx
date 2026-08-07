@@ -5,20 +5,36 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserRow } from "@repo/services";
 import {
   defaultPermissionsFor,
+  isPermissionGrantableTo,
   PERMISSION_LABELS,
+  ROLE_FAMILY,
+  ROLE_FAMILY_LABELS,
   ROLE_LABELS,
   type Permission,
   type Role,
+  type RoleFamily,
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 import { PermissionPicker } from "@/components/permission-picker";
+import { cn } from "@/lib/utils";
 
 /** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
 function samePermissionSet(a: readonly Permission[], b: readonly Permission[]): boolean {
   if (a.length !== b.length) return false;
   const set = new Set(b);
   return a.every((p) => set.has(p));
+}
+
+/**
+ * Rolün şablonu, iki sınırdan geçirilmiş: çağıranın kendi kümesi ve hesap
+ * tipinin kapsamı. Şablon zaten kapsam içinde olmalı, ama süzgeç yine burada —
+ * kayıt defteri ile şablon bir gün ayrışırsa form yine geçerli bir küme üretir.
+ */
+function templateFor(role: Role, grantable: readonly Permission[]): Permission[] {
+  return defaultPermissionsFor(role).filter(
+    (p) => grantable.includes(p) && isPermissionGrantableTo(p, role),
+  );
 }
 
 // Shared user administration surface.
@@ -52,6 +68,10 @@ export function UserManager({
   const [search, setSearch] = useState("");
   const [includeInactive, setIncludeInactive] = useState(true);
   const [creating, setCreating] = useState(false);
+  // Hesap tipi sekmesi. Yalnızca her firmayı gören ekranda anlamlı: firma
+  // detayında ve portalda liste zaten tek tip (bayi) hesaplardan oluşuyor.
+  const [family, setFamily] = useState<RoleFamily | "ALL">("ALL");
+  const showFamilies = !fixedCompanyId;
 
   const key = ["admin-users", fixedCompanyId ?? "all", search, includeInactive];
   const query = useQuery({
@@ -69,6 +89,12 @@ export function UserManager({
     void qc.invalidateQueries({ queryKey: ["admin-users"] });
     void qc.invalidateQueries({ queryKey: ["admin-companies"] });
   };
+
+  const all = query.data?.users ?? [];
+  // Süzme sunucuda değil burada: liste zaten tek istekte geliyor ve sekme
+  // değiştirmek yeni bir sorgu beklemeden çalışsın.
+  const rows = family === "ALL" ? all : all.filter((u) => ROLE_FAMILY[u.role] === family);
+  const countOf = (f: RoleFamily) => all.filter((u) => ROLE_FAMILY[u.role] === f).length;
 
   return (
     <Panel
@@ -90,6 +116,34 @@ export function UserManager({
             invalidate();
           }}
         />
+      )}
+
+      {showFamilies && (
+        <div className="mb-3 flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
+          {(
+            [
+              ["ALL", "Tümü", all.length],
+              ["SELLER", ROLE_FAMILY_LABELS.SELLER, countOf("SELLER")],
+              ["DEALER", ROLE_FAMILY_LABELS.DEALER, countOf("DEALER")],
+              ["FIELD", ROLE_FAMILY_LABELS.FIELD, countOf("FIELD")],
+            ] as const
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFamily(key)}
+              className={cn(
+                "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                family === key
+                  ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
+                  : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
+              )}
+            >
+              {label}
+              <span className="ml-1.5 text-xs text-neutral-400">{count}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -126,7 +180,7 @@ export function UserManager({
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {query.data.users.map((u) => (
+              {rows.map((u) => (
                 <UserRowView
                   key={u.id}
                   user={u}
@@ -137,7 +191,7 @@ export function UserManager({
                   onChanged={invalidate}
                 />
               ))}
-              {query.data.users.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
                   <td
                     className="px-3 py-6 text-center text-neutral-500"
@@ -176,19 +230,21 @@ function CreateUserForm({
   const [companyId, setCompanyId] = useState(fixedCompanyId ?? "");
   const [password, setPassword] = useState("");
   // Yeni hesap: rolün şablonuyla başla, sonra tek tek düzelt. Elle bir tik
-  // atıldıktan sonra rol değişse bile küme ezilmez (bkz. handleRoleChange).
+  // atıldıktan sonra rol değişse bile küme ezilmez (bkz. changeRole).
   const [permissions, setPermissions] = useState<Permission[]>(() =>
-    defaultPermissionsFor(initialRole).filter((p) => grantablePermissions.includes(p)),
+    templateFor(initialRole, grantablePermissions),
   );
   const [touchedPermissions, setTouchedPermissions] = useState(false);
 
   const changeRole = (next: Role) => {
     setRole(next);
     if (!touchedPermissions) {
-      setPermissions(
-        defaultPermissionsFor(next).filter((p) => grantablePermissions.includes(p)),
-      );
+      setPermissions(templateFor(next, grantablePermissions));
+      return;
     }
+    // Elle seçim korunur, ama yeni hesap tipine verilemeyecek olanlar düşer:
+    // aksi hâlde form sunucunun kesin reddedeceği bir küme gönderirdi.
+    setPermissions((prev) => prev.filter((p) => isPermissionGrantableTo(p, next)));
   };
 
   // Only the two company roles carry a company; the picker would be misleading
@@ -372,7 +428,16 @@ function UserRowView({
               <Select
                 value={role}
                 disabled={isSelf}
-                onChange={(e) => setRole(e.target.value as Role)}
+                onChange={(e) => {
+                  const next = e.target.value as Role;
+                  setRole(next);
+                  // Hesap tipi değişiyorsa (satıcı → bayi gibi) yeni tipe
+                  // verilemeyen tikler düşer. Sunucu da aynısını yapıyor;
+                  // burada düşmezse kullanıcı reddedilen bir kaydetme görürdü.
+                  setPermissions((prev) =>
+                    prev.filter((p) => isPermissionGrantableTo(p, next)),
+                  );
+                }}
                 className="w-44"
               >
                 {allowedRoles.map((r) => (
@@ -443,6 +508,11 @@ function UserRowView({
       <td className="px-3 py-2 text-neutral-500">{user.email}</td>
       <td className="px-3 py-2">
         {ROLE_LABELS[user.role]}
+        {/* Hesap tipi: yetki kapsamını belirleyen şey rolün kendisi değil ailesi,
+            o yüzden listede de görünüyor. */}
+        <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+          {ROLE_FAMILY_LABELS[ROLE_FAMILY[user.role]]}
+        </span>
         {user.managedCompanyCount > 0 && (
           <span className="ml-2 text-xs text-neutral-500">
             {user.managedCompanyCount} firma
