@@ -4,7 +4,7 @@ module.exports = {
   overrides: [
     {
       // The seeds are CLI scripts: printing what they did is the point.
-      files: ["prisma/seed.ts", "prisma/seed-demo.ts"],
+      files: ["prisma/seed.ts", "prisma/seed-demo.ts", "prisma/bootstrap.ts"],
       rules: { "no-console": "off" },
     },
   ],

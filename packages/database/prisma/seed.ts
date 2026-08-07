@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from "@prisma/client";
-import { DEFAULT_LABEL_TEMPLATES, defaultPermissionsFor } from "@repo/types";
+import { defaultPermissionsFor } from "@repo/types";
 import bcrypt from "bcryptjs";
+import { seedDocumentSeries, seedLabelTemplates } from "./reference-data";
 
 const prisma = new PrismaClient();
 
@@ -232,60 +233,11 @@ async function main() {
 
   await seedReports(admin.id);
   await seedPromotions(group.id);
-  await seedDocumentSeries();
+  await seedDocumentSeries(prisma);
   await seedAnnouncements();
-  await seedLabelTemplates();
+  await seedLabelTemplates(prisma);
 
   console.log("Seed done. Admin:", admin.email, "/ Password123!");
-}
-
-/**
- * Without a serial there is nothing to number a waybill or an invoice with, so
- * a fresh install would be unable to despatch. One default each, both internal.
- */
-async function seedDocumentSeries() {
-  for (const s of [
-    { type: "WAYBILL" as const, prefix: "IRS" },
-    { type: "INVOICE" as const, prefix: "FTR" },
-  ]) {
-    const existing = await prisma.documentSeries.findFirst({
-      where: { type: s.type, prefix: s.prefix },
-      select: { id: true },
-    });
-    if (existing) continue;
-    await prisma.documentSeries.create({
-      data: { type: s.type, prefix: s.prefix, padding: 6, isDefault: true },
-    });
-  }
-}
-
-/**
- * Hazır etiket ve fiş tasarımları.
- *
- * Basım motoru bunlar olmadan da çalışıyor (kod içindeki hazır tasarıma
- * düşüyor), ama veritabanına yazmak tasarımcının düzenleyebileceği bir
- * başlangıç noktası veriyor — kullanıcı sıfırdan satır dizmek zorunda kalmıyor.
- * Aynı türde bir şablon zaten varsa dokunulmaz: kurulum sonrası yapılan
- * düzenleme her seed çalıştırmasında geri alınmamalı.
- */
-async function seedLabelTemplates() {
-  for (const t of DEFAULT_LABEL_TEMPLATES) {
-    const existing = await prisma.labelTemplate.findFirst({
-      where: { kind: t.kind },
-      select: { id: true },
-    });
-    if (existing) continue;
-    await prisma.labelTemplate.create({
-      data: {
-        kind: t.kind,
-        name: t.name,
-        widthMm: t.widthMm,
-        heightMm: t.heightMm ?? null,
-        blocks: t.blocks,
-        isDefault: true,
-      },
-    });
-  }
 }
 
 /**

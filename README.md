@@ -19,6 +19,9 @@ packages/
   tsconfig/       Ortak TS temel yapılandırmaları
 ```
 
+**`DEPLOYMENT.md` bir müşteri kurulumunun nasıl açıldığını, güncellendiğini ve geri
+alındığını anlatır** — aşağıdakiler geliştirme ortamı içindir.
+
 **`FEATURES.md` özellik envanteridir** — bugün gerçekten ne çalışıyor, her alanın arkasındaki
 tasarım kararları ve bilinen eksikler orada. Önce oradan başlayın.
 
@@ -67,7 +70,7 @@ pnpm test        # Vitest: birim takımı + entegrasyon takımı
 pnpm build       # next build + paket derlemeleri
 ```
 
-`pnpm test` iki takım çalıştırıyor; bugün 11 dosyada 151 test. **Birim takımı (70)** saf domain
+`pnpm test` iki takım çalıştırıyor; bugün 22 dosyada 292 test. **Birim takımı (70)** saf domain
 matematiği, hiçbir şeye ihtiyacı yok. **Entegrasyon takımı (81)** gerçek bir Postgres ile
 konuşuyor, kendi fixture'ını kuruyor (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge
 serileri) ve yalnızca kendi kayıtlarına dokunuyor — bu yüzden seed verisi olan bir veritabanında

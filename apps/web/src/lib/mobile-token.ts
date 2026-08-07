@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { sessionUserSchema, type SessionUser } from "@repo/types";
+import { DEV_FALLBACK_SECRET } from "@repo/services/runtime-env";
 
 // Bearer-token auth for the mobile app. The web uses Auth.js cookie sessions,
 // but native clients can't ride cookies cleanly — so mobile logs in via
@@ -11,9 +12,25 @@ import { sessionUserSchema, type SessionUser } from "@repo/types";
 // So it carries `v` (the account's tokenVersion at sign-in) and the guard
 // compares that against the database on every request.
 
-const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET ?? "dev-insecure-secret-change-me",
-);
+/**
+ * İmza anahtarı.
+ *
+ * Yereldeki sabite düşmek **yalnızca** geliştirmede: bu değer depoda yazılı,
+ * dolayısıyla onu bilen herkes kendine SUPER_ADMIN jetonu imzalayabilir.
+ * Üretimde AUTH_SECRET yoksa jeton üretmek de doğrulamak da reddedilir —
+ * "çalışıyor ama herkes girebiliyor" hâli, hiç çalışmamaktan kötüdür.
+ * Açılışta zaten `assertRuntimeEnv` durduruyor; burası ikinci kilit.
+ */
+function secretKey(): Uint8Array {
+  const configured = process.env.AUTH_SECRET?.trim();
+  if (configured) return new TextEncoder().encode(configured);
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_SECRET tanımlı değil; mobil jeton imzalanamaz (bkz. DEPLOYMENT.md).",
+    );
+  }
+  return new TextEncoder().encode(DEV_FALLBACK_SECRET);
+}
 
 const ISSUER = "b2b-mobile";
 const TTL = "30d";
@@ -34,7 +51,7 @@ export async function signMobileToken(
     .setIssuer(ISSUER)
     .setIssuedAt()
     .setExpirationTime(TTL)
-    .sign(secret);
+    .sign(secretKey());
 }
 
 export interface MobileClaims {
@@ -49,7 +66,7 @@ export async function verifyMobileToken(
   token: string,
 ): Promise<MobileClaims | null> {
   try {
-    const { payload } = await jwtVerify(token, secret, { issuer: ISSUER });
+    const { payload } = await jwtVerify(token, secretKey(), { issuer: ISSUER });
     const parsed = sessionUserSchema.safeParse({
       id: payload.sub,
       email: payload.email,

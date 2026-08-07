@@ -1,0 +1,48 @@
+# Derleme bağlamı: küçük tutulması hız değil, doğruluk meselesi — yereldeki
+# node_modules (Windows ikilileri), .env dosyaları ve müşteri verisi imaja
+# girmemeli.
+
+node_modules
+**/node_modules
+.pnpm-store
+
+.next
+**/.next
+dist
+**/dist
+out
+.turbo
+**/.turbo
+*.tsbuildinfo
+
+.git
+.github
+.vscode
+
+# Sırlar. Yapılandırma çalıştırma anında veriliyor, imaja gömülmüyor.
+#
+# `**/` şart: .dockerignore kalıpları **tam yola** bakıyor, dosya adına değil.
+# Yalnız `.env` yazmak kökteki dosyayı eler, `apps/web/.env`'i elemez — ve o
+# dosya derleme bağlamına girdiğinde Next standalone çıktısıyla birlikte imaja
+# kopyalanıp çalışma anında **yükleniyor**: geliştiricinin yerel AUTH_SECRET'i
+# müşterinin sunucusunda geçerli imza anahtarı oluyor. Doğrulamada tam olarak
+# bu görüldü (imajın içinde /app/apps/web/.env).
+**/.env
+**/.env.*
+!.env.example
+!.env.production.example
+
+# Müşteri verisi
+uploads
+tenants/*
+!tenants/README.md
+!tenants/demo
+
+# Yerelde inceleme için tutulan dış depolar
+refine
+vendure
+
+# Yedekler ve günlükler
+backup
+*.log
+coverage

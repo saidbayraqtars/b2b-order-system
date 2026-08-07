@@ -1,0 +1,85 @@
+# Üretim yığını — tek müşteri, tek kurulum.
+#
+# Kullanım (sunucuda):
+#   cp .env.production.example .env.production   # doldur
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# `--env-file` şart: `env_file:` yalnızca kapsayıcının içine değişken koyar,
+# bu dosyadaki `${...}` yerine koymaları ise Compose'un kendi ortamından okunur.
+# Bayrak unutulursa POSTGRES_PASSWORD boş kalır ve Compose durur (`:?` yüzünden)
+# — sessizce şifresiz bir veritabanı ayağa kalkmaz.
+#
+# `docker-compose.yml` bu dosyanın yerine geçmez: oradaki yalnızca geliştirme
+# postgres'i, host'un 5433 portunu açar ve şifresi "postgres"tir.
+#
+# Şema göçü ayrı bir servis. Web açılışında çalıştırılsaydı, iki kopya birden
+# başlatıldığında ikisi de şemaya girerdi; burada `service_completed_successfully`
+# sayesinde göç bitmeden web ayağa kalkmıyor ve göç başarısızsa web hiç
+# başlamıyor — yarım şemayla servis vermek en kötü sonuç.
+
+name: b2b
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-b2b}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD zorunlu}
+      POSTGRES_DB: ${POSTGRES_DB:-b2b}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Port dışarı açılmıyor: veritabanına yalnızca bu ağdaki servisler erişir.
+    # Yedek alan betik `docker compose exec` ile içeriden bağlanıyor.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-b2b} -d ${POSTGRES_DB:-b2b}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: b2b-migrator:${APP_VERSION:-local}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.production
+
+  web:
+    build:
+      context: .
+      target: runner
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    image: b2b-web:${APP_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env.production
+    environment:
+      # Kapsayıcı içindeki sabit yollar; .env.production'daki değerleri ezer ki
+      # birim bağlama noktalarıyla her zaman uyumlu kalsınlar.
+      TENANT_DIR: /data/tenant
+      UPLOAD_DIR: /data/uploads
+      APP_VERSION: ${APP_VERSION:-local}
+    volumes:
+      # Kiracı klasörü salt okunur bağlanıyor: destek akışında elden ele giden
+      # bir klasör ve uygulamanın oraya yazması gereken hiçbir şey yok.
+      - ${TENANT_SOURCE:-./tenants/demo}:/data/tenant:ro
+      - uploads:/data/uploads
+    ports:
+      # Doğrudan 80/443'e değil: TLS'i öndeki ters vekil (nginx/Caddy/Traefik)
+      # sonlandırıyor. Tek makinede tek servis varsa bu satır 80:3000 yapılabilir.
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
+  uploads:

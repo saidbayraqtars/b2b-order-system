@@ -53,6 +53,7 @@ Son güncelleme: 2026-08-07 · Adım 32-39 (saha, dağıtım, etiket, stok) sonu
 | 37 | Etiket & fiş motoru: kargo etiketi + 80 mm fişler, tek/toplu basım, şablon tasarımcısı | ✅ |
 | 38 | Kurye rolü: teslim listesi, imzalı belge fotoğrafı, teslim fişi, dağıtım ekranı | ✅ |
 | 39 | Stok kartı alanları: alış fiyatı, birim, kritik stok, raf, pasif kart + depo bazlı stok | ✅ |
+| 40 | Dağıtım: üretim imajı, göç konteyneri, sağlık ucu, kurulum/yedek/güncelleme betikleri | ✅ |
 
 ---
 
@@ -1349,7 +1350,105 @@ Yeni rol `COURIER`, yeni rol ailesi `DELIVERY`.
 - Kritik stok listesi yalnızca eşiği **tanımlı** satırları alıyor: eşiksiz her ürünü
   listelemek uyarı listesi değil, ürün listesi olurdu.
 
-## 37. Web Portal (`apps/web`)
+## 37. Dağıtım & İşletim (Adım 40)
+
+Sistem **her müşteri için ayrı kurulur**: kendi sunucusu,
+kendi veritabanı, kendi kiracı klasörü. Bu adım o kurulumun nasıl açıldığını,
+güncellendiğini ve geri alındığını yazılı hâle getiriyor. Ayrıntı: `DEPLOYMENT.md`.
+
+### İmaj: iki hedef, tek Dockerfile
+
+- **runner** — Next `output: "standalone"` çıktısı. İzlenmiş dosyalar, `node`
+  kullanıcısı, `prisma` CLI ve migration dosyaları **yok**: çalışan sunucuda
+  durmaları yalnızca saldırı yüzeyi.
+- **migrator** — derleme katmanının üstünde; `prisma migrate deploy` çalıştırıp
+  çıkar. `bootstrap.ts` de bu kapsayıcıdan koşuyor.
+
+**Göç web'in açılışında çalışmıyor.** Öyle olsaydı iki kopya birden
+başlatıldığında ikisi de şemaya girerdi. Compose'da web `migrate` servisinin
+`service_completed_successfully` koşuluna bağlı: göç bitmeden başlamıyor, göç
+düşerse hiç başlamıyor — yarım şemayla servis vermek en kötü sonuç.
+
+### Sızıntı: geliştirme sırrı imaja giriyordu
+
+Doğrulama sırasında imajın içinde `/app/apps/web/.env` bulundu. `.dockerignore`
+kalıpları **tam yola** bakıyor, dosya adına değil: yalın `.env` yalnızca kökteki
+dosyayı eliyor. Next standalone çıktısı uygulama dizinindeki `.env`'i taşıyor ve
+**çalışma anında yüklüyor** — yani geliştiricinin yerel `AUTH_SECRET`'i
+müşterinin sunucusunda geçerli imza anahtarı oluyordu. İki kilit kondu: kalıp
+`**/.env` yapıldı ve derleme aşamasında bağlamda kalan her `.env` siliniyor.
+
+`mobile-token.ts` içindeki `AUTH_SECRET ?? "dev-insecure-secret-change-me"`
+varsayılanı da kaldırıldı: üretimde anahtar yoksa jeton **imzalanmıyor da
+doğrulanmıyor da**. O sabit depoda yazılı — bilen herkes kendine SUPER_ADMIN
+jetonu üretebilirdi.
+
+### Açılışta yapılandırma denetimi
+
+`src/instrumentation.ts` süreç açılışında `assertRuntimeEnv()` çağırıyor.
+Üretimde `DATABASE_URL`, `AUTH_SECRET`, `TENANT_DIR`, `APP_URL`, `UPLOAD_DIR`
+zorunlu; kısa ya da geliştirme sabitine eşit `AUTH_SECRET` ve localhost'a bakan
+`APP_URL` ölümcül sayılıyor. SMTP boşluğu ve `http://` uyarı olarak günlüğe
+düşüyor, süreci durdurmuyor.
+
+`UPLOAD_DIR` listede çünkü varsayılanı `process.cwd()/uploads`: kapsayıcıda bu,
+imaj her güncellendiğinde silinen bir dizin demek — yüklenen ürün görselleri
+sessizce kaybolurdu.
+
+Hata durumunda süreç **açıkça düşürülüyor** (`process.exit(1)`). Next bu
+kancadaki hatayı yakalayıp "Failed to prepare server" yazıyor ve süreci ayakta
+tutuyor; sonuç `docker ps` çıktısında "Up" görünen ama hiçbir isteğe cevap
+vermeyen bir kapsayıcı olurdu.
+
+### `GET /api/health`
+
+Kimlik istemiyor — sağlık kontrolünü yapan şey (Docker, ters vekil, güncelleme
+betiği) oturum açamaz. Dört kontrol: `database` (bağlantı **ve** yarım kalmış
+migration), `tenant` (`tenant.json` okunabiliyor), `uploads` (dizin yazılabilir),
+`config` (zorunlu değişkenler dolu). Hepsi geçerse 200, değilse 503.
+
+Dışarı yalnızca evet/hayır çıkıyor: hata metni bağlantı dizesi ve dosya yolu
+sızdırır, sağlık ucu keşif aracı olmamalı. `version` alanı imaj etiketiyle aynı
+değer — güncelleme betiği "yeni sürüm gerçekten ayağa kalktı mı" sorusunu buna
+bakarak yanıtlıyor; 200 dönen ama hâlâ eski kopya olan bir sunucu "başarılı"
+sanılmasın.
+
+### `seed.ts` üretimde çalıştırılmaz
+
+Geliştirme seed'i `admin@b2b.local` / `Password123!` açıyor — ikisi de depoda
+yazılı. Üretim için ayrı giriş noktası: `prisma/bootstrap.ts`. Operatörün
+verdiği e-posta/şifreyle **tek** süper admin, belge serileri ve hazır etiket
+tasarımları; tek gösterim satırı yazmıyor. Hesap zaten varsa **şifresine
+dokunmuyor**: aksi hâlde güncelleme betiğinin yanlışlıkla çalıştırılması,
+müşterinin kendi değiştirdiği şifreyi eskisine döndürürdü.
+
+Ortak başvuru verisi (`prisma/reference-data.ts`) seed ile bootstrap arasında
+paylaşılıyor — belge serisi olmayan kurulum irsaliye numaralandıramaz, yani
+sevkiyat yapamaz.
+
+### Betikler
+
+| Betik | Ne yapar |
+|---|---|
+| `install.sh` | Yapılandırmayı doğrular → derler → şemayı kurar → yönetici hesabını sorar → web'i açar. Herhangi bir adım düşerse orada durur |
+| `backup.sh` | Veritabanı (`pg_dump -Fc`) + görseller + kiracı klasörü, tek dizinde; eski yedekleri süreye göre siler |
+| `restore.sh` | Yedekten döner; veritabanını **siler**, `--force` yoksa onay ister |
+| `update.sh` | Yedek → derle → göç → geçir → sağlığı bekle; tutmazsa eski imaja döner |
+
+**Şema göçü geri alınamaz.** `update.sh`'ın geri aldığı şey *uygulama
+sürümüdür*; yeni sürüm bir kolon düşürdüyse eski imaja dönmek onu geri
+getirmez. Yedek adımı bu yüzden varsayılan, `SKIP_BACKUP=1` açık bir tercih.
+Göç düşerse betik web'e **hiç dokunmadan** duruyor: eski sürüm çalışmaya devam
+eder, şema da eskidir.
+
+### Kalıcı veri
+
+Veritabanı ve yüklenen görseller birimde; kiracı klasörü host'tan **salt
+okunur** bağlanıyor (destek akışında elden ele giden bir klasör ve uygulamanın
+oraya yazması gereken hiçbir şey yok). İmajın içinde kalıcı hiçbir şey yok —
+güncelleme kapsayıcıyı değiştirir, veriyi değil.
+
+## 38. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1390,7 +1489,7 @@ Yeni rol `COURIER`, yeni rol ailesi `DELIVERY`.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 38. Mobil Uygulama (`apps/mobile`)
+## 39. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1405,10 +1504,11 @@ Yeni rol `COURIER`, yeni rol ailesi `DELIVERY`.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 39. API Uçları
+## 40. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
+| GET | `/api/health` | herkes (kimliksiz; yalnızca evet/hayır, 200/503) |
 | POST | `/api/auth/[...nextauth]` | herkes (web cookie oturumu) |
 | POST | `/api/auth/forgot-password` | herkes (yanıt her zaman aynı — hesap ifşa etmez) |
 | POST | `/api/auth/reset-password` | bağlantı sahibi (token'ın kendisi kimlik) |
@@ -1559,7 +1659,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Sanal POS yok**~~ — Adım 28'de bağlantı noktası kapatıldı: kayıt defteri, ödeme niyeti, elden POS sağlayıcısı. **Gerçek bir sağlayıcı adaptörü hâlâ yok** — iyzico/PayTR/VPOS'tan hangisinin yazılacağı müşteri seçimine ve sözleşmesine bağlı. Arayüz hazır; yazılacak şey tek dosyalık adaptör + 3-D Secure dönüş ve webhook rotaları.
 - **Çek/senet portföyü yok** — çek tahsilatı cariyi kapatıyor ama kasaya girmiyor (doğru), yine de çekin kendisi hiçbir yerde durmuyor: vade takibi, tahsil/karşılıksız durumu, ciro edilmesi yok. Kasa defteri bu boşluğu görünür kıldı, kapatmadı.
 - **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
-- **Dağıtım hikâyesi yok** — `Dockerfile` yok; `docker-compose.yml` yalnızca geliştirme postgres'i. Üretim imajı, kiracı klasörünün bağlanması, yedekleme, sağlık kontrolü ve uzaktan güncelleme akışı yok.
+- ~~**Dağıtım hikâyesi yok**~~ — Adım 40'ta kapatıldı: üretim imajı, ayrı göç konteyneri, sağlık ucu, kurulum/yedek/geri yükleme/güncelleme betikleri, `DEPLOYMENT.md`. **Merkezden güncelleme hâlâ yok** — her sunucu kendi `update.sh`'ını çalıştırıyor; yedekler aynı diskte duruyor, dışarı kopyalama operatörün işi.
 
 ### Yakın sırada
 
