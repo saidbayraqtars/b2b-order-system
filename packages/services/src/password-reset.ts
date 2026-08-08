@@ -165,9 +165,11 @@ export async function completePasswordReset(
 }
 
 /**
- * Housekeeping for expired/spent tickets. Not wired to a scheduler — there is no
- * job runner in this system yet — but exported so the admin retention screen and
- * any future cron can call the same code.
+ * Housekeeping for expired/spent tickets.
+ *
+ * Runs on a schedule (`password-reset-purge` in job-registry.ts). Deleting these
+ * is tidiness, not security: an expired single-use ticket already does nothing.
+ * Safe to run twice — deleting the same rows again deletes none.
  */
 export async function purgePasswordResetTokens(
   olderThan: Date = new Date(Date.now() - 7 * 24 * 60 * 60_000),

@@ -37,9 +37,17 @@ export async function register(): Promise<void> {
   // kadar hiçbir bakım işinin çalışmaması, kimsenin girmediği bir hafta sonu
   // boyunca sistemin kendini hiç toplamaması demekti.
   //
-  // Ayrıca içe aktarma **başlatmadan sonra**: `assertRuntimeEnv` düşerse
-  // veritabanına bağlanmayı hiç denememeliyiz, yoksa günlükte asıl sebebin
-  // üstüne bir de bağlantı hatası biniyor.
-  const { startScheduler } = await import("@repo/services/scheduler");
-  startScheduler();
+  // İçe aktarma **başlatmadan sonra**: `assertRuntimeEnv` düşerse veritabanına
+  // bağlanmayı hiç denememeliyiz, yoksa günlükte asıl sebebin üstüne bir de
+  // bağlantı hatası biniyor.
+  //
+  // `if` bloğunun içinde ve yukarıdaki erken dönüşe **rağmen** tekrar
+  // sorgulanıyor: bu dosya Next tarafından edge paketi için de derleniyor ve
+  // paketleyici erken dönüşü katlamıyor — bakım işleri `node:fs` ve nodemailer
+  // çekiyor, edge çözümleyicisi ikisini de bulamıyor ve derleme düşüyor.
+  // Koşulun doğrudan içe aktarmayı sarması, Next'in tanıdığı biçim.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startScheduler } = await import("@repo/services/scheduler");
+    startScheduler();
+  }
 }
