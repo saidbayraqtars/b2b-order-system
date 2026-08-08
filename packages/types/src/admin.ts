@@ -256,6 +256,24 @@ export const updateCustomerGroupSchema = z
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
 export type UpdateCustomerGroupInput = z.infer<typeof updateCustomerGroupSchema>;
 
+// ─────────────────────────────────────────────
+// ZAMANLANMIŞ İŞLER
+// ─────────────────────────────────────────────
+
+export const updateJobScheduleSchema = z
+  .object({
+    isEnabled: z.boolean().optional(),
+    /**
+     * Alt sınır 5 dakika: daha sıksı bir temizlik işinin faydası yok, ama
+     * yanlışlıkla girilen "1" veritabanını dakikada bir tarayan bir işe
+     * dönüşürdü. Üst sınır bir hafta — daha uzunu "kapalı" demektir ve bunun
+     * kendi anahtarı var.
+     */
+    intervalMinutes: z.number().int().min(5).max(10080).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");
+export type UpdateJobScheduleInput = z.infer<typeof updateJobScheduleSchema>;
+
 export const ROLE_LABELS: Record<z.infer<typeof RoleEnum>, string> = {
   SUPER_ADMIN: "Süper admin",
   COMPANY_ADMIN: "Firma yöneticisi",

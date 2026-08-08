@@ -152,6 +152,7 @@ model User {
   transactions   Transaction[] @relation("TransactionRecordedBy")
   chequeEvents   ChequeEvent[] @relation("ChequeEventActor")
   exchangeRates  ExchangeRate[] @relation("ExchangeRateCreatedBy")
+  jobRuns        JobRun[]       @relation("JobRunTriggeredBy")
   cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
   paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
   paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
@@ -1066,6 +1067,14 @@ model Transaction {
   /// gets its own answer.
   collectionMethod CollectionMethod?
 
+  /// İstemcinin verdiği tekrar anahtarı.
+  ///
+  /// Aynı tahsilatı iki kez yazmanın önündeki tek gerçek engel. Ekrandaki onay
+  /// adımı ve kilitlenen düğme, ağ koptuğunda yeniden gönderen bir istemciyi
+  /// durdurmuyor. Tekil olduğu için ikinci istek veritabanında kalıyor —
+  /// uygulama kodundaki "önce bak sonra yaz" yarışa açıktı.
+  idempotencyKey String? @unique
+
   /// Set on the correcting entry that reverses an earlier collection. The
   /// ledger is append-only: a mistaken tahsilat is undone by a DEBIT of the
   /// same amount pointing here, never by deleting the CREDIT row. Unique, so
@@ -1226,6 +1235,56 @@ model CashMovement {
   @@index([occurredAt])
   @@index([orderId])
   @@index([source, occurredAt])
+}
+
+// ─────────────────────────────────────────────
+// ZAMANLANMIŞ İŞLER
+// ─────────────────────────────────────────────
+//
+// Süresi geçmiş şifre biletleri, denetim kaydı saklama süresi, yetim görseller:
+// hepsi periyodik olması gereken ama kimsenin hatırlamasına bırakılmış işlerdi.
+//
+// Zamanlayıcı uygulamanın içinde çalışıyor (ayrı bir cron kapsayıcısı, kurulum
+// başına ikinci bir dağıtım birimi demekti). Bunun bedeli, iki kopya
+// çalıştığında ikisinin de aynı işi koşturması; `nextRunAt`'i ileri atarak
+// **sahiplenme** bu yüzden var — işi alan kopya satırı tek bir UPDATE ile
+// kilitliyor, alamayan hiç başlamıyor.
+
+model JobSchedule {
+  /// Kayıt defterindeki iş adı (`job-registry.ts`).
+  name String @id
+
+  intervalMinutes Int
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  lastStatus      String?
+  lastSummary     String?
+  isEnabled       Boolean   @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([isEnabled, nextRunAt])
+}
+
+/// Her çalıştırmanın kaydı. Sonuç kolonu `JobSchedule`'da da duruyor ama orası
+/// yalnızca sonuncuyu biliyor; "bu iş dün de patladı mı" sorusu ancak geçmiş
+/// tutulursa yanıtlanıyor.
+model JobRun {
+  id   String @id @default(cuid())
+  name String
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// RUNNING | OK | ERROR
+  status  String  @default("RUNNING")
+  summary String?
+  error   String?
+  /// Elle tetiklendiyse tetikleyen.
+  triggeredById String?
+  triggeredBy   User?   @relation("JobRunTriggeredBy", fields: [triggeredById], references: [id])
+
+  @@index([name, startedAt])
+  @@index([startedAt])
 }
 
 // ─────────────────────────────────────────────
@@ -1836,6 +1895,9 @@ enum AuditAction {
   MEDIA_UPLOADED // a file landed on the server's disk
   AUDIT_PURGED // old trail entries deleted under the retention policy
   AUDIT_EXPORTED // the trail was taken off the system as a file
+  /// Bakım işi açıldı/kapatıldı ya da periyodu değişti. Kapatılmış bir temizlik
+  /// işi haftalar sonra fark edildiğinde, kimin kapattığını gösteren tek kayıt.
+  JOB_SCHEDULE_CHANGED
 }
 
 /// Append-only record of security-relevant events. Nothing in the application

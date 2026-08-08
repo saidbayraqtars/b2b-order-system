@@ -447,6 +447,9 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // 409, 422 değil: girdi doğru, eksik olan kurulumun kendisi. Operatörün
   // yapması gereken şey kuru girmek — istediği ürünü değiştirmek değil.
   MISSING_EXCHANGE_RATE: 409,
+  // zamanlanmış işler
+  JOB_NOT_FOUND: 404,
+  INVALID_JOB_INTERVAL: 422,
 };
 
 /**

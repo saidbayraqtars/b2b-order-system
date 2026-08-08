@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-07 · Adım 32-39 (saha, dağıtım, etiket, stok) sonu
+Son güncelleme: 2026-08-08 · Adım 43 (bakım işleri + tekrar anahtarı) sonu
 
 ---
 
@@ -54,6 +54,9 @@ Son güncelleme: 2026-08-07 · Adım 32-39 (saha, dağıtım, etiket, stok) sonu
 | 38 | Kurye rolü: teslim listesi, imzalı belge fotoğrafı, teslim fişi, dağıtım ekranı | ✅ |
 | 39 | Stok kartı alanları: alış fiyatı, birim, kritik stok, raf, pasif kart + depo bazlı stok | ✅ |
 | 40 | Dağıtım: üretim imajı, göç konteyneri, sağlık ucu, kurulum/yedek/güncelleme betikleri | ✅ |
+| 41 | Çek & senet portföyü: tahsilattan doğar, vade/banka/durum takibi, karşılıksızda borç geri açılır | ✅ |
+| 42 | Döviz: liste fiyatı yabancı para olabilir, kur siparişe donar, defter TL kalır | ✅ |
+| 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
 
 ---
 
@@ -1448,7 +1451,77 @@ okunur** bağlanıyor (destek akışında elden ele giden bir klasör ve uygulam
 oraya yazması gereken hiçbir şey yok). İmajın içinde kalıcı hiçbir şey yok —
 güncelleme kapsayıcıyı değiştirir, veriyi değil.
 
-## 38. Web Portal (`apps/web`)
+## 38. Çek & Senet Portföyü (Adım 41)
+
+Çek tahsilatı cariyi kapatıyor ve kasaya girmiyordu — kâğıt henüz para değil.
+Ama kâğıdın kendisi **hiçbir yerde** kayıtlı değildi: vadesi, hangi bankanın,
+tahsil mi oldu karşılıksız mı çıktı, kime ciro edildi.
+
+- Kâğıt tahsilattan **doğar**, elle yazılmaz. Bağlantı zorunlu ve tekil:
+  hiçbir borcu kapatmamış kâğıt da, kimsede olmayan kâğıtla kapanmış borç da
+  temsil edilemez.
+- Para kasaya **tahsilde** girer, tahsilatta değil, ve kendi kaynağıyla: aylar
+  önce kapanan bir borcun bugün gelen parası, bugünkü tahsilat gibi görünmemeli.
+- Karşılıksızda kapanan borç geri açılır — ters kayıt, satır silme değil.
+- Ayrı izin: `cheques.manage`.
+
+## 39. Döviz (Adım 42)
+
+Fiyat kolonlarındaki `currency` alanı vardı ve hepsi "TRY" tutuyordu; alan bir
+özellik değil, yer tutucuydu.
+
+- **Defter TL kalır**, kur siparişe donar. Çok para birimli defter, her bakiyeye
+  "hangi kurla" sorusunu iliştirir ve tek bir ekstre basılamaz hâle getirir.
+- Çevrim fiyatlamadan **önce**: fiyat satırı TL'ye çevrilir, sonra iskonto,
+  hacim basamağı ve KDV eskisi gibi çalışır. `pricing.ts` para biriminden hâlâ
+  habersiz ve dört yerine tek bir yuvarlama kararı var.
+- Kuru olmayan para biriminde fiyatlama **reddedilir** (`MISSING_EXCHANGE_RATE`,
+  409): eksik olan girdi değil, kurulumun kendisi.
+
+## 40. Bakım İşleri & Tekrar Anahtarı (Adım 43)
+
+İki ayrı yer, tek soru: **aynı iş iki kez yapılırsa ne olur?**
+
+### Zamanlayıcı
+
+Süresi geçmiş şifre biletleri, denetim kaydı saklama süresi, yetim görseller,
+terk edilmiş sepetler: hepsi periyodik olması gereken ama kimsenin
+hatırlamasına bırakılmış işlerdi.
+
+- İşler bir **kayıt defteri** (`job-registry.ts`) — bu depoda tanıdık desen
+  (rapor veri kümeleri, kampanya kuralları, ödeme sağlayıcıları). İş veri,
+  zamanlayıcı yalnızca çalıştıran.
+- Her işin tek sözü var: **yeniden çalıştırılabilir olmak.** Çökme, yeniden
+  başlatma ve elle tetikleme aynı işi iki kez çalıştırabilir.
+- Zamanlayıcı uygulamanın **içinde** çalışıyor, ayrı bir cron kapsayıcısı değil:
+  müşteri başına ikinci bir dağıtım birimi, kazandırdığından fazla yük getirirdi.
+- Bunun bedeli iki kopyanın aynı turu koşturması; ödeyen mekanizma
+  **sahiplenme**: iş, `nextRunAt`'i ileri atan tek bir
+  `UPDATE ... WHERE nextRunAt <= now()` ile alınır. Satırı güncelleyebilen kopya
+  çalıştırır, diğeri sıfır satır günceller ve hiç başlamaz. "Önce bak, sonra
+  çalıştır" yarışa açıktı ve denetim kaydını iki kez budardı.
+- Patlayan iş yutulmuyor ama yayılmıyor da: `JobRun` satırı ERROR olarak kalıyor,
+  ekranda kırmızı duruyor, diğer işler etkilenmiyor.
+- `/admin/jobs`: son çalışma, sıradaki çalışma, periyot, aç/kapat, "şimdi
+  çalıştır". Ayar değişikliği denetim kaydına yazılıyor — kapatılmış bir temizlik
+  işi haftalar sonra sorulduğunda kimin kapattığını gösterecek tek kayıt.
+- Ayrı izin: `jobs.manage`.
+
+### Tahsilatta tekrar anahtarı
+
+Ekrandaki onay adımı ve kilitlenen düğme, ağ koptuğunda yeniden gönderen bir
+istemciyi durdurmuyordu — kullanıcı da "kaydedildi mi" bilemediği için tekrar
+basıyordu.
+
+- `Transaction.idempotencyKey` **tekil**: ikinci isteği veritabanı reddediyor.
+  Uygulama kodundaki "önce bak sonra yaz" yarışa açıktı.
+- Aynı anahtarla gelen ikinci istek ilkinin sonucunu aynen döndürüyor — istemci
+  açısından istek başarılı, çünkü gerçekten başarılı oldu, sadece daha önce.
+- Eşleşme yalnızca **aynı firma** için kabul ediliyor: anahtar istemciden geliyor
+  ve tahmin edilebilir bir değer gönderen biri başka firmanın kaydını okuyabilirdi.
+- Anahtarsız istek korumasız: aynı tutarı iki kez tahsil etmek meşru bir durum.
+
+## 41. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1489,7 +1562,7 @@ güncelleme kapsayıcıyı değiştirir, veriyi değil.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 39. Mobil Uygulama (`apps/mobile`)
+## 42. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1504,7 +1577,7 @@ güncelleme kapsayıcıyı değiştirir, veriyi değil.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 40. API Uçları
+## 43. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|

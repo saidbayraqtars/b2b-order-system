@@ -24,6 +24,7 @@ import {
   Wallet,
   ScrollText,
   Coins,
+  Timer,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -101,6 +102,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
       { href: "/admin/announcements", label: "Duyurular", icon: Megaphone, permission: "announcements.manage" },
       { href: "/admin/activity", label: "Hareketler", icon: Activity, permission: "activity.view" },
       { href: "/admin/audit", label: "Güvenlik", icon: ShieldCheck, permission: "audit.view" },
+      { href: "/admin/jobs", label: "Bakım işleri", icon: Timer, permission: "jobs.manage" },
     ],
   },
 ];

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
 
 // Uploaded files (product photos, for now).
@@ -148,14 +149,71 @@ export async function readMedia(segments: string[]): Promise<MediaFile | null> {
 /**
  * Delete a file we previously stored. Silent when it is already gone: removing
  * an image from a product must not fail because the file vanished first.
+ *
+ * Returns whether a file was actually removed — the cleanup job counts these,
+ * and "0 silindi" must mean nothing was there rather than nothing was tried.
  */
-export async function deleteMedia(url: string): Promise<void> {
-  if (!url.startsWith(`${MEDIA_URL_PREFIX}/`)) return;
+export async function deleteMedia(url: string): Promise<boolean> {
+  if (!url.startsWith(`${MEDIA_URL_PREFIX}/`)) return false;
 
   const segments = url.slice(MEDIA_URL_PREFIX.length + 1).split("/");
   const root = path.resolve(uploadRoot());
   const target = path.resolve(root, ...segments);
-  if (!target.startsWith(root + path.sep)) return;
+  if (!target.startsWith(root + path.sep)) return false;
 
-  await unlink(target).catch(() => undefined);
+  try {
+    await unlink(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Dosyaları hiçbir ürüne bağlı olmayanlarla eşleştir.
+ *
+ * İki koşul birden aranıyor: dosya hiçbir ürünün `images` dizisinde geçmemeli
+ * **ve** belirli bir yaştan eski olmalı. Yaş koşulu olmadan, yüklenmiş ama
+ * henüz ürüne kaydedilmemiş bir görsel — kullanıcı formu doldururken —
+ * ayağının altından silinirdi.
+ *
+ * Karşılaştırma URL üzerinden yapılıyor, dosya adı üzerinden değil: `images`
+ * dizisi URL tutuyor ve iki gösterimi birbirine çevirmeye çalışmak, tek bir
+ * ayrımda gerçek görselleri silmek demek.
+ */
+export async function listOrphanMedia(minAgeHours = 24): Promise<string[]> {
+  const root = path.resolve(uploadRoot());
+  const cutoff = Date.now() - minAgeHours * 3_600_000;
+
+  let folders: string[];
+  try {
+    folders = (await readdir(root, { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+  } catch {
+    return []; // dizin hiç oluşmamış — yüklenen görsel yok
+  }
+
+  const onDisk: string[] = [];
+  for (const folder of folders) {
+    let entries;
+    try {
+      entries = await readdir(path.join(root, folder), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const full = path.join(root, folder, entry.name);
+      const info = await stat(full).catch(() => null);
+      if (!info || info.mtimeMs > cutoff) continue;
+      onDisk.push(`${MEDIA_URL_PREFIX}/${folder}/${entry.name}`);
+    }
+  }
+  if (onDisk.length === 0) return [];
+
+  const products = await prisma.product.findMany({ select: { images: true } });
+  const referenced = new Set(products.flatMap((p) => p.images));
+
+  return onDisk.filter((url) => !referenced.has(url));
 }

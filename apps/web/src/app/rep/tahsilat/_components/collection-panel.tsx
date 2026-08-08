@@ -16,6 +16,22 @@ import { formatTRY } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CompanyOption } from "@/components/storefront/company-switcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+
+/**
+ * Tekrar anahtarı üretici.
+ *
+ * `crypto.randomUUID` her tarayıcıda yok (eski Android WebView'ları, güvenli
+ * bağlam olmayan yerel kurulumlar); saha telefonlarında bunun yokluğu gerçek
+ * bir durum. Yedek yol rastgeleliği düşürmüyor çünkü anahtarın gizli olması
+ * gerekmiyor — yalnızca aynı formun iki gönderimi arasında **aynı**, iki farklı
+ * tahsilat arasında **farklı** olması gerekiyor.
+ */
+function newKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
 const METHODS = CollectionMethodEnum.options;
@@ -84,6 +100,17 @@ export function CollectionPanel({
     void qc.invalidateQueries({ queryKey: ["statement", companyId] });
   }
 
+  /**
+   * Bu tahsilat girişinin tekrar anahtarı.
+   *
+   * Onay adımı ve kilitlenen düğme, ağ koptuğunda yeniden gönderen bir istemciyi
+   * durdurmuyor — kullanıcı da "kaydedildi mi" bilemediği için tekrar basıyor.
+   * Anahtar form doldurulurken bir kez üretiliyor ve kayıt başarılı olunca
+   * yenileniyor: aynı formun ikinci gönderimi sunucuda ikinci satır açmıyor,
+   * ama *sonraki* tahsilat yeni bir anahtarla gidiyor.
+   */
+  const [idempotencyKey, setIdempotencyKey] = useState(() => newKey());
+
   const record = useMutation({
     mutationFn: (body: {
       companyId: string;
@@ -91,11 +118,13 @@ export function CollectionPanel({
       collectionMethod: CollectionMethod;
       description?: string;
       cashAccountId?: string;
+      idempotencyKey: string;
     }) => apiPost<RecordPaymentResult>("/api/payments", body),
     onSuccess: () => {
       setAmount("");
       setDescription("");
       setConfirming(false);
+      setIdempotencyKey(newKey());
       refresh();
     },
   });
@@ -225,6 +254,7 @@ export function CollectionPanel({
                     description: description.trim() || undefined,
                     cashAccountId:
                       settles && cashAccountId ? cashAccountId : undefined,
+                    idempotencyKey,
                   })
                 }
               >

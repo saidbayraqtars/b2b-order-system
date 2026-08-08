@@ -35,6 +35,11 @@ export interface RecordPaymentInput {
    * yalnızca tutar giriliyor, seri/banka/vade ofiste tamamlanıyor.
    */
   cheque?: ChequeDetailsInput;
+  /**
+   * İstemcinin ürettiği tekrar anahtarı. Ağ koptuğunda yeniden gönderilen
+   * istek aynı anahtarı taşıyor ve ikinci tahsilat yazılmıyor.
+   */
+  idempotencyKey?: string | null;
 }
 
 export interface RecordPaymentResult {
@@ -53,6 +58,14 @@ export async function recordPayment(
 ): Promise<RecordPaymentResult> {
   const amount = round2(new Dec(input.amount));
 
+  // Aynı anahtarla gelen ikinci istek: yeni satır yazılmıyor, ilkinin sonucu
+  // aynen dönüyor. İstemci açısından istek başarılı — çünkü gerçekten başarılı
+  // oldu, sadece daha önce.
+  if (input.idempotencyKey) {
+    const seen = await previousResult(input.idempotencyKey, input.companyId);
+    if (seen) return seen;
+  }
+
   return prisma.$transaction(async (tx) => {
     const company = await tx.company.findUnique({
       where: { id: input.companyId },
@@ -70,6 +83,7 @@ export async function recordPayment(
         collectionMethod: input.collectionMethod,
         description: input.description ?? "Tahsilat",
         recordedBy: { connect: { id: recordedById } },
+        idempotencyKey: input.idempotencyKey ?? null,
       },
       select: { id: true },
     });
@@ -114,6 +128,39 @@ export async function recordPayment(
       chequeId: cheque?.id ?? null,
     };
   });
+}
+
+/**
+ * Bu anahtarla daha önce yazılmış tahsilat.
+ *
+ * Yalnızca aynı firmaya ait olan kabul ediliyor: anahtar istemciden geliyor ve
+ * tahmin edilebilir bir değer gönderen biri, başka bir firmanın tahsilat
+ * kaydını okuyabilirdi.
+ */
+async function previousResult(
+  key: string,
+  companyId: string,
+): Promise<RecordPaymentResult | null> {
+  const existing = await prisma.transaction.findUnique({
+    where: { idempotencyKey: key },
+    select: {
+      id: true,
+      companyId: true,
+      amount: true,
+      company: { select: { currentBalance: true } },
+      cashMovement: { select: { id: true } },
+      cheque: { select: { id: true } },
+    },
+  });
+  if (!existing || existing.companyId !== companyId) return null;
+
+  return {
+    transactionId: existing.id,
+    amount: existing.amount.toFixed(2),
+    newBalance: existing.company.currentBalance.toFixed(2),
+    cashMovementId: existing.cashMovement?.id ?? null,
+    chequeId: existing.cheque?.id ?? null,
+  };
 }
 
 // ─────────────────────────────────────────────

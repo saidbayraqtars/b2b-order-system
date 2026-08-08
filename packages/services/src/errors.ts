@@ -116,7 +116,10 @@ export type BusinessErrorCode =
   | "INVALID_CHEQUE_TRANSITION"
   | "CHEQUE_ALREADY_SETTLED"
   // ── döviz ──
-  | "MISSING_EXCHANGE_RATE";
+  | "MISSING_EXCHANGE_RATE"
+  // ── zamanlanmış işler ──
+  | "JOB_NOT_FOUND"
+  | "INVALID_JOB_INTERVAL";
 
 export class BusinessError extends Error {
   constructor(

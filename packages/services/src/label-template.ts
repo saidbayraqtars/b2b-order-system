@@ -137,20 +137,10 @@ export async function resolveLabelTemplate(
   };
 }
 
-/** Kurulumda hazır tasarımları yaz. Var olan aynı adlı şablona dokunmaz. */
-export async function seedDefaultLabelTemplates(): Promise<number> {
-  let written = 0;
-  for (const t of DEFAULT_LABEL_TEMPLATES) {
-    const exists = await prisma.labelTemplate.findFirst({
-      where: { kind: t.kind },
-      select: { id: true },
-    });
-    if (exists) continue;
-    await createLabelTemplate(t);
-    written += 1;
-  }
-  return written;
-}
+// Hazır tasarımların veritabanına yazılması burada değil,
+// packages/database/prisma/reference-data.ts içinde: kurulum verisi kurulumu
+// açan yerden yazılır ve hem bootstrap hem seed aynı yeri çağırır. İki kopya
+// olsaydı biri güncellenir, diğeri eskirdi.
 
 export async function createLabelTemplate(
   input: LabelTemplateInput,

@@ -32,4 +32,14 @@ export async function register(): Promise<void> {
     console.error(e instanceof Error ? e.message : e);
     process.exit(1);
   }
+
+  // Zamanlayıcı burada başlıyor, bir istek kancasında değil: ilk istek gelene
+  // kadar hiçbir bakım işinin çalışmaması, kimsenin girmediği bir hafta sonu
+  // boyunca sistemin kendini hiç toplamaması demekti.
+  //
+  // Ayrıca içe aktarma **başlatmadan sonra**: `assertRuntimeEnv` düşerse
+  // veritabanına bağlanmayı hiç denememeliyiz, yoksa günlükte asıl sebebin
+  // üstüne bir de bağlantı hatası biniyor.
+  const { startScheduler } = await import("@repo/services/scheduler");
+  startScheduler();
 }

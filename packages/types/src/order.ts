@@ -55,6 +55,12 @@ export const recordPaymentSchema = z.object({
    * değildir — sahada tutar giriliyor, gerisi ofiste tamamlanıyor.
    */
   cheque: chequeDetailsSchema.optional(),
+  /**
+   * Tekrar anahtarı. Ekrandaki onay adımı ve kilitlenen düğme, ağ koptuğunda
+   * yeniden gönderen istemciyi durdurmuyordu; sunucuda aynı anahtarla ikinci
+   * bir tahsilat yazılmıyor.
+   */
+  idempotencyKey: z.string().min(8).max(64).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 

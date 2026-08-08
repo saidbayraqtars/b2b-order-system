@@ -66,6 +66,7 @@ export const PermissionEnum = z.enum([
   "activity.view",
   "audit.view",
   "audit.manage",
+  "jobs.manage",
 ]);
 export type Permission = z.infer<typeof PermissionEnum>;
 
@@ -106,6 +107,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "activity.view": "Hareket kayıtlarını gör",
   "audit.view": "Güvenlik kayıtlarını gör",
   "audit.manage": "Denetim kaydını dışa aktar / temizle",
+  "jobs.manage": "Zamanlanmış işleri yönet",
 };
 
 /** Tek satırlık açıklama; yalnızca adı yetmeyen izinler için. */
@@ -118,6 +120,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "jobs.manage":
+    "Temizlik işlerini açar/kapatır, periyodunu değiştirir, elle çalıştırır",
   "targets.manage":
     "Ziyaret ve ciro hedefi koyar. Hedefini görmek için gerekmez — yalnızca koymak için",
   "delivery.confirm":
@@ -188,6 +192,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "activity.view",
       "audit.view",
       "audit.manage",
+      "jobs.manage",
     ],
   },
 ];
@@ -397,6 +402,9 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "activity.view": ["SELLER", "DEALER", "FIELD"],
   "audit.view": ["SELLER"],
   "audit.manage": ["SELLER"],
+  // Bakım işleri kurulumun kendisine ait: bir bayi ya da saha hesabının
+  // denetim kaydını budayabilmesi ya da temizlik işini kapatabilmesi anlamsız.
+  "jobs.manage": ["SELLER"],
 };
 
 /** Bu izin, bu rolde bir hesaba verilebilir mi? */

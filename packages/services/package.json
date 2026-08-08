@@ -6,7 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./runtime-env": "./src/runtime-env.ts"
+    "./runtime-env": "./src/runtime-env.ts",
+    "./scheduler": "./src/scheduler.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
