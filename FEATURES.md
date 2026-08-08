@@ -1730,7 +1730,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Satıcı kimliği yok**~~ — Adım 26'da kapatıldı.
 - ~~**Peşin satışın parası hiçbir deftere girmiyor**~~ — Adım 27'de kapatıldı: kasa/banka defteri, yöntem → hesap eşlemesi, gün sonu.
 - ~~**Sanal POS yok**~~ — Adım 28'de bağlantı noktası kapatıldı: kayıt defteri, ödeme niyeti, elden POS sağlayıcısı. **Gerçek bir sağlayıcı adaptörü hâlâ yok** — iyzico/PayTR/VPOS'tan hangisinin yazılacağı müşteri seçimine ve sözleşmesine bağlı. Arayüz hazır; yazılacak şey tek dosyalık adaptör + 3-D Secure dönüş ve webhook rotaları.
-- **Çek/senet portföyü yok** — çek tahsilatı cariyi kapatıyor ama kasaya girmiyor (doğru), yine de çekin kendisi hiçbir yerde durmuyor: vade takibi, tahsil/karşılıksız durumu, ciro edilmesi yok. Kasa defteri bu boşluğu görünür kıldı, kapatmadı.
+- ~~**Çek/senet portföyü yok**~~ — Adım 41'de kapatıldı: kâğıt tahsilattan doğuyor (zorunlu ve tekil bağ), vade/banka/durum takibi var, para tahsilde kasaya giriyor, karşılıksızda kapanan borç ters kayıtla geri açılıyor.
 - **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
 - ~~**Dağıtım hikâyesi yok**~~ — Adım 40'ta kapatıldı: üretim imajı, ayrı göç konteyneri, sağlık ucu, kurulum/yedek/geri yükleme/güncelleme betikleri, `DEPLOYMENT.md`. **Merkezden güncelleme hâlâ yok** — her sunucu kendi `update.sh`'ını çalıştırıyor; yedekler aynı diskte duruyor, dışarı kopyalama operatörün işi.
 
@@ -1738,9 +1738,9 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 - **Yönetim ekranları henüz eski dilde (Faz 3)** — Faz 1 ortak katmanı, Faz 2 vitrini kurdu. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı hâlâ ad-hoc Tailwind sınıflarında: yeni kabuğun içinde oturuyorlar, token'ları (yazı tipi, koyu tema, odak halkası) otomatik alıyorlar, ama kendi buton/tablo stilleri elle değişmedi. Bunlar vitrin kimliğini **almayacak** — yönetim tarafı nötr dilde kalır.
 - **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor. Veri zaten tutulduğu için iş, kayıt defterine bir veri kümesi eklemekten ibaret.
-- **İş zamanlayıcı yok** — periyodik olması gereken iki iş de elle tetikleniyor: `purgePasswordResetTokens()` (süresi geçmiş sıfırlama biletleri) kod içinden çağrılıyor, denetim kaydı saklama temizliği ise `/admin/audit` ekranından. Bir cron/job runner gelene kadar ikisi de kimsenin hatırlamasına bağlı. Aşağıdaki yetim görsel temizliği ve ileride zamanlanmış raporlar da aynı runner'ı bekliyor.
-- **Yetim görsel temizliği yok** — üründen kaldırılan görselin dosyası diskte kalıyor (`deleteMedia` var ama ürün kaydıyla ilişkilendirilmiş bir temizlik akışı yok). Zamanlayıcı gelmeden tek başına yapılmaz.
-- **Tahsilatta mükerrer koruması yok** — ekranda onay adımı ve kilitlenen buton var, ama sunucuda idempotency anahtarı yok: aynı isteği iki kez gönderen bir istemci iki tahsilat yazar. İkincisi iptal kaydıyla geri alınabiliyor (Adım 23), yine de doğru çözüm istek başına anahtar.
+- ~~**İş zamanlayıcı yok**~~ — Adım 43'te kapatıldı: uygulama içi zamanlayıcı, iş kayıt defteri, sahiplenme kuralı, `/admin/jobs` ekranı. **Zamanlanmış rapor gönderimi hâlâ yok** — runner hazır, eksik olan raporu e-postaya bağlayan iş tanımı.
+- ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
+- ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
 - **Ziyaret raporu yok** — `CheckIn.source`, süre ve konum artık kayıtlı ama "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" sorusunu soran bir rapor/veri kümesi yok. Rapor kayıt defterine veri kümesi olarak eklenmesi gerekiyor.
 
 ### Mobil
@@ -1776,9 +1776,8 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
-- **Plasiyer hedef takibi:** hedef ataması ve "hedefe kalan" göstergesi; şemada henüz karşılığı yok. Hacim merdiveninin ciro toplayıcısı (`companyTurnover`) burada da işe yarar — ölçtüğü şey aynı.
 - **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **İş zamanlayıcı:** dört iş aynı runner'ı bekliyor — süresi geçmiş sıfırlama biletlerinin temizliği, denetim kaydı saklama temizliği, yetim görsel temizliği, zamanlanmış rapor gönderimi.
+- **Zamanlanmış rapor gönderimi:** runner Adım 43'te geldi; eksik olan, kayıtlı bir raporu periyodik çalıştırıp e-postayla gönderen iş tanımı.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
 - **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
@@ -1793,7 +1792,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 **Cari & finans**
 - Sanal POS adaptörü: iyzico / PayTR / banka VPOS — bağlantı noktası Adım 28'de açıldı, geriye somut adaptör + 3-D Secure dönüş/webhook rotaları kaldı. DBS (doğrudan borçlandırma) ayrı.
-- Çek/senet takibi: sahadan görselle giriş, vade takibi, risk hesabına işleme.
+- Çek/senet: portföy Adım 41'de geldi; kalan iş sahadan **görselle** giriş ve risk hesabına işleme.
 - E-Fatura / E-İrsaliye: özel entegratör (EDM, Foriba, Sovos) üzerinden belgelendirme + PDF.
 - Vade farkı & erken ödeme iskontosu motoru: peşin/vadeli fiyat farkı, "10 günde öderse %2".
 - Firma risk skoru + otomatik blokaj: vadesi geçmiş borçlu firmanın siparişi engellenir ya da onaya düşer (Adım 8'in yaşlandırma çıktısına dayanır).
@@ -1831,7 +1830,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 **Platform & entegrasyon**
 - ERP çift yönlü senkron (Logo, Mikro, SAP, Nebim, DIA): stok/fiyat/cari ERP→B2B, sipariş+tahsilat B2B→ERP.
 - Bildirim motoru: FCM push + SendGrid/Twilio; sipariş durumu, onay bekleyen, limit aşımı tetikleyicileri.
-- Çoklu para birimi + çoklu dil: USD/EUR/TRY fiyat listeleri, TCMB kur entegrasyonu.
+- Çoklu dil: arayüz yalnızca Türkçe. (Çoklu para birimi Adım 42'de geldi; **TCMB kuru elle giriliyor**, otomatik çekim yok — zamanlayıcı hazır olduğuna göre bir iş tanımı yeter.)
 - Dışa açık B2B API + Webhook + OpenAPI: büyük bayi kendi ERP'sinden otomatik sipariş geçer.
 - Temsilci devir defteri: plasiyer değişince sipariş, çek-senet, ziyaret ve sepet devri.
 - Sunum/maskeleme modu: plasiyer müşteri yanındayken maliyet ve diğer müşteri bakiyeleri gizlenir.
