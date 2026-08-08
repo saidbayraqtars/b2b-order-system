@@ -1,5 +1,10 @@
 import type { Config } from "tailwindcss";
 import defaultTheme from "tailwindcss/defaultTheme";
+// Aynı eşleme mobilde de kullanılıyor; orada dosya düz Node ile okunduğu için
+// CommonJS. Bkz. packages/theme/tailwind.cjs.
+import { themeExtension } from "@repo/theme/tailwind";
+
+const theme = themeExtension({ web: true });
 
 export default {
   darkMode: "class", // kullanıcı üst barda seçer — sistem tercihi değil (bkz. lib/theme.ts)
@@ -10,10 +15,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        // "brand" = indigo'nun adlandırılmış hali. Koddaki mevcut indigo-600
-        // kullanımlarını (Button primary, focus ring, linkler) resmileştirir —
-        // yeni bir renk ailesi eklemek yerine zaten var olan örtük markayı
-        // tek noktadan tutarlı hale getirir.
+        // Anlamsal katman: `bg`, `surface`, `primary`, `danger`… Değerleri
+        // CSS değişkeninden gelir, değişkenleri de tasarım paketi yazar
+        // (@repo/theme). Sunum sırasında paket değişince bu sınıfları kullanan
+        // her yer anında yeniden boyanır — yeniden derleme yok.
+        ...theme.colors,
+
+        // Eski, sabit indigo ailesi. Yönetim paneli hâlâ bunu kullanıyor ve
+        // bilerek öyle kalıyor: paket değiştirmek vitrini değiştirir, veri
+        // giriş ekranlarını değil.
         brand: {
           50: "#eef2ff",
           100: "#e0e7ff",
@@ -29,27 +39,18 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", ...defaultTheme.fontFamily.sans],
-        display: ["var(--font-jakarta)", ...defaultTheme.fontFamily.sans],
-        // Teknik yazı: SKU, stok, koli, fiyat. Ölçen her sayı bununla dizilir —
-        // vitrinin "mühendislik kataloğu" karakteri buradan geliyor.
-        mono: ["var(--font-mono)", ...defaultTheme.fontFamily.mono],
+        // `sans` paketin gövde yazısı; `display`/`label`/`mono` da paketten.
+        // Yedekler yerinde: değişken bir sebeple boş kalırsa sayfa yazısız
+        // kalmaz, sistem yazı tipine düşer.
+        sans: [...theme.fontFamily.body, ...defaultTheme.fontFamily.sans],
+        display: [...theme.fontFamily.display, ...defaultTheme.fontFamily.sans],
+        label: [...theme.fontFamily.label, ...defaultTheme.fontFamily.sans],
+        mono: [...theme.fontFamily.mono, ...defaultTheme.fontFamily.mono],
       },
-      boxShadow: {
-        // Düz gölge yerine katmanlı, markaya yakın nötr ton — kurumsal his.
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.08)",
-        "card-hover":
-          "0 8px 24px -6px rgb(15 23 42 / 0.12), 0 4px 8px -4px rgb(15 23 42 / 0.06)",
-      },
-      backgroundImage: {
-        // Teknik çizim kâğıdı. Vitrin zemininde çok soluk durur; kartların
-        // arkasında "ölçekli kâğıt" hissi verir, okumayı bozmaz.
-        "tech-grid":
-          "linear-gradient(to right, rgb(148 163 184 / 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.18) 1px, transparent 1px)",
-      },
-      backgroundSize: {
-        "tech-grid": "32px 32px",
-      },
+      borderRadius: theme.borderRadius,
+      boxShadow: theme.boxShadow!,
+      backgroundImage: theme.backgroundImage!,
+      backgroundSize: theme.backgroundSize!,
       keyframes: {
         "fade-in": {
           from: { opacity: "0", transform: "translateY(4px)" },

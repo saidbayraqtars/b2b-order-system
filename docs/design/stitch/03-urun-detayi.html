@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Toptan Ürün Detayı - NEO-MART</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700;800&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Design System -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#ff2d78",
+                        "secondary-container": "#004d3d",
+                        "surface-container": "#141422",
+                        "tertiary": "#ffe04a",
+                        "on-error-container": "#ffa0a0",
+                        "surface-variant": "#1e1e30",
+                        "surface": "#0f0f1a",
+                        "outline-variant": "#302840",
+                        "surface-container-low": "#111118",
+                        "inverse-on-surface": "#0a0a12",
+                        "on-secondary": "#001a1a",
+                        "inverse-primary": "#8c0038",
+                        "error": "#ff4444",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "background": "#0a0a12",
+                        "on-background": "#e8e0f0",
+                        "on-tertiary-container": "#fff0c0",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "on-secondary-fixed-variant": "#004d4d",
+                        "on-primary-fixed": "#3d0020",
+                        "primary-container": "#b3004e",
+                        "primary": "#ff2d78",
+                        "inverse-surface": "#e8e0f0",
+                        "secondary-fixed": "#c0fff4",
+                        "surface-bright": "#1a1a2e",
+                        "primary-fixed": "#ffe0ec",
+                        "on-surface": "#e8e0f0",
+                        "on-error": "#1a0000",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "tertiary-fixed": "#fff0c0",
+                        "error-container": "#3d0f0f",
+                        "surface-container-highest": "#28283e",
+                        "on-secondary-container": "#c0fff4",
+                        "on-secondary-fixed": "#001a1a",
+                        "on-tertiary-fixed": "#1a1000",
+                        "outline": "#5a5068",
+                        "secondary": "#00ffcc",
+                        "tertiary-container": "#665200",
+                        "on-tertiary": "#1a1000",
+                        "primary-fixed-dim": "#ff80aa",
+                        "on-primary-container": "#ffe0ec",
+                        "surface-dim": "#0f0f1a",
+                        "surface-container-high": "#1e1e30",
+                        "surface-container-lowest": "#0a0a12",
+                        "on-surface-variant": "#a098b0",
+                        "on-primary": "#1a0010"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Neon Tokyo Specific Styles */
+        .neon-text-primary {
+            text-shadow: 0 0 8px currentColor;
+        }
+        .neon-text-secondary {
+            text-shadow: 0 0 8px currentColor;
+        }
+        .neon-button-primary {
+            background-color: theme('colors.surface-container-highest');
+            border: 1px solid rgba(255, 45, 120, 0.5);
+            box-shadow: inset 0 0 12px rgba(255, 45, 120, 0.1);
+            transition: all 0.3s ease;
+        }
+        .neon-button-primary:hover {
+            box-shadow: 0 0 16px rgba(255, 45, 120, 0.4), inset 0 0 12px rgba(255, 45, 120, 0.2);
+        }
+        .neon-button-secondary {
+            background-color: theme('colors.surface-container-highest');
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            box-shadow: inset 0 0 12px rgba(0, 255, 204, 0.1);
+            transition: all 0.3s ease;
+        }
+        .neon-button-secondary:hover {
+            box-shadow: 0 0 16px rgba(0, 255, 204, 0.4), inset 0 0 12px rgba(0, 255, 204, 0.2);
+        }
+        .neon-card {
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            background-color: theme('colors.surface-container');
+        }
+        
+        /* Grid background detail */
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(90, 80, 104, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(90, 80, 104, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen flex selection:bg-primary selection:text-on-primary">
+<!-- Shell: SideNavBar (Web Only) -->
+<nav class="hidden md:flex flex-col h-screen w-64 left-0 sticky border-r border-outline-variant bg-surface-container dark:bg-surface-container py-6 shrink-0 z-40">
+<div class="px-6 mb-8">
+<h1 class="font-headline font-bold text-on-surface text-xl tracking-tight">NEO-MART B2B</h1>
+<p class="font-label text-on-surface-variant text-xs mt-1">Verified Supplier</p>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<!-- Tabs -->
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">grid_view</span>
+                All Categories
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">memory</span>
+                Electronics
+            </a>
+<a class="flex items-center gap-3 text-secondary font-bold border-l-4 border-secondary bg-surface-variant pl-4 py-3 font-label uppercase tracking-widest text-xs hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined neon-text-secondary" style="font-variation-settings: 'FILL' 1;">build</span>
+                Hardware
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">apparel</span>
+                Textiles
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">science</span>
+                Chemicals
+            </a>
+</div>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full py-3 neon-button-secondary text-secondary font-label uppercase tracking-wider text-xs flex items-center justify-center gap-2 rounded">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                Download Catalog
+            </button>
+<div class="flex flex-col gap-2 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-2 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface pl-4 py-2 hover:bg-surface-container-highest transition-colors font-label uppercase tracking-widest text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">contact_support</span>
+                    Support
+                </a>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0 bg-grid-pattern relative">
+<!-- Shell: TopNavBar -->
+<header class="flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50 bg-surface dark:bg-surface shadow-[0_0_12px_rgba(255,45,120,0.1)]">
+<!-- Mobile Brand (Hidden on Web where SideNav exists) -->
+<div class="md:hidden text-2xl font-display font-bold text-primary tracking-tighter neon-text-primary">
+                NEO-MART
+            </div>
+<!-- Web Navigation Links -->
+<nav class="hidden md:flex items-center gap-8 ml-4">
+<a class="font-headline text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Dashboard</a>
+<a class="font-headline text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Orders</a>
+<a class="font-headline text-primary border-b-2 border-primary pb-1 neon-text-primary" href="#">Inventory</a>
+<a class="font-headline text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Analytics</a>
+</nav>
+<div class="flex items-center gap-6 ml-auto">
+<!-- Search (Implicit from JSON 'search_bar: on_right') -->
+<div class="hidden lg:flex items-center bg-surface-container-highest border border-outline-variant rounded px-3 py-1.5 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(255,45,120,0.3)] transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm font-body text-on-surface placeholder:text-on-surface-variant w-48 outline-none ml-2" placeholder="Search SKU or Product..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 hover:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 hover:scale-95">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<button class="neon-button-primary text-primary font-headline text-sm px-4 py-2 rounded">
+                        Bulk Quote
+                    </button>
+<!-- Avatar placeholder -->
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-6 lg:p-10 z-10 max-w-7xl mx-auto w-full flex flex-col gap-10">
+<!-- Breadcrumb -->
+<div class="font-label text-xs text-on-surface-variant flex items-center gap-2 uppercase tracking-wider">
+<a class="hover:text-secondary transition-colors" href="#">Hardware</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<a class="hover:text-secondary transition-colors" href="#">Industrial Motors</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface">ZX-900 Servo</span>
+</div>
+<!-- Bento Grid: Top Section -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Hero Image (Left) -->
+<div class="lg:col-span-7 neon-card p-2 rounded-xl relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-tr from-surface-container to-transparent z-10 pointer-events-none"></div>
+<img class="w-full h-[500px] object-cover rounded-lg group-hover:scale-105 transition-transform duration-700" data-alt="A highly detailed macro photograph of an advanced, futuristic industrial servo motor. The motor features a sleek matte black metallic casing with glowing cyan and hot pink LED status indicators. The setting is a clean, dark high-tech laboratory environment with moody, cyberpunk-inspired lighting. The image emphasizes the precision engineering and retro-futuristic aesthetic of the hardware, with sharp focus on the complex wiring and mechanical components." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMF-D7y6maizk_GEMIvJDaljB0f1QWcVQoFBvRPr-8aEVSRbuGW4YHaFJXWKykd0XJRuV6r4MLg1TSKPShjWB5uGRXn-R3UArAek2uuD0bng289zgvqCwDMsvY7_hV-S_-0CCCpCfs5uT-oK0P61O8kaU6YAUa3GF2UbbbdrHvDzanPGGEhqtTW6IehPrCGw9duzIJtHoy5PzmAOBQvkOoVdyOB3eMfDraKBZjekTpd0MYp9J2OZXLtQ"/>
+<div class="absolute top-6 left-6 z-20 flex gap-2">
+<span class="bg-tertiary/20 text-tertiary border border-tertiary/50 font-label text-xs px-2 py-1 rounded backdrop-blur-sm">IN STOCK</span>
+<span class="bg-surface/80 border border-outline font-label text-xs px-2 py-1 rounded text-on-surface backdrop-blur-sm">SKU: ZX-900-IND</span>
+</div>
+</div>
+<!-- Product Details & Actions (Right) -->
+<div class="lg:col-span-5 flex flex-col gap-8">
+<div>
+<h2 class="font-headline text-3xl font-bold text-on-surface leading-tight">High-Torque Synchronous Servo Motor <span class="text-secondary neon-text-secondary">ZX-900</span></h2>
+<p class="font-body text-on-surface-variant mt-4 text-sm leading-relaxed">
+                            Engineered for high-precision robotics and automated manufacturing lines. Features integrated absolute encoders and advanced thermal management for continuous heavy-duty cycles in extreme environments.
+                        </p>
+</div>
+<!-- Pricing Tiers -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-5">
+<h3 class="font-label uppercase tracking-widest text-xs text-on-surface-variant mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">payments</span>
+                            Wholesale Pricing Tiers
+                        </h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/50">
+<span class="font-body text-on-surface">1 - 49 Units</span>
+<span class="font-headline font-bold text-on-surface">$1,250.00 <span class="text-xs text-on-surface-variant font-normal">/ea</span></span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/50">
+<span class="font-body text-on-surface">50 - 199 Units</span>
+<span class="font-headline font-bold text-secondary neon-text-secondary">$1,100.00 <span class="text-xs text-on-surface-variant font-normal">/ea</span></span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="font-body text-on-surface">200+ Units</span>
+<span class="font-headline font-bold text-primary neon-text-primary">$895.00 <span class="text-xs text-on-surface-variant font-normal">/ea</span></span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-4 mt-auto">
+<div class="flex items-center gap-4">
+<div class="flex items-center border border-outline-variant rounded bg-surface-container-highest h-12 w-32">
+<button class="px-3 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">remove</span>
+</button>
+<input class="w-full bg-transparent border-none text-center font-label text-on-surface focus:ring-0 p-0" min="1" type="number" value="50"/>
+<button class="px-3 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+</div>
+<p class="font-label text-xs text-on-surface-variant">Min. order: 1 unit</p>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="neon-button-primary text-primary font-headline font-semibold h-12 rounded flex items-center justify-center gap-2 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">shopping_cart</span>
+                                Add to Cart
+                            </button>
+<button class="neon-button-secondary text-secondary font-headline font-semibold h-12 rounded flex items-center justify-center gap-2 group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">request_quote</span>
+                                Request Quote
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Grid: Bottom Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Technical Specifications -->
+<div class="lg:col-span-2 neon-card rounded-xl p-6 lg:p-8">
+<h3 class="font-headline font-bold text-xl text-on-surface mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">analytics</span>
+                        Technical Specifications
+                    </h3>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body text-sm">
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal w-1/3">Continuous Torque</th>
+<td class="py-4 text-on-surface font-label tracking-wide">15.5 Nm</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal">Peak Torque</th>
+<td class="py-4 text-on-surface font-label tracking-wide">46.5 Nm</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal">Rated Speed</th>
+<td class="py-4 text-on-surface font-label tracking-wide">3,000 RPM</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal">Encoder Type</th>
+<td class="py-4 text-on-surface font-label tracking-wide">24-bit Absolute Optical</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal">Protection Class</th>
+<td class="py-4 text-on-surface font-label tracking-wide text-secondary">IP67</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/50 transition-colors">
+<th class="py-4 pr-6 text-on-surface-variant font-normal">Operating Voltage</th>
+<td class="py-4 text-on-surface font-label tracking-wide">400-480 VAC</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Logistics & Compliance -->
+<div class="flex flex-col gap-8">
+<!-- Logistics -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-6">
+<h3 class="font-headline font-bold text-lg text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+                            Logistics
+                        </h3>
+<ul class="space-y-4 font-body text-sm text-on-surface-variant">
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-[20px] text-on-surface">warehouse</span>
+<div>
+<span class="block text-on-surface font-medium">Dispatches from:</span>
+                                    Neo-Tokyo Central Hub (Zone A)
+                                </div>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-[20px] text-on-surface">hourglass_top</span>
+<div>
+<span class="block text-on-surface font-medium">Lead Time:</span>
+                                    Ships within 48 hours for qty &lt; 100.
+                                </div>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-[20px] text-on-surface">weight</span>
+<div>
+<span class="block text-on-surface font-medium">Unit Weight:</span>
+                                    12.4 kg (Packaged)
+                                </div>
+</li>
+</ul>
+</div>
+<!-- Compliance -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-6">
+<h3 class="font-headline font-bold text-lg text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">verified</span>
+                            Compliance &amp; Certifications
+                        </h3>
+<div class="flex flex-wrap gap-3">
+<span class="px-3 py-1 bg-surface border border-outline text-on-surface-variant font-label text-xs rounded flex items-center gap-1">
+                                CE Certified
+                            </span>
+<span class="px-3 py-1 bg-surface border border-outline text-on-surface-variant font-label text-xs rounded flex items-center gap-1">
+                                RoHS Compliant
+                            </span>
+<span class="px-3 py-1 bg-surface border border-outline text-on-surface-variant font-label text-xs rounded flex items-center gap-1">
+                                ISO 9001:2015
+                            </span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Shell: Footer -->
+<footer class="w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-outline-variant bg-surface-container-lowest dark:bg-surface-container-lowest text-on-surface-variant font-body text-sm mt-auto z-10">
+<div class="text-lg font-display font-black text-on-surface">NEO-MART</div>
+<div class="flex flex-wrap items-center justify-center gap-6">
+<a class="hover:text-secondary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-secondary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-secondary transition-colors" href="#">Bulk Licensing</a>
+<a class="hover:text-secondary transition-colors" href="#">Investor Relations</a>
+</div>
+<div class="font-label text-xs uppercase tracking-widest text-on-surface-variant opacity-70">
+                © 2024 NEO-MART CORP. ALL RIGHTS RESERVED.
+            </div>
+</footer>
+</div>
+</body></html>

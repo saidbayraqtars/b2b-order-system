@@ -2,9 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light dark;
-}
+/* Renk, yazı, köşe ve gölge değerleri artık burada değil: tasarım paketleri
+   `@repo/theme`'de duruyor ve `layout.tsx` hepsini tek bir <style> olarak
+   basıyor. Buradaki kurallar yalnızca o değişkenleri *kullanır* — böylece
+   paket değiştiğinde bu dosyaya dokunmak gerekmez. */
 
 html,
 body {
@@ -13,7 +14,7 @@ body {
 
 @layer base {
   body {
-    @apply bg-neutral-50 font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+    @apply bg-bg font-sans text-fg antialiased;
     /* Tema anahtarı basılınca renkler sertçe değil yumuşak değişsin. */
     transition:
       background-color 0.2s ease,
@@ -26,32 +27,30 @@ body {
     @apply font-display;
   }
 
-  /* Kurumsal odak halkası — klavye erişilebilirliği, marka rengiyle tutarlı. */
+  /* Kurumsal odak halkası — klavye erişilebilirliği, paketin rengiyle. */
   *:focus-visible {
-    @apply outline-none ring-2 ring-brand-500/60 ring-offset-2 ring-offset-neutral-50 dark:ring-offset-neutral-950;
+    @apply outline-none ring-2 ring-ring/60 ring-offset-2 ring-offset-bg;
   }
 
   ::selection {
-    @apply bg-brand-500/25;
+    @apply bg-primary/25;
   }
 
-  /* İnce, kurumsal kaydırma çubuğu (Webkit). */
+  /* İnce kaydırma çubuğu (Webkit). Renk paketten gelir; koyu paketlerde
+     ayrıca bir kural yazmak gerekmiyor. */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: rgb(203 213 225);
+    background-color: rgb(var(--c-border-strong));
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
-  .dark ::-webkit-scrollbar-thumb {
-    background-color: rgb(51 65 85);
-  }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(148 163 184);
+    background-color: rgb(var(--c-fg-muted));
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-track {
@@ -59,7 +58,7 @@ body {
   }
 }
 
-/* ── VİTRİN: endüstriyel / teknik kimlik ────────────────────────────────────
+/* ── VİTRİN ────────────────────────────────────────────────────────────────
    Yalnızca müşteriye bakan katalog yüzeyinde kullanılır. Yönetim ekranları
    Faz 1'in nötr dilinde kalır — orada veri girişi var, vitrin karakteri değil. */
 @layer components {
@@ -69,13 +68,16 @@ body {
     @apply font-mono tabular-nums;
   }
 
-  /* Levha numarası / bölüm etiketi. Vitrindeki her başlığın üstünde bunun
-     gibi küçük, aralıklı, büyük harf bir "kod" durur. */
+  /* Levha numarası / bölüm etiketi. Harf aralığı ve büyük harf kararı pakete
+     ait: bir kimlik fısıldar, diğeri bağırır. */
   .tech-label {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-neutral-500;
+    @apply font-label text-[10px] font-medium text-fg-muted;
+    letter-spacing: var(--label-tracking);
+    text-transform: var(--label-transform);
   }
 
-  /* Teknik çizim kâğıdı zemini — vitrin gövdesinde. */
+  /* Teknik çizim kâğıdı zemini. Çizgi rengi saydam olan bir paket ızgarayı
+     kendiliğinden kapatır — burada koşul yok. */
   .tech-paper {
     @apply bg-tech-grid bg-tech-grid;
   }

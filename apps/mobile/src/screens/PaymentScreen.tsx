@@ -107,13 +107,13 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
 
   return (
     <ScrollView
-      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
+      className="flex-1 bg-surface2"
       contentContainerClassName="gap-4 p-4 pb-10"
       keyboardShouldPersistTaps="handled"
     >
       {company ? (
         <Card>
-          <Text className="mb-2 font-semibold text-neutral-900 dark:text-neutral-100">
+          <Text className="mb-2 font-semibold text-fg">
             {company.name}
           </Text>
           <Row
@@ -160,11 +160,11 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
         />
 
         {isPaper ? (
-          <View className="gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
-            <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <View className="gap-3 rounded-xl border border-border p-3">
+            <Text className="text-sm font-medium text-fg">
               {method === "CHEQUE" ? "Çek künyesi" : "Senet künyesi"} (opsiyonel)
             </Text>
-            <Text className="text-xs text-neutral-500">
+            <Text className="text-xs text-fg-muted">
               Sahada tutar yeter; banka, seri ve keşideci ofiste tamamlanabilir.
               Kâğıt portföye vadesiyle girer, para tahsil edilene kadar kasaya
               girmez.
@@ -198,7 +198,7 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
           placeholder="Örn. Nakit tahsilat"
         />
 
-        {error ? <Text className="text-red-600">{error}</Text> : null}
+        {error ? <Text className="text-danger">{error}</Text> : null}
 
         <Button
           title="Tahsilatı kaydet"
@@ -211,7 +211,7 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
       {/* Bu cariye giren tahsilatlar — ofisin kaydettiği de dahil. Plasiyer
           ödenmiş bir borcu ikinci kez istememeli. */}
       <View className="gap-3">
-        <Text className="text-sm font-medium text-neutral-500">
+        <Text className="text-sm font-medium text-fg-muted">
           Son tahsilatlar
         </Text>
         {(history.data ?? []).length === 0 ? (
@@ -221,18 +221,18 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
             <Card key={p.id}>
               <View className="flex-row items-start justify-between gap-3">
                 <View className="flex-1">
-                  <Text className="text-neutral-900 dark:text-neutral-100">
+                  <Text className="text-fg">
                     {formatMoney(p.amount)}
                     {p.collectionMethod
                       ? ` · ${COLLECTION_METHOD_LABELS[p.collectionMethod]}`
                       : ""}
                   </Text>
-                  <Text className="text-xs text-neutral-500">
+                  <Text className="text-xs text-fg-muted">
                     {formatDateTime(p.createdAt)}
                     {p.recordedByName ? ` · ${p.recordedByName}` : ""}
                   </Text>
                   {p.description ? (
-                    <Text className="text-xs text-neutral-500">
+                    <Text className="text-xs text-fg-muted">
                       {p.description}
                     </Text>
                   ) : null}
@@ -277,7 +277,7 @@ function Picker({
 }) {
   return (
     <View className="gap-1.5">
-      <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+      <Text className="text-sm font-medium text-fg">
         {label}
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -291,15 +291,15 @@ function Picker({
               onPress={() => onSelect(o.key)}
               className={`items-center rounded-xl border px-3 py-2.5 ${
                 on
-                  ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
-                  : "border-neutral-300 dark:border-neutral-700"
+                  ? "border-primary bg-primary-soft"
+                  : "border-border-strong"
               }`}
             >
               <Text
                 className={
                   on
-                    ? "font-semibold text-indigo-700 dark:text-indigo-300"
-                    : "text-neutral-700 dark:text-neutral-300"
+                    ? "font-semibold text-on-primary-soft"
+                    : "text-fg"
                 }
               >
                 {o.label}

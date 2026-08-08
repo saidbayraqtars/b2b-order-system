@@ -103,7 +103,7 @@ export default function VisitPlanScreen({ navigation }: ScreenProps<"VisitPlan">
 
   return (
     <ScrollView
-      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
+      className="flex-1 bg-surface2"
       contentContainerClassName="gap-3 p-4 pb-10"
     >
       <View className="flex-row gap-2">
@@ -124,7 +124,7 @@ export default function VisitPlanScreen({ navigation }: ScreenProps<"VisitPlan">
         ) : null}
       </View>
 
-      {error ? <Text className="text-red-600">{error}</Text> : null}
+      {error ? <Text className="text-danger">{error}</Text> : null}
 
       {rows.length === 0 ? (
         <Empty text="Bugün için ziyaret çağrısı yok." />
@@ -136,14 +136,14 @@ export default function VisitPlanScreen({ navigation }: ScreenProps<"VisitPlan">
             <Card key={r.id} className="gap-2">
               <View className="flex-row items-start justify-between gap-3">
                 <View className="flex-1">
-                  <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  <Text className="font-semibold text-fg">
                     {index + 1}. {r.companyName}
                   </Text>
-                  <Text className="text-xs text-neutral-500">
+                  <Text className="text-xs text-fg-muted">
                     {[r.addressLine, r.district, r.city].filter(Boolean).join(" · ") ||
                       "Adres yok"}
                   </Text>
-                  <Text className="text-xs text-neutral-400">
+                  <Text className="text-xs text-fg-muted">
                     İstenen gün: {r.requestedFor ? formatDate(r.requestedFor) : "—"}
                   </Text>
                 </View>
@@ -154,7 +154,7 @@ export default function VisitPlanScreen({ navigation }: ScreenProps<"VisitPlan">
               </View>
 
               {r.note ? (
-                <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+                <Text className="text-sm text-fg">
                   {r.note}
                 </Text>
               ) : null}
@@ -226,13 +226,13 @@ function MiniButton({
       onPress={onPress}
       className={`h-9 justify-center rounded-lg border px-3 ${
         disabled
-          ? "border-neutral-200 dark:border-neutral-800"
-          : "border-neutral-300 dark:border-neutral-700"
+          ? "border-border"
+          : "border-border-strong"
       }`}
     >
       <Text
         className={`text-sm ${
-          disabled ? "text-neutral-400" : "text-neutral-800 dark:text-neutral-200"
+          disabled ? "text-fg-muted" : "text-fg"
         }`}
       >
         {label}

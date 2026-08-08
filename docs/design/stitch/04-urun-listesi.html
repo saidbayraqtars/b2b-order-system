@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Toptan Ürün Listesi - NEO-MART</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#ff2d78",
+                      "secondary-container": "#004d3d",
+                      "surface-container": "#141422",
+                      "tertiary": "#ffe04a",
+                      "on-error-container": "#ffa0a0",
+                      "surface-variant": "#1e1e30",
+                      "surface": "#0f0f1a",
+                      "outline-variant": "#302840",
+                      "surface-container-low": "#111118",
+                      "inverse-on-surface": "#0a0a12",
+                      "on-secondary": "#001a1a",
+                      "inverse-primary": "#8c0038",
+                      "error": "#ff4444",
+                      "on-primary-fixed-variant": "#8c0038",
+                      "tertiary-fixed-dim": "#ffe04a",
+                      "background": "#0a0a12",
+                      "on-background": "#e8e0f0",
+                      "on-tertiary-container": "#fff0c0",
+                      "on-tertiary-fixed-variant": "#665200",
+                      "on-secondary-fixed-variant": "#004d4d",
+                      "on-primary-fixed": "#3d0020",
+                      "primary-container": "#b3004e",
+                      "primary": "#ff2d78",
+                      "inverse-surface": "#e8e0f0",
+                      "secondary-fixed": "#c0fff4",
+                      "surface-bright": "#1a1a2e",
+                      "primary-fixed": "#ffe0ec",
+                      "on-surface": "#e8e0f0",
+                      "on-error": "#1a0000",
+                      "secondary-fixed-dim": "#00e6b8",
+                      "tertiary-fixed": "#fff0c0",
+                      "error-container": "#3d0f0f",
+                      "surface-container-highest": "#28283e",
+                      "on-secondary-container": "#c0fff4",
+                      "on-secondary-fixed": "#001a1a",
+                      "on-tertiary-fixed": "#1a1000",
+                      "outline": "#5a5068",
+                      "secondary": "#00ffcc",
+                      "tertiary-container": "#665200",
+                      "on-tertiary": "#1a1000",
+                      "primary-fixed-dim": "#ff80aa",
+                      "on-primary-container": "#ffe0ec",
+                      "surface-dim": "#0f0f1a",
+                      "surface-container-high": "#1e1e30",
+                      "surface-container-lowest": "#0a0a12",
+                      "on-surface-variant": "#a098b0",
+                      "on-primary": "#1a0010"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Sora", "sans-serif"],
+                      "display": ["Sora", "sans-serif"],
+                      "body": ["Inter", "sans-serif"],
+                      "label": ["Space Grotesk", "sans-serif"]
+              }
+      },
+          },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glow-text-primary { text-shadow: 0 0 8px currentColor; }
+        .glow-text-secondary { text-shadow: 0 0 8px currentColor; }
+        .btn-glow:hover { box-shadow: 0 0 16px rgba(255, 45, 120, 0.4); border-color: rgba(255, 45, 120, 1); }
+        .card-border-glow { border: 1px solid rgba(255, 45, 120, 0.3); box-shadow: inset 0 0 12px rgba(255, 45, 120, 0.05); }
+        .input-glow:focus { border-bottom-color: rgba(255, 45, 120, 1); box-shadow: 0 4px 12px -4px rgba(255, 45, 120, 0.4); }
+        
+        /* Subtle Grid Background */
+        body {
+            background-color: #0a0a12;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen flex flex-col md:flex-row">
+<!-- Mobile TopNav (Hidden on Desktop, used as SideNav is hidden on mobile) -->
+<nav class="md:hidden flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50 bg-surface dark:bg-surface text-primary dark:text-primary font-headline text-on-surface border-b border-outline-variant shadow-[0_0_12px_rgba(255,45,120,0.1)]">
+<div class="text-2xl font-display font-bold text-primary tracking-tighter glow-text-primary">NEO-MART</div>
+<div class="flex gap-4">
+<button class="hover:text-primary transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-primary transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</button>
+</div>
+</nav>
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col h-screen w-64 sticky top-0 left-0 bg-surface-container dark:bg-surface-container text-secondary dark:text-secondary font-label uppercase tracking-widest text-xs border-r border-outline-variant py-6 z-40">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-secondary flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A futuristic corporate account avatar with a cyberpunk neon aesthetic, glowing cyan accents on a dark metallic background. The image should be abstract but represent a wholesale portal profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqxfeGNOk90_o5CfHaAOPwgw1Asr1hYWblO3uIPeRir_8rLKBtWlyLS5xfqY8CLwag0wfFAdwMw4prrbnrculDB-rA8T_BV3GoEXT64zeVBO6bMl2USQusyxyHN3Ja0RoQONfeRTjwR3Yhqfr9zXib-a2PqJdNnk_qxGjyyk3RiC1NNzXdO_1OfSHURS8S7IowHCQJxGI0GJ6lhPF8_LMj3Ktb8sNBX2a4_suNWMxsQn6aFCU6nOpqAw"/>
+</div>
+<div>
+<h2 class="font-headline font-bold text-on-surface tracking-normal capitalize">NEO-MART B2B</h2>
+<p class="text-[10px] text-secondary">Verified Supplier</p>
+</div>
+</div>
+<button class="w-full py-2 bg-surface border border-secondary text-secondary rounded hover:bg-secondary hover:text-surface transition-colors flex items-center justify-center gap-2 glow-text-secondary">
+<span class="material-symbols-outlined text-[16px]" data-icon="download">download</span>
+                Download Catalog
+            </button>
+</div>
+<nav class="flex-grow flex flex-col">
+<a class="text-secondary font-bold border-l-4 border-secondary bg-surface-variant pl-4 py-3 flex items-center gap-3 hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+                All Categories
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 flex items-center gap-3 hover:bg-surface-container-highest transition-colors hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+                Electronics
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 flex items-center gap-3 hover:bg-surface-container-highest transition-colors hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="build">build</span>
+                Hardware
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 flex items-center gap-3 hover:bg-surface-container-highest transition-colors hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="apparel">apparel</span>
+                Textiles
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 flex items-center gap-3 hover:bg-surface-container-highest transition-colors hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="science">science</span>
+                Chemicals
+            </a>
+</nav>
+<div class="mt-auto px-4 flex flex-col gap-2">
+<a class="text-on-surface-variant hover:text-on-surface py-2 flex items-center gap-3 hover:bg-surface-container-highest transition-colors rounded px-2" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="settings">settings</span>
+                Settings
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface py-2 flex items-center gap-3 hover:bg-surface-container-highest transition-colors rounded px-2" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-grow flex flex-col w-full">
+<!-- TopAppBar (Desktop - acts as header for content area since SideNav handles primary nav) -->
+<header class="hidden md:flex justify-between items-center px-8 py-4 w-full sticky top-0 z-30 bg-surface/90 backdrop-blur-md border-b border-outline-variant shadow-[0_0_12px_rgba(255,45,120,0.1)]">
+<div class="flex items-center gap-6 flex-grow">
+<div class="text-2xl font-display font-bold text-primary tracking-tighter glow-text-primary mr-4">NEO-MART</div>
+<!-- Search Bar -->
+<div class="relative flex-grow max-w-xl">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container border-b-2 border-outline-variant text-on-surface pl-10 pr-4 py-2 focus:outline-none input-glow transition-all font-label rounded-t" placeholder="Search SKU, Product Name..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-6">
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 relative">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full glow-text-primary"></span>
+</button>
+</div>
+<button class="bg-surface-container border border-primary text-primary px-4 py-2 font-label uppercase text-xs tracking-wider rounded btn-glow transition-all glow-text-primary">
+                    Bulk Quote
+                </button>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-4 md:p-8 flex-grow">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+<div>
+<h1 class="font-headline font-bold text-3xl text-on-surface mb-2">Toptan Ürün Listesi</h1>
+<p class="text-on-surface-variant text-sm font-label uppercase tracking-widest">Global B2B Inventory / High-Volume Direct</p>
+</div>
+<!-- Quick Filters -->
+<div class="flex flex-wrap gap-3">
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant rounded-full text-xs font-label text-on-surface-variant flex items-center gap-1 hover:border-secondary hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[14px]">filter_list</span>
+                        In Stock
+                    </button>
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant rounded-full text-xs font-label text-on-surface-variant flex items-center gap-1 hover:border-secondary hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[14px]">local_shipping</span>
+                        Fast Lead Time
+                    </button>
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant rounded-full text-xs font-label text-on-surface-variant flex items-center gap-1 hover:border-secondary hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                        Top Suppliers
+                    </button>
+</div>
+</div>
+<!-- Heavy Filters Area -->
+<div class="bg-surface-container-low card-border-glow rounded-lg p-4 mb-8 flex flex-col md:flex-row gap-6">
+<div class="flex-1">
+<label class="block text-xs font-label text-secondary mb-2 uppercase tracking-widest glow-text-secondary">Stock Level</label>
+<select class="w-full bg-surface border-b-2 border-outline-variant text-on-surface p-2 focus:outline-none focus:border-primary transition-colors font-body text-sm">
+<option>All Stock Levels</option>
+<option>High Stock (&gt;10,000 units)</option>
+<option>Medium Stock (1,000 - 10,000 units)</option>
+</select>
+</div>
+<div class="flex-1">
+<label class="block text-xs font-label text-secondary mb-2 uppercase tracking-widest glow-text-secondary">Supplier Rating</label>
+<select class="w-full bg-surface border-b-2 border-outline-variant text-on-surface p-2 focus:outline-none focus:border-primary transition-colors font-body text-sm">
+<option>Any Rating</option>
+<option>4.5 Stars &amp; Above</option>
+<option>Tier 1 Verified Only</option>
+</select>
+</div>
+<div class="flex-1">
+<label class="block text-xs font-label text-secondary mb-2 uppercase tracking-widest glow-text-secondary">Lead Time</label>
+<select class="w-full bg-surface border-b-2 border-outline-variant text-on-surface p-2 focus:outline-none focus:border-primary transition-colors font-body text-sm">
+<option>Any Lead Time</option>
+<option>Under 7 Days</option>
+<option>1-3 Weeks</option>
+</select>
+</div>
+</div>
+<!-- Grid Layout for Products -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Product Card 1 -->
+<article class="bg-surface-container rounded-lg overflow-hidden card-border-glow flex flex-col group relative">
+<!-- Status Badge -->
+<div class="absolute top-3 right-3 bg-surface/80 backdrop-blur px-2 py-1 rounded text-[10px] font-label text-secondary border border-secondary flex items-center gap-1 z-10">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>
+                        IN STOCK
+                    </div>
+<div class="h-48 bg-surface-variant relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-luminosity group-hover:mix-blend-normal" data-alt="A sleek, high-tech electronic component, perhaps a futuristic microprocessor or quantum chip. Dark background with neon cyan highlights reflecting off metallic surfaces. Moody cyberpunk lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL2gPdbH6nvWfpW0_UE0edonT7dp1vixmiSkuUisluYeyj4__BPZ3jU8alF43bHJ3wPt5C9XCkf9UKMvuu-lY5NHo0THpbswYNChCVpcRoODx46Q0zXuUYgIQnMkjRSsJw5rHeiLubGoIigIs9RkRRZYo_1-7pv_CDXkkjepkTWovLbELmpc7E0uzbNJ0CBiJM0qIHb5U-67H9tbssgOXR83M8F-MJSk7-Y-kLoVCuD4-9jjjx_CqJtw"/>
+</div>
+<div class="p-4 flex-grow flex flex-col">
+<div class="text-xs font-label text-on-surface-variant mb-1">SKU: N-QT-889</div>
+<h3 class="font-headline font-bold text-lg text-on-surface mb-3 line-clamp-2">Quantum Processing Unit v4</h3>
+<div class="mt-auto grid grid-cols-2 gap-2 mb-4 bg-surface p-2 rounded border border-outline-variant">
+<div>
+<div class="text-[10px] font-label text-on-surface-variant uppercase">Unit Price</div>
+<div class="font-body text-sm text-on-surface">$245.00</div>
+</div>
+<div class="border-l border-outline-variant pl-2">
+<div class="text-[10px] font-label text-primary uppercase glow-text-primary">Bulk Price</div>
+<div class="font-body font-bold text-primary">$189.00</div>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span class="text-xs font-label">MOQ: 500</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface border border-outline-variant flex items-center justify-center text-on-surface hover:border-primary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Product Card 2 -->
+<article class="bg-surface-container rounded-lg overflow-hidden card-border-glow flex flex-col group relative">
+<div class="absolute top-3 right-3 bg-surface/80 backdrop-blur px-2 py-1 rounded text-[10px] font-label text-tertiary border border-tertiary flex items-center gap-1 z-10">
+                        LOW STOCK
+                    </div>
+<div class="h-48 bg-surface-variant relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-luminosity group-hover:mix-blend-normal" data-alt="Futuristic industrial robotic arm actuators, dark metallic surfaces with hot pink neon lighting accents. Cinematic depth of field, high-tech industrial manufacturing setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAC92bmZmQd_EACEtQ3CVNxEPQPjHeEsgreAqy_pjVydrlU9-r8vTtGnny_iN8cyCK286R8Pn1_BeflR4SO9sdym02j_AzCoHy-tgKRBWeN3ef_nahuICoX5pSogBuQlRRSbxMyXbq4IZmmbELuB5JerSWpCK3J98Kllx5ArUcd3tdTquEwsRvS9CuEg5zgueKiPc2-_UhBifCEIfl39h1KyBaP3AzTa5G559qGUZ8HTjS0rLGSpaJ3gg"/>
+</div>
+<div class="p-4 flex-grow flex flex-col">
+<div class="text-xs font-label text-on-surface-variant mb-1">SKU: N-RA-221</div>
+<h3 class="font-headline font-bold text-lg text-on-surface mb-3 line-clamp-2">Precision Actuator Sub-assembly</h3>
+<div class="mt-auto grid grid-cols-2 gap-2 mb-4 bg-surface p-2 rounded border border-outline-variant">
+<div>
+<div class="text-[10px] font-label text-on-surface-variant uppercase">Unit Price</div>
+<div class="font-body text-sm text-on-surface">$85.50</div>
+</div>
+<div class="border-l border-outline-variant pl-2">
+<div class="text-[10px] font-label text-primary uppercase glow-text-primary">Bulk Price</div>
+<div class="font-body font-bold text-primary">$62.00</div>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span class="text-xs font-label">MOQ: 1000</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface border border-outline-variant flex items-center justify-center text-on-surface hover:border-primary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Product Card 3 -->
+<article class="bg-surface-container rounded-lg overflow-hidden card-border-glow flex flex-col group relative">
+<div class="absolute top-3 right-3 bg-surface/80 backdrop-blur px-2 py-1 rounded text-[10px] font-label text-secondary border border-secondary flex items-center gap-1 z-10">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>
+                        IN STOCK
+                    </div>
+<div class="h-48 bg-surface-variant relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 mix-blend-luminosity group-hover:mix-blend-normal" data-alt="A roll of advanced synthetic smart fabric, illuminated by moody neon cyan and pink lights. The fabric has subtle glowing grid patterns woven into it. Dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn1oxQ_7k3cbnJ8YqjE_Us3lveNBI-6teDxgxjgDGKKzWQNyxLRWMRyjYRBXa60YqohrFJYvQysFu8sgbMMxTOvgL7uf2OBEQjBOeKPoHTKV_-veBCRTrY3v9W4q1wIDu78v0QrJK1EUPW1UktOxnVQd2sQKmg5BMJ0BPqpjYbvbuCYoYEdIWuhqG5n5svXLNl3RsZ9WtQla8_UPTu9T-tw6SoTz2zCqYMHoD3gl3W1ELeUwExWfSnOw"/>
+</div>
+<div class="p-4 flex-grow flex flex-col">
+<div class="text-xs font-label text-on-surface-variant mb-1">SKU: N-TX-505</div>
+<h3 class="font-headline font-bold text-lg text-on-surface mb-3 line-clamp-2">Smart Weave Synthetic Textile</h3>
+<div class="mt-auto grid grid-cols-2 gap-2 mb-4 bg-surface p-2 rounded border border-outline-variant">
+<div>
+<div class="text-[10px] font-label text-on-surface-variant uppercase">Unit Price</div>
+<div class="font-body text-sm text-on-surface">$12.00/m</div>
+</div>
+<div class="border-l border-outline-variant pl-2">
+<div class="text-[10px] font-label text-primary uppercase glow-text-primary">Bulk Price</div>
+<div class="font-body font-bold text-primary">$8.50/m</div>
+</div>
+</div>
+<div class="flex items-center justify-between mt-2">
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span class="text-xs font-label">MOQ: 5000m</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface border border-outline-variant flex items-center justify-center text-on-surface hover:border-primary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+<!-- Load More -->
+<div class="mt-12 flex justify-center">
+<button class="px-8 py-3 bg-transparent border-2 border-secondary text-secondary font-label uppercase tracking-widest text-sm rounded hover:bg-secondary hover:text-surface transition-all glow-text-secondary shadow-[0_0_12px_rgba(0,255,204,0.2)]">
+                    Load More Inventory
+                </button>
+</div>
+</div>
+<!-- Footer -->
+<footer class="w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 bg-surface-container-lowest dark:bg-surface-container-lowest text-primary dark:text-primary font-body text-sm border-t border-outline-variant mt-auto">
+<div class="text-lg font-display font-black text-on-surface">NEO-MART</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Bulk Licensing</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Investor Relations</a>
+</div>
+<div class="text-on-surface-variant text-xs">
+                © 2024 NEO-MART CORP. ALL RIGHTS RESERVED.
+            </div>
+</footer>
+</main>
+</body></html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wholesale Portal - NEO-MART</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700;800&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Design System -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#ff2d78",
+                    "secondary-container": "#004d3d",
+                    "surface-container": "#141422",
+                    "tertiary": "#ffe04a",
+                    "on-error-container": "#ffa0a0",
+                    "surface-variant": "#1e1e30",
+                    "surface": "#0f0f1a",
+                    "outline-variant": "#302840",
+                    "surface-container-low": "#111118",
+                    "inverse-on-surface": "#0a0a12",
+                    "on-secondary": "#001a1a",
+                    "inverse-primary": "#8c0038",
+                    "error": "#ff4444",
+                    "on-primary-fixed-variant": "#8c0038",
+                    "tertiary-fixed-dim": "#ffe04a",
+                    "background": "#0a0a12",
+                    "on-background": "#e8e0f0",
+                    "on-tertiary-container": "#fff0c0",
+                    "on-tertiary-fixed-variant": "#665200",
+                    "on-secondary-fixed-variant": "#004d4d",
+                    "on-primary-fixed": "#3d0020",
+                    "primary-container": "#b3004e",
+                    "primary": "#ff2d78",
+                    "inverse-surface": "#e8e0f0",
+                    "secondary-fixed": "#c0fff4",
+                    "surface-bright": "#1a1a2e",
+                    "primary-fixed": "#ffe0ec",
+                    "on-surface": "#e8e0f0",
+                    "on-error": "#1a0000",
+                    "secondary-fixed-dim": "#00e6b8",
+                    "tertiary-fixed": "#fff0c0",
+                    "error-container": "#3d0f0f",
+                    "surface-container-highest": "#28283e",
+                    "on-secondary-container": "#c0fff4",
+                    "on-secondary-fixed": "#001a1a",
+                    "on-tertiary-fixed": "#1a1000",
+                    "outline": "#5a5068",
+                    "secondary": "#00ffcc",
+                    "tertiary-container": "#665200",
+                    "on-tertiary": "#1a1000",
+                    "primary-fixed-dim": "#ff80aa",
+                    "on-primary-container": "#ffe0ec",
+                    "surface-dim": "#0f0f1a",
+                    "surface-container-high": "#1e1e30",
+                    "surface-container-lowest": "#0a0a12",
+                    "on-surface-variant": "#a098b0",
+                    "on-primary": "#1a0010"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Sora", "sans-serif"],
+                    "display": ["Sora", "sans-serif"],
+                    "body": ["Inter", "sans-serif"],
+                    "label": ["Space Grotesk", "sans-serif"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Neon Tokyo Specific Styles */
+        .neon-text-primary {
+            text-shadow: 0 0 8px currentColor;
+        }
+        .neon-text-secondary {
+            text-shadow: 0 0 8px currentColor;
+        }
+        .neon-border-primary {
+            border: 1px solid rgba(255, 45, 120, 0.5);
+            box-shadow: inset 0 0 12px rgba(255, 45, 120, 0.1);
+        }
+        .neon-btn-hover:hover {
+            box-shadow: 0 0 16px rgba(255, 45, 120, 0.4);
+            text-shadow: 0 0 8px currentColor;
+        }
+        .neon-card {
+            border: 1px solid rgba(255, 45, 120, 0.3);
+            transition: all 0.3s ease;
+        }
+        .neon-card:hover {
+            border-color: rgba(255, 45, 120, 0.8);
+            box-shadow: inset 0 0 15px rgba(255, 45, 120, 0.15), 0 0 20px rgba(255, 45, 120, 0.2);
+        }
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen flex overflow-x-hidden">
+<!-- Shared Component: SideNavBar -->
+<aside class="bg-surface-container dark:bg-surface-container font-label uppercase tracking-widest text-xs h-screen w-64 left-0 sticky border-r border-outline-variant flex flex-col h-full py-6 flex-shrink-0 hidden md:flex z-40">
+<div class="px-6 mb-8">
+<h2 class="text-on-surface font-headline font-bold text-lg tracking-normal normal-case">NEO-MART B2B</h2>
+<p class="text-on-surface-variant text-xs mt-1 normal-case tracking-normal">Verified Supplier</p>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<!-- Active Navigation Item (Home/All Categories) -->
+<a class="text-secondary dark:text-secondary font-bold border-l-4 border-secondary bg-surface-variant pl-4 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+                All Categories
+            </a>
+<!-- Inactive Items -->
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">memory</span>
+                Electronics
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">build</span>
+                Hardware
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">apparel</span>
+                Textiles
+            </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-3 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">science</span>
+                Chemicals
+            </a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full py-3 neon-border-primary bg-surface-container-low text-primary font-bold neon-btn-hover transition-all duration-300 rounded uppercase tracking-wider text-xs">
+                Download Catalog
+            </button>
+<div class="mt-6 flex flex-col gap-2">
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-2 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+<a class="text-on-surface-variant hover:text-on-surface pl-4 py-2 hover:bg-surface-container-highest transition-colors flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+                    Support
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0 bg-background relative">
+<div class="absolute inset-0 bg-grid-pattern pointer-events-none z-0"></div>
+<!-- Shared Component: TopNavBar -->
+<header class="bg-surface dark:bg-surface font-headline text-on-surface docked full-width top-0 border-b border-outline-variant shadow-[0_0_12px_rgba(255,45,120,0.1)] flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<!-- Mobile Menu Trigger -->
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="text-2xl font-display font-bold text-primary dark:text-primary tracking-tighter">NEO-MART</div>
+<nav class="hidden md:flex gap-6 pt-1">
+<a class="text-primary border-b-2 border-primary pb-1 font-semibold" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Orders</a>
+<a class="text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Inventory</a>
+<a class="text-on-surface-variant hover:text-primary transition-all duration-300" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<!-- Search -->
+<div class="relative hidden lg:block">
+<input class="bg-surface-variant border-b border-primary/50 text-on-surface focus:outline-none focus:border-primary focus:ring-0 py-1 pl-3 pr-10 text-sm font-body w-64 placeholder-on-surface-variant transition-colors bg-opacity-50" placeholder="Search inventory..." type="text"/>
+<span class="material-symbols-outlined absolute right-2 top-1 text-primary text-xl">search</span>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4 text-primary">
+<button class="hover:text-primary transition-all duration-300 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-tertiary rounded-full animate-pulse"></span>
+</button>
+<button class="hover:text-primary transition-all duration-300">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+<!-- Trailing Primary Action -->
+<button class="hidden sm:block px-4 py-1.5 neon-border-primary bg-surface-container text-primary font-label text-sm uppercase tracking-wider neon-btn-hover transition-all">
+                    Bulk Quote
+                </button>
+<!-- Profile Avatar -->
+<div class="w-8 h-8 rounded-full border border-primary overflow-hidden">
+<img alt="Corporate Account Avatar" class="w-full h-full object-cover" data-alt="A stylized, low-poly 3D render of a futuristic corporate user avatar with neon pink and cyan highlights on a dark background. Cyberpunk aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4JoS6xx9fTH20PdhLOPQyNAex2l5Tc7Yj7Yu_Oqa3r09p2mVSsmTPrq7AB1bQmlV9C57LpnTy19qn7QykAVV6xO-mdTho0FVYWQSgt-QX5AGqsYuY-cJRS7e4JKsK-gcPb_Go0bwEh0AjQROm_Z583IUsNiltxA2qRRSgtBjUnC8P3vicQSN28c6sWovKFh7YiAcQt7Xa9hFdfWIFruMNa6Wnmyfy1yIMfJpYxClSfppqxEpauZzDsQ"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 relative z-10 p-6 lg:p-12 overflow-y-auto">
+<!-- Hero Section -->
+<section class="mb-16 relative rounded-xl overflow-hidden neon-border-primary p-8 lg:p-16 flex flex-col justify-center min-h-[400px]">
+<div class="absolute inset-0 z-0">
+<img alt="Futuristic Warehouse" class="w-full h-full object-cover opacity-20 mix-blend-screen" data-alt="A massive, sprawling futuristic warehouse rendered in Unreal Engine style. Rows of glowing digital servers and glowing shipping containers stretch into the distance. Moody dark atmosphere with intense hot pink and cyan neon lighting illuminating the high-tech B2B logistics hub. Cyberpunk aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwbQOdTykuXCL64omz2YJrBqlXjKjZVsE-7htMPbl87usnnADzJfVbEBEWAshIp8weitnuBI3QCLF_C4snokIx4-k7gqMl24X27eZkU5DQlfzZ3UsbYLdHsVyeYmkLF8Ri8AhARcFvfAfmSDOcbJUN9TDX37ZPB-1S76SQQt0rQ1d0omW7Td7hASE3sxz0v7Tz5PBDeW5MB1otI4jB7nhWkL7bz67wRMmH2mUHbSL4LSECu_6vF-8JTw"/>
+<div class="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent"></div>
+</div>
+<div class="relative z-10 max-w-2xl">
+<span class="font-label text-secondary neon-text-secondary uppercase tracking-widest text-sm mb-4 block">B2B Wholesale Infrastructure</span>
+<h1 class="text-4xl lg:text-6xl font-headline font-extrabold text-on-surface leading-tight mb-6 tracking-tight">
+                        Bulk Solutions for the <span class="text-primary neon-text-primary block mt-2">Digital Frontier.</span>
+</h1>
+<p class="text-on-surface-variant text-lg mb-8 max-w-xl font-body">
+                        Access verified suppliers, manage global logistics, and procure high-grade materials through our next-generation wholesale portal.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<button class="px-8 py-4 bg-surface-container neon-border-primary text-primary font-label uppercase tracking-widest text-sm font-bold neon-btn-hover transition-all flex items-center gap-2">
+                            Explore Inventory
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Statistics Section -->
+<section class="mb-16 grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
+<div class="bg-surface-container-high p-6 rounded-lg border-l-2 border-secondary">
+<div class="text-secondary font-label text-sm uppercase tracking-widest mb-2">Verified Suppliers</div>
+<div class="text-3xl font-headline font-bold text-on-surface">12,450+</div>
+</div>
+<div class="bg-surface-container-high p-6 rounded-lg border-l-2 border-primary">
+<div class="text-primary font-label text-sm uppercase tracking-widest mb-2">Global Logistics</div>
+<div class="text-3xl font-headline font-bold text-on-surface">98.9%</div>
+<div class="text-on-surface-variant text-xs mt-1">Uptime Rating</div>
+</div>
+<div class="bg-surface-container-high p-6 rounded-lg border-l-2 border-tertiary">
+<div class="text-tertiary font-label text-sm uppercase tracking-widest mb-2">Active SKUs</div>
+<div class="text-3xl font-headline font-bold text-on-surface">1.2M</div>
+</div>
+<div class="bg-surface-container-high p-6 rounded-lg border-l-2 border-secondary">
+<div class="text-secondary font-label text-sm uppercase tracking-widest mb-2">Transaction Vol.</div>
+<div class="text-3xl font-headline font-bold text-on-surface">$4.5B</div>
+</div>
+</section>
+<!-- Categories Bento Grid -->
+<section>
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="text-2xl font-headline font-bold text-on-surface">Procurement Categories</h2>
+<p class="text-on-surface-variant font-label text-sm uppercase tracking-wider mt-1">Select Sector to Browse SKUs</p>
+</div>
+<a class="text-primary text-sm font-label uppercase tracking-widest hover:text-secondary transition-colors flex items-center gap-1" href="#">
+                        View All <span class="material-symbols-outlined text-sm">chevron_right</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px]">
+<!-- Electronics (Large) -->
+<a class="md:col-span-2 md:row-span-2 rounded-xl overflow-hidden relative group neon-card bg-surface-container" href="#">
+<img alt="Electronics" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500" data-alt="Macro photography of a highly advanced glowing circuit board. Silicon chips and data pathways illuminated with bright cyan and hot pink neon light against a pitch-black background. Cyberpunk technological aesthetic. High contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpDv8cyKjPjMm1Mk5ofHrwI3K_TOblrDHZp5RfA81KMWFjBlMWadXJ0Si2TFOv72J2I25v7jLlRxLEs6cNg05wxN0Bylt7OhPKiZxDjScLN9AN0L1cUkXFCnCmfxsHmz86zfXHYHdFxdlk728xLddxyOXPAzdbiQtVYJor-tFvA0KsLuHxqQppL4iYhk36K6_XqHjMbQ_egR2gN3RIttETpty7xMQh1Tha7njoPtjQOcUxziPpuTZ0Ug"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-8 w-full">
+<div class="flex items-center justify-between">
+<div>
+<span class="material-symbols-outlined text-secondary text-3xl mb-2 block">memory</span>
+<h3 class="text-2xl font-headline font-bold text-on-surface group-hover:text-secondary transition-colors">Electronics &amp; Components</h3>
+<p class="text-on-surface-variant mt-2 font-body max-w-md">Microprocessors, semiconductors, and precision digital hardware for enterprise manufacturing.</p>
+</div>
+<div class="w-12 h-12 rounded-full border border-secondary flex items-center justify-center text-secondary opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+<span class="material-symbols-outlined">arrow_forward</span>
+</div>
+</div>
+</div>
+</a>
+<!-- Hardware -->
+<a class="rounded-xl overflow-hidden relative group neon-card bg-surface-container" href="#">
+<img alt="Hardware" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500" data-alt="Heavy industrial machinery and sleek metallic hardware parts stacked in a dark, atmospheric warehouse setting. Illuminated by subtle, moody neon pink rim lighting reflecting off polished steel. Cyberpunk industrial vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjBD4uRTPBcCW-6OVMIwdq7HdpRHEArudiAn2-IKy4-gtFd4-5nQS3gtz-pE0zG8H900QYSYh4RBOZEXV08opaa-CV3yu-yYH92TIkEejF-Q5clBIf_SU4OSxz1Yv4yYewW4_dqgzoq3dTal22YQb9rYvoCqE4G-2Np1wim_a4tlhSYmJK1TbfcqAqkUQqRc_PlaRXkDUuh8XArFPyuCMW9vnKba4h0g3c1KpWSazGkaojTvo-cKZuHA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6 w-full">
+<span class="material-symbols-outlined text-primary text-2xl mb-2 block">build</span>
+<h3 class="text-xl font-headline font-bold text-on-surface group-hover:text-primary transition-colors">Industrial Hardware</h3>
+<div class="flex items-center gap-2 mt-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-label text-primary uppercase tracking-wider">Live Inventory</span>
+</div>
+</div>
+</a>
+<!-- Textiles -->
+<a class="rounded-xl overflow-hidden relative group neon-card bg-surface-container" href="#">
+<img alt="Textiles" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500" data-alt="Rolls of advanced synthetic smart textiles and glowing carbon fiber fabrics arranged in a geometric pattern. Dark moody lighting with vivid cyan accents highlighting the fabric textures. Futuristic materials aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA06vjbb5etwlp-ANS7PGwBEXCCAfytwuqFTTrohlNpnz51sj7XNRi9-W4OA-HTJKaC3fkBEixTHGuc56zV38vsQybMwrwd_W5Xkh3_zi-af-vszTRI0runBAU-R2_lMCPqFmus4Ot2bF0c6sGmwr-NKU1JMcGneH6DATaURRLUgstDKTQ-sWrDEvQxyPSkx6TEZmLL6QusSiRP2DrAf6RkWVyMYdEnMby36zO7RsrJZxG4bvvphbRY9w"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6 w-full">
+<span class="material-symbols-outlined text-secondary text-2xl mb-2 block">apparel</span>
+<h3 class="text-xl font-headline font-bold text-on-surface group-hover:text-secondary transition-colors">Smart Textiles</h3>
+<p class="text-on-surface-variant text-sm mt-1">Synthetic fibers &amp; weaves.</p>
+</div>
+</a>
+</div>
+</section>
+</main>
+<!-- Shared Component: Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest font-body text-sm full-width border-t border-outline-variant w-full py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 z-10 relative">
+<div class="text-lg font-display font-black text-on-surface">NEO-MART</div>
+<nav class="flex flex-wrap justify-center gap-6">
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Bulk Licensing</a>
+<a class="text-on-surface-variant hover:text-secondary transition-colors" href="#">Investor Relations</a>
+</nav>
+<div class="text-on-surface-variant font-label text-xs uppercase tracking-widest">
+                © 2024 NEO-MART CORP. ALL RIGHTS RESERVED.
+            </div>
+</footer>
+</div>
+</body></html>

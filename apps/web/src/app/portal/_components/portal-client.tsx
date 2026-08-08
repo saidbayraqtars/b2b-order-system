@@ -130,7 +130,7 @@ export function PortalClient({
         isProxy={isProxy}
         companyId={companyId}
         right={
-          <span className="mr-1 flex items-center gap-1.5 bg-brand-600 px-3 py-1.5 font-mono text-xs font-bold text-white">
+          <span className="mr-1 flex items-center gap-1.5 bg-primary px-3 py-1.5 font-mono text-xs font-bold text-on-primary">
             <ShoppingCart className="h-3.5 w-3.5" />
             {itemCount}
           </span>
@@ -150,28 +150,28 @@ export function PortalClient({
         {/* Arama + sıralama şeridi */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[16rem] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" />
             <input
               type="search"
               placeholder="Ürün adı, marka, SKU veya barkod…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+              className="h-10 w-full border border-border-strong bg-surface pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-fg-muted hover:border-primary focus:border-primary"
             />
           </div>
 
-          <label className="flex h-10 cursor-pointer items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
+          <label className="flex h-10 cursor-pointer items-center gap-2 border border-border-strong bg-surface px-3">
             <input
               type="checkbox"
               checked={inStockOnly}
               onChange={(e) => setInStockOnly(e.target.checked)}
-              className="h-3.5 w-3.5 accent-brand-600"
+              className="h-3.5 w-3.5 accent-[rgb(var(--c-primary))]"
             />
             <span className="tech-label">stokta</span>
           </label>
 
-          <div className="flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-neutral-400" />
+          <div className="flex h-10 items-center gap-2 border border-border-strong bg-surface px-3">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-fg-muted" />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
@@ -189,8 +189,8 @@ export function PortalClient({
 
         <div className="grid gap-6 lg:grid-cols-[180px_1fr_300px]">
           {/* Kategori kenar çubuğu */}
-          <aside className="h-fit border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-            <p className="tech-label border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+          <aside className="h-fit border border-border-strong bg-surface">
+            <p className="tech-label border-b border-border px-3 py-2">
               Kategoriler
             </p>
             <ul className="max-h-[28rem] overflow-y-auto py-1">
@@ -225,7 +225,7 @@ export function PortalClient({
             {catalogQuery.isLoading ? (
               <LoadingState />
             ) : catalogQuery.isError ? (
-              <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
+              <p className="border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-danger">
                 {(catalogQuery.error as Error).message}
               </p>
             ) : products.length === 0 ? (
@@ -266,8 +266,8 @@ function CategoryItem({
         className={cn(
           "block w-full truncate py-1.5 pr-3 text-left text-xs transition-colors",
           active
-            ? "border-l-2 border-brand-600 bg-brand-50 font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-            : "border-l-2 border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+            ? "border-l-2 border-primary bg-primary-soft font-semibold text-primary"
+            : "border-l-2 border-transparent text-fg-muted hover:bg-surface3 hover:text-fg",
         )}
       >
         {children}

@@ -17,7 +17,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-neutral-200 bg-white p-4 shadow-card dark:border-neutral-800 dark:bg-neutral-900",
+        "rounded-xl border border-border bg-surface p-4 shadow-card",
         hover && "transition-shadow hover:shadow-card-hover",
         className,
       )}
@@ -28,12 +28,15 @@ export function Card({
 }
 
 const BADGE_TONE = {
-  neutral: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  brand: "bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300",
-  success: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  warning: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  danger: "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400",
-  info: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
+  neutral: "bg-surface3 text-fg",
+  // `text-primary` değil: koyu paketlerde yumuşak zemin markanın koyu tonudur
+  // ve üstüne aynı ailenin parlak tonunu koymak rozeti okunmaz yapar. Her
+  // pakette zeminin üstüne ne yazılacağını paket kendisi söylüyor.
+  brand: "bg-primary-soft text-on-primary-soft",
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-warning",
+  danger: "bg-danger-soft text-danger",
+  info: "bg-info-soft text-info",
 } as const;
 
 export type BadgeTone = keyof typeof BADGE_TONE;
@@ -75,15 +78,15 @@ export function PageHeader({
         {back && (
           <Link
             href={back.href}
-            className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400"
+            className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-primary"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {back.label}
           </Link>
         )}
-        <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{title}</h1>
+        <h1 className="text-xl font-bold text-fg">{title}</h1>
         {subtitle && (
-          <p className="mt-0.5 text-sm text-neutral-500">{subtitle}</p>
+          <p className="mt-0.5 text-sm text-fg-muted">{subtitle}</p>
         )}
       </div>
       {actions && <div className="flex items-center gap-3">{actions}</div>}
@@ -94,7 +97,7 @@ export function PageHeader({
 /** Tam ekran değil, panel-içi bekleme durumu — "Yükleniyor…" düz metninin yerine. */
 export function LoadingState({ label = "Yükleniyor…" }: { label?: string }) {
   return (
-    <p className="flex items-center gap-2 py-6 text-sm text-neutral-500">
+    <p className="flex items-center gap-2 py-6 text-sm text-fg-muted">
       <Loader2 className="h-4 w-4 animate-spin" />
       {label}
     </p>
@@ -104,7 +107,7 @@ export function LoadingState({ label = "Yükleniyor…" }: { label?: string }) {
 /** Boş liste/tablo durumu — ikon + mesaj, sade ama "unutulmuş ekran" hissi vermez. */
 export function EmptyState({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-neutral-400">
+    <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-fg-muted">
       <PackageSearch className="h-6 w-6" />
       {label}
     </div>
@@ -128,7 +131,7 @@ export function Tabs<T extends string>({
   items: ReadonlyArray<{ key: T; label: string; count?: number }>;
 }) {
   return (
-    <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
+    <nav className="flex flex-wrap gap-1 border-b border-border">
       {items.map((item) => (
         <button
           key={item.key}
@@ -138,13 +141,13 @@ export function Tabs<T extends string>({
           className={cn(
             "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
             value === item.key
-              ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
-              : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
+              ? "border-primary text-primary"
+              : "border-transparent text-fg-muted hover:text-fg",
           )}
         >
           {item.label}
           {item.count !== undefined && (
-            <span className="ml-1.5 text-xs text-neutral-400">{item.count}</span>
+            <span className="ml-1.5 text-xs text-fg-muted">{item.count}</span>
           )}
         </button>
       ))}
@@ -178,7 +181,7 @@ export function Table({
 
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800">
+    <thead className="border-b border-border text-xs uppercase tracking-wide text-fg-muted">
       {children}
     </thead>
   );
@@ -186,7 +189,7 @@ export function THead({ children }: { children: ReactNode }) {
 
 export function TBody({ children }: { children: ReactNode }) {
   return (
-    <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+    <tbody className="divide-y divide-border">
       {children}
     </tbody>
   );
@@ -239,7 +242,7 @@ export function Td({
         "px-3 py-2",
         ALIGN[align],
         numeric && "tabular-nums",
-        muted && "text-xs text-neutral-500",
+        muted && "text-xs text-fg-muted",
         className,
       )}
     >
@@ -258,7 +261,7 @@ export function TableEmpty({
 }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-neutral-400">
+      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-fg-muted">
         {label}
       </td>
     </tr>

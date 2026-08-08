@@ -77,8 +77,8 @@ export function CompanySwitcher({
         className={cn(
           "flex h-9 items-center gap-2 border px-3 transition-colors",
           currentCompanyId
-            ? "border-neutral-300 bg-white hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900"
-            : "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200",
+            ? "border-border-strong bg-surface hover:border-primary"
+            : "border-warning bg-warning-soft text-warning",
         )}
       >
         <Building2 className="h-3.5 w-3.5 shrink-0" />
@@ -99,10 +99,10 @@ export function CompanySwitcher({
           />
           <div
             role="listbox"
-            className="absolute right-0 z-50 mt-1 w-80 animate-fade-in border border-neutral-300 bg-white shadow-card-hover dark:border-neutral-700 dark:bg-neutral-900"
+            className="absolute right-0 z-50 mt-1 w-80 animate-fade-in border border-border-strong bg-surface shadow-card-hover"
           >
-            <div className="relative border-b border-neutral-200 dark:border-neutral-800">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+            <div className="relative border-b border-border">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-muted" />
               <input
                 autoFocus
                 value={filter}
@@ -114,10 +114,10 @@ export function CompanySwitcher({
 
             <ul className="max-h-80 overflow-y-auto">
               {query.isLoading && (
-                <li className="px-3 py-3 text-xs text-neutral-500">Yükleniyor…</li>
+                <li className="px-3 py-3 text-xs text-fg-muted">Yükleniyor…</li>
               )}
               {!query.isLoading && companies.length === 0 && (
-                <li className="px-3 py-3 text-xs text-neutral-500">
+                <li className="px-3 py-3 text-xs text-fg-muted">
                   Firma bulunamadı.
                 </li>
               )}
@@ -134,21 +134,21 @@ export function CompanySwitcher({
                       className={cn(
                         "flex w-full flex-col gap-0.5 border-l-2 px-3 py-2 text-left transition-colors",
                         active
-                          ? "border-brand-600 bg-brand-50 dark:bg-brand-500/10"
-                          : "border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800",
+                          ? "border-primary bg-primary-soft"
+                          : "border-transparent hover:bg-surface3",
                       )}
                     >
                       <span className="truncate text-xs font-semibold">
                         {c.name}
                       </span>
-                      <span className="tech-num flex items-center gap-2 text-[10px] text-neutral-500">
+                      <span className="tech-num flex items-center gap-2 text-[10px] text-fg-muted">
                         {c.city && <span>{c.city}</span>}
                         <span>bakiye {formatTRY(c.currentBalance)}</span>
                         <span
                           className={
                             available < 0
-                              ? "font-bold text-red-600 dark:text-red-400"
-                              : "text-emerald-600 dark:text-emerald-400"
+                              ? "font-bold text-danger"
+                              : "text-success"
                           }
                         >
                           kullanılabilir {formatTRY(c.availableCredit)}

@@ -63,6 +63,9 @@ importers:
       '@react-navigation/native-stack':
         specifier: ^6.11.0
         version: 6.11.0(@react-navigation/native@6.1.18(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native-safe-area-context@4.10.5(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native-screens@3.31.1(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native@0.74.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
+      '@repo/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -142,6 +145,9 @@ importers:
       '@repo/services':
         specifier: workspace:*
         version: link:../../packages/services
+      '@repo/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -332,6 +338,24 @@ importers:
       '@types/nodemailer':
         specifier: ^6.4.16
         version: 6.4.24
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.3
+        version: 2.1.9(@types/node@22.20.1)(lightningcss@1.27.0)(terser@5.49.0)
+
+  packages/theme:
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@repo/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       eslint:
         specifier: ^8.57.1
         version: 8.57.1

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { useAuthStore } from "@/store/auth";
+import { ThemeButton } from "@/lib/theme";
 import { Button, Field } from "@/components/ui";
 
 export default function LoginScreen() {
@@ -33,15 +34,19 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerClassName="flex-grow justify-center gap-6 p-6">
         <View className="gap-1">
-          <Text className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          <Text className="text-3xl font-bold text-fg">
             B2B Mobil
           </Text>
-          <Text className="text-neutral-500">Plasiyer & Müşteri uygulaması</Text>
+          <Text className="text-fg-muted">Plasiyer & Müşteri uygulaması</Text>
+          {/* Tasarım anahtarı giriş ekranında da duruyor: sunum çoğu zaman
+              buradan başlıyor ve kimliği göstermek için önce giriş yapmak
+              gerekmemeli. */}
+          <ThemeButton className="self-start pt-2" />
         </View>
 
         {endedReason ? (
-          <View className="rounded-lg bg-amber-100 p-3 dark:bg-amber-950">
-            <Text className="text-amber-800 dark:text-amber-300">{endedReason}</Text>
+          <View className="rounded-lg bg-warning-soft p-3">
+            <Text className="text-warning">{endedReason}</Text>
           </View>
         ) : null}
 
@@ -64,7 +69,7 @@ export default function LoginScreen() {
             placeholder="••••••••"
             onSubmitEditing={onSubmit}
           />
-          {error ? <Text className="text-red-600">{error}</Text> : null}
+          {error ? <Text className="text-danger">{error}</Text> : null}
           <Button
             title="Giriş yap"
             onPress={onSubmit}

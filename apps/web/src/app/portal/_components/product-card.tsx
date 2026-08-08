@@ -42,9 +42,9 @@ export function ProductCard({
   const detailHref = `/portal/urun/${product.id}?companyId=${encodeURIComponent(companyId)}`;
 
   return (
-    <article className="group flex flex-col border border-neutral-300 bg-white transition-colors hover:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-brand-500">
+    <article className="group flex flex-col border border-border-strong bg-surface transition-colors hover:border-primary">
       <Link href={detailHref} className="block">
-        <div className="relative aspect-[4/3] overflow-hidden border-b border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800">
+        <div className="relative aspect-[4/3] overflow-hidden border-b border-border bg-surface3">
           {product.images[0] ? (
             // Görseller kendi rotamızdan, aynı kaynaktan ve değişmez servis
             // ediliyor; next/image burada kazanç sağlamadan loader isterdi.
@@ -59,28 +59,31 @@ export function ProductCard({
               <span className="tech-label">görsel yok</span>
             </div>
           )}
+          {/* Ters kontrast: metin rengi zemin, zemin rengi metin. Paket ne
+              olursa olsun okunur kalmasının tek yolu bu ikisini birbirine
+              bağlamak — sabit siyah/beyaz koyu bir pakette kaybolurdu. */}
           {totalStock === 0 && (
-            <span className="absolute left-0 top-0 bg-neutral-900 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
+            <span className="absolute left-0 top-0 bg-fg px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-bg">
               stok yok
             </span>
           )}
         </div>
 
-        <div className="border-b border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
+        <div className="border-b border-border px-3 py-2.5">
           <p className="tech-label truncate">
             {product.brand ?? "—"} · KDV %{product.vatRate}
           </p>
-          <h3 className="mt-0.5 truncate text-sm font-semibold leading-snug text-neutral-900 group-hover:text-brand-700 dark:text-neutral-100 dark:group-hover:text-brand-400">
+          <h3 className="mt-0.5 truncate text-sm font-semibold leading-snug text-fg group-hover:text-primary">
             {product.name}
           </h3>
-          <p className="tech-num mt-1.5 text-base font-bold text-neutral-900 dark:text-white">
+          <p className="tech-num mt-1.5 text-base font-bold text-fg">
             {price ? (
               <>
                 {price}
                 <span className="tech-label ml-1.5 font-normal">&apos;den</span>
               </>
             ) : (
-              <span className="text-sm font-normal text-neutral-400">
+              <span className="text-sm font-normal text-fg-muted">
                 fiyat tanımsız
               </span>
             )}
@@ -89,7 +92,7 @@ export function ProductCard({
       </Link>
 
       {/* Varyant satırları: teknik künye + tek tıkla sepete. */}
-      <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+      <ul className="divide-y divide-border">
         {product.variants.slice(0, 3).map((v) => {
           const orderable = v.netUnitPrice !== null && v.stock >= v.moqUnits;
           return (
@@ -98,10 +101,10 @@ export function ProductCard({
               className="flex items-center justify-between gap-2 px-3 py-2"
             >
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                <p className="truncate text-xs font-medium text-fg">
                   {variantLabel(v)}
                 </p>
-                <p className="tech-num mt-0.5 text-[10px] text-neutral-500">
+                <p className="tech-num mt-0.5 text-[10px] text-fg-muted">
                   {v.sku} · STK {v.stock} · KOL {v.unitsPerCase}
                 </p>
               </div>
@@ -114,7 +117,7 @@ export function ProductCard({
                     Tahsil edilen tutar her zaman yukarıdaki TL.
                   */}
                   {v.listCurrency && v.listCurrency !== "TRY" && v.listUnitPrice ? (
-                    <span className="ml-1 font-normal text-neutral-500">
+                    <span className="ml-1 font-normal text-fg-muted">
                       ({v.listUnitPrice} {v.listCurrency})
                     </span>
                   ) : null}
@@ -135,8 +138,8 @@ export function ProductCard({
                   className={cn(
                     "flex h-7 w-7 items-center justify-center border transition-colors",
                     orderable
-                      ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
-                      : "cursor-not-allowed border-neutral-300 text-neutral-300 dark:border-neutral-700 dark:text-neutral-600",
+                      ? "border-primary bg-primary text-on-primary hover:bg-primary/90"
+                      : "cursor-not-allowed border-border-strong text-fg-muted",
                   )}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -150,7 +153,7 @@ export function ProductCard({
       {product.variants.length > 3 && (
         <Link
           href={`/portal/urun/${product.id}`}
-          className="tech-label border-t border-neutral-200 px-3 py-2 text-center transition-colors hover:bg-neutral-50 hover:text-brand-600 dark:border-neutral-800 dark:hover:bg-neutral-800"
+          className="tech-label border-t border-border px-3 py-2 text-center transition-colors hover:bg-surface3 hover:text-primary"
         >
           +{product.variants.length - 3} varyant daha →
         </Link>

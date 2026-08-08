@@ -4,6 +4,7 @@ import { ROLE_LABELS } from "@repo/types";
 import { useAccount, useChangePassword, useUpdateProfile } from "@/lib/queries";
 import { formatDateTime } from "@/lib/format";
 import { useAuthStore } from "@/store/auth";
+import { ThemeButton } from "@/lib/theme";
 import { Button, Card, ErrorState, Field, Loading, Row } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -47,12 +48,12 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
 
   return (
     <ScrollView
-      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
+      className="flex-1 bg-surface2"
       contentContainerClassName="gap-4 p-4 pb-10"
       keyboardShouldPersistTaps="handled"
     >
       <Card>
-        <Text className="mb-2 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+        <Text className="mb-2 text-lg font-bold text-fg">
           {a.name}
         </Text>
         <Row label="E-posta" value={a.email} />
@@ -69,7 +70,7 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
       </Card>
 
       <Card className="gap-4">
-        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+        <Text className="font-semibold text-fg">
           Bilgilerim
         </Text>
         <Field label="Ad soyad" value={name} onChangeText={setName} />
@@ -80,9 +81,9 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
           keyboardType="phone-pad"
         />
         {profileMsg ? (
-          <Text className="text-emerald-600">{profileMsg}</Text>
+          <Text className="text-success">{profileMsg}</Text>
         ) : null}
-        {profileError ? <Text className="text-red-600">{profileError}</Text> : null}
+        {profileError ? <Text className="text-danger">{profileError}</Text> : null}
         <Button
           title="Kaydet"
           disabled={name.trim().length === 0}
@@ -105,7 +106,7 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
       </Card>
 
       <Card className="gap-4">
-        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+        <Text className="font-semibold text-fg">
           Şifre değiştir
         </Text>
         <Field
@@ -120,8 +121,8 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
           onChangeText={setNewPassword}
           secureTextEntry
         />
-        {passwordError ? <Text className="text-red-600">{passwordError}</Text> : null}
-        <Text className="text-xs text-neutral-500">
+        {passwordError ? <Text className="text-danger">{passwordError}</Text> : null}
+        <Text className="text-xs text-fg-muted">
           Şifre değişince tüm oturumlar kapanır ve bu cihazda yeniden giriş
           yapmanız gerekir.
         </Text>
@@ -150,7 +151,11 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
         />
       </Card>
 
-      <View className="pt-2">
+      <View className="flex-row items-center justify-between pt-2">
+        <ThemeButton className="px-1 py-2" />
+      </View>
+
+      <View>
         <Button title="Çıkış yap" variant="secondary" onPress={() => void logout()} />
       </View>
     </ScrollView>
