@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { chequeDetailsSchema } from "./cheque";
 import { CollectionMethodEnum, OrderStatusEnum, PaymentMethodEnum } from "./enums";
+import { entityIdSchema } from "./id";
 import { couponCodeSchema } from "./promotion";
 
 export const cartItemInputSchema = z.object({
-  variantId: z.string().cuid(),
+  // cuid() değil: içe aktarılan katalogda kimlik Prisma'nın ürettiği biçimde
+  // değil ve o kontrol 2.654 ürünü sipariş edilemez yapıyordu — bkz. id.ts.
+  variantId: entityIdSchema,
   quantity: z.number().int().positive(),
 });
 export type CartItemInput = z.infer<typeof cartItemInputSchema>;

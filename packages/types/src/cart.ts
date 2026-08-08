@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "./id";
 import { cartItemInputSchema } from "./order";
 
 // The server cart holds intent, not money: a variant and how many. Prices,
@@ -19,7 +20,9 @@ export type SetCartInput = z.infer<typeof setCartSchema>;
 /** Add to (or overwrite) one line without sending the rest. */
 export const upsertCartItemSchema = z.object({
   companyId: z.string().cuid(),
-  variantId: z.string().cuid(),
+  // cuid() değil — bkz. id.ts: içe aktarılan kataloğun kimlikleri o biçimde
+  // değil ve satır sepete hiç girmiyordu.
+  variantId: entityIdSchema,
   quantity: z.number().int().min(0).max(1_000_000),
   /** true → add to what is already there; false/absent → set it outright. */
   increment: z.boolean().optional(),

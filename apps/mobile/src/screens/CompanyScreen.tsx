@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { useCompanies } from "@/lib/queries";
+import { useLayoutEffect } from "react";
+import { Linking, Pressable, ScrollView, Text, View } from "react-native";
+import { hasPermission } from "@repo/types";
+import { useAnnouncements, useCart, useCompanies } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
 import { isFieldRole, useAuthStore } from "@/store/auth";
-import { useCart, cartTotals } from "@/store/cart";
 import { Button, Card, Empty, ErrorState, Loading, Row } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -11,49 +11,73 @@ import type { ScreenProps } from "@/navigation/types";
 // land here directly and the single row from /api/companies is their own firm.
 export default function CompanyScreen({ navigation, route }: ScreenProps<"Company">) {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const field = isFieldRole(user);
 
   const { data, isPending, error, refetch } = useCompanies();
   const paramId = route.params?.companyId;
   const company = paramId ? data?.find((c) => c.id === paramId) : data?.[0];
 
-  const setCompany = useCart((s) => s.setCompany);
-  const lines = useCart((s) => s.lines);
-  const cartCompanyId = useCart((s) => s.companyId);
-  const totals = cartTotals(lines);
-
-  // Switching customer resets the cart — prices are company-specific.
-  useEffect(() => {
-    if (company) setCompany(company.id);
-  }, [company, setCompany]);
+  const cart = useCart(company?.id ?? "");
+  const announcements = useAnnouncements(company?.id ?? "");
+  const cartCount = (cart.data?.lines ?? []).reduce((s, l) => s + l.quantity, 0);
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: company?.name ?? route.params?.companyName ?? "Firma",
-      // Company users have no list to go back to, so they log out from here.
+      // Company users have no list to go back to, so their account (and the
+      // logout inside it) hangs off this screen instead.
       headerRight: field
         ? undefined
         : () => (
-            <Pressable onPress={() => void logout()} accessibilityRole="button">
-              <Text className="text-indigo-600">Çıkış</Text>
+            <Pressable
+              onPress={() => navigation.navigate("Account")}
+              accessibilityRole="button"
+            >
+              <Text className="text-indigo-600">Hesabım</Text>
             </Pressable>
           ),
     });
-  }, [navigation, company, route.params?.companyName, field, logout]);
+  }, [navigation, company, route.params?.companyName, field]);
 
   if (isPending) return <Loading />;
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
   if (!company) return <Empty text="Firma bulunamadı." />;
 
   const nav = { companyId: company.id, companyName: company.name };
-  const cartCount = cartCompanyId === company.id ? totals.itemCount : 0;
+  const canCollect =
+    field && hasPermission(user?.permissions, "cash.manage");
+  const canVisit = field && hasPermission(user?.permissions, "visits.manage");
 
   return (
     <ScrollView
       className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       contentContainerClassName="gap-4 p-4 pb-10"
     >
+      {/* Duyurular sunucuda süzülüyor: "yalnızca bayilere" işaretli bir duyuru
+          başka gruptaki firmaya hiç gönderilmez, gönderilip burada gizlenmez. */}
+      {(announcements.data ?? []).map((a) => (
+        <Card key={a.id} className="border-indigo-200 dark:border-indigo-900">
+          <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+            {a.title}
+          </Text>
+          {a.body ? (
+            <Text className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {a.body}
+            </Text>
+          ) : null}
+          {a.linkUrl ? (
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => void Linking.openURL(a.linkUrl!).catch(() => {})}
+            >
+              <Text className="mt-1 text-sm text-indigo-600">
+                {a.linkLabel ?? "Ayrıntı"}
+              </Text>
+            </Pressable>
+          ) : null}
+        </Card>
+      ))}
+
       <Card>
         <Text className="mb-2 text-lg font-bold text-neutral-900 dark:text-neutral-100">
           {company.name}
@@ -96,19 +120,19 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
           variant="secondary"
           onPress={() => navigation.navigate("Statement", nav)}
         />
-        {field ? (
-          <>
-            <Button
-              title="Ziyaret (check-in)"
-              variant="secondary"
-              onPress={() => navigation.navigate("CheckIn", nav)}
-            />
-            <Button
-              title="Tahsilat"
-              variant="secondary"
-              onPress={() => navigation.navigate("Payment", nav)}
-            />
-          </>
+        {canVisit ? (
+          <Button
+            title="Ziyaret (check-in)"
+            variant="secondary"
+            onPress={() => navigation.navigate("CheckIn", nav)}
+          />
+        ) : null}
+        {canCollect ? (
+          <Button
+            title="Tahsilat"
+            variant="secondary"
+            onPress={() => navigation.navigate("Payment", nav)}
+          />
         ) : null}
       </View>
     </ScrollView>

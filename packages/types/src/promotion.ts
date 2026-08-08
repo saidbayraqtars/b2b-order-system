@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethodEnum } from "./enums";
+import { entityIdSchema } from "./id";
 
 // Shape of a campaign. These schemas check STRUCTURE only: that a rule has a
 // type and a params object, that a promotion has a name, and so on.
@@ -88,7 +89,8 @@ export const quoteOrderSchema = z.object({
   items: z
     .array(
       z.object({
-        variantId: z.string().cuid(),
+        // cuid() değil — bkz. id.ts.
+        variantId: entityIdSchema,
         quantity: z.number().int().positive(),
       }),
     )

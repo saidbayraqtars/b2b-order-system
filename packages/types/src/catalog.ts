@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CurrencyEnum } from "./currency";
 import { DiscountTypeEnum } from "./enums";
+import { entityIdSchema } from "./id";
 
 // Admin-side catalog input contracts. Slugs are optional everywhere — the
 // service derives one from the name when omitted, so the UI never has to.
@@ -101,8 +102,10 @@ export type UpsertPriceInput = z.infer<typeof upsertPriceSchema>;
 
 export const createCompanyDiscountSchema = z
   .object({
-    categoryId: z.string().cuid().nullish(),
-    productId: z.string().cuid().nullish(),
+    // cuid() değil — içe aktarılan ürünün kimliği o biçimde değil ve o ürüne
+    // firmaya özel iskonto tanımlanamıyordu. Bkz. id.ts.
+    categoryId: entityIdSchema.nullish(),
+    productId: entityIdSchema.nullish(),
     discountType: DiscountTypeEnum.default("PERCENTAGE"),
     value: z.number().positive("İskonto değeri sıfırdan büyük olmalı"),
   })

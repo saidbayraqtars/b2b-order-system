@@ -79,6 +79,55 @@ export async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
+/**
+ * Upload one file as multipart/form-data.
+ *
+ * Separate from apiFetch because the two disagree on a header: the body here
+ * is a FormData, and React Native has to set the Content-Type itself so the
+ * multipart boundary matches what it actually wrote. Passing our own JSON
+ * content type — as apiFetch always does — produces a body the server cannot
+ * parse, and the failure looks like a rejected file rather than a wrong header.
+ */
+export async function apiUpload<T>(
+  path: string,
+  file: { uri: string; name: string; type: string },
+  token?: string | null,
+): Promise<T> {
+  const body = new FormData();
+  // RN's FormData takes this shape for a local file; the cast is the standard
+  // workaround for the DOM lib's stricter File-only signature.
+  body.append("file", file as unknown as Blob);
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body,
+  });
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    let code: string | undefined;
+    try {
+      const data = (await res.json()) as { error?: string; code?: string };
+      if (data.error) message = data.error;
+      code = data.code;
+    } catch {
+      // non-JSON error body; keep default message
+    }
+    if (res.status === 401 && token && DEAD_SESSION_CODES.has(code ?? "")) {
+      onSessionExpired?.(code ?? "SESSION_REVOKED");
+    }
+    throw new ApiError(res.status, message, code);
+  }
+
+  return (await res.json()) as T;
+}
+
+/** Absolute URL for a server-relative media path (`/api/media/...`). */
+export function mediaUrl(path: string): string {
+  return path.startsWith("http") ? path : `${BASE_URL}${path}`;
+}
+
 /** Build a query string, skipping null/undefined/empty values. */
 export function qs(params: Record<string, string | undefined | null>): string {
   const entries = Object.entries(params).filter(

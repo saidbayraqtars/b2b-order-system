@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-08 · Adım 44 (rapor otomasyonu + yönetim arayüzü Faz 3) sonu
+Son güncelleme: 2026-08-08 · Adım 45 (mobil tamamlama) sonu
 
 ---
 
@@ -58,6 +58,7 @@ Son güncelleme: 2026-08-08 · Adım 44 (rapor otomasyonu + yönetim arayüzü F
 | 42 | Döviz: liste fiyatı yabancı para olabilir, kur siparişe donar, defter TL kalır | ✅ |
 | 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
 | 44 | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3 | ✅ |
+| 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
 
 ---
 
@@ -1644,15 +1645,45 @@ Tailwind sınıflarını taşıyordu. Aynı tablo bir ekranda `text-sm`, diğeri
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
 - **Oturum ortada ölebilir:** hesap pasife alınır, rolü değişir ya da şifresi sıfırlanırsa jeton hâlâ imzalı ve süresi dolmamış olduğu için cihaz bunu kendi başına anlayamaz. İlk 401 (`SESSION_REVOKED` / `ACCOUNT_DISABLED` / `ACCOUNT_MISSING`) jetonu keychain'den siliyor ve giriş ekranına sebebini yazarak dönüyor.
-- **Plasiyer akışı:** Müşterilerim (portföy, arama, bakiye + kullanılabilir limit) → Firma → Katalog / Sepet / Siparişler / Ziyaret / Tahsilat.
-- **Firma kullanıcısı akışı:** doğrudan kendi firmasına düşer, plasiyer ekranları gizlidir.
-- **Katalog:** firmaya çözülmüş fiyat, iskontolu fiyat üstü çizili gösterim, stok/koli/min bilgisi, stoksuz ve fiyatsız varyant sipariş edilemez.
-- **Sepet:** koli katına yuvarlayan adet kontrolü, ödeme yöntemi seçimi, kupon alanı. **Firma bazlı** — müşteri değişince sıfırlanır (fiyat firmaya özeldir). Toplam **sunucudan** geliyor (`POST /api/orders/quote`): kampanyalar, hediyeler ve KDV cihazda değil sunucuda hesaplanıyor; cihazdaki toplam yalnızca istek uçarken görünen yer tutucu. Sepet satırları hâlâ cihazda tutuluyor (web sepeti sunucuda — bkz. Bilinen Eksikler).
+- **Gezinme role ve izne göre kuruluyor (Adım 45).** Yığına yalnızca kişinin gerçekten kullanabileceği ekranlar giriyor: `visits.manage` yoksa ziyaret ekranı, `cash.manage` yoksa tahsilat ekranı hiç yok. Sebep: her seferinde 403 dönen bir düğme kimseye bir şey öğretmiyor. Üç giriş noktası var — kurye teslimata, saha portföye, alıcı kendi firmasına düşer.
+- **Plasiyer akışı:** Müşterilerim (portföy, arama, bakiye + kullanılabilir limit; üstte ziyaret planı / hedefler / siparişler kısayolları) → Firma → Katalog / Sepet / Siparişler / Ekstre / Ziyaret / Tahsilat.
+- **Firma kullanıcısı akışı:** doğrudan kendi firmasına düşer, saha ekranları gizlidir.
+- **Kurye akışı (Adım 45):** tek ekran — teslimat listesi. Katalog, sepet ve cari bilerek yok.
+- **Firma ekranı:** duyurular (sunucuda gruba göre süzülmüş), cari özet, ve yetkiye göre açılan bölüm düğmeleri.
+- **Katalog:** firmaya çözülmüş fiyat, iskontolu fiyat üstü çizili gösterim, stok/koli/min bilgisi, stoksuz ve fiyatsız varyant sipariş edilemez. Adım 45'te **kategori süzgeci**, ürün görseli, SKU/barkod araması, liste para birimi notu (`≈ 12,50 USD`) ve "sepette N adet" bilgisi eklendi.
+- **Sepet artık sunucuda (Adım 45).** Satırlar `GET/PUT/DELETE /api/cart` ve `POST /api/cart/items` ile taşınıyor — telefonda kurulan sepet masaüstünde duruyor, uygulama kapanınca kaybolmuyor. Toplam da sunucudan (`POST /api/orders/quote`): kampanyalar, hediyeler ve KDV cihazda değil sunucuda hesaplanıyor. Adet düğmeleri koli katına yuvarlıyor; bu **rehber**, kapı değil — asıl kontrol siparişte sunucuda.
+- **Sipariş aksiyonları (Adım 45):** onayla / reddet / iptal et / sevkiyat durumu. Hangi düğmenin çıkacağına cihaz karar vermiyor — sunucudan gelen `availableTransitions` ve oturumun `orders.approve` izni belirliyor, uç aynı kontrolü tekrar yapıyor. Onay için hem rol (alıcı firma yöneticisi ya da süper admin) hem izin gerekiyor.
 - **Ziyaret (check-in):** GPS koordinatlı açılış, not, kapatma; geçmiş ziyaret listesi. **Konum best-effort** — izin reddedilse veya alınamasa bile ziyaret konumsuz kaydedilir, plasiyer bloklanmaz. Kayıtlar `MOBILE` damgasıyla yazılır (Adım 23) ve açık ziyaret varken yenisi açılamaz.
-- **Tahsilat:** tutar (virgüllü klavye desteği), **tahsilat şekli** (nakit/havale/çek/senet/kart/diğer — Adım 23'te siparişin ödeme yönteminden ayrıldı), açıklama; sonuç bakiyesi sunucudan döner.
-- **Sipariş detayı:** listeden dokunarak açılır — kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi ve durum geçmişi. Salt okunur.
+- **Ziyaret planı (Adım 45):** bayinin açtığı çağrılar, günün sırası, elle taşıma, "güne al" / "ziyaret edildi", tek durak yol tarifi ve **tüm durakları sırayla açan rota**. Sıra sunucuda tutuluyor (`VisitRequest.sortIndex`), cihazda değil: plasiyer sabah masaüstünde plan yapıp gün içinde telefondan bakıyor.
+- **Hedeflerim (Adım 45):** ziyaret/ciro karnesi. Gerçekleşen ve **geçen süre** iki ayrı çubuk olarak yan yana çiziliyor — yüzde tek başına yalan söyler, ayın ilk günü %10 iyidir, son günü felakettir.
+- **Teslimat / kurye masası (Adım 45):** kendi işleri, yol tarifi, telefonla arama, teslim formu ve **imzalı belgenin kamerayla çekilip yüklenmesi** (`POST /api/deliveries/uploads`). Fotoğraf zorunlu değil — bazı teslimatlarda kâğıt hiç imzalanmıyor ve zorunlu alan kuryeyi sahte kayıt girmeye iter; "kim teslim aldı" ise zorunlu. Sevkiyatı yönetene (`orders.fulfil`) ayrıca kurye atama çıkıyor.
+- **Tahsilat:** tutar (virgüllü klavye desteği), **tahsilat şekli** (nakit/havale/çek/senet/kart/diğer — Adım 23'te siparişin ödeme yönteminden ayrıldı), açıklama; sonuç bakiyesi sunucudan döner. Adım 45'te **kasa/banka hesabı seçimi** (boş = varsayılan kasa), **çek/senet künyesi** (banka, seri, keşideci, vade — hepsi opsiyonel; sahada tutar yeter, gerisi ofiste tamamlanır), **tekrar anahtarı** (şebeke koptuğunda ikinci tahsilat yazılmaz) ve o cariye giren son tahsilatların listesi eklendi.
+- **Sipariş detayı:** kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi, durum geçmişi ve yetkiye göre işlem düğmeleri.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
+- **Hesabım (Adım 45):** ad/telefon düzenleme ve şifre değiştirme. Şifre değişimi profil kaydından ayrı bir uç: bir şifrenin profil kaydetmenin yan etkisi olarak değişmesi kimsenin beklediği şey değil. Başarılı olunca sunucu tüm oturumları iptal ettiği için ekran kullanıcıyı giriş ekranına geri gönderiyor.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
+- **Android emülatöründe koşturuldu (Adım 45).** Giriş → portföy → ziyaret planı → katalog → sepet → sipariş → sipariş detayı → hesap → çıkış akışı canlı API'ye karşı çalıştırıldı; sipariş `ORD-20260808-0001` olarak oluştu ve cari bakiye anında güncellendi.
+
+### Kayıt kimliği doğrulaması (Adım 45'te düzeltildi)
+
+Ürün, varyant ve kategori kimlikleri `z.string().cuid()` ile doğrulanıyordu.
+`cuid()` yalnızca Prisma'nın `@default(cuid())` ile ürettiği kimliği kabul eder;
+oysa gerçek katalog dışarıdan içe aktarıldığında kimlik başka yerde üretiliyor.
+Sonuç somut: **2.657 varyantın 2.654'ü** sepete eklenemiyor ve sipariş
+edilemiyordu — `POST /api/cart/items` ve `POST /api/orders` bu satırlar için
+`Invalid cuid` diyerek 400 dönüyordu. Katalogda görünen ama satılamayan bir
+ürün demek bu, ve hem webde hem mobilde aynıydı.
+
+Yerine `entityIdSchema` (`packages/types/src/id.ts`) geldi: boş olmayan, en çok
+64 karakter, `[A-Za-z0-9_-]` kümesinde bir dize. Gevşetme güvenlik açığı değil,
+çünkü `cuid()` hiçbir zaman yetki kontrolü değildi — kimliğin sahibi olup
+olmadığımız her zaman veritabanı aramasıyla belirleniyor (yoksa 404,
+başkasınınsa 403). Buradaki kontrolün tek işi çöp girdiyi ucuza elemek.
+
+Diğer 43 `.cuid()` kullanımı **bilerek** dokunulmadan bırakıldı: hepsi
+uygulamanın kendi oluşturduğu satırları (sipariş, adres, kullanıcı, kampanya)
+adlandırıyor ve oralarda kimlik her zaman Prisma'dan geliyor. İçe aktarma ya da
+ERP eşlemesi o tablolara da uzanırsa aynı değişiklik oralarda da gerekecek.
 
 ## 44. API Uçları
 
@@ -1823,9 +1854,13 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 ### Mobil
 
-- Sipariş detayı ve ekstre salt okunur; durum değiştirme yalnızca webde.
-- **Sepet hâlâ cihazda** — web sepeti sunucuda (Adım 16), mobil uygulama kendi yerel sepetini kullanmaya devam ediyor; ikisi henüz aynı satırı paylaşmıyor.
-- Uygulama gerçek cihazda çalıştırılmadı, yalnızca bundle edildi.
+- ~~Sipariş detayı salt okunur~~ — Adım 45'te kapandı: onay, ret, iptal ve sevkiyat durumu telefondan yapılabiliyor; hangi düğmenin çıkacağını sunucunun verdiği `availableTransitions` ve izin belirliyor.
+- ~~**Sepet hâlâ cihazda**~~ — Adım 45'te kapandı: mobil sepet web ile aynı `Cart` satırını kullanıyor.
+- ~~Uygulama gerçek cihazda çalıştırılmadı~~ — Adım 45'te Android emülatöründe (API 37) uçtan uca koşturuldu.
+- **Cari ekstre hâlâ salt okunur** — telefondan ekstre satırına müdahale edilmiyor; doğrusu bu, düzeltme ters kayıtla yapılır.
+- **Bildirim yok** — push bildirimi kurulmadı; onay bekleyen sipariş ya da gününe düşen ziyaret çağrısı için cihaza haber gitmiyor, kullanıcının uygulamayı açması gerekiyor.
+- **Çevrimdışı çalışmıyor** — şebeke yoksa ekranlar boş kalır; saha uygulaması için sıradaki gerçek eksik bu.
+- **iOS'ta çalıştırılmadı** — yalnızca Android emülatöründe koşturuldu.
 
 ### Daha büyük
 

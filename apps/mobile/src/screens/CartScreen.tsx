@@ -1,34 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import type { PaymentMethod } from "@repo/types";
-import { useCreateOrder, useOrderQuote, usePaymentOptions } from "@/lib/queries";
+import {
+  useCart,
+  useClearCart,
+  useCreateOrder,
+  useOrderQuote,
+  usePaymentOptions,
+  useUpsertCartItem,
+} from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
-import { cartTotals, useCart } from "@/store/cart";
-import { Button, Card, Empty, Field } from "@/components/ui";
+import { normalizeQty } from "@/lib/quantity";
+import { Button, Card, Empty, ErrorState, Field, Loading } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
 // Draft review + submit.
 //
-// The totals shown are the server's: campaigns are decided server-side, so a
-// device that added up its own lines would quietly under-report every discount.
-// The on-device figures are kept only as the placeholder while that request is
-// in flight. POST /api/orders re-runs the same calculation inside its
-// transaction, so what is quoted is what is charged.
+// Both the lines and the totals are the server's now. The lines because the
+// cart moved off the device (a basket built on the phone has to be there on the
+// laptop); the totals because campaigns are decided server-side, so a device
+// adding up its own lines would quietly under-report every discount. POST
+// /api/orders re-runs the same calculation inside its transaction, so what is
+// quoted is what is charged.
 export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
   const { companyId } = route.params;
-  const lines = useCart((s) => s.lines);
-  const inc = useCart((s) => s.inc);
-  const dec = useCart((s) => s.dec);
-  const remove = useCart((s) => s.remove);
-  const clear = useCart((s) => s.clear);
-  const totals = cartTotals(lines);
-
+  const cart = useCart(companyId);
+  const upsert = useUpsertCartItem();
+  const clearCart = useClearCart();
   const createOrder = useCreateOrder();
+
   const [method, setMethod] = useState<PaymentMethod>("OPEN_ACCOUNT");
   const [termId, setTermId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [couponDraft, setCouponDraft] = useState("");
   const [coupon, setCoupon] = useState<string | null>(null);
+
+  const lines = useMemo(() => cart.data?.lines ?? [], [cart.data]);
 
   // Which settlements this customer may pick. Asked rather than assumed: the
   // menu is per-company, and offering one the server will refuse only produces
@@ -58,7 +65,14 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
     if (termId && !termsOffered.some((t) => t.id === termId)) setTermId(null);
   }, [termId, termsOffered]);
 
-  const items = lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
+  const items = useMemo(
+    () => lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    [lines],
+  );
+  // A line the company has no price for cannot be ordered; quoting with it in
+  // would fail as NO_PRICE and name a product the buyer cannot fix from here.
+  const unpriced = lines.filter((l) => l.netUnitPrice == null);
+
   const quote = useOrderQuote(
     {
       companyId,
@@ -67,9 +81,13 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       couponCode: coupon ?? undefined,
       items,
     },
-    lines.length > 0 && !!chosenMethod,
+    lines.length > 0 && unpriced.length === 0 && !!chosenMethod,
   );
   const q = quote.data;
+
+  function setQty(variantId: string, quantity: number) {
+    upsert.mutate({ companyId, variantId, quantity });
+  }
 
   function onSubmit() {
     setError(null);
@@ -83,13 +101,17 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       },
       {
         onSuccess: (res) => {
-          clear();
           setCoupon(null);
           setCouponDraft("");
           Alert.alert(
             "Sipariş oluşturuldu",
             `${res.orderNumber} · ${formatMoney(res.grandTotal)}`,
-            [{ text: "Tamam", onPress: () => navigation.navigate("Orders", route.params) }],
+            [
+              {
+                text: "Tamam",
+                onPress: () => navigation.navigate("Orders", route.params),
+              },
+            ],
           );
         },
         onError: (err) =>
@@ -98,6 +120,10 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
     );
   }
 
+  if (cart.isPending) return <Loading />;
+  if (cart.error) {
+    return <ErrorState error={cart.error} onRetry={() => void cart.refetch()} />;
+  }
   if (!lines.length) return <Empty text="Sepet boş." />;
 
   return (
@@ -108,6 +134,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         contentContainerClassName="gap-3 p-4"
         renderItem={({ item }) => {
           const attrs = [item.color, item.size].filter(Boolean).join(" / ");
+          const unit = item.netUnitPrice != null ? Number(item.netUnitPrice) : null;
           return (
             <Card>
               <View className="flex-row items-start justify-between gap-3">
@@ -120,30 +147,49 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
                     {item.sku}
                   </Text>
                   <Text className="mt-1 text-sm text-neutral-500">
-                    {formatMoney(item.netUnitPrice)} × {item.quantity} adet
+                    {unit != null
+                      ? `${formatMoney(unit)} × ${item.quantity} adet`
+                      : "Bu firmaya fiyat tanımlı değil"}
                   </Text>
                 </View>
                 <Text className="font-bold text-neutral-900 dark:text-neutral-100">
-                  {formatMoney(item.netUnitPrice * item.quantity)}
+                  {unit != null ? formatMoney(unit * item.quantity) : "—"}
                 </Text>
               </View>
 
               <View className="mt-3 flex-row items-center gap-2">
-                <Stepper label="−" onPress={() => dec(item.variantId)} />
+                <Stepper
+                  label="−"
+                  onPress={() =>
+                    setQty(
+                      item.variantId,
+                      normalizeQty(item, item.quantity - item.unitsPerCase),
+                    )
+                  }
+                />
                 <Text className="w-16 text-center text-neutral-900 dark:text-neutral-100">
                   {item.quantity}
                 </Text>
-                <Stepper label="+" onPress={() => inc(item.variantId)} />
+                <Stepper
+                  label="+"
+                  onPress={() =>
+                    setQty(
+                      item.variantId,
+                      normalizeQty(item, item.quantity + item.unitsPerCase),
+                    )
+                  }
+                />
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => remove(item.variantId)}
+                  onPress={() => setQty(item.variantId, 0)}
                   className="ml-auto"
                 >
                   <Text className="text-red-600">Kaldır</Text>
                 </Pressable>
               </View>
               <Text className="mt-1 text-xs text-neutral-400">
-                Koli {item.unitsPerCase} adet · min {item.moqUnits}
+                Koli {item.unitsPerCase} adet · min {item.moqUnits} · stok{" "}
+                {item.stock}
               </Text>
             </Card>
           );
@@ -151,6 +197,13 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
       />
 
       <View className="gap-3 border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        {unpriced.length > 0 ? (
+          <Text className="text-amber-600">
+            {unpriced.length} kalemin bu firmaya fiyatı yok — çıkarmadan sipariş
+            verilemez.
+          </Text>
+        ) : null}
+
         <View className="flex-row flex-wrap gap-2">
           {methods.map((m) => (
             <Chip
@@ -226,9 +279,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         <View className="flex-row justify-between">
           <Text className="text-neutral-500">Ara toplam</Text>
           <Text className="text-neutral-900 dark:text-neutral-100">
-            {formatMoney(
-              q ? Number(q.subtotal) - Number(q.discountTotal) : totals.subtotal,
-            )}
+            {q ? formatMoney(Number(q.subtotal) - Number(q.discountTotal)) : "—"}
           </Text>
         </View>
         {q?.volumeDiscount ? (
@@ -252,7 +303,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         <View className="flex-row justify-between">
           <Text className="text-neutral-500">KDV</Text>
           <Text className="text-neutral-900 dark:text-neutral-100">
-            {formatMoney(q ? q.taxTotal : totals.taxTotal)}
+            {q ? formatMoney(q.taxTotal) : "—"}
           </Text>
         </View>
         <View className="flex-row justify-between">
@@ -260,7 +311,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
             Genel toplam
           </Text>
           <Text className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-            {formatMoney(q ? q.grandTotal : totals.grandTotal)}
+            {q ? formatMoney(q.grandTotal) : "—"}
           </Text>
         </View>
         {quote.isFetching ? (
@@ -272,9 +323,25 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         <Button
           title="Siparişi gönder"
           onPress={onSubmit}
-          disabled={quote.isError || quote.isLoading}
+          disabled={!q || quote.isError || quote.isFetching || unpriced.length > 0}
           loading={createOrder.isPending}
         />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            Alert.alert("Sepeti boşalt", "Tüm kalemler silinsin mi?", [
+              { text: "Vazgeç", style: "cancel" },
+              {
+                text: "Boşalt",
+                style: "destructive",
+                onPress: () => clearCart.mutate(companyId),
+              },
+            ])
+          }
+          className="items-center py-1"
+        >
+          <Text className="text-sm text-neutral-500">Sepeti boşalt</Text>
+        </Pressable>
       </View>
     </View>
   );

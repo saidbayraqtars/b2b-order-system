@@ -1,4 +1,12 @@
-import type { OrderStatus, PaymentMethod } from "@repo/types";
+import type {
+  CollectionMethod,
+  OrderStatus,
+  PaymentMethod,
+  Role,
+  TargetMetric,
+  TargetPeriod,
+  VisitRequestStatus,
+} from "@repo/types";
 
 // Shapes returned by the Next.js API in apps/web. Kept as hand-written types
 // (rather than importing the service layer) so the app never pulls in Prisma.
@@ -29,6 +37,13 @@ export interface CatalogVariant {
   unitPrice: string | null;
   discountPerUnit: string | null;
   netUnitPrice: string | null;
+  /**
+   * The currency the price was *listed* in. Every amount above is already TRY;
+   * this only prints the "≈ 12,50 USD" note for a customer who agreed a price
+   * in foreign money and wants to see which figure it was converted from.
+   */
+  listCurrency: string | null;
+  listUnitPrice: string | null;
 }
 
 export interface CatalogProduct {
@@ -268,4 +283,175 @@ export interface CompanyAging {
   oldestDueDate: string | null;
   salesRepId: string | null;
   salesRepName: string | null;
+}
+
+// ── Sepet (sunucuda) ──
+
+/**
+ * A cart line as the server reports it.
+ *
+ * The row itself stores only variant + quantity; price, stock and VAT come
+ * from the read, so a cart left overnight shows this morning's price rather
+ * than yesterday's. `netUnitPrice` is null when the company has no applicable
+ * price — the line is in the basket but cannot be ordered.
+ */
+export interface CartLine {
+  variantId: string;
+  sku: string;
+  productId: string;
+  productName: string;
+  color: string | null;
+  size: string | null;
+  unitsPerCase: number;
+  moqUnits: number;
+  stock: number;
+  vatRate: number;
+  quantity: number;
+  netUnitPrice: string | null;
+  image: string | null;
+}
+
+export interface CartView {
+  companyId: string;
+  updatedAt: string | null;
+  lines: CartLine[];
+}
+
+// ── Saha operasyonu ──
+
+/** Bayinin açtığı "uğrayın" çağrısı, plasiyerin gördüğü sırayla. */
+export interface VisitRequestRow {
+  id: string;
+  companyId: string;
+  companyName: string;
+  city: string | null;
+  district: string | null;
+  addressLine: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  salesRepId: string | null;
+  requestedFor: string | null;
+  note: string | null;
+  status: VisitRequestStatus;
+  sortIndex: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/**
+ * Hedef karnesi.
+ *
+ * `elapsed` dönemin ne kadarının geçtiği (0–1). Yüzdeyi tek başına göstermek
+ * yanıltıcı: ayın ilk günü %10 iyidir, son günü felakettir.
+ */
+export interface TargetProgress {
+  id: string;
+  salesRepId: string;
+  salesRepName: string;
+  metric: TargetMetric;
+  period: TargetPeriod;
+  periodStart: string;
+  periodEnd: string;
+  targetValue: string;
+  note: string | null;
+  achieved: string;
+  percent: number;
+  elapsed: number;
+}
+
+/** Kuryenin listesindeki tek iş — bir sevkiyat. */
+export interface DeliveryRow {
+  shipmentId: string;
+  documentNumber: string;
+  orderId: string;
+  orderNumber: string;
+  companyName: string;
+  companyPhone: string | null;
+  addressLine: string | null;
+  city: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  shippedAt: string;
+  courierId: string | null;
+  courierName: string | null;
+  deliveredAt: string | null;
+  receivedByName: string | null;
+  proofPhotoUrl: string | null;
+  deliveryNote: string | null;
+  itemCount: number;
+  grandTotal: string;
+}
+
+export interface Courier {
+  id: string;
+  name: string;
+  email: string;
+}
+
+/** Kasa/banka hesabı — tahsilat seçicisi. Bakiye taşımaz, taşımamalı. */
+export interface CashAccount {
+  id: string;
+  name: string;
+  kind: "CASH" | "BANK" | "POS";
+  isDefault: boolean;
+}
+
+/**
+ * Çek/senet künyesi as it goes over the wire.
+ *
+ * Not `ChequeDetailsInput` from @repo/types: that type is the schema's *output*,
+ * where `dueDate` has already been coerced to a Date. JSON has no Date, so the
+ * device sends an ISO string and the server coerces it — the same field, one
+ * step earlier in its life.
+ */
+export interface ChequeDetails {
+  kind?: "CHEQUE" | "PROMISSORY_NOTE";
+  serialNumber?: string;
+  bankName?: string;
+  branchName?: string;
+  /** Keşideci — kâğıdı imzalayan. Müşterinin kendi çeki olmak zorunda değil. */
+  drawerName?: string;
+  dueDate?: string;
+  notes?: string;
+}
+
+/** Kaydedilmiş tahsilat (GET /api/payments). */
+export interface PaymentRow {
+  id: string;
+  companyId: string;
+  companyName: string;
+  amount: string;
+  collectionMethod: CollectionMethod | null;
+  description: string | null;
+  recordedByName: string | null;
+  createdAt: string;
+  /** Set when this collection has been undone by a correcting entry. */
+  reversedById: string | null;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string | null;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  placement: string;
+  tone: string;
+  dismissible: boolean;
+  priority: number;
+}
+
+export interface AccountProfile {
+  id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  role: Role;
+  company: { id: string; name: string } | null;
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  passwordChangedAt: string | null;
+  createdAt: string;
 }

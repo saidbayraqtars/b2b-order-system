@@ -1,10 +1,16 @@
-import { useLayoutEffect, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
-import { useCatalog } from "@/lib/queries";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { FlatList, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  useCart,
+  useCatalog,
+  useCategories,
+  useUpsertCartItem,
+} from "@/lib/queries";
+import { mediaUrl } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import { cartTotals, useCart, type CartLineSeed } from "@/store/cart";
+import { initialQty } from "@/lib/quantity";
 import { Badge, Card, Empty, ErrorState, Loading } from "@/components/ui";
-import type { CatalogProduct, CatalogVariant } from "@/lib/types";
+import type { CatalogProduct, CatalogVariant, Category } from "@/lib/types";
 import type { ScreenProps } from "@/navigation/types";
 
 // Company-scoped catalog: prices already resolved server-side for this customer
@@ -13,14 +19,32 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
   const { companyId, companyName } = route.params;
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+
   const { data, isPending, error, refetch, isRefetching } = useCatalog(
     companyId,
+    categoryId ?? undefined,
     query || undefined,
   );
+  const categories = useCategories();
+  const cart = useCart(companyId);
+  const upsert = useUpsertCartItem();
 
-  const add = useCart((s) => s.add);
-  const lines = useCart((s) => s.lines);
-  const itemCount = cartTotals(lines).itemCount;
+  // Flat list of the tree: a phone has no room for an expanding sidebar, and a
+  // two-level chip row is enough to narrow a few thousand products.
+  const categoryChips = useMemo(
+    () => flatten(categories.data ?? []),
+    [categories.data],
+  );
+
+  const itemCount = (cart.data?.lines ?? []).reduce((s, l) => s + l.quantity, 0);
+  // Ordered quantity per variant, so a card can say "sepette 24 adet" instead of
+  // letting the rep add the same line three times without noticing.
+  const inCart = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of cart.data?.lines ?? []) map.set(l.variantId, l.quantity);
+    return map;
+  }, [cart.data]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -43,17 +67,44 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
 
   return (
     <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
-      <View className="p-4">
+      <View className="gap-3 p-4">
         <TextInput
           value={search}
           onChangeText={setSearch}
           onSubmitEditing={() => setQuery(search.trim())}
           returnKeyType="search"
-          placeholder="Ürün ara"
+          placeholder="Ürün, SKU veya barkod ara"
           placeholderTextColor="#9ca3af"
           className="h-11 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         />
+        {categoryChips.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-2 pr-4">
+              <CategoryChip
+                label="Tümü"
+                selected={categoryId === null}
+                onPress={() => setCategoryId(null)}
+              />
+              {categoryChips.map((c) => (
+                <CategoryChip
+                  key={c.id}
+                  label={c.label}
+                  selected={categoryId === c.id}
+                  onPress={() => setCategoryId(c.id)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        ) : null}
       </View>
+
+      {upsert.isError ? (
+        <Text className="px-4 pb-2 text-red-600">
+          {upsert.error instanceof Error
+            ? upsert.error.message
+            : "Sepete eklenemedi"}
+        </Text>
+      ) : null}
 
       <FlatList
         data={data}
@@ -65,8 +116,17 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
         renderItem={({ item }) => (
           <ProductCard
             product={item}
+            inCart={inCart}
+            busy={upsert.isPending}
             onAdd={(variant) =>
-              add(seedFrom(item, variant))
+              upsert.mutate({
+                companyId,
+                variantId: variant.id,
+                // "Sepete ekle" adds a case to what is already there rather than
+                // overwriting it — tapping twice means two cases, not one.
+                quantity: initialQty(variant),
+                increment: true,
+              })
             }
           />
         )}
@@ -75,44 +135,90 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
   );
 }
 
-/** Map a catalog row to a cart line. Only called for priced variants. */
-function seedFrom(product: CatalogProduct, v: CatalogVariant): CartLineSeed {
-  return {
-    variantId: v.id,
-    sku: v.sku,
-    productName: product.name,
-    color: v.color,
-    size: v.size,
-    unitsPerCase: v.unitsPerCase,
-    moqUnits: v.moqUnits,
-    stock: v.stock,
-    netUnitPrice: Number(v.netUnitPrice),
-    vatRate: product.vatRate,
-  };
+/** Depth-first walk of the category tree, indenting children by one level. */
+function flatten(
+  nodes: Category[],
+  depth = 0,
+): Array<{ id: string; label: string }> {
+  return nodes.flatMap((n) => [
+    { id: n.id, label: depth > 0 ? `· ${n.name}` : n.name },
+    ...flatten(n.children, depth + 1),
+  ]);
+}
+
+function CategoryChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`h-9 justify-center rounded-full border px-3 ${
+        selected
+          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+          : "border-neutral-300 dark:border-neutral-700"
+      }`}
+    >
+      <Text
+        className={`text-sm ${
+          selected
+            ? "font-semibold text-indigo-700 dark:text-indigo-300"
+            : "text-neutral-700 dark:text-neutral-300"
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 }
 
 function ProductCard({
   product,
+  inCart,
+  busy,
   onAdd,
 }: {
   product: CatalogProduct;
+  inCart: Map<string, number>;
+  busy: boolean;
   onAdd: (variant: CatalogVariant) => void;
 }) {
+  const image = product.images[0];
+
   return (
     <Card>
-      <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-        {product.name}
-      </Text>
-      {product.brand ? (
-        <Text className="mb-2 text-sm text-neutral-500">{product.brand}</Text>
-      ) : null}
+      <View className="flex-row gap-3">
+        {image ? (
+          <Image
+            source={{ uri: mediaUrl(image) }}
+            className="h-14 w-14 rounded-lg bg-neutral-100 dark:bg-neutral-800"
+            resizeMode="contain"
+          />
+        ) : null}
+        <View className="flex-1">
+          <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            {product.name}
+          </Text>
+          {product.brand ? (
+            <Text className="text-sm text-neutral-500">{product.brand}</Text>
+          ) : null}
+        </View>
+      </View>
 
-      <View className="gap-2">
+      <View className="mt-2 gap-2">
         {product.variants.map((v) => {
           const priced = v.netUnitPrice != null;
           const outOfStock = v.stock < Math.max(v.moqUnits, 1);
-          const disabled = !priced || outOfStock;
+          const disabled = !priced || outOfStock || busy;
           const attrs = [v.color, v.size].filter(Boolean).join(" / ");
+          const already = inCart.get(v.id) ?? 0;
 
           return (
             <View
@@ -136,10 +242,22 @@ function ProductCard({
                         {formatMoney(v.unitPrice!)}
                       </Text>
                     ) : null}
+                    {/* Yabancı para listeden geliyorsa hangi sayıdan çevrildiği
+                        yazılıyor — müşteri dolarla anlaştıysa onu arıyor. */}
+                    {v.listCurrency && v.listCurrency !== "TRY" && v.listUnitPrice ? (
+                      <Text className="text-xs text-neutral-400">
+                        ≈ {formatMoney(v.listUnitPrice, v.listCurrency)}
+                      </Text>
+                    ) : null}
                   </View>
                 ) : (
                   <Badge label="Fiyat tanımsız" tone="amber" />
                 )}
+                {already > 0 ? (
+                  <Text className="mt-0.5 text-xs text-indigo-600 dark:text-indigo-400">
+                    Sepette {already} adet
+                  </Text>
+                ) : null}
               </View>
 
               <Pressable

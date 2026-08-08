@@ -16,13 +16,24 @@
     },
     "android": {
       "package": "com.b2b.mobile",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ]
     },
     "plugins": [
       [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Ziyaret (check-in) kaydınıza müşteri konumunu eklemek için konum izni gerekiyor."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Teslim edilen malın imzalı belgesini fotoğraflamak için kamera izni gerekiyor.",
+          "photosPermission": "İmzalı teslim belgesini galeriden seçebilmek için izin gerekiyor."
         }
       ]
     ],

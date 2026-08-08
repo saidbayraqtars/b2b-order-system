@@ -1,20 +1,30 @@
-import { useLayoutEffect } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { PAYMENT_METHOD_LABELS } from "@repo/types";
-import { useOrder } from "@/lib/queries";
+import { useLayoutEffect, useState } from "react";
+import { Alert, ScrollView, Text, View } from "react-native";
+import { hasPermission, PAYMENT_METHOD_LABELS, type OrderStatus } from "@repo/types";
+import { useOrder, useOrderAction } from "@/lib/queries";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { ORDER_STATUS_LABEL } from "@/lib/types";
-import { Badge, Card, ErrorState, Loading, Row } from "@/components/ui";
+import { useAuthStore } from "@/store/auth";
+import { Badge, Button, Card, ErrorState, Loading, Row } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
-// Read-only on mobile: status changes are a back-office action, so the app shows
-// where the order stands rather than offering transitions the API would refuse.
+// The order, and what this caller may do with it.
+//
+// Which actions exist is not a device decision: the API already answers it per
+// caller in `availableTransitions`, and approve/reject is gated by the
+// `orders.approve` permission the session carries. The screen only renders what
+// it was told — inventing buttons here would offer taps the server refuses, and
+// hiding a legitimate one would send a buyer to a laptop for a single approval,
+// which is exactly what made this screen read-only for too long.
 export default function OrderDetailScreen({
   navigation,
   route,
 }: ScreenProps<"OrderDetail">) {
   const { orderId, orderNumber } = route.params;
   const { data, isPending, error, refetch } = useOrder(orderId);
+  const user = useAuthStore((s) => s.user);
+  const { approve, reject, changeStatus } = useOrderAction(orderId);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: orderNumber });
@@ -24,6 +34,43 @@ export default function OrderDetailScreen({
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   const o = data;
+  const onError = (err: unknown) =>
+    setActionError(err instanceof Error ? err.message : "İşlem tamamlanamadı");
+
+  // Approval takes both halves the endpoint takes: the role decides who is even
+  // in the approval chain (the buying company's admin, or the seller), the
+  // permission decides whether this particular account was given the power.
+  const canApprove =
+    (user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN") &&
+    hasPermission(user?.permissions, "orders.approve") &&
+    (o.status === "PENDING_APPROVAL" || o.status === "PENDING_CREDIT");
+  // Cancellation is a transition like any other; the server already filtered
+  // the list down to what this caller may set.
+  const canCancel = o.availableTransitions.includes("CANCELLED");
+  // Fulfilment moves belong to whoever ships. Offered on the phone because a
+  // warehouse tablet is the same client as a phone, and the API decides anyway.
+  const fulfilment = o.availableTransitions.filter((s) =>
+    (["PROCESSING", "SHIPPED", "DELIVERED"] as OrderStatus[]).includes(s),
+  );
+
+  function confirmAction(
+    title: string,
+    message: string,
+    run: () => void,
+    destructive = false,
+  ) {
+    Alert.alert(title, message, [
+      { text: "Vazgeç", style: "cancel" },
+      {
+        text: title,
+        style: destructive ? "destructive" : "default",
+        onPress: () => {
+          setActionError(null);
+          run();
+        },
+      },
+    ]);
+  }
 
   return (
     <ScrollView
@@ -48,6 +95,76 @@ export default function OrderDetailScreen({
           </Text>
         ) : null}
       </Card>
+
+      {canApprove || canCancel || fulfilment.length > 0 ? (
+        <Card className="gap-2">
+          <Text className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            İşlemler
+          </Text>
+          {canApprove ? (
+            <>
+              <Button
+                title="Siparişi onayla"
+                loading={approve.isPending}
+                onPress={() =>
+                  confirmAction(
+                    "Onayla",
+                    `${o.orderNumber} onaylansın mı?`,
+                    () => approve.mutate(undefined, { onError }),
+                  )
+                }
+              />
+              <Button
+                title="Siparişi reddet"
+                variant="danger"
+                loading={reject.isPending}
+                onPress={() =>
+                  confirmAction(
+                    "Reddet",
+                    `${o.orderNumber} reddedilsin mi? Ayrılan stok ve cari borç geri alınır.`,
+                    () => reject.mutate(undefined, { onError }),
+                    true,
+                  )
+                }
+              />
+            </>
+          ) : null}
+          {fulfilment.map((s) => (
+            <Button
+              key={s}
+              title={`${ORDER_STATUS_LABEL[s]} olarak işaretle`}
+              variant="secondary"
+              loading={changeStatus.isPending}
+              onPress={() =>
+                confirmAction(
+                  ORDER_STATUS_LABEL[s],
+                  `${o.orderNumber} "${ORDER_STATUS_LABEL[s]}" durumuna alınsın mı?`,
+                  () => changeStatus.mutate({ status: s }, { onError }),
+                )
+              }
+            />
+          ))}
+          {canCancel ? (
+            <Button
+              title="Siparişi iptal et"
+              variant="danger"
+              loading={changeStatus.isPending}
+              onPress={() =>
+                confirmAction(
+                  "İptal et",
+                  `${o.orderNumber} iptal edilsin mi? Stok ve cari borç geri alınır.`,
+                  () =>
+                    changeStatus.mutate({ status: "CANCELLED" }, { onError }),
+                  true,
+                )
+              }
+            />
+          ) : null}
+          {actionError ? (
+            <Text className="text-red-600">{actionError}</Text>
+          ) : null}
+        </Card>
+      ) : null}
 
       <Card>
         <Text className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">

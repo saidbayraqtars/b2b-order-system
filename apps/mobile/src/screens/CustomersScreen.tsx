@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
-import { useCompanies } from "@/lib/queries";
+import { hasAnyPermission, hasPermission } from "@repo/types";
+import { useCompanies, useVisitRequests } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
 import { useAuthStore } from "@/store/auth";
 import { Badge, Card, Empty, ErrorState, Loading } from "@/components/ui";
@@ -10,18 +11,35 @@ import type { ScreenProps } from "@/navigation/types";
 // cari position on each row so the rep sees credit headroom before selling.
 export default function CustomersScreen({ navigation }: ScreenProps<"Customers">) {
   const { data, isPending, error, refetch, isRefetching } = useCompanies();
-  const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
   const [search, setSearch] = useState("");
+
+  const canPlanVisits = hasPermission(user?.permissions, "visits.manage");
+  const canDispatch = hasAnyPermission(user?.permissions, [
+    "delivery.confirm",
+    "orders.fulfil",
+  ]);
+  // Today's calls, only so the button can carry a count — a rep with three
+  // dealers waiting should see that before scrolling a portfolio of eighty.
+  const visits = useVisitRequests(
+    canPlanVisits ? new Date().toISOString().slice(0, 10) : undefined,
+  );
+  const waiting = (visits.data ?? []).filter(
+    (v) => v.status === "OPEN" || v.status === "PLANNED",
+  ).length;
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable onPress={() => void logout()} accessibilityRole="button">
-          <Text className="text-indigo-600">Çıkış</Text>
+        <Pressable
+          onPress={() => navigation.navigate("Account")}
+          accessibilityRole="button"
+        >
+          <Text className="text-indigo-600">Hesabım</Text>
         </Pressable>
       ),
     });
-  }, [navigation, logout]);
+  }, [navigation]);
 
   const companies = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr");
@@ -36,7 +54,29 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
 
   return (
     <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
-      <View className="p-4">
+      <View className="gap-3 p-4">
+        <View className="flex-row gap-2">
+          {canPlanVisits ? (
+            <NavTile
+              label={waiting ? `Ziyaret planı (${waiting})` : "Ziyaret planı"}
+              onPress={() => navigation.navigate("VisitPlan")}
+            />
+          ) : null}
+          <NavTile
+            label="Hedeflerim"
+            onPress={() => navigation.navigate("Targets")}
+          />
+          <NavTile
+            label="Siparişler"
+            onPress={() => navigation.navigate("Orders")}
+          />
+        </View>
+        {canDispatch ? (
+          <NavTile
+            label="Teslimatlar"
+            onPress={() => navigation.navigate("Deliveries")}
+          />
+        ) : null}
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -103,5 +143,22 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
         }}
       />
     </View>
+  );
+}
+
+function NavTile({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className="h-11 flex-1 items-center justify-center rounded-xl border border-neutral-300 bg-white px-2 dark:border-neutral-700 dark:bg-neutral-900"
+    >
+      <Text
+        numberOfLines={1}
+        className="text-sm font-medium text-neutral-800 dark:text-neutral-200"
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
