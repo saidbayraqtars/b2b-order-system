@@ -32,6 +32,7 @@ export type BusinessErrorCode =
   // ── user-defined reports ──
   | "REPORT_NOT_FOUND"
   | "INVALID_REPORT"
+  | "INVALID_SCHEDULE"
   // ── company / user administration ──
   | "USER_NOT_FOUND"
   | "ADDRESS_NOT_FOUND"

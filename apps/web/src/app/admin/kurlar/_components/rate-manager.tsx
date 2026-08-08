@@ -8,7 +8,18 @@ import {
   type Currency,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { Badge, Card, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
+import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 
 // Kur girişi.
 //
@@ -104,10 +115,9 @@ export function RateManager() {
         ))}
       </div>
 
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold">Kur gir</h2>
+      <Panel title="Kur gir">
         <form
-          className="flex flex-wrap items-end gap-2"
+          className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             const value = Number(rate.replace(",", "."));
@@ -118,75 +128,74 @@ export function RateManager() {
             save.mutate({ currency, rate: value });
           }}
         >
-          <label className="text-sm">
-            <span className="mb-1 block text-neutral-600">Para birimi</span>
-            <select
+          <div>
+            <Label htmlFor="rate-currency">Para birimi</Label>
+            <Select
+              id="rate-currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value as Currency)}
-              className="rounded border border-neutral-300 px-2 py-1.5"
+              className="w-56"
             >
               {FOREIGN_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
                   {c} — {CURRENCY_LABELS[c]}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-neutral-600">1 {currency} kaç ₺</span>
-            <input
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="rate-value">1 {currency} kaç ₺</Label>
+            <TextInput
+              id="rate-value"
               value={rate}
               onChange={(e) => setRate(e.target.value)}
               inputMode="decimal"
               placeholder="34,2150"
-              className="w-32 rounded border border-neutral-300 px-2 py-1.5 tabular-nums"
+              className="w-36 tabular-nums"
             />
-          </label>
-          <button
-            type="submit"
-            disabled={save.isPending}
-            className="rounded bg-brand-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-          >
-            {save.isPending ? "Kaydediliyor…" : "Kaydet"}
-          </button>
+          </div>
+          <Button type="submit" loading={save.isPending}>
+            Kaydet
+          </Button>
         </form>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        <ErrorLine error={error ? new Error(error) : null} />
         <p className="mt-3 text-xs text-neutral-500">
           Kur satırı güncellenmez, yenisi eklenir. Geçmiş siparişler kendi
-          kurlarını taşıdığı için yeni kur onların tutarını değiştirmez.
+          kurlarını taşıdığı için yeni kur onların tutarını değiştirmez. TCMB
+          bülteni ayrıca saatlik bir bakım işiyle otomatik yazılıyor; elle
+          girilen kur en son yazıldığı için geçerli olur.
         </p>
-      </Card>
+      </Panel>
 
-      <Card className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-3 py-2">Geçerlilik</th>
-                <th className="px-3 py-2">Birim</th>
-                <th className="px-3 py-2 text-right">Kur</th>
-                <th className="px-3 py-2">Kaynak</th>
-                <th className="px-3 py-2">Giren</th>
+      <Panel title="Kur geçmişi">
+        <Table>
+          <THead>
+            <tr>
+              <Th>Geçerlilik</Th>
+              <Th>Birim</Th>
+              <Th align="right">Kur</Th>
+              <Th>Kaynak</Th>
+              <Th>Giren</Th>
+            </tr>
+          </THead>
+          <TBody>
+            {(data?.history ?? []).map((h) => (
+              <tr key={h.id}>
+                <Td className="whitespace-nowrap">{trDateTime(h.validFrom)}</Td>
+                <Td>{h.currency}</Td>
+                <Td align="right" numeric>
+                  {h.rate}
+                </Td>
+                <Td muted>{h.source}</Td>
+                <Td muted>{h.createdByName ?? "—"}</Td>
               </tr>
-            </thead>
-            <tbody>
-              {(data?.history ?? []).map((h) => (
-                <tr key={h.id} className="border-b last:border-0">
-                  <td className="whitespace-nowrap px-3 py-2">
-                    {trDateTime(h.validFrom)}
-                  </td>
-                  <td className="px-3 py-2">{h.currency}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{h.rate}</td>
-                  <td className="px-3 py-2 text-xs text-neutral-500">{h.source}</td>
-                  <td className="px-3 py-2 text-xs text-neutral-500">
-                    {h.createdByName ?? "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            ))}
+            {(data?.history ?? []).length === 0 && (
+              <TableEmpty colSpan={5} label="Henüz kur girilmemiş." />
+            )}
+          </TBody>
+        </Table>
+      </Panel>
     </div>
   );
 }

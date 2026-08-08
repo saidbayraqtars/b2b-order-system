@@ -1,7 +1,9 @@
 import { prisma } from "@repo/database";
 import { purgeAuditLogs, DEFAULT_RETENTION_DAYS } from "./audit-retention";
+import { syncTcmbRates } from "./exchange-rate-tcmb";
 import { listOrphanMedia, deleteMedia } from "./media";
 import { purgePasswordResetTokens } from "./password-reset";
+import { deliverDueReports } from "./report-delivery";
 
 // ─────────────────────────────────────────────
 // İŞ KAYIT DEFTERİ
@@ -120,11 +122,69 @@ const staleCarts: JobDefinition = {
   },
 };
 
+/**
+ * Zamanlanmış rapor gönderimi.
+ *
+ * On beş dakikada bir soruyor: vakti gelen rapor var mı? Periyodun kısa olması
+ * raporların sık gitmesi değil — her raporun kendi periyodu var; bu yalnızca
+ * "saat 08:00'de istenen rapor en geç 08:15'te gider" demek.
+ *
+ * Gönderimin kendisi rapor başına sahipleniliyor, bu iş yalnızca turu açıyor:
+ * iki kopya aynı anda çalışsa bile bir rapor bir kez gider.
+ */
+const reportDelivery: JobDefinition = {
+  name: "scheduled-report-delivery",
+  label: "Zamanlanmış raporları gönder",
+  description: "Vakti gelen kayıtlı raporları çalıştırıp e-posta ile yollar.",
+  intervalMinutes: 15,
+  run: async () => {
+    const outcomes = await deliverDueReports();
+    const failed = outcomes.filter((o) => !o.ok);
+    return {
+      summary:
+        outcomes.length === 0
+          ? "Vakti gelen rapor yok"
+          : `${outcomes.length} rapor işlendi, ${failed.length} hata`,
+      meta: { outcomes },
+    };
+  },
+};
+
+/**
+ * TCMB günlük kur bülteni.
+ *
+ * Kuru girmeyi unutmak, dövizli ürünlerin satılamaması demekti — sabah dokuzda
+ * fark edilen türden bir aksama. Saatte bir deneniyor: bülten öğleden sonra
+ * yayımlanıyor ve tek bir denemenin ağ hatasına denk gelmesi, o günü kursuz
+ * bırakırdı.
+ *
+ * Elle giriş kaldırılmadı: sabit kur ya da banka kuru kullanan satıcı için son
+ * yazılan satır geçerli olmaya devam ediyor.
+ */
+const tcmbRates: JobDefinition = {
+  name: "tcmb-exchange-rates",
+  label: "TCMB kurlarını çek",
+  description: "Merkez Bankası günlük bülteninden döviz satış kurlarını yazar.",
+  intervalMinutes: 60,
+  run: async () => {
+    const result = await syncTcmbRates();
+    return {
+      summary: `${result.written} kur yazıldı (${result.currencies.join(", ")})`,
+      meta: {
+        validFrom: result.validFrom.toISOString(),
+        currencies: result.currencies,
+      },
+    };
+  },
+};
+
 export const JOBS: readonly JobDefinition[] = [
   purgeTokens,
   auditRetention,
   orphanMedia,
   staleCarts,
+  reportDelivery,
+  tcmbRates,
 ];
 
 export function findJob(name: string): JobDefinition | undefined {

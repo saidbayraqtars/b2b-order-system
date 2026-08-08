@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-08 · Adım 43 (bakım işleri + tekrar anahtarı) sonu
+Son güncelleme: 2026-08-08 · Adım 44 (rapor otomasyonu + yönetim arayüzü Faz 3) sonu
 
 ---
 
@@ -57,6 +57,7 @@ Son güncelleme: 2026-08-08 · Adım 43 (bakım işleri + tekrar anahtarı) sonu
 | 41 | Çek & senet portföyü: tahsilattan doğar, vade/banka/durum takibi, karşılıksızda borç geri açılır | ✅ |
 | 42 | Döviz: liste fiyatı yabancı para olabilir, kur siparişe donar, defter TL kalır | ✅ |
 | 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
+| 44 | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3 | ✅ |
 
 ---
 
@@ -1521,7 +1522,83 @@ basıyordu.
   ve tahmin edilebilir bir değer gönderen biri başka firmanın kaydını okuyabilirdi.
 - Anahtarsız istek korumasız: aynı tutarı iki kez tahsil etmek meşru bir durum.
 
-## 41. Web Portal (`apps/web`)
+## 41. Rapor Otomasyonu & Yönetim Arayüzü Faz 3 (Adım 44)
+
+Rapor motoru Adım 21'den beri duruyordu ama iki soruyu cevaplayamıyordu ve
+kimseye kendiliğinden bir şey göndermiyordu.
+
+### Ziyaret raporu
+
+- `CheckIn.durationMinutes` **yazılıyor**, hesaplanmıyor: rapor motorunda ifade
+  desteği yok, türetilmiş bir sütun hem SQL hem Prisma yolunda ayrı ayrı
+  yazılırdı ve ikisi zamanla ayrışırdı. Çıkışta bir kez yazılıyor, saat geri
+  giderse (NTP düzeltmesi) sıfıra kırpılıyor — negatif dakika bir ortalamayı
+  zehirler.
+- Göç, kapanmış ziyaretleri geriye dönük dolduruyor: değer bugün türetilebilir
+  durumda ve boş bırakmak, raporun ilk ayını "kimse çalışmamış" gibi gösterirdi.
+- Veri kümesine `source` de eklendi. Ayrım önemli: telefon müşterinin kapısında
+  gerçek GPS okuyor, masadaki tarayıcı işletim sisteminin tahminini bildiriyor.
+  Bu sütun olmadan ofiste sonradan girilen ziyaret, sahada yapılanla aynı
+  görünüyordu.
+
+### Kampanya performans raporu
+
+- Yeni veri kümesi `PROMOTIONS` (`PromotionRedemption` üzerinde): kampanya × sipariş.
+  "Kaç kez kullanıldı, ne kadar indirim verdi, yanında ne kadar ciro geldi."
+- İptal edilen siparişin kullanım satırı siliniyor, dolayısıyla rapor **ayakta
+  duran** siparişleri sayıyor.
+- Siparişin kendi toplamı da taşınıyor ama **siparişin tamamının** toplamı:
+  bir siparişte iki kampanya varsa `orderGrandTotal` toplamı çift sayar.
+  Toplanması güvenli olan tek sütun `amount` — kampanyanın kendi rakamı.
+- Kapsam sipariş veri kümeleriyle aynı: plasiyer kendi portföyünü, alıcı yalnızca
+  kendi aldığı indirimleri görüyor. Bayinin bütün kampanyaları okuması, satıcının
+  başka bayilere ne verdiğini öğrenmesi olurdu.
+
+### Zamanlanmış rapor gönderimi
+
+- Tarife raporun **üstünde** (ayrı tablo değil): rapor başına en fazla bir tane ve
+  ikisi birlikte siliniyor — silinmiş bir raporu gösteren tarife, kimsenin ele
+  alması gerekmeyen bir durum.
+- Rapor **sahibinin** yetkisiyle çalışıyor, "sistem" adına değil: tanımlar
+  paylaşılabiliyor ve motor çalıştıranın kapsamını uyguluyor. Kapsamsız çalışan
+  bir rapor, plasiyerin paylaştığı sayfaya bütün firmayı doldururdu.
+- Sahiplenme iş zamanlayıcısındakiyle aynı: `scheduleNextRunAt`'i ileri atan tek
+  bir UPDATE. İki kez giden rapor, güvenilmeyen rapordur.
+- Bir raporun patlaması turu durdurmuyor; sonuç raporun kendi satırına yazılıyor
+  (`scheduleLastStatus`), böylece hata iş günlüğünde değil raporun yanında duruyor.
+- Sahibi pasifleştirilmişse gönderim **duruyor**: alıcıların gördüğünden sorumlu
+  kişi ortada yok.
+- Ek CSV: noktalı virgül ayraçlı ve BOM'lu — Türkçe Excel'de virgül ondalık
+  ayracı, virgüllü dosya tek sütuna düşüyor; BOM olmadan her "ş" bozuluyor.
+- Alıcı listesi serbest e-posta adresi: haftalık satış tablosunu bekleyen kişi
+  çoğu zaman sistemde hesabı olmayan biri (mali müşavir, patron).
+
+### TCMB kuru
+
+- Kur elle giriliyordu; girilmediği gün dövizli ürünler **satılamıyordu**.
+- Saatte bir bülten çekiliyor. Sıklığın sebebi kurun saatte bir değişmesi değil,
+  tek denemenin ağ hatasına denk gelip günü kursuz bırakmaması.
+- **Satış** kuru alınıyor (`ForexSelling`): mal alımı satış kuruyla değerlenir.
+  Bültendeki birim çarpanı bölünüyor (JPY 100 birim üzerinden yazılıyor).
+- `validFrom`, bültenin gününün İstanbul yerel başlangıcı — aynı gün ikinci kez
+  çalışmak aynı satırı güncelliyor, yenisini eklemiyor.
+- Elle giriş kaldırılmadı: sabit kur ya da banka kuru kullanan satıcı için son
+  yazılan satır geçerli olmaya devam ediyor.
+
+### Yönetim arayüzü Faz 3
+
+Faz 1 ortak katmanı, Faz 2 vitrini kurmuştu; yönetim ekranları hâlâ kendi
+Tailwind sınıflarını taşıyordu. Aynı tablo bir ekranda `text-sm`, diğerinde
+`text-xs`; iki ekranda iki farklı "seçili sekme" rengi.
+
+- Paylaşılan dile üç bileşen eklendi: `Table/THead/TBody/Th/Td/TableEmpty`
+  (tablo `<table>` olarak kalıyor, yalnızca sınıflar tek yerde), `Tabs` ve
+  `Modal` (Escape + zemine tıklama ile kapanıyor).
+- Taşınan ekranlar: çek & senet portföyü, döviz kurları, hedefler, bakım işleri,
+  etiket tasarımcısı, hazır raporlar, ürün görsel seçici, kullanıcı yöneticisi.
+- Yönetim tarafı **nötr** dilde kalıyor — vitrin kimliği buraya uygulanmıyor.
+
+## 42. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1562,7 +1639,7 @@ basıyordu.
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 42. Mobil Uygulama (`apps/mobile`)
+## 43. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1577,7 +1654,7 @@ basıyordu.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 
-## 43. API Uçları
+## 44. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -1602,6 +1679,7 @@ basıyordu.
 | GET · POST | `/api/reports/definitions` | süper admin, plasiyer, firma yöneticisi |
 | GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
 | GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
+| GET · PUT | `/api/reports/definitions/:id/schedule` | yazma: sahibi + süper admin (gönderim sahibin kapsamıyla çalışır) |
 | GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
 | POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
 | POST | `/api/admin/uploads` | süper admin (multipart görsel) |
@@ -1736,12 +1814,12 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 ### Yakın sırada
 
-- **Yönetim ekranları henüz eski dilde (Faz 3)** — Faz 1 ortak katmanı, Faz 2 vitrini kurdu. Admin'in ~14 alt ekranı (firmalar, ürünler, kategoriler, kampanyalar, belgeler, raporlar, denetim…), rapor tasarımcısı ve sipariş detayı hâlâ ad-hoc Tailwind sınıflarında: yeni kabuğun içinde oturuyorlar, token'ları (yazı tipi, koyu tema, odak halkası) otomatik alıyorlar, ama kendi buton/tablo stilleri elle değişmedi. Bunlar vitrin kimliğini **almayacak** — yönetim tarafı nötr dilde kalır.
-- **Kampanya performans raporu yok** — hangi kampanyanın ne kadar ciro/indirim ürettiği kayıtlı (`PromotionRedemption`) ama hazır bir rapor ekranı yok; rapor tasarımcısıyla da henüz veri kümesi olarak sunulmuyor. Veri zaten tutulduğu için iş, kayıt defterine bir veri kümesi eklemekten ibaret.
-- ~~**İş zamanlayıcı yok**~~ — Adım 43'te kapatıldı: uygulama içi zamanlayıcı, iş kayıt defteri, sahiplenme kuralı, `/admin/jobs` ekranı. **Zamanlanmış rapor gönderimi hâlâ yok** — runner hazır, eksik olan raporu e-postaya bağlayan iş tanımı.
+- **Yönetim ekranları Faz 3 — büyük kısmı taşındı** — Adım 44'te ortak dile `Table`, `Tabs` ve `Modal` eklendi; çek & senet, kurlar, hedefler, bakım işleri, etiket tasarımcısı, hazır raporlar, görsel seçici ve kullanıcı yöneticisi taşındı. **Kalanlar:** rapor tasarımcısının kendisi, sipariş detayı ve form ekranlarında serpiştirilmiş birkaç ham `<button>`/`<input>`. Bunlar vitrin kimliğini **almayacak** — yönetim tarafı nötr dilde kalır.
+- ~~**Kampanya performans raporu yok**~~ — Adım 44'te kapatıldı: `PROMOTIONS` veri kümesi (kampanya × sipariş), kapsamı sipariş raporlarıyla aynı. **Hazır bir kampanya ekranı hâlâ yok** — rapor tasarımcısından kuruluyor.
+- ~~**İş zamanlayıcı yok**~~ — Adım 43'te kapatıldı: uygulama içi zamanlayıcı, iş kayıt defteri, sahiplenme kuralı, `/admin/jobs` ekranı. Adım 44'te üzerine iki iş bindi: zamanlanmış rapor gönderimi ve TCMB kuru.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
-- **Ziyaret raporu yok** — `CheckIn.source`, süre ve konum artık kayıtlı ama "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" sorusunu soran bir rapor/veri kümesi yok. Rapor kayıt defterine veri kümesi olarak eklenmesi gerekiyor.
+- ~~**Ziyaret raporu yok**~~ — Adım 44'te kapatıldı: `CHECKINS` veri kümesine `source` ve saklanan `durationMinutes` eklendi; "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" artık gruplanabiliyor.
 
 ### Mobil
 
@@ -1776,10 +1854,9 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
-- **Arayüz Faz 3:** yönetim ekranlarını paylaşılan Button/Card/Badge/Panel diline taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Zamanlanmış rapor gönderimi:** runner Adım 43'te geldi; eksik olan, kayıtlı bir raporu periyodik çalıştırıp e-postayla gönderen iş tanımı.
-- **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada) ve kampanya performans raporu (`PromotionRedemption` veri kümesi olarak sunulacak).
-- **Rapor tasarımcısı v3:** zamanlanmış rapor + e-posta gönderimi, pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül).
+- **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
+- **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada). Performans raporu Adım 44'te geldi.
+- **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { ReactNode, SelectHTMLAttributes, InputHTMLAttributes } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,6 +126,60 @@ export function Panel({
       </header>
       <div className="p-4">{children}</div>
     </section>
+  );
+}
+
+/**
+ * Ortada açılan pencere.
+ *
+ * Escape kapatıyor ve arka plana tıklamak kapatıyor — ikisi de her yerde
+ * beklenen davranış ve her ekranın kendi başına yazması gereken şeyler değil.
+ * İçerik `form` olabilsin diye `children` serbest bırakılıyor; pencere yalnızca
+ * kabuk.
+ */
+export function Modal({
+  title,
+  onClose,
+  children,
+  width = "max-w-md",
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  width?: string;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      // Yalnızca zemine tıklanınca kapanıyor: içerideki bir sürükleme hareketi
+      // dışarıda bitince pencere kapanmasın.
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={cn(
+          "w-full rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-900",
+          width,
+        )}
+      >
+        <h2 className="mb-3 text-base font-semibold text-neutral-900 dark:text-neutral-50">
+          {title}
+        </h2>
+        {children}
+      </div>
+    </div>
   );
 }
 

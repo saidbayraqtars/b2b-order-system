@@ -12,6 +12,7 @@ export const ReportDatasetEnum = z.enum([
   "COMPANIES",
   "CHECKINS",
   "CASH",
+  "PROMOTIONS",
 ]);
 export type ReportDataset = z.infer<typeof ReportDatasetEnum>;
 
@@ -22,6 +23,7 @@ export const REPORT_DATASET_LABELS: Record<ReportDataset, string> = {
   COMPANIES: "Firmalar",
   CHECKINS: "Ziyaretler",
   CASH: "Kasa defteri",
+  PROMOTIONS: "Kampanya kullanımları",
 };
 
 export const AggregateEnum = z.enum([
@@ -164,6 +166,28 @@ export const updateReportDefinitionSchema = z
 export type UpdateReportDefinitionInput = z.infer<
   typeof updateReportDefinitionSchema
 >;
+
+/**
+ * Scheduled delivery of a saved report.
+ *
+ * `intervalMinutes: null` turns the schedule off — sending an explicit null is
+ * how "stop mailing this" is expressed, and it also clears the queue position.
+ * The floor of 60 is not a technical limit: a report mailed more often than
+ * hourly is a notification, and nobody reads the twentieth spreadsheet.
+ */
+export const reportScheduleSchema = z
+  .object({
+    intervalMinutes: z.number().int().min(60).max(10080).nullable(),
+    recipients: z
+      .array(z.string().email("Geçerli bir e-posta girin").max(200))
+      .max(20)
+      .default([]),
+  })
+  .refine(
+    (v) => v.intervalMinutes === null || v.recipients.length > 0,
+    "Gönderim için en az bir alıcı gerekli",
+  );
+export type ReportScheduleInput = z.infer<typeof reportScheduleSchema>;
 
 /** Ad-hoc execution — the builder previews without saving anything. */
 export const runReportSchema = z.object({

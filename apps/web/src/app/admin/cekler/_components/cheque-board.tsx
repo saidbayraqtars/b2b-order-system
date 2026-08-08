@@ -12,7 +12,26 @@ import {
 } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  LoadingState,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Modal,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Çek/senet portföyü ekranı.
 //
@@ -197,116 +216,105 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
               type="checkbox"
               checked={overdueOnly}
               onChange={(e) => setOverdueOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300"
             />
             Yalnızca vadesi geçmiş
           </label>
         </div>
       </Card>
 
-      {error ? (
-        <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      ) : null}
+      <ErrorLine error={error ? new Error(error) : null} />
 
       {isLoading ? (
         <LoadingState />
       ) : rows.length === 0 ? (
         <EmptyState label="Bu süzgeçle kâğıt yok." />
       ) : (
-        <Card className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-3 py-2">Vade</th>
-                  <th className="px-3 py-2">Firma</th>
-                  <th className="px-3 py-2">Künye</th>
-                  <th className="px-3 py-2 text-right">Tutar</th>
-                  <th className="px-3 py-2">Durum</th>
-                  <th className="px-3 py-2">İşlem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const left = daysLeft(r.dueDate);
-                  return (
-                    <tr key={r.id} className="border-b last:border-0 align-top">
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <div
-                          className={
-                            r.isOverdue ? "font-semibold text-red-600" : ""
-                          }
-                        >
-                          {trDate(r.dueDate)}
+        <Panel title="Kâğıtlar">
+          <Table>
+            <THead>
+              <tr>
+                <Th>Vade</Th>
+                <Th>Firma</Th>
+                <Th>Künye</Th>
+                <Th align="right">Tutar</Th>
+                <Th>Durum</Th>
+                <Th>İşlem</Th>
+              </tr>
+            </THead>
+            <TBody>
+              {rows.map((r) => {
+                const left = daysLeft(r.dueDate);
+                return (
+                  <tr key={r.id} className="align-top">
+                    <Td className="whitespace-nowrap">
+                      <div className={r.isOverdue ? "font-semibold text-red-600" : ""}>
+                        {trDate(r.dueDate)}
+                      </div>
+                      {left !== null &&
+                      (r.status === "PORTFOLIO" || r.status === "DEPOSITED") ? (
+                        <div className="text-xs text-neutral-500">
+                          {left < 0 ? `${-left} gün geçti` : `${left} gün kaldı`}
                         </div>
-                        {left !== null &&
-                        (r.status === "PORTFOLIO" || r.status === "DEPOSITED") ? (
-                          <div className="text-xs text-neutral-500">
-                            {left < 0 ? `${-left} gün geçti` : `${left} gün kaldı`}
-                          </div>
+                      ) : null}
+                      {r.isIncomplete ? (
+                        <Badge tone="warning">vade girilmemiş</Badge>
+                      ) : null}
+                    </Td>
+                    <Td>{r.companyName}</Td>
+                    <Td muted>
+                      <div>
+                        {CHEQUE_KIND_LABELS[r.kind]}
+                        {r.serialNumber ? ` · ${r.serialNumber}` : ""}
+                      </div>
+                      {r.bankName ? <div>{r.bankName}</div> : null}
+                      {r.drawerName ? <div>Keşideci: {r.drawerName}</div> : null}
+                      {r.endorsedTo ? <div>Ciro: {r.endorsedTo}</div> : null}
+                      {r.cashAccountName ? <div>Hesap: {r.cashAccountName}</div> : null}
+                    </Td>
+                    <Td align="right" numeric className="font-medium">
+                      {formatTRY(r.amount)}
+                    </Td>
+                    <Td>
+                      <Badge tone={STATUS_TONE[r.status]}>
+                        {CHEQUE_STATUS_LABELS[r.status]}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <div className="flex flex-wrap gap-1">
+                        {CHEQUE_TRANSITIONS[r.status].map((to) => (
+                          <Button
+                            key={to}
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setError(null);
+                              setActing({ row: r, to });
+                            }}
+                          >
+                            {ACTION_LABELS[to]}
+                          </Button>
+                        ))}
+                        {r.status === "PORTFOLIO" || r.status === "DEPOSITED" ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setError(null);
+                              setEditing(r);
+                            }}
+                          >
+                            Künye
+                          </Button>
                         ) : null}
-                        {r.isIncomplete ? (
-                          <Badge tone="warning">vade girilmemiş</Badge>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-2">{r.companyName}</td>
-                      <td className="px-3 py-2 text-xs text-neutral-600">
-                        <div>
-                          {CHEQUE_KIND_LABELS[r.kind]}
-                          {r.serialNumber ? ` · ${r.serialNumber}` : ""}
-                        </div>
-                        {r.bankName ? <div>{r.bankName}</div> : null}
-                        {r.drawerName ? <div>Keşideci: {r.drawerName}</div> : null}
-                        {r.endorsedTo ? <div>Ciro: {r.endorsedTo}</div> : null}
-                        {r.cashAccountName ? (
-                          <div>Hesap: {r.cashAccountName}</div>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">
-                        {formatTRY(r.amount)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge tone={STATUS_TONE[r.status]}>
-                          {CHEQUE_STATUS_LABELS[r.status]}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-1">
-                          {CHEQUE_TRANSITIONS[r.status].map((to) => (
-                            <button
-                              key={to}
-                              type="button"
-                              onClick={() => {
-                                setError(null);
-                                setActing({ row: r, to });
-                              }}
-                              className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
-                            >
-                              {ACTION_LABELS[to]}
-                            </button>
-                          ))}
-                          {r.status === "PORTFOLIO" || r.status === "DEPOSITED" ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setError(null);
-                                setEditing(r);
-                              }}
-                              className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
-                            >
-                              Künye
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </TBody>
+          </Table>
+        </Panel>
       )}
 
       {acting ? (
@@ -368,17 +376,14 @@ function FilterChip({
   label: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      size="sm"
+      variant={active ? "primary" : "secondary"}
+      className="rounded-full"
       onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs ${
-        active
-          ? "bg-brand-600 text-white"
-          : "border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
-      }`}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -415,91 +420,81 @@ function ActionDialog({
   const reopensDebt = to === "BOUNCED" || to === "RETURNED";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <Card className="w-full max-w-md">
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit({
-              ...(to === "CLEARED" ? { cashAccountId: accountId || null } : {}),
-              ...(to === "ENDORSED" ? { endorsedTo } : {}),
-              ...(note.trim() ? { note } : {}),
-            });
-          }}
-        >
-          <h2 className="text-base font-semibold">{ACTION_LABELS[to]}</h2>
-          <p className="text-sm text-neutral-600">
-            {row.companyName} · {formatTRY(row.amount)} ·{" "}
-            {CHEQUE_KIND_LABELS[row.kind]}
-            {row.serialNumber ? ` ${row.serialNumber}` : ""}
-          </p>
+    <Modal title={ACTION_LABELS[to]} onClose={onCancel}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({
+            ...(to === "CLEARED" ? { cashAccountId: accountId || null } : {}),
+            ...(to === "ENDORSED" ? { endorsedTo } : {}),
+            ...(note.trim() ? { note } : {}),
+          });
+        }}
+      >
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {row.companyName} · {formatTRY(row.amount)} · {CHEQUE_KIND_LABELS[row.kind]}
+          {row.serialNumber ? ` ${row.serialNumber}` : ""}
+        </p>
 
-          {to === "CLEARED" ? (
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Para hangi hesaba girdi</span>
-              <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          {to === "ENDORSED" ? (
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Kime ciro edildi</span>
-              <input
-                value={endorsedTo}
-                onChange={(e) => setEndorsedTo(e.target.value)}
-                required
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-                placeholder="Tedarikçi adı"
-              />
-            </label>
-          ) : null}
-
-          {reopensDebt ? (
-            <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Bu işlem {formatTRY(row.amount)} tutarında borcu <b>cariye geri
-              yazar</b>. Tahsilat kaydı silinmez; ekstrede her iki satır da görünür.
-            </p>
-          ) : null}
-
-          <label className="block text-sm">
-            <span className="mb-1 block text-neutral-600">Not (isteğe bağlı)</span>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded border border-neutral-300 px-2 py-1.5"
-            />
-          </label>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
+        {to === "CLEARED" ? (
+          <div>
+            <Label htmlFor="cheque-account">Para hangi hesaba girdi</Label>
+            <Select
+              id="cheque-account"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
             >
-              Vazgeç
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded bg-brand-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-            >
-              {busy ? "Kaydediliyor…" : "Onayla"}
-            </button>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
           </div>
-        </form>
-      </Card>
-    </div>
+        ) : null}
+
+        {to === "ENDORSED" ? (
+          <div>
+            <Label htmlFor="cheque-endorsed">Kime ciro edildi</Label>
+            <TextInput
+              id="cheque-endorsed"
+              value={endorsedTo}
+              onChange={(e) => setEndorsedTo(e.target.value)}
+              required
+              placeholder="Tedarikçi adı"
+            />
+          </div>
+        ) : null}
+
+        {reopensDebt ? (
+          <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+            Bu işlem {formatTRY(row.amount)} tutarında borcu <b>cariye geri
+            yazar</b>. Tahsilat kaydı silinmez; ekstrede her iki satır da görünür.
+          </p>
+        ) : null}
+
+        <div>
+          <Label htmlFor="cheque-note" hint="isteğe bağlı">
+            Not
+          </Label>
+          <TextInput
+            id="cheque-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onCancel}>
+            Vazgeç
+          </Button>
+          <Button type="submit" loading={busy}>
+            Onayla
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -523,97 +518,88 @@ function DetailsDialog({
   const [notes, setNotes] = useState(row.notes ?? "");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <Card className="w-full max-w-md">
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit({
-              serialNumber,
-              bankName,
-              branchName,
-              drawerName,
-              notes,
-              ...(dueDate ? { dueDate } : {}),
-            });
-          }}
-        >
-          <h2 className="text-base font-semibold">Künye</h2>
-          <p className="text-sm text-neutral-600">
-            {row.companyName} · {formatTRY(row.amount)}
-          </p>
+    <Modal title="Künye" onClose={onCancel}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({
+            serialNumber,
+            bankName,
+            branchName,
+            drawerName,
+            notes,
+            ...(dueDate ? { dueDate } : {}),
+          });
+        }}
+      >
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {row.companyName} · {formatTRY(row.amount)}
+        </p>
 
-          <label className="block text-sm">
-            <span className="mb-1 block text-neutral-600">Vade</span>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDue(e.target.value)}
-              className="w-full rounded border border-neutral-300 px-2 py-1.5"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Seri no</span>
-              <input
-                value={serialNumber}
-                onChange={(e) => setSerial(e.target.value)}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Banka</span>
-              <input
-                value={bankName}
-                onChange={(e) => setBank(e.target.value)}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Şube</span>
-              <input
-                value={branchName}
-                onChange={(e) => setBranch(e.target.value)}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-neutral-600">Keşideci</span>
-              <input
-                value={drawerName}
-                onChange={(e) => setDrawer(e.target.value)}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5"
-              />
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="mb-1 block text-neutral-600">Not</span>
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded border border-neutral-300 px-2 py-1.5"
-            />
-          </label>
+        <div>
+          <Label htmlFor="cheque-due">Vade</Label>
+          <TextInput
+            id="cheque-due"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDue(e.target.value)}
+          />
+        </div>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
-            >
-              Vazgeç
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded bg-brand-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-            >
-              {busy ? "Kaydediliyor…" : "Kaydet"}
-            </button>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label htmlFor="cheque-serial">Seri no</Label>
+            <TextInput
+              id="cheque-serial"
+              value={serialNumber}
+              onChange={(e) => setSerial(e.target.value)}
+            />
           </div>
-        </form>
-      </Card>
-    </div>
+          <div>
+            <Label htmlFor="cheque-bank">Banka</Label>
+            <TextInput
+              id="cheque-bank"
+              value={bankName}
+              onChange={(e) => setBank(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="cheque-branch">Şube</Label>
+            <TextInput
+              id="cheque-branch"
+              value={branchName}
+              onChange={(e) => setBranch(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="cheque-drawer">Keşideci</Label>
+            <TextInput
+              id="cheque-drawer"
+              value={drawerName}
+              onChange={(e) => setDrawer(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="cheque-notes">Not</Label>
+          <TextInput
+            id="cheque-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onCancel}>
+            Vazgeç
+          </Button>
+          <Button type="submit" loading={busy}>
+            Kaydet
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

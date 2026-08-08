@@ -3,6 +3,7 @@ import {
   CashAccountKindEnum,
   CashDirectionEnum,
   CashMovementSourceEnum,
+  FieldEntrySourceEnum,
   PaymentMethodEnum,
 } from "@repo/types";
 import type {
@@ -103,7 +104,8 @@ export interface DatasetDef {
     | "transaction"
     | "company"
     | "checkIn"
-    | "cashMovement";
+    | "cashMovement"
+    | "promotionRedemption";
   sql: DatasetSql;
   fields: Record<string, ReportFieldDef>;
   defaultSort: { field: string; direction: "asc" | "desc" };
@@ -134,6 +136,7 @@ const TRANSACTION_TYPES = ["DEBIT", "CREDIT"] as const;
 const CASH_DIRECTIONS = CashDirectionEnum.options;
 const CASH_SOURCES = CashMovementSourceEnum.options;
 const CASH_ACCOUNT_KINDS = CashAccountKindEnum.options;
+const FIELD_ENTRY_SOURCES = FieldEntrySourceEnum.options;
 
 /** A company user with no company matches nothing rather than everything. */
 const ownCompany = (ctx: ReportContext) => ctx.companyId ?? "__none__";
@@ -573,6 +576,23 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
     fields: {
       ...dateParts("checkInAt", "Ziyaret"),
       ...dateParts("checkOutAt", "Çıkış"),
+      // The two fields that turn a visit log into a visit report: how long the
+      // rep stayed, and whether the record came from a phone at the customer's
+      // door or from a browser at a desk. Without the second one, a visit typed
+      // in afterwards counts the same as one that was actually made.
+      durationMinutes: {
+        label: "Süre (dk)",
+        type: "number",
+        path: "durationMinutes",
+        format: "number",
+      },
+      source: {
+        label: "Kaynak",
+        type: "enum",
+        path: "source",
+        groupable: true,
+        enumValues: FIELD_ENTRY_SOURCES,
+      },
       note: text("Not", "note", false),
       latitude: { label: "Enlem", type: "number", path: "latitude", format: "number" },
       longitude: { label: "Boylam", type: "number", path: "longitude", format: "number" },
@@ -651,6 +671,86 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
     // and a rep only ever adds to it, so there is no narrower scope to grant —
     // anyone but a super admin sees nothing.
     scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
+  },
+
+  // Campaign performance.
+  //
+  // One row per promotion applied to one order — which is exactly the question
+  // "did this campaign work": how many times it was used, how much discount it
+  // gave away, and how much turnover came with it. Cancelling an order deletes
+  // its redemptions, so the numbers here are of orders that still stand.
+  //
+  // The order's own totals ride along so the two can be read together. They are
+  // the WHOLE order's totals, not this promotion's share: with two campaigns on
+  // one order, summing `orderGrandTotal` double-counts it. Hence the label —
+  // "Sipariş tutarı" is a fact about the order, `amount` is the campaign's own
+  // number and the only one that is safe to add up.
+  PROMOTIONS: {
+    label: "Kampanya kullanımları",
+    model: "promotionRedemption",
+    sql: {
+      table: "PromotionRedemption",
+      alias: "pr",
+      joins: [
+        { prefix: "promotion", table: "Promotion", alias: "p", on: 'p."id" = pr."promotionId"' },
+        { prefix: "order", table: "Order", alias: "o", on: 'o."id" = pr."orderId"' },
+        { prefix: "company", table: "Company", alias: "c", on: 'c."id" = pr."companyId"' },
+        {
+          prefix: "company.customerGroup",
+          table: "CustomerGroup",
+          alias: "cg",
+          on: 'cg."id" = c."customerGroupId"',
+        },
+        {
+          prefix: "company.salesRep",
+          table: "User",
+          alias: "sr",
+          on: 'sr."id" = c."salesRepId"',
+        },
+      ],
+    },
+    defaultSort: { field: "createdAt", direction: "desc" },
+    fields: {
+      ...dateParts("createdAt", "Kullanım tarihi"),
+      amount: money("İskonto tutarı", "amount"),
+      promotionName: text("Kampanya", "promotion.name", true, "Kampanya"),
+      promotionCode: text("Kupon kodu", "promotion.code", true, "Kampanya"),
+      promotionEnabled: {
+        label: "Kampanya açık",
+        type: "boolean",
+        path: "promotion.enabled",
+        groupable: true,
+        source: "Kampanya",
+      },
+      ...dateParts("promotion.startsAt", "Kampanya başlangıcı"),
+      ...dateParts("promotion.endsAt", "Kampanya bitişi"),
+      orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
+      orderStatus: {
+        label: "Sipariş durumu",
+        type: "enum",
+        path: "order.status",
+        groupable: true,
+        enumValues: ORDER_STATUSES,
+        source: "Sipariş",
+      },
+      orderGrandTotal: money("Sipariş tutarı", "order.grandTotal", "Sipariş"),
+      companyName: text("Firma", "company.name", true, "Firma"),
+      customerGroupName: text("Müşteri grubu", "company.customerGroup.name", true, "Firma"),
+      salesRepName: text("Plasiyer", "company.salesRep.name", true, "Firma"),
+    },
+    // Same shape as the order datasets: a rep sees their own portfolio, a buyer
+    // sees only the discounts they were given. A dealer reading every campaign
+    // in the system would learn what the seller offers other dealers.
+    scope: (ctx) => {
+      switch (ctx.role) {
+        case "SUPER_ADMIN":
+          return {};
+        case "SALES_REP":
+          return { company: { salesRepId: ctx.userId } };
+        default:
+          return { companyId: ownCompany(ctx) };
+      }
+    },
   },
 };
 

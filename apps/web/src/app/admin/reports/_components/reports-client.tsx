@@ -13,6 +13,24 @@ import type {
 import { PAYMENT_METHOD_LABELS, type OrderStatus } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import {
+  Card,
+  LoadingState,
+  Table,
+  TableEmpty,
+  Tabs,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  TextInput,
+} from "@/components/form";
 
 // Reporting dashboard. One shared date range drives every tab, so switching
 // tabs compares the same window instead of silently changing it.
@@ -66,61 +84,50 @@ export function ReportsClient() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs text-neutral-500">
-          Başlangıç
-          <input
+        <div>
+          <Label htmlFor="report-from">Başlangıç</Label>
+          <TextInput
+            id="report-from"
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="ml-2 h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-44"
           />
-        </label>
-        <label className="text-xs text-neutral-500">
-          Bitiş
-          <input
+        </div>
+        <div>
+          <Label htmlFor="report-to">Bitiş</Label>
+          <TextInput
+            id="report-to"
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="ml-2 h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-44"
           />
-        </label>
+        </div>
         <div className="flex gap-2">
-          {[
-            [7, "Son 7 gün"],
-            [29, "Son 30 gün"],
-            [89, "Son 90 gün"],
-          ].map(([n, label]) => (
-            <button
+          {(
+            [
+              [7, "Son 7 gün"],
+              [29, "Son 30 gün"],
+              [89, "Son 90 gün"],
+            ] as const
+          ).map(([n, label]) => (
+            <Button
               key={label}
-              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
-                setFrom(daysAgo(n as number));
+                setFrom(daysAgo(n));
                 setTo(daysAgo(0));
               }}
-              className="h-9 rounded-md border border-neutral-300 px-3 text-xs dark:border-neutral-700"
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-              tab === t.key
-                ? "border-indigo-600 font-semibold text-indigo-600"
-                : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs value={tab} onChange={setTab} items={TABS} />
 
       {tab === "sales" && <SalesTab range={range} />}
       {tab === "products" && <ProductsTab range={range} />}
@@ -157,15 +164,14 @@ function SalesTab({ range }: { range: string }) {
       </div>
 
       {d.daily.length > 0 && (
-        <section className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-          <h2 className="mb-3 text-sm font-semibold">Günlük ciro</h2>
+        <Panel title="Günlük ciro">
           {/* Bars, not a chart library — one dependency saved for five lines of CSS. */}
           <div className="flex h-32 items-end gap-1">
             {d.daily.map((p) => (
               <div
                 key={p.date}
                 title={`${p.date}: ${formatTRY(p.revenue)} (${p.orderCount} sipariş)`}
-                className="flex-1 rounded-t bg-indigo-500/80 hover:bg-indigo-600"
+                className="flex-1 rounded-t bg-brand-500/80 hover:bg-brand-600"
                 style={{
                   height: `${Math.max(4, (Number(p.revenue) / peak) * 100)}%`,
                 }}
@@ -176,11 +182,11 @@ function SalesTab({ range }: { range: string }) {
             <span>{d.daily[0]?.date}</span>
             <span>{d.daily[d.daily.length - 1]?.date}</span>
           </p>
-        </section>
+        </Panel>
       )}
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Table
+        <SummaryTable
           title="Duruma göre"
           head={["Durum", "Adet", "Tutar"]}
           rows={d.byStatus.map((s) => [
@@ -189,7 +195,7 @@ function SalesTab({ range }: { range: string }) {
             formatTRY(s.total),
           ])}
         />
-        <Table
+        <SummaryTable
           title="En çok alan firmalar"
           head={["Firma", "Sipariş", "Ciro"]}
           rows={d.topCompanies.map((c) => [
@@ -222,7 +228,7 @@ function ProductsTab({ range }: { range: string }) {
   if (q.isError) return <Failed error={q.error} />;
 
   return (
-    <Table
+    <SummaryTable
       title="En çok satan ürünler"
       head={["Ürün", "SKU", "Adet", "Sipariş", "Ciro"]}
       rows={q.data!.products.map((p) => [
@@ -247,7 +253,7 @@ function RepsTab({ range }: { range: string }) {
   if (q.isError) return <Failed error={q.error} />;
 
   return (
-    <Table
+    <SummaryTable
       title="Plasiyer performansı"
       head={[
         "Plasiyer",
@@ -292,7 +298,7 @@ function CollectionsTab({ range }: { range: string }) {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Table
+        <SummaryTable
           title="Ödeme yöntemine göre"
           head={["Yöntem", "Adet", "Tutar"]}
           rows={d.byMethod.map((m) => [
@@ -301,14 +307,14 @@ function CollectionsTab({ range }: { range: string }) {
             formatTRY(m.total),
           ])}
         />
-        <Table
+        <SummaryTable
           title="Kaydeden"
           head={["Kullanıcı", "Adet", "Tutar"]}
           rows={d.byRep.map((r) => [r.name, String(r.count), formatTRY(r.total)])}
         />
       </div>
 
-      <Table
+      <SummaryTable
         title="Hareketler"
         head={["Tarih", "Firma", "Yöntem", "Kaydeden", "Tutar"]}
         rows={d.rows.map((r) => [
@@ -359,56 +365,50 @@ function ReceivablesTab() {
         />
       </div>
 
-      <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+      <Panel title="Firma bazında yaşlandırma">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-3 py-2">Firma</th>
-              <th className="px-3 py-2">Plasiyer</th>
-              <th className="px-3 py-2 text-right">Vadesi gelmemiş</th>
-              <th className="px-3 py-2 text-right">1-30</th>
-              <th className="px-3 py-2 text-right">31-60</th>
-              <th className="px-3 py-2 text-right">61-90</th>
-              <th className="px-3 py-2 text-right">90+</th>
-              <th className="px-3 py-2 text-right">Bakiye</th>
+              <Th>Firma</Th>
+              <Th>Plasiyer</Th>
+              <Th align="right">Vadesi gelmemiş</Th>
+              <Th align="right">1-30</Th>
+              <Th align="right">31-60</Th>
+              <Th align="right">61-90</Th>
+              <Th align="right">90+</Th>
+              <Th align="right">Bakiye</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          </THead>
+          <TBody>
             {d.companies.map((c) => (
               <tr key={c.companyId}>
-                <td className="px-3 py-2">
+                <Td>
                   <Link
                     href={`/admin/companies/${c.companyId}/statement`}
-                    className="underline"
+                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {c.companyName}
                   </Link>
-                </td>
-                <td className="px-3 py-2 text-neutral-500">
-                  {c.salesRepName ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td muted>{c.salesRepName ?? "—"}</Td>
+                <Td align="right" numeric>
                   {formatTRY(c.buckets.current)}
-                </td>
+                </Td>
                 <Aged value={c.buckets.d1_30} />
                 <Aged value={c.buckets.d31_60} />
                 <Aged value={c.buckets.d61_90} />
                 <Aged value={c.buckets.d90_plus} />
-                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                <Td align="right" numeric className="font-medium">
                   {formatTRY(c.balance)}
-                </td>
+                </Td>
               </tr>
             ))}
             {d.companies.length === 0 && (
-              <tr>
-                <td className="px-3 py-6 text-center text-neutral-500" colSpan={8}>
-                  Kayıt yok.
-                </td>
-              </tr>
+              <TableEmpty colSpan={8} label="Kayıt yok." />
             )}
-          </tbody>
-        </table>
-      </section>
+          </TBody>
+        </Table>
+      </Panel>
 
       <p className="text-xs text-neutral-500">
         Tahsilatlar en eski borçtan başlayarak (FIFO) mahsup edilir; vade, borcun
@@ -421,11 +421,9 @@ function ReceivablesTab() {
 function Aged({ value }: { value: string }) {
   const n = Number(value);
   return (
-    <td
-      className={`px-3 py-2 text-right tabular-nums ${n > 0 ? "text-red-600" : "text-neutral-400"}`}
-    >
+    <Td align="right" numeric className={n > 0 ? "text-red-600" : "text-neutral-400"}>
       {n > 0 ? formatTRY(value) : "—"}
-    </td>
+    </Td>
   );
 }
 
@@ -443,7 +441,7 @@ function Stat({
   danger?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <Card className="p-3">
       <p className="text-xs text-neutral-500">{label}</p>
       <p
         className={`tabular-nums ${strong ? "text-lg font-bold" : "text-lg"} ${
@@ -452,11 +450,17 @@ function Stat({
       >
         {value}
       </p>
-    </div>
+    </Card>
   );
 }
 
-function Table({
+/**
+ * Başlıklı özet tablosu: ilk sütun etiket, geri kalanı sayı.
+ *
+ * Hücreler sunucudan biçimlenmiş metin olarak geliyor, bu yüzden içerik
+ * `string[][]` — tablo hiçbir şeyi yorumlamıyor, yalnızca hizalıyor.
+ */
+function SummaryTable({
   title,
   head,
   rows,
@@ -466,57 +470,40 @@ function Table({
   rows: string[][];
 }) {
   return (
-    <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-      <header className="border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold">{title}</h2>
-      </header>
-      <table className="w-full text-left text-sm">
-        <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+    <Panel title={title}>
+      <Table>
+        <THead>
           <tr>
             {head.map((h, i) => (
-              <th key={h} className={`px-3 py-2 ${i === 0 ? "" : "text-right"}`}>
+              <Th key={h} align={i === 0 ? "left" : "right"}>
                 {h}
-              </th>
+              </Th>
             ))}
           </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        </THead>
+        <TBody>
           {rows.map((r, ri) => (
             <tr key={ri}>
               {r.map((cell, ci) => (
-                <td
-                  key={ci}
-                  className={`px-3 py-2 ${ci === 0 ? "" : "text-right tabular-nums"}`}
-                >
+                <Td key={ci} align={ci === 0 ? "left" : "right"} numeric={ci > 0}>
                   {cell}
-                </td>
+                </Td>
               ))}
             </tr>
           ))}
           {rows.length === 0 && (
-            <tr>
-              <td
-                className="px-3 py-6 text-center text-neutral-500"
-                colSpan={head.length}
-              >
-                Bu aralıkta kayıt yok.
-              </td>
-            </tr>
+            <TableEmpty colSpan={head.length} label="Bu aralıkta kayıt yok." />
           )}
-        </tbody>
-      </table>
-    </section>
+        </TBody>
+      </Table>
+    </Panel>
   );
 }
 
 function Loading() {
-  return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+  return <LoadingState />;
 }
 
 function Failed({ error }: { error: unknown }) {
-  return (
-    <p className="text-sm text-red-600">
-      {error instanceof Error ? error.message : "Rapor yüklenemedi"}
-    </p>
-  );
+  return <ErrorLine error={error ?? new Error("Rapor yüklenemedi")} />;
 }

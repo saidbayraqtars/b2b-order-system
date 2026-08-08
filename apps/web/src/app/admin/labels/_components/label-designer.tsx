@@ -15,7 +15,15 @@ import {
   type LabelTemplateKind,
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { Badge, Card, LoadingState } from "@/components/ui";
+import { Badge, LoadingState, Tabs } from "@/components/ui";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Etiket / fiş tasarımcısı.
 //
@@ -137,89 +145,72 @@ export function LabelDesigner() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {KINDS.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setKind(k)}
-            className={
-              k === kind
-                ? "h-8 rounded-md bg-brand-600 px-3 text-xs font-medium text-white"
-                : "h-8 rounded-md border border-neutral-300 px-3 text-xs dark:border-neutral-700"
-            }
-          >
-            {LABEL_TEMPLATE_KIND_LABELS[k]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={kind}
+        onChange={setKind}
+        items={KINDS.map((k) => ({
+          key: k,
+          label: LABEL_TEMPLATE_KIND_LABELS[k],
+        }))}
+      />
 
       {list.isLoading ? (
         <LoadingState />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           {(list.data?.templates ?? []).map((t) => (
-            <button
+            <Button
               key={t.id}
-              type="button"
+              size="sm"
+              variant={t.id === selectedId ? "primary" : "secondary"}
               onClick={() => {
                 setSelectedId(t.id);
                 setDraft({ ...t, blocks: [...t.blocks] });
               }}
-              className={
-                t.id === selectedId
-                  ? "h-8 rounded-md border border-brand-500 bg-brand-50 px-3 text-xs text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
-                  : "h-8 rounded-md border border-neutral-300 px-3 text-xs dark:border-neutral-700"
-              }
             >
               {t.name}
               {t.isDefault && " ★"}
-            </button>
+            </Button>
           ))}
-          <button
-            type="button"
-            onClick={startFromDefault}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-dashed border-neutral-400 px-3 text-xs"
-          >
+          <Button size="sm" variant="ghost" onClick={startFromDefault}>
             <Plus className="h-3.5 w-3.5" />
             Hazır tasarımdan yeni
-          </button>
+          </Button>
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <ErrorLine error={error ? new Error(error) : null} />
 
       {draft && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-3">
-            <Card>
+            <Panel title="Tasarım">
               <div className="grid gap-3 sm:grid-cols-4">
-                <label className="block sm:col-span-2">
-                  <span className="mb-1 block text-xs text-neutral-500">Ad</span>
-                  <input
+                <div className="sm:col-span-2">
+                  <Label htmlFor="tpl-name">Ad</Label>
+                  <TextInput
+                    id="tpl-name"
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                   />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-neutral-500">
-                    Genişlik (mm)
-                  </span>
-                  <input
+                </div>
+                <div>
+                  <Label htmlFor="tpl-width">Genişlik (mm)</Label>
+                  <TextInput
+                    id="tpl-width"
                     type="number"
                     value={draft.widthMm}
                     onChange={(e) =>
                       setDraft({ ...draft, widthMm: Number(e.target.value) })
                     }
-                    className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                   />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-neutral-500">
-                    Yükseklik (boş = rulo)
-                  </span>
-                  <input
+                </div>
+                <div>
+                  <Label htmlFor="tpl-height" hint="boş = rulo">
+                    Yükseklik
+                  </Label>
+                  <TextInput
+                    id="tpl-height"
                     type="number"
                     value={draft.heightMm ?? ""}
                     onChange={(e) =>
@@ -228,9 +219,8 @@ export function LabelDesigner() {
                         heightMm: e.target.value ? Number(e.target.value) : null,
                       })
                     }
-                    className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                   />
-                </label>
+                </div>
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
@@ -241,6 +231,7 @@ export function LabelDesigner() {
                     onChange={(e) =>
                       setDraft({ ...draft, isDefault: e.target.checked })
                     }
+                    className="h-4 w-4 rounded border-neutral-300"
                   />
                   Bu türün varsayılanı
                 </label>
@@ -251,18 +242,18 @@ export function LabelDesigner() {
                     onChange={(e) =>
                       setDraft({ ...draft, isActive: e.target.checked })
                     }
+                    className="h-4 w-4 rounded border-neutral-300"
                   />
                   Aktif
                 </label>
               </div>
-            </Card>
+            </Panel>
 
-            <Card>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">
-                  Satırlar ({draft.blocks.length})
-                </h2>
-                <select
+            <Panel
+              title={`Satırlar (${draft.blocks.length})`}
+              action={
+                <Select
+                  aria-label="Satır ekle"
                   value=""
                   onChange={(e) => {
                     if (!e.target.value) return;
@@ -274,7 +265,7 @@ export function LabelDesigner() {
                       ],
                     });
                   }}
-                  className="h-8 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                  className="h-8 w-auto text-xs"
                 >
                   <option value="">Satır ekle…</option>
                   {BLOCK_KINDS.map((b) => (
@@ -282,9 +273,9 @@ export function LabelDesigner() {
                       {LABEL_BLOCK_LABELS[b]}
                     </option>
                   ))}
-                </select>
-              </div>
-
+                </Select>
+              }
+            >
               <ul className="space-y-2">
                 {draft.blocks.map((b, i) => (
                   <li
@@ -298,117 +289,118 @@ export function LabelDesigner() {
                         b.kind === "barcode" ||
                         b.kind === "qr" ||
                         b.kind === "signature") && (
-                        <input
+                        <TextInput
                           value={b.value ?? ""}
                           onChange={(e) => patchBlock(i, { value: e.target.value })}
                           placeholder="Metin ya da {{alan}}"
-                          className="h-8 min-w-[12rem] flex-1 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                          className="h-8 min-w-[12rem] flex-1"
                         />
                       )}
 
-                      <select
+                      <Select
+                        aria-label="Hizalama"
                         value={b.align}
                         onChange={(e) =>
                           patchBlock(i, {
                             align: e.target.value as LabelBlock["align"],
                           })
                         }
-                        className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="h-8 w-auto text-xs"
                       >
                         <option value="left">sol</option>
                         <option value="center">orta</option>
                         <option value="right">sağ</option>
-                      </select>
+                      </Select>
 
-                      <select
+                      <Select
+                        aria-label="Boyut"
                         value={b.scale}
                         onChange={(e) =>
                           patchBlock(i, {
                             scale: Number(e.target.value) as LabelBlock["scale"],
                           })
                         }
-                        className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="h-8 w-auto text-xs"
                       >
                         <option value={1}>1x</option>
                         <option value={2}>2x</option>
                         <option value={3}>3x</option>
-                      </select>
+                      </Select>
 
                       <label className="flex items-center gap-1 text-xs">
                         <input
                           type="checkbox"
                           checked={b.bold}
                           onChange={(e) => patchBlock(i, { bold: e.target.checked })}
+                          className="h-4 w-4 rounded border-neutral-300"
                         />
                         kalın
                       </label>
 
                       <span className="ml-auto flex items-center gap-1">
-                        <button
-                          type="button"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           aria-label="Yukarı"
                           onClick={() => moveBlock(i, -1)}
-                          className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
                         >
                           <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           aria-label="Aşağı"
                           onClick={() => moveBlock(i, 1)}
-                          className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
                         >
                           <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           aria-label="Sil"
+                          className="text-red-600"
                           onClick={() =>
                             setDraft({
                               ...draft,
                               blocks: draft.blocks.filter((_, j) => j !== i),
                             })
                           }
-                          className="rounded border border-neutral-300 p-1 text-red-600 dark:border-neutral-700"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                       </span>
                     </div>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Panel>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={() => save.mutate()}
-                disabled={save.isPending || draft.blocks.length === 0}
-                className="h-9 rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                disabled={draft.blocks.length === 0}
+                loading={save.isPending}
               >
-                {save.isPending ? "Kaydediliyor…" : "Kaydet"}
-              </button>
+                Kaydet
+              </Button>
               {draft.id && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  className="text-red-600"
                   onClick={() => remove.mutate(draft.id)}
-                  className="h-9 rounded-md px-3 text-sm text-red-600 hover:underline"
                 >
                   Sil
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           <aside className="space-y-3">
-            <Card>
-              <h2 className="mb-2 text-sm font-semibold">Önizleme</h2>
+            <Panel title="Önizleme">
               <Preview template={draft} />
-            </Card>
+            </Panel>
 
-            <Card>
-              <h2 className="mb-2 text-sm font-semibold">Kullanılabilir alanlar</h2>
+            <Panel title="Kullanılabilir alanlar">
               <p className="mb-2 text-xs text-neutral-500">
                 Metnin içine yazın; basımda dolar. Bu türde dolmayan alanlar
                 listede yok.
@@ -423,7 +415,7 @@ export function LabelDesigner() {
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Panel>
           </aside>
         </div>
       )}

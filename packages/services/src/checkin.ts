@@ -24,6 +24,8 @@ export interface CheckInRecord {
   longitude: number | null;
   checkInAt: string;
   checkOutAt: string | null;
+  /** Set at check-out; null while the visit is open. */
+  durationMinutes: number | null;
   note: string | null;
   source: FieldEntrySource;
 }
@@ -36,6 +38,7 @@ function toRecord(row: {
   longitude: number | null;
   checkInAt: Date;
   checkOutAt: Date | null;
+  durationMinutes: number | null;
   note: string | null;
   source: FieldEntrySource;
 }): CheckInRecord {
@@ -47,6 +50,7 @@ function toRecord(row: {
     longitude: row.longitude,
     checkInAt: row.checkInAt.toISOString(),
     checkOutAt: row.checkOutAt?.toISOString() ?? null,
+    durationMinutes: row.durationMinutes,
     note: row.note,
     source: row.source,
   };
@@ -60,6 +64,7 @@ const SELECT = {
   longitude: true,
   checkInAt: true,
   checkOutAt: true,
+  durationMinutes: true,
   note: true,
   source: true,
 } as const;
@@ -131,7 +136,7 @@ export async function checkOut(
 ): Promise<CheckInRecord> {
   const existing = await prisma.checkIn.findUnique({
     where: { id: checkInId },
-    select: { id: true, salesRepId: true, checkOutAt: true },
+    select: { id: true, salesRepId: true, checkInAt: true, checkOutAt: true },
   });
   if (!existing) {
     throw new BusinessError("CHECKIN_NOT_FOUND", "Ziyaret kaydı bulunamadı");
@@ -143,9 +148,20 @@ export async function checkOut(
     throw new BusinessError("INVALID_STATE", "Ziyaret zaten kapatılmış");
   }
 
+  // Duration is written here rather than derived on read: the reporting engine
+  // has no computed columns, so "average visit length per rep" has to be an
+  // ordinary column it can group and average. Clamped at zero because a clock
+  // that went backwards (an NTP correction mid-visit) must not produce a
+  // negative minute count that then poisons an average.
+  const closedAt = new Date();
+  const minutes = Math.max(
+    0,
+    Math.floor((closedAt.getTime() - existing.checkInAt.getTime()) / 60_000),
+  );
+
   const row = await prisma.checkIn.update({
     where: { id: checkInId },
-    data: { checkOutAt: new Date() },
+    data: { checkOutAt: closedAt, durationMinutes: minutes },
     select: SELECT,
   });
   return toRecord(row);

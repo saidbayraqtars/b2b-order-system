@@ -12,7 +12,25 @@ import {
 } from "@repo/types";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  LoadingState,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Temsilci hedefleri.
 //
@@ -127,108 +145,103 @@ export function TargetManager({ reps }: { reps: Rep[] }) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold">Hedef koy</h2>
+      <Panel title="Hedef koy">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Temsilci</span>
-            <select
+          <div>
+            <Label htmlFor="target-rep">Temsilci</Label>
+            <Select
+              id="target-rep"
               value={repId}
               onChange={(e) => setRepId(e.target.value)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
               {reps.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Ölçü</span>
-            <select
+          <div>
+            <Label htmlFor="target-metric">Ölçü</Label>
+            <Select
+              id="target-metric"
               value={metric}
               onChange={(e) => setMetric(e.target.value as TargetMetric)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
               {METRICS.map((m) => (
                 <option key={m} value={m}>
                   {TARGET_METRIC_LABELS[m]}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Dönem</span>
-            <select
+          <div>
+            <Label htmlFor="target-period">Dönem</Label>
+            <Select
+              id="target-period"
               value={period}
               onChange={(e) => setPeriod(e.target.value as TargetPeriod)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
               {PERIODS.map((p) => (
                 <option key={p} value={p}>
                   {TARGET_PERIOD_LABELS[p]}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
-              Dönem içinde bir gün
-            </span>
-            <input
+          <div>
+            <Label htmlFor="target-start">Dönem içinde bir gün</Label>
+            <TextInput
+              id="target-start"
               type="date"
               value={periodStart}
               onChange={(e) => setPeriodStart(e.target.value)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
+          <div>
+            <Label htmlFor="target-value">
               {metric === "REVENUE" ? "Tutar" : "Ziyaret adedi"}
-            </span>
-            <input
+            </Label>
+            <TextInput
+              id="target-value"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               inputMode="decimal"
               placeholder={metric === "REVENUE" ? "250000" : "80"}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Not</span>
-            <input
+          <div>
+            <Label htmlFor="target-note">Not</Label>
+            <TextInput
+              id="target-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
-          </label>
+          </div>
         </div>
 
         <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
+          <Button
             onClick={() => save.mutate()}
-            disabled={!value || save.isPending}
-            className="h-9 rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            disabled={!value}
+            loading={save.isPending}
           >
-            {save.isPending ? "Kaydediliyor…" : "Kaydet"}
-          </button>
+            Kaydet
+          </Button>
           <p className="text-xs text-neutral-500">
             Aynı dönem için ikinci hedef açılmaz; değer güncellenir.
           </p>
         </div>
 
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-      </Card>
+        <ErrorLine error={error ? new Error(error) : null} />
+      </Panel>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold">Bu dönemin durumu</h2>
+      <Panel title="Bu dönemin durumu">
         {progress.isLoading ? (
           <LoadingState />
         ) : (progress.data?.progress.length ?? 0) === 0 ? (
@@ -240,57 +253,53 @@ export function TargetManager({ reps }: { reps: Rep[] }) {
             ))}
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold">Tanımlı hedefler</h2>
+      <Panel title="Tanımlı hedefler">
         {targets.isLoading ? (
           <LoadingState />
         ) : rows.length === 0 ? (
           <EmptyState label="Henüz hedef tanımlanmadı." />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
-                <tr>
-                  <th className="px-3 py-2">Temsilci</th>
-                  <th className="px-3 py-2">Ölçü</th>
-                  <th className="px-3 py-2">Dönem</th>
-                  <th className="px-3 py-2">Başlangıç</th>
-                  <th className="px-3 py-2 text-right">Hedef</th>
-                  <th className="px-3 py-2">Koyan</th>
-                  <th className="px-3 py-2" />
+          <Table>
+            <THead>
+              <tr>
+                <Th>Temsilci</Th>
+                <Th>Ölçü</Th>
+                <Th>Dönem</Th>
+                <Th>Başlangıç</Th>
+                <Th align="right">Hedef</Th>
+                <Th>Koyan</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {rows.map((t) => (
+                <tr key={t.id}>
+                  <Td>{t.salesRepName}</Td>
+                  <Td>{TARGET_METRIC_LABELS[t.metric]}</Td>
+                  <Td>{TARGET_PERIOD_LABELS[t.period]}</Td>
+                  <Td numeric>{trDate(t.periodStart)}</Td>
+                  <Td align="right" numeric>
+                    {formatValue(t.metric, t.targetValue)}
+                  </Td>
+                  <Td muted>{t.createdByName}</Td>
+                  <Td align="right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600"
+                      onClick={() => remove.mutate(t.id)}
+                    >
+                      Kaldır
+                    </Button>
+                  </Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {rows.map((t) => (
-                  <tr key={t.id}>
-                    <td className="px-3 py-2">{t.salesRepName}</td>
-                    <td className="px-3 py-2">{TARGET_METRIC_LABELS[t.metric]}</td>
-                    <td className="px-3 py-2">{TARGET_PERIOD_LABELS[t.period]}</td>
-                    <td className="px-3 py-2 tabular-nums">
-                      {trDate(t.periodStart)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatValue(t.metric, t.targetValue)}
-                    </td>
-                    <td className="px-3 py-2 text-neutral-500">{t.createdByName}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => remove.mutate(t.id)}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        Kaldır
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }

@@ -17,7 +17,7 @@ import {
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
 import { PermissionPicker } from "@/components/permission-picker";
-import { cn } from "@/lib/utils";
+import { Tabs } from "@/components/ui";
 
 /** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
 function samePermissionSet(a: readonly Permission[], b: readonly Permission[]): boolean {
@@ -119,31 +119,34 @@ export function UserManager({
       )}
 
       {showFamilies && (
-        <div className="mb-3 flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
-          {(
-            [
-              ["ALL", "Tümü", all.length],
-              ["SELLER", ROLE_FAMILY_LABELS.SELLER, countOf("SELLER")],
-              ["DEALER", ROLE_FAMILY_LABELS.DEALER, countOf("DEALER")],
-              ["FIELD", ROLE_FAMILY_LABELS.FIELD, countOf("FIELD")],
-              ["DELIVERY", ROLE_FAMILY_LABELS.DELIVERY, countOf("DELIVERY")],
-            ] as const
-          ).map(([key, label, count]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFamily(key)}
-              className={cn(
-                "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                family === key
-                  ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
-                  : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
-              )}
-            >
-              {label}
-              <span className="ml-1.5 text-xs text-neutral-400">{count}</span>
-            </button>
-          ))}
+        <div className="mb-3">
+          <Tabs
+            value={family}
+            onChange={setFamily}
+            items={[
+              { key: "ALL" as const, label: "Tümü", count: all.length },
+              {
+                key: "SELLER" as const,
+                label: ROLE_FAMILY_LABELS.SELLER,
+                count: countOf("SELLER"),
+              },
+              {
+                key: "DEALER" as const,
+                label: ROLE_FAMILY_LABELS.DEALER,
+                count: countOf("DEALER"),
+              },
+              {
+                key: "FIELD" as const,
+                label: ROLE_FAMILY_LABELS.FIELD,
+                count: countOf("FIELD"),
+              },
+              {
+                key: "DELIVERY" as const,
+                label: ROLE_FAMILY_LABELS.DELIVERY,
+                count: countOf("DELIVERY"),
+              },
+            ]}
+          />
         </div>
       )}
 

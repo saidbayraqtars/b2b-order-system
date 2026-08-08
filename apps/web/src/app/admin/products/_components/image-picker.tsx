@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Upload, X } from "lucide-react";
+import { Button, ErrorLine, TextArea } from "@/components/form";
 
 interface Props {
   /** One URL per line — the shape the product form already stores. */
@@ -68,20 +70,21 @@ export function ImagePicker({ value, onChange }: Props) {
             if (e.target.files?.length) void upload(e.target.files);
           }}
         />
-        <button
-          type="button"
-          disabled={busy}
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={busy}
           onClick={() => fileInput.current?.click()}
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium disabled:opacity-60 dark:border-neutral-700"
         >
-          {busy ? "Yükleniyor…" : "Görsel yükle"}
-        </button>
+          <Upload className="h-3.5 w-3.5" />
+          Görsel yükle
+        </Button>
         <span className="text-xs text-neutral-500">
           JPEG, PNG, WebP, AVIF, GIF · en fazla 5 MB
         </span>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <ErrorLine error={error ? new Error(error) : null} />
 
       {urls.length > 0 && (
         <ul className="flex flex-wrap gap-3">
@@ -98,10 +101,11 @@ export function ImagePicker({ value, onChange }: Props) {
               <button
                 type="button"
                 title="Kaldır"
+                aria-label="Görseli kaldır"
                 onClick={() => setUrls(urls.filter((_, i) => i !== index))}
-                className="absolute -right-2 -top-2 h-5 w-5 rounded-full bg-neutral-900 text-xs text-white dark:bg-white dark:text-neutral-900"
+                className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm hover:bg-red-600 dark:bg-white dark:text-neutral-900 dark:hover:bg-red-500 dark:hover:text-white"
               >
-                ×
+                <X className="h-3 w-3" />
               </button>
               {index === 0 && (
                 <span className="absolute bottom-0 left-0 rounded-br-md rounded-tr-md bg-neutral-900/80 px-1 text-[10px] text-white">
@@ -113,12 +117,12 @@ export function ImagePicker({ value, onChange }: Props) {
         </ul>
       )}
 
-      <textarea
+      <TextArea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://… (her satıra bir URL)"
         rows={3}
-        className="w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900"
+        className="font-mono text-xs"
       />
     </div>
   );

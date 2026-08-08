@@ -60,6 +60,21 @@ suite("zamanlayıcı", () => {
     await prisma.company.deleteMany({ where: { id: companyId } });
     await prisma.user.deleteMany({ where: { id: repId } });
     await prisma.jobRun.deleteMany({ where: { name: { startsWith: "test-" } } });
+
+    // Tarifeler kayıt defterindeki hâline döndürülüyor. Testler periyot
+    // kısaltıp iş kapatıyor ve bunlar operatör ayarı olarak kalıcı — takım
+    // kendinden sonra geliştirme kurulumunu saatte bir çalışan bir işle
+    // bırakmamalı.
+    for (const job of JOBS) {
+      await prisma.jobSchedule.updateMany({
+        where: { name: job.name },
+        data: {
+          isEnabled: true,
+          intervalMinutes: job.intervalMinutes,
+          nextRunAt: new Date(Date.now() + job.intervalMinutes * 60_000),
+        },
+      });
+    }
   });
 
   it("kayıt defterindeki her iş için satır açılır", async () => {
@@ -182,15 +197,25 @@ suite("zamanlayıcı", () => {
     // Sahiplenmenin tamamı bu: ilk tur `nextRunAt`'i ileri atıyor, ikinci tur
     // sıfır satır güncelliyor ve hiç başlamıyor. İki kopya çalıştığında denetim
     // kaydının iki kez budanmasını engelleyen mekanizma.
+    //
+    // Tur **gerçekten** iş çalıştırıyor, bu yüzden yalnızca bir tanesi açık
+    // bırakılıyor: kayıt defterindeki işlerin arasında dışarı ağ isteği atan
+    // (TCMB) ve e-posta gönderen (zamanlanmış rapor) işler var; hepsini açık
+    // bırakan bir test, sahiplenmeyi sınamak için üretim verisine dokunurdu.
+    const [safe] = JOBS;
+    await prisma.jobSchedule.updateMany({ data: { isEnabled: false } });
     await prisma.jobSchedule.updateMany({
-      data: { nextRunAt: new Date(Date.now() - 1000) },
+      where: { name: safe!.name },
+      data: { isEnabled: true, nextRunAt: new Date(Date.now() - 1000) },
     });
 
     const first = await tick();
     const second = await tick();
 
-    expect(first.length).toBeGreaterThan(0);
+    expect(first.map((o) => o.name)).toEqual([safe!.name]);
     expect(second).toEqual([]);
+
+    await prisma.jobSchedule.updateMany({ data: { isEnabled: true } });
   });
   // Aynı fixture'ı paylaşıyor: ayrı bir `describe` bloğu olsaydı yukarıdaki
   // `afterAll` firmayı silmiş olurdu ve buradaki testler firmasız kalırdı.

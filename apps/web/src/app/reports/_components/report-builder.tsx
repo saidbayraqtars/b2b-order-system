@@ -42,6 +42,10 @@ const ENUM_LABELS: Record<string, string> = {
   ...PAYMENT_METHOD_LABELS,
   DEBIT: "Borç",
   CREDIT: "Alacak",
+  // Ziyaret kaydını hangi uygulama yazdı — sahada telefonla mı, masada
+  // tarayıcıyla mı. Ziyaret raporunun ayırt edici sütunu.
+  MOBILE: "Mobil (saha)",
+  WEB: "Web",
 };
 
 const FORMATS: ColumnFormat[] = [

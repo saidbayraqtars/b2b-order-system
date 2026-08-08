@@ -110,3 +110,157 @@ export function EmptyState({ label }: { label: string }) {
     </div>
   );
 }
+
+/**
+ * Sekme şeridi.
+ *
+ * İki ekranda iki farklı renkle yazılmıştı (biri indigo, biri marka rengi) —
+ * aynı arayüzde iki "seçili sekme" görüntüsü, ekranların ayrı ayrı yazıldığını
+ * ele veren türden bir tutarsızlık.
+ */
+export function Tabs<T extends string>({
+  value,
+  onChange,
+  items,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  items: ReadonlyArray<{ key: T; label: string; count?: number }>;
+}) {
+  return (
+    <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onChange(item.key)}
+          aria-current={value === item.key ? "page" : undefined}
+          className={cn(
+            "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+            value === item.key
+              ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
+              : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
+          )}
+        >
+          {item.label}
+          {item.count !== undefined && (
+            <span className="ml-1.5 text-xs text-neutral-400">{item.count}</span>
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLO
+// ─────────────────────────────────────────────
+//
+// Yönetim panelinin yarısı tablo ve her ekran kendi başlık/hücre sınıflarını
+// yazıyordu: aynı tablo bir ekranda `text-sm`, diğerinde `text-xs`, birinde
+// koyu tema satır ayracı var, diğerinde yok. Aşağıdakiler bileşen kütüphanesi
+// değil — `<table>`'ın kendisi yerinde duruyor, yalnızca sınıflar tek yerde.
+
+/** Yatay kaydırma kabuğu + tablo. Dar ekranda sayfayı değil tabloyu kaydırır. */
+export function Table({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table className={cn("w-full text-left text-sm", className)}>{children}</table>
+    </div>
+  );
+}
+
+export function THead({ children }: { children: ReactNode }) {
+  return (
+    <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800">
+      {children}
+    </thead>
+  );
+}
+
+export function TBody({ children }: { children: ReactNode }) {
+  return (
+    <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+      {children}
+    </tbody>
+  );
+}
+
+type CellAlign = "left" | "right" | "center";
+
+const ALIGN: Record<CellAlign, string> = {
+  left: "text-left",
+  right: "text-right",
+  center: "text-center",
+};
+
+export function Th({
+  children,
+  align = "left",
+  className,
+}: {
+  children?: ReactNode;
+  align?: CellAlign;
+  className?: string;
+}) {
+  return (
+    <th className={cn("whitespace-nowrap px-3 py-2 font-medium", ALIGN[align], className)}>
+      {children}
+    </th>
+  );
+}
+
+export function Td({
+  children,
+  align = "left",
+  /** Sayı sütunu: eşit genişlikli rakamlar, aksi hâlde tutarlar zıplıyor. */
+  numeric = false,
+  muted = false,
+  className,
+  colSpan,
+}: {
+  children?: ReactNode;
+  align?: CellAlign;
+  numeric?: boolean;
+  muted?: boolean;
+  className?: string;
+  colSpan?: number;
+}) {
+  return (
+    <td
+      colSpan={colSpan}
+      className={cn(
+        "px-3 py-2",
+        ALIGN[align],
+        numeric && "tabular-nums",
+        muted && "text-xs text-neutral-500",
+        className,
+      )}
+    >
+      {children}
+    </td>
+  );
+}
+
+/** Tablo içi boş durum — `EmptyState`'in tek hücreye sığan hâli. */
+export function TableEmpty({
+  colSpan,
+  label,
+}: {
+  colSpan: number;
+  label: string;
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-neutral-400">
+        {label}
+      </td>
+    </tr>
+  );
+}

@@ -12,12 +12,24 @@ import nodemailer, { type Transporter } from "nodemailer";
 // the order it was announcing; the failure is logged and, where it matters,
 // recorded in the audit trail by the caller.
 
+/**
+ * A file to send along. Built in memory on purpose: everything we attach is a
+ * report we just generated, and writing it to disk first would mean a temp file
+ * to clean up and a second thing that can fail.
+ */
+export interface MailAttachment {
+  filename: string;
+  content: string | Buffer;
+  contentType?: string;
+}
+
 export interface MailMessage {
   to: string | string[];
   subject: string;
   /** Plain-text body. Always sent — some clients never render the HTML. */
   text: string;
   html?: string;
+  attachments?: readonly MailAttachment[];
 }
 
 export type MailTransportKind = "smtp" | "console";
@@ -64,6 +76,10 @@ function transporter(): Transporter {
   return cached;
 }
 
+function byteLength(content: string | Buffer): number {
+  return typeof content === "string" ? Buffer.byteLength(content, "utf8") : content.length;
+}
+
 export async function sendMail(message: MailMessage): Promise<MailResult> {
   const recipients = Array.isArray(message.to) ? message.to : [message.to];
   const to = recipients.filter((r) => r && r.includes("@"));
@@ -77,6 +93,13 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
         "── E-POSTA (konsol taşıyıcısı — SMTP_HOST tanımlı değil) ──",
         `Kime : ${to.join(", ")}`,
         `Konu : ${message.subject}`,
+        ...(message.attachments?.length
+          ? [
+              `Ek   : ${message.attachments
+                .map((a) => `${a.filename} (${byteLength(a.content)} bayt)`)
+                .join(", ")}`,
+            ]
+          : []),
         message.text,
         "──────────────────────────────────────────────",
       ].join("\n"),
@@ -91,6 +114,9 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
       subject: message.subject,
       text: message.text,
       ...(message.html ? { html: message.html } : {}),
+      ...(message.attachments?.length
+        ? { attachments: message.attachments.map((a) => ({ ...a })) }
+        : {}),
     });
     return { ok: true, transport: "smtp", messageId: info.messageId };
   } catch (err) {

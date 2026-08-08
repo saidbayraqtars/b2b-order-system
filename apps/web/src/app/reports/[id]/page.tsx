@@ -3,6 +3,7 @@ import { getReportDefinition } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { REPORT_BUILDER_ROLES, reportContext } from "@/lib/report-context";
 import { ReportBuilder } from "../_components/report-builder";
+import { ScheduleCard } from "../_components/schedule-card";
 
 export default async function ReportPage({
   params,
@@ -35,6 +36,9 @@ export default async function ReportPage({
           config: definition.config,
         }}
       />
+      <div className="mt-6">
+        <ScheduleCard reportId={definition.id} canEdit={definition.canEdit} />
+      </div>
     </main>
   );
 }

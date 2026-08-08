@@ -1651,6 +1651,16 @@ model CheckIn {
   /// default to MOBILE because until now the app was the only writer.
   source FieldEntrySource @default(MOBILE)
 
+  /// How long the visit lasted, written once at check-out. Null while the visit
+  /// is still open.
+  ///
+  /// Stored rather than computed because the report engine has no expression
+  /// support: a derived column would have to be written twice (once in SQL for
+  /// grouped reports, once in the Prisma read path for flat ones), and the two
+  /// would drift. It is also the field a manager actually groups by — "average
+  /// minutes per rep" is one SUM/AVG over a column, not a subquery.
+  durationMinutes Int?
+
   @@index([salesRepId])
   @@index([companyId])
   /// "Is this rep still inside an open visit" — read before every check-in.
@@ -1807,6 +1817,7 @@ enum ReportDataset {
   COMPANIES
   CHECKINS
   CASH
+  PROMOTIONS
 }
 
 model ReportDefinition {
@@ -1827,11 +1838,35 @@ model ReportDefinition {
   /// widen what the report reads.
   config Json
 
+  /// ─── Scheduled delivery ───
+  ///
+  /// A saved report can mail itself. The schedule lives on the definition rather
+  /// than in a table of its own because there is at most one per report and the
+  /// two are deleted together — a schedule pointing at a deleted report is a
+  /// state nobody should have to handle.
+  ///
+  /// null interval = not scheduled. The runner reads `scheduleNextRunAt` and,
+  /// exactly like the job scheduler, claims a report by pushing that timestamp
+  /// forward before running it.
+  scheduleIntervalMinutes Int?
+  /// Where the file goes. Free-form addresses on purpose: the recipients of a
+  /// weekly sales sheet are usually people without an account (an accountant,
+  /// an owner). What they receive is still bounded by the OWNER's row scope.
+  scheduleRecipients      String[]  @default([])
+  scheduleNextRunAt       DateTime?
+  scheduleLastRunAt       DateTime?
+  /// "OK" / "ERROR" plus a one-line summary, so the operator sees the last
+  /// delivery on the report list instead of digging through job runs.
+  scheduleLastStatus      String?
+  scheduleLastSummary     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
   @@index([dataset])
+  /// The delivery job's only query: which reports are due.
+  @@index([scheduleNextRunAt])
 }
 
 // ─────────────────────────────────────────────

@@ -30,6 +30,25 @@ let tryVariantId: string;
 let gbpVariantId: string;
 let productId: string;
 
+/**
+ * Testin süresi boyunca kenara alınan gerçek kur satırları.
+ *
+ * Bu takım "GBP'nin kuru yok" ve "geçerli USD kuru 34,50" diyor; ikisi de
+ * tablonun tamamı hakkında iddia. TCMB işi devreye girdiğinden beri geliştirme
+ * veritabanında güncel kurlar oluşabiliyor ve o satırlar testin kendi
+ * satırlarını tarih olarak geçiyordu. Tablo boşaltılıp sonunda geri konuyor —
+ * silmek değil, ödünç almak.
+ */
+let borrowedRates: Array<{
+  id: string;
+  currency: string;
+  rate: unknown;
+  validFrom: Date;
+  source: string;
+  createdById: string | null;
+  createdAt: Date;
+}> = [];
+
 suite("çoklu para birimi integration", () => {
   beforeAll(async () => {
     const group = await prisma.customerGroup.create({ data: { name: `Grup ${TAG}` } });
@@ -98,6 +117,9 @@ suite("çoklu para birimi integration", () => {
       ],
     });
 
+    borrowedRates = await prisma.exchangeRate.findMany();
+    await prisma.exchangeRate.deleteMany({});
+
     await recordExchangeRate(
       { currency: "USD", rate: 34.5, validFrom: new Date("2026-01-01") },
       adminId,
@@ -122,6 +144,15 @@ suite("çoklu para birimi integration", () => {
     // kullanıcı gidince satırın sahibi kaybolur ve sonraki silme hiçbir şeyle
     // eşleşmez — takım kendi kurunu veritabanında bırakır.
     await prisma.exchangeRate.deleteMany({ where: { createdById: adminId } });
+    // Ödünç alınan satırlar geri konuyor. `createMany` + `skipDuplicates`:
+    // testin kendi yazdığı bir satırla aynı (para birimi, tarih) çiftine denk
+    // gelirse takım burada patlamak yerine devam etmeli.
+    if (borrowedRates.length > 0) {
+      await prisma.exchangeRate.createMany({
+        data: borrowedRates as never,
+        skipDuplicates: true,
+      });
+    }
     await prisma.user.deleteMany({ where: { id: { in: [buyerId, adminId] } } });
     await prisma.company.deleteMany({ where: { id: companyId } });
     await prisma.customerGroup.deleteMany({ where: { id: groupId } });
