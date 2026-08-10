@@ -12,6 +12,18 @@ web-build/
 # turbo
 .turbo/
 
+# Expo prebuild output. Regenerated from app.json by `expo prebuild`, so it is
+# build output rather than source; committing it would mean maintaining the
+# native projects by hand and losing what the config plugins do.
+apps/mobile/android/
+apps/mobile/ios/
+
+# Release signing key. The APK is installed by hand rather than through Play
+# Store, so this file *is* the app's identity: replacing it means every phone
+# has to uninstall before it can take an update. Backed up outside the repo.
+*.keystore
+apps/mobile/android-signing/
+
 # tsc incremental build artifacts
 *.tsbuildinfo
 

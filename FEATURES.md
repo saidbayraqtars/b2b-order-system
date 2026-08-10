@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-10 · Adım 47 (rota testleri) sonu
+Son güncelleme: 2026-08-10 · Adım 48 (kurulabilir APK) sonu
 
 ---
 
@@ -61,6 +61,7 @@ Son güncelleme: 2026-08-10 · Adım 47 (rota testleri) sonu
 | 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
 | 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş | ↩ geri alındı (2026-08-10) |
 | 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
+| 48 | Kurulabilir APK hazırlığı: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, derleme betiği | ⏳ APK bulutta derlenecek |
 
 ---
 
@@ -1708,8 +1709,53 @@ kırıldı. `turbo.json`'da `web#test` artık `@repo/services#test`'i bekliyor.
 - **Sipariş detayı:** kalemler, toplamlar, sevkiyat adresi, kargo/takip bilgisi, durum geçmişi ve yetkiye göre işlem düğmeleri.
 - **Cari ekstre:** limit/borç/alacak/bakiye özeti, yaşlandırma kovaları ve hareket listesi (telefonda okunaklı olsun diye en yeniden eskiye). Tahsilat ve sipariş sonrası kendini tazeler. Salt okunur.
 - **Hesabım (Adım 45):** ad/telefon düzenleme ve şifre değiştirme. Şifre değişimi profil kaydından ayrı bir uç: bir şifrenin profil kaydetmenin yan etkisi olarak değişmesi kimsenin beklediği şey değil. Başarılı olunca sunucu tüm oturumları iptal ettiği için ekran kullanıcıyı giriş ekranına geri gönderiyor.
+- **Sunucu adresi cihaz ayarı (Adım 48).** Adres derlemeye gömülmüyor: giriş ekranından ve Hesabım'dan değiştirilebiliyor, cihazda saklanıyor (`src/lib/server-url.ts`). Sebep pratik — ev bağlantısı yeni adres veriyor, tünel her açılışta yeni ad veriyor ve ikisi de yeni APK derlemeye değmez. Kaydetmeden önce `/api/health` yoklanıyor ki "yanlış adres" ile "sunucu kapalı" birbirine benzemesin; sorun bildiren (503) bir sunucu **kabul ediliyor**, çünkü eksik `tenant.json` yüzünden çalışan bir geliştirme makinesine bağlanmak engellenmemeli. Sunucuya hiç ulaşamayan bir giriş denemesi paneli kendiliğinden açıyor.
+- **Uzaktan güncelleme — OTA (Adım 48).** Uygulama Play Store'dan dağıtılmadığı için her düzeltme elden APK kurmak demekti; `expo-updates` açılışta JS paketini yeniliyor, Hesabım ekranı hangi paketin koştuğunu gösteriyor ve elle denetim yaptırıyor. İnen güncelleme **kullanıcı yeniden başlatana kadar bekliyor** — yarım kalmış bir tahsilat ekranının altından uygulamayı çekmemek için. Sınır kodda yazılı: yalnızca JS ve varlıklar bu yoldan gider, yeni bir native kütüphane `runtimeVersion`'ı değiştirir ve yeni APK gerektirir.
 - Türkçe para/tarih biçimlendirme, açık + koyu tema.
 - **Android emülatöründe koşturuldu (Adım 45).** Giriş → portföy → ziyaret planı → katalog → sepet → sipariş → sipariş detayı → hesap → çıkış akışı canlı API'ye karşı çalıştırıldı; sipariş `ORD-20260808-0001` olarak oluştu ve cari bakiye anında güncellendi.
+
+### APK üretimi ve dağıtımı (Adım 48)
+
+Uygulama **Play Store'a girmiyor**: APK dosyası elden kuruluyor. Bu iki şeyi
+zorunlu kıldı.
+
+**İmza anahtarı.** Android bir uygulamayı imzalayan anahtarla tanır; anahtar
+değişirse telefon güncellemeyi başka bir uygulama sayar ve kurulumu reddeder —
+kullanıcının önce mevcut uygulamayı (ve onunla birlikte oturumunu, sunucu
+ayarını) silmesi gerekir. Expo şablonu release'i **debug** anahtarıyla imzalıyor:
+şifresi herkesçe bilinen, depoda duran bir anahtar. `plugins/withReleaseSigning.js`
+bunu gerçek bir anahtarla değiştiriyor; anahtarın yolu ve şifreleri ortam
+değişkenlerinden geliyor, hiçbiri depoda değil. Anahtar yoksa debug'a düşülüyor
+(o APK dağıtılamaz ama denemek için derlenir).
+
+Eklenti olmak zorunda, çünkü `expo prebuild` `android/` klasörünü her seferinde
+baştan üretiyor — build.gradle'a elle yapılan düzenleme bir sonraki üretimde
+siliniyor. Aynı sebeple `plugins/withGradleWrapper.js` var: şablon Gradle'ı
+`-all` dağıtımıyla (~220 MB) ve **10 saniyelik** okuma zaman aşımıyla indirmeye
+çalışıyor, yavaş bir hatta ilk derleme bu yüzden düşüyor ve hata derlemeyle
+ilgiliymiş gibi görünüyor.
+
+**Yerel derleme betiği** `scripts/build-apk.sh` yazıldı: Android Studio'nun kendi
+JDK'sını buluyor (sistemdeki Java 26 Gradle 8.8'i kırıyor, JDK 17-21 gerekiyor),
+SDK yolunu kuruyor, prebuild + `assembleRelease` koşuyor. Sunucu adresi `API_URL`
+ile veriliyor ama bu yalnızca **ilk açılıştaki öneri** — kullanıcı uygulamadan
+değiştirebiliyor.
+
+**Ama bu makinede yerel derleme tamamlanamadı.** Sırayla üç engel aşıldı (Gradle
+indirme zaman aşımı, yanlış JDK, yarım kalmış `android-34` kurulumu) ve dördüncüsü
+aşılamadı: `expo-updates`'in Room işlemcisi SQLite'ın native kütüphanesini
+`java.io.tmpdir`'e açıyor, o da bu ortamda `C:\WINDOWS` olarak çözülüyor ve yazma
+reddediliyor. Geçici dizin `org.gradle.jvmargs`, `kotlin.daemon.jvmargs` ve
+`kapt.workers.isolation=none` ile üç ayrı yerden verildi; kapt yine kendi
+sürecinde koşup yok saydı. Betik ve eklentiler duruyor — başka bir makinede ya da
+ortam düzeltildiğinde çalışacak durumda.
+
+**Kullanılan yol: EAS Build (bulut).** Windows araç zincirini tamamen atlıyor ve
+zaten OTA için gereken Expo hesabından başkasını istemiyor. `eas.json`'daki
+`preview` profili APK üretiyor.
+
+**Güncelleme yolu ikiye ayrılıyor:** JS değişiklikleri `eas update` ile uzaktan
+iniyor, yeni APK yalnızca native bir kütüphane eklendiğinde gerekiyor.
 
 ### Kayıt kimliği doğrulaması (Adım 45'te düzeltildi)
 
@@ -1908,6 +1954,8 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - **Cari ekstre hâlâ salt okunur** — telefondan ekstre satırına müdahale edilmiyor; doğrusu bu, düzeltme ters kayıtla yapılır.
 - **Bildirim yok** — push bildirimi kurulmadı; onay bekleyen sipariş ya da gününe düşen ziyaret çağrısı için cihaza haber gitmiyor, kullanıcının uygulamayı açması gerekiyor.
 - **Çevrimdışı çalışmıyor** — şebeke yoksa ekranlar boş kalır; saha uygulaması için sıradaki gerçek eksik bu.
+- ~~**Sunucu adresi derlemeye gömülü**~~ — Adım 48'de kapatıldı: adres cihaz ayarı, giriş ekranından değiştirilebiliyor.
+- ~~**Uzaktan güncelleme yok**~~ — Adım 48'de kapatıldı: `expo-updates` + EAS Update kanalı; JS düzeltmeleri Play Store'suz iniyor.
 - **iOS'ta çalıştırılmadı** — yalnızca Android emülatöründe koşturuldu.
 
 ### Daha büyük
