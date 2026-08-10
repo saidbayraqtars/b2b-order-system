@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { ROLE_LABELS } from "@repo/types";
 import { useAccount, useChangePassword, useUpdateProfile } from "@/lib/queries";
 import { formatDateTime } from "@/lib/format";
 import { useAuthStore } from "@/store/auth";
 import { Button, Card, ErrorState, Field, Loading, Row } from "@/components/ui";
+import ServerSettings from "@/components/ServerSettings";
+import { appVersion, runningVersion, useOtaUpdate } from "@/lib/ota";
 import type { ScreenProps } from "@/navigation/types";
+
+const OTA_MESSAGES: Record<string, string> = {
+  checking: "Denetleniyor…",
+  downloading: "Güncelleme indiriliyor…",
+  ready: "Güncelleme hazır — yeniden başlatınca uygulanır.",
+  current: "Uygulama güncel.",
+};
 
 // Hesabım: ad/telefon ve şifre.
 //
@@ -19,6 +29,10 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
   const logout = useAuthStore((s) => s.logout);
+  const queryClient = useQueryClient();
+  const ota = useOtaUpdate();
+  const otaMessage =
+    "message" in ota.state ? ota.state.message : OTA_MESSAGES[ota.state.kind];
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -148,6 +162,46 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
             );
           }}
         />
+      </Card>
+
+      <Card className="gap-4">
+        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+          Sunucu
+        </Text>
+        {/* Değişince önbellekteki her şey başka bir kurulumun verisi olur. */}
+        <ServerSettings onChanged={() => queryClient.clear()} />
+      </Card>
+
+      <Card className="gap-3">
+        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+          Uygulama güncellemesi
+        </Text>
+        <Row label="Sürüm" value={appVersion()} />
+        <Row label="Paket" value={runningVersion()} />
+        {otaMessage ? (
+          <Text
+            className={
+              ota.state.kind === "error"
+                ? "text-sm text-red-600"
+                : "text-sm text-neutral-500"
+            }
+          >
+            {otaMessage}
+          </Text>
+        ) : null}
+        {ota.state.kind === "ready" ? (
+          <Button
+            title="Yeniden başlat ve güncelle"
+            onPress={() => void ota.restart()}
+          />
+        ) : (
+          <Button
+            title="Güncellemeleri denetle"
+            variant="secondary"
+            loading={ota.state.kind === "checking" || ota.state.kind === "downloading"}
+            onPress={() => void ota.check()}
+          />
+        )}
       </Card>
 
       <View className="pt-2">

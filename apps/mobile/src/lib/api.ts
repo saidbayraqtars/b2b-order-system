@@ -1,7 +1,10 @@
 // Typed fetch wrapper for the mobile app. Talks to the Next.js API in apps/web.
-// Base URL comes from EXPO_PUBLIC_API_URL (set in .env / EAS env).
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+//
+// The base address is read per request, not captured here: it is a device
+// setting the user can change without a new build (see server-url.ts), and a
+// module-level constant would keep every screen pointed at the old server until
+// the app was killed.
+import { serverUrl } from "./server-url";
 
 export class ApiError extends Error {
   constructor(
@@ -47,7 +50,7 @@ export async function apiFetch<T>(
   path: string,
   { method = "GET", body, token }: RequestOptions = {},
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${serverUrl()}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -98,7 +101,7 @@ export async function apiUpload<T>(
   // workaround for the DOM lib's stricter File-only signature.
   body.append("file", file as unknown as Blob);
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${serverUrl()}${path}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body,
@@ -125,7 +128,7 @@ export async function apiUpload<T>(
 
 /** Absolute URL for a server-relative media path (`/api/media/...`). */
 export function mediaUrl(path: string): string {
-  return path.startsWith("http") ? path : `${BASE_URL}${path}`;
+  return path.startsWith("http") ? path : `${serverUrl()}${path}`;
 }
 
 /** Build a query string, skipping null/undefined/empty values. */

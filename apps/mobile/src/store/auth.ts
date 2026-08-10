@@ -2,6 +2,7 @@ import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import type { SessionUser } from "@repo/types";
 import { apiFetch, ApiError, setSessionExpiredHandler } from "@/lib/api";
+import { loadServerUrl } from "@/lib/server-url";
 
 // Bearer-token session for the native app. The token is a 30-day JWT issued by
 // POST /api/mobile/login and kept in the device keychain (expo-secure-store),
@@ -30,6 +31,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   /** Cold start: read the saved token and confirm it's still valid server-side. */
   hydrate: async () => {
     try {
+      // Before anything is fetched. The address is a device setting now, and
+      // asking the built-in default whether our token is still good would
+      // answer for the wrong server.
+      await loadServerUrl();
+
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token) return;
 

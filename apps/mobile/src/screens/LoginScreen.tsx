@@ -1,7 +1,16 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { useAuthStore } from "@/store/auth";
 import { Button, Field } from "@/components/ui";
+import ServerSettings from "@/components/ServerSettings";
+import { serverUrl } from "@/lib/server-url";
 
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
@@ -12,6 +21,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showServer, setShowServer] = useState(false);
 
   async function onSubmit() {
     setError(null);
@@ -20,7 +30,12 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       // RootNavigator swaps the stack as soon as `user` lands in the store.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Giriş yapılamadı");
+      const message = err instanceof Error ? err.message : "Giriş yapılamadı";
+      setError(message);
+      // A failed fetch never reached a server, so the address is the first
+      // thing to suspect — the panel opens itself rather than leaving someone
+      // retyping a password against an unreachable host.
+      if (err instanceof TypeError) setShowServer(true);
     } finally {
       setBusy(false);
     }
@@ -71,6 +86,18 @@ export default function LoginScreen() {
             loading={busy}
             disabled={!email || !password}
           />
+        </View>
+
+        <View className="gap-3">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowServer((v) => !v)}
+          >
+            <Text className="text-center text-sm text-neutral-500">
+              {showServer ? "Sunucu ayarını gizle" : `Sunucu: ${serverUrl()}`}
+            </Text>
+          </Pressable>
+          {showServer ? <ServerSettings /> : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
