@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-08 · Adım 45 (mobil tamamlama) sonu
+Son güncelleme: 2026-08-10 · Adım 47 (rota testleri) sonu
 
 ---
 
@@ -59,6 +59,8 @@ Son güncelleme: 2026-08-08 · Adım 45 (mobil tamamlama) sonu
 | 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
 | 44 | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3 | ✅ |
 | 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
+| 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş | ↩ geri alındı (2026-08-10) |
+| 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
 
 ---
 
@@ -332,6 +334,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
   - **Birim (83 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; ödeme yönteminin cari borç doğurup doğurmadığı, firma kısıtlamasının satıcıyı da bağlaması, alıcının vade uyduramaması, peşin yönteme vade konamaması; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
   - **Entegrasyon (91 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
   - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi; tahsilatın defter ile önbelleği birlikte hareket ettirmesi, iptalin ters kayıtla yazılması ve iki kez yapılamaması, başka firmanın tahsilatına erişilememesi, açık ziyaret varken ikinci ziyaretin reddi.
+- **Rota testleri** Adım 47'de eklendi (`apps/web/test`) — aşağıdaki bölüme bakın. Bugünkü toplam: **466 test / 34 dosya** (359 servis + 107 rota).
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
 
 ## 14. Belgeler & Sevkiyat (Adım 14)
@@ -1599,7 +1602,51 @@ Tailwind sınıflarını taşıyordu. Aynı tablo bir ekranda `text-sm`, diğeri
   etiket tasarımcısı, hazır raporlar, ürün görsel seçici, kullanıcı yöneticisi.
 - Yönetim tarafı **nötr** dilde kalıyor — vitrin kimliği buraya uygulanmıyor.
 
-## 42. Web Portal (`apps/web`)
+## 42. Rota Testleri (Adım 47)
+
+Adım 13'ten beri bütün testler `packages/services` içindeydi: domain matematiği
+ölçülüyordu, onu dışarı açan **119 rota işleyicisinin hiçbiri** ölçülmüyordu.
+Kırılan bir yetki sınırı ancak elle fark ediliyordu.
+
+`apps/web/test` altında ikinci bir takım var artık — **107 test / 6 dosya**.
+
+### Nasıl çalışıyor
+
+- Testler rota modülünün dışa verdiği `GET`/`POST`/`PATCH` fonksiyonunu
+  **doğrudan** çağırıyor; Next.js'in çağırdığı fonksiyonun aynısı. Ayakta bir
+  sunucu yok, veritabanı gerçek.
+- Sahte olan yalnızca iki şey (`test/setup.ts`):
+  - `next/headers` — çerçevenin açtığı istek kapsamı testte `callRoute()`
+    tarafından açılıyor (`AsyncLocalStorage`).
+  - Auth.js çerez oturumu — çerezi okumak için ayakta bir sunucu gerekiyor.
+    Bu sahte, çerezin **iddiasını** testin belirlemesine izin veriyor: SUPER_ADMIN
+    yazan bir çereze karşı muhafızın satırdan cevap verdiği böyle doğrulanıyor.
+- Geri kalan her şey gerçek: mobil jeton gerçek imzayla üretilip gerçek
+  doğrulayıcıdan geçiyor, `checkPrincipal` satırı okuyor, izinler satırdan
+  geliyor, servisler ve Prisma olduğu gibi çalışıyor.
+- `react`'in `cache`'i shim'leniyor — o API React'in canary kanalında, workspace
+  ise 18.2.0'a sabitli. Kaybedilen tek şey istek başına sorgu tekilleştirmesi.
+- Her dosya kendi fixture'ını kuruyor (`Fixtures` sınıfı) ve **kendi yarattığı
+  satırları siliyor**; seed verisi olan bir veritabanında güvenle koşuyor.
+
+### Ne doğrulanıyor
+
+| Dosya | Kapsam |
+|-------|--------|
+| `guard.test.ts` (18) | Kimliksiz istek; bozuk, başka anahtarla imzalanmış, başka issuer'lı jeton; silinmiş / pasif / sürümü geçmiş hesap; çerezin rolü, firması ve tokenVersion'ı yerine satırın okunması; izin reddinin eksik izni söylemesi; süper adminin izin kapısından muaf olmaması; rol reddi ile izin reddinin ayrı kaydedilmesi; "en az biri" izin kapısı |
+| `route-scope.test.ts` (27) | Plasiyerin portföy sınırı (katalog, sepet, sipariş listesi, ekstre); bayi kullanıcısının kendi firmasına çivilenmesi — sorgu dizesinde **ve** JSON gövdede; firması olmayan hesap; kuryenin firma ekranlarına kapalı olması; saha parasının yalnız sahaya açık olması; yalnız süper admine açık uçlar; kullanıcı yönetiminin iki rolde iki ayrı kapsamı |
+| `order-flow.test.ts` (20) | Fiyatın sunucuda hesaplanması, alıcının navlun ve vade uyduramaması; onay akışı (kimin onaylayabildiği, ikinci onayın rolüne göre 403 mü 409 mu); iptalde stoğun geri gelmesi ve cari borcun ters kayıtla kapanması; sipariş verilince sepetin boşalması |
+| `field-money.test.ts` (13) | Tahsilatın bakiyeyi düşürmesi; tekrar anahtarının ikinci kaydı engellemesi; iptalin ters kayıt yazması ve iki kez yapılamaması; ziyaretin kaynağının **taşıdığı kimlikten** belirlenmesi (telefon → MOBILE, tarayıcı → WEB); başkasının ziyaretinin kapatılamaması |
+| `account-admin.test.ts` (14) | Mobil giriş: jeton üretimi, yanlış şifre ile bilinmeyen e-postanın aynı cevabı vermesi, pasif hesap, sayaç; yetki devrinin kendinden büyük olamaması; kendini kilitleme korumaları; yetkisi kısılan hesabın elindeki jetonun bir sonraki istekte ölmesi |
+| `reports.test.ts` (15) | Kayıt defterinde olmayan alanın sütunda/süzgeçte/gruplamada reddi; satır kapsamının kullanıcının süzgecinden sonra eklenmesi; paylaşılan raporun **koşanın** kapsamıyla çalışması; paylaşılmayan raporun kimliği bilinse bile koşmaması |
+
+### İki paket aynı veritabanını paylaşıyor
+
+`turbo run test` iki paketi paralel koşturuyordu ve ikisi de sipariş numarasını
+aynı `DocumentSeries` sayacından alıyor — koşuların kabaca yarısı böyle
+kırıldı. `turbo.json`'da `web#test` artık `@repo/services#test`'i bekliyor.
+
+## 43. Web Portal (`apps/web`)
 
 | Sayfa | Rol | İçerik |
 |-------|-----|--------|
@@ -1640,7 +1687,7 @@ Tailwind sınıflarını taşıyordu. Aynı tablo bir ekranda `text-sm`, diğeri
 | `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
 | `/403` | — | Yetkisiz erişim sayfası |
 
-## 43. Mobil Uygulama (`apps/mobile`)
+## 44. Mobil Uygulama (`apps/mobile`)
 
 - Expo SDK 51, React Navigation (native stack), TanStack Query, Zustand, NativeWind.
 - **Token cihaz keychain'inde** (expo-secure-store); açılışta `/api/mobile/me` ile doğrulanır, süresi dolmuşsa silinir.
@@ -1685,7 +1732,7 @@ uygulamanın kendi oluşturduğu satırları (sipariş, adres, kullanıcı, kamp
 adlandırıyor ve oralarda kimlik her zaman Prisma'dan geliyor. İçe aktarma ya da
 ERP eşlemesi o tablolara da uzanırsa aynı değişiklik oralarda da gerekecek.
 
-## 44. API Uçları
+## 45. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -1851,6 +1898,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
 - ~~**Ziyaret raporu yok**~~ — Adım 44'te kapatıldı: `CHECKINS` veri kümesine `source` ve saklanan `durationMinutes` eklendi; "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" artık gruplanabiliyor.
+- ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı: 107 rota testi, ağırlığı yetki sınırında. **Ekranlar (41 sayfa) hâlâ testsiz** ve tarayıcı seviyesinde e2e (Playwright) yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
 
 ### Mobil
 

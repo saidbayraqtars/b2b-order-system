@@ -60,22 +60,37 @@ export interface AuditInput {
 }
 
 export async function recordAudit(input: AuditInput): Promise<void> {
+  const data = {
+    actorEmail: input.actor.email,
+    actorRole: input.actor.role,
+    action: input.action,
+    entity: input.entity ?? null,
+    entityId: input.entityId ?? null,
+    summary: input.summary,
+    meta: (input.meta ?? undefined) as Prisma.InputJsonValue | undefined,
+    ip: input.ip ?? null,
+    userAgent: input.userAgent?.slice(0, 300) ?? null,
+  };
+
   try {
-    await prisma.auditLog.create({
-      data: {
-        actorId: input.actor.id,
-        actorEmail: input.actor.email,
-        actorRole: input.actor.role,
-        action: input.action,
-        entity: input.entity ?? null,
-        entityId: input.entityId ?? null,
-        summary: input.summary,
-        meta: (input.meta ?? undefined) as Prisma.InputJsonValue | undefined,
-        ip: input.ip ?? null,
-        userAgent: input.userAgent?.slice(0, 300) ?? null,
-      },
-    });
+    await prisma.auditLog.create({ data: { ...data, actorId: input.actor.id } });
   } catch (err) {
+    // Silinmiş bir hesabın jetonuyla gelen istek de kaydedilmeli — kaydedilmesi
+    // *gereken* şey zaten budur. Ama actorId yabancı anahtar, satır yok, yazma
+    // düşüyordu: trail'in en çok işe yarayacağı an sessizce boş kalıyordu.
+    // `actorId` bu yüzden opsiyonel ve e-posta bu yüzden kopyalanıyor; failen
+    // anahtar oysa aktörü isimle yazıp devam ediyoruz.
+    // Koda bakılıyor, sınıfa değil: `Prisma` bu dosyaya yalnızca tip olarak
+    // giriyor, çalışma zamanında ortada bir sınıf yok.
+    if ((err as { code?: string } | null)?.code === "P2003") {
+      try {
+        await prisma.auditLog.create({ data: { ...data, actorId: null } });
+        return;
+      } catch (retryErr) {
+        console.error("[audit] kayıt yazılamadı", retryErr);
+        return;
+      }
+    }
     console.error("[audit] kayıt yazılamadı", err);
   }
 }

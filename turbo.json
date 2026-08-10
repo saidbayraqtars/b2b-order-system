@@ -39,6 +39,13 @@
         "^db:generate"
       ],
       "outputs": []
+    },
+    "web#test": {
+      "dependsOn": [
+        "^db:generate",
+        "@repo/services#test"
+      ],
+      "outputs": []
     }
   }
 }
