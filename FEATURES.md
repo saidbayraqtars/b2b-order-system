@@ -61,7 +61,7 @@ Son güncelleme: 2026-08-10 · Adım 48 (kurulabilir APK) sonu
 | 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
 | 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş | ↩ geri alındı (2026-08-10) |
 | 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
-| 48 | Kurulabilir APK hazırlığı: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, derleme betiği | ⏳ APK bulutta derlenecek |
+| 48 | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi | ✅ |
 
 ---
 
@@ -1752,7 +1752,26 @@ ortam düzeltildiğinde çalışacak durumda.
 
 **Kullanılan yol: EAS Build (bulut).** Windows araç zincirini tamamen atlıyor ve
 zaten OTA için gereken Expo hesabından başkasını istemiyor. `eas.json`'daki
-`preview` profili APK üretiyor.
+`preview` profili APK üretiyor. Bulut derleyici bir kilit değil, kiralık bir
+Linux makinesi: üstünde koşan şey aynı `expo prebuild` + `gradlew assembleRelease`.
+Aynısı WSL2'de `eas build --local` ile, bir CI koşucusunda ya da ortam
+düzeltildiğinde bu makinede çalışır.
+
+```
+apps/mobile  →  eas build -p android --profile preview  →  .apk indirme bağlantısı
+```
+
+**İlk APK üretildi (2026-08-10):** sürüm 1.0.0, versionCode 1, kanal `preview`,
+71 MB. Proje `@saidbayraktar/b2b-mobile`.
+
+**İmza anahtarını EAS saklıyor.** Bulut derlemesinde anahtarı EAS üretti ve
+hesapta tutuyor; sonraki derlemeler aynısını kullanıyor, yani güncelleme APK'ları
+telefona sorunsuz kuruluyor. Bu yüzden `withReleaseSigning` **`EAS_BUILD` ortam
+değişkeni varken hiçbir şey yapmıyor**: release imza bloğunu EAS de yazıyor,
+ikimiz birden yazarsak bizimki ortam değişkeni bulamayıp debug anahtarına düşer
+ve derleme dağıtılamayacak bir APK üretir. Yerel derlemede eklenti eskisi gibi
+çalışmaya devam ediyor. Yerel anahtar (`apps/mobile/android-signing/`) duruyor ve
+gerekirse `eas credentials` ile buluta yüklenebilir.
 
 **Güncelleme yolu ikiye ayrılıyor:** JS değişiklikleri `eas update` ile uzaktan
 iniyor, yeni APK yalnızca native bir kütüphane eklendiğinde gerekiyor.

@@ -28,6 +28,13 @@ const RELEASE_SIGNING_CONFIG = `
 `;
 
 module.exports = function withReleaseSigning(config) {
+  // EAS'in derleyicisinde çalışmıyor. Orada imza anahtarını EAS'in kendisi
+  // yönetiyor: prebuild'den sonra release signingConfig'ini o yazıyor ve
+  // anahtarı hesapta saklıyor. İkimiz birden yazarsak aynı bloğu iki kez
+  // tanımlamış oluruz, üstelik bizim sürüm ortam değişkeni bulamayıp **debug**
+  // anahtarına düşer — yani derleme, dağıtılamayacak bir APK üretir.
+  if (process.env.EAS_BUILD) return config;
+
   return withAppBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
 

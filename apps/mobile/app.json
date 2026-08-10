@@ -16,7 +16,8 @@
       "fallbackToCacheTimeout": 5000,
       "requestHeaders": {
         "expo-channel-name": "preview"
-      }
+      },
+      "url": "https://u.expo.dev/2072d26d-d5de-4e9d-9b6a-df0368d4cc1d"
     },
     "splash": {
       "backgroundColor": "#ffffff"
@@ -28,9 +29,9 @@
     "android": {
       "package": "com.b2b.mobile",
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "CAMERA"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [
@@ -52,8 +53,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "2072d26d-d5de-4e9d-9b6a-df0368d4cc1d"
       }
-    }
+    },
+    "owner": "saidbayraktar"
   }
 }
