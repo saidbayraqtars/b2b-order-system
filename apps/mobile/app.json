@@ -3,7 +3,7 @@
     "name": "B2B Mobile",
     "slug": "b2b-mobile",
     "scheme": "b2bmobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -28,6 +28,7 @@
     },
     "android": {
       "package": "com.b2b.mobile",
+      "versionCode": 2,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
