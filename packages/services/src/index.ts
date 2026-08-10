@@ -57,6 +57,7 @@ export * from "./label-template";
 export * from "./label-render";
 export * from "./stock-admin";
 export * from "./runtime-env";
+export * from "./update-channel";
 export * from "./cheque";
 export * from "./exchange-rate";
 export * from "./exchange-rate-tcmb";

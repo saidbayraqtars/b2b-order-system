@@ -67,6 +67,7 @@ export const PermissionEnum = z.enum([
   "audit.view",
   "audit.manage",
   "jobs.manage",
+  "system.update",
 ]);
 export type Permission = z.infer<typeof PermissionEnum>;
 
@@ -108,6 +109,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "audit.view": "Güvenlik kayıtlarını gör",
   "audit.manage": "Denetim kaydını dışa aktar / temizle",
   "jobs.manage": "Zamanlanmış işleri yönet",
+  "system.update": "Sürüm ve güncellemeyi gör",
 };
 
 /** Tek satırlık açıklama; yalnızca adı yetmeyen izinler için. */
@@ -122,6 +124,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
   "jobs.manage":
     "Temizlik işlerini açar/kapatır, periyodunu değiştirir, elle çalıştırır",
+  "system.update":
+    "Çalışan sürümü, yayımlanan sürümü ve son güncelleme sonucunu gösterir — güncellemeyi başlatmaz",
   "targets.manage":
     "Ziyaret ve ciro hedefi koyar. Hedefini görmek için gerekmez — yalnızca koymak için",
   "delivery.confirm":
@@ -193,6 +197,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "audit.view",
       "audit.manage",
       "jobs.manage",
+      "system.update",
     ],
   },
 ];
@@ -405,6 +410,10 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // Bakım işleri kurulumun kendisine ait: bir bayi ya da saha hesabının
   // denetim kaydını budayabilmesi ya da temizlik işini kapatabilmesi anlamsız.
   "jobs.manage": ["SELLER"],
+  // Kurulumun sürümü satıcının işi. Bayi hesabının "hangi sürümdesiniz,
+  // güncelleme bekliyor mu" sorusunu görmesi, saldırgan için yamasız kaldığı
+  // süreyi okuyan bir pencere olurdu.
+  "system.update": ["SELLER"],
 };
 
 /** Bu izin, bu rolde bir hesaba verilebilir mi? */

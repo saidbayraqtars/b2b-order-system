@@ -1,0 +1,37 @@
+# Güncelleme ajanı — tek atışlık servis, zamanlayıcı tetikler.
+#
+# Kurulum (sunucuda, kurulum dizini /opt/b2b varsayımıyla):
+#
+#   sudo cp deploy/b2b-update.service deploy/b2b-update.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now b2b-update.timer
+#   systemctl list-timers b2b-update.timer     # ne zaman koşacak
+#   journalctl -u b2b-update.service -n 50     # ne yaptı
+#
+# WorkingDirectory kurulum dizininizle değişir; `docker compose`e erişebilen bir
+# kullanıcı gerekiyor (root ya da docker grubundaki bir hesap).
+
+[Unit]
+Description=B2B guncelleme ajani
+# Docker ayakta değilken koşmanın anlamı yok: ajan sağlık ucunu okuyamaz,
+# kurulumu "sağlıksız" sanıp boşuna kayıt düşerdi.
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/b2b
+ExecStart=/opt/b2b/scripts/agent.sh
+
+# Ajan git checkout + docker compose çalıştırıyor; bunlar dakikalar sürebilir.
+# Zaman aşımı update.sh'ın sağlık beklemesinden (HEALTH_TIMEOUT, varsayılan
+# 120 sn) rahatça uzun olmalı, yoksa systemd güncellemeyi ortasında keser.
+TimeoutStartSec=1800
+
+# Başarısızlıkta yeniden denenmiyor. Düşen bir güncellemeyi dakika başı
+# tekrarlamak, kurulumu her denemede yeniden başlatmak demek; ajan zaten
+# durumu yazdı ve bir sonraki zamanlı koşuda yeniden deneyecek.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

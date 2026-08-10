@@ -70,11 +70,19 @@ services:
       TENANT_DIR: /data/tenant
       UPLOAD_DIR: /data/uploads
       APP_VERSION: ${APP_VERSION:-local}
+      # Güncelleme ajanının durum dosyası. Ajan host'ta çalışıyor, web yalnızca
+      # okuyor — güncellemeyi başlatan bir uç yok ve olmamalı (docker soketini
+      # kapsayıcıya vermek, uygulamayı ele geçirene host'ta root vermektir).
+      UPDATE_STATE_FILE: /data/state/update-state.json
     volumes:
       # Kiracı klasörü salt okunur bağlanıyor: destek akışında elden ele giden
       # bir klasör ve uygulamanın oraya yazması gereken hiçbir şey yok.
       - ${TENANT_SOURCE:-./tenants/demo}:/data/tenant:ro
       - uploads:/data/uploads
+      # **Dizin** bağlanıyor, dosya değil: ajan durum dosyasını geçici ada yazıp
+      # taşıyarak güncelliyor (yarısı yazılmış JSON okunmasın diye) ve bind ile
+      # bağlanan tek bir dosya eski inode'a takılı kalıp bir daha hiç değişmez.
+      - ${UPDATE_STATE_DIR:-./var}:/data/state:ro
     ports:
       # Doğrudan 80/443'e değil: TLS'i öndeki ters vekil (nginx/Caddy/Traefik)
       # sonlandırıyor. Tek makinede tek servis varsa bu satır 80:3000 yapılabilir.

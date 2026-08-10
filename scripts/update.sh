@@ -65,12 +65,16 @@ if [ "${GIT_PULL:-0}" = "1" ]; then
   git pull --ff-only
 fi
 
-# Sürüm etiketi commit'ten; imaj etiketi, /api/health çıktısı ve geri alma
-# hedefi hep aynı değer olsun diye tek yerden üretiliyor.
-NEW_VERSION="$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d-%H%M%S)"
-if [ "$NEW_VERSION" = "$PREVIOUS" ]; then
-  NEW_VERSION="${NEW_VERSION}-$(date +%H%M%S)"
-fi
+# Sürüm etiketi; imaj etiketi, /api/health çıktısı ve geri alma hedefi hep aynı
+# değer olsun diye tek yerden üretiliyor.
+#
+# `git describe`, kısa sha değil: merkezden güncelleme akışı sürümü **etiket
+# adıyla** duyuruyor (v1.4.0), ve o etikete geçtikten sonra kurulumun kendini
+# aynı adla tanıtması gerekiyor. Kısa sha kalsaydı akıştaki ad ile çalışan ad
+# hiçbir zaman eşleşmez, her kontrolde "güncelleme var" denirdi. Etiketli
+# olmayan ağaçta `v1.4.0-3-gabc1234`, hiç etiket yoksa sha'ya düşüyor;
+# `--dirty` yerel değişikliği görünür kılıyor.
+NEW_VERSION="$(git describe --tags --always --dirty 2>/dev/null || date +%Y%m%d-%H%M%S)"
 
 echo "Şu anki sürüm: $PREVIOUS"
 echo "Yeni sürüm:    $NEW_VERSION"
@@ -94,7 +98,15 @@ if ! APP_VERSION="$NEW_VERSION" compose run --rm migrate; then
 fi
 
 echo "→ Web yeni sürüme geçiriliyor"
-APP_VERSION="$NEW_VERSION" compose up -d web
+# Sürüm aynıysa (aynı kod tekrar yayına alınıyor) Compose hiçbir şeyi
+# değiştirmez ve kapsayıcı olduğu gibi kalır — betik de "yeni sürüm ayağa
+# kalkmadı" diye 120 saniye bekleyip geri alma dansına girerdi. Sürüm adına
+# ayırt edici bir sonek eklemek yerine kapsayıcı açıkça yeniden kuruluyor:
+# sürüm adı **kodun kimliğidir**, çalıştırma sayısının değil.
+RECREATE=""
+[ "$NEW_VERSION" = "$PREVIOUS" ] && RECREATE="--force-recreate"
+# shellcheck disable=SC2086
+APP_VERSION="$NEW_VERSION" compose up -d $RECREATE web
 
 printf '→ Sağlık bekleniyor '
 if wait_healthy "$NEW_VERSION"; then

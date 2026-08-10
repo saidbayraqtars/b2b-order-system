@@ -1,0 +1,11 @@
+# Kabuk betikleri ve systemd tanımları **her zaman LF**.
+#
+# Geliştirme Windows'ta yapılıyor (core.autocrlf=true), dağıtım Linux'ta. CRLF
+# ile giden bir betiğin ilk satırı `#!/usr/bin/env bash\r` olur ve Linux
+# "bad interpreter: /usr/bin/env bash^M" der — müşteri sunucusunda güncelleme,
+# yedek ve kurulum betiklerinin hiçbiri çalışmaz. Depodaki blob zaten LF, ama
+# bu satır o güvenceyi kalıcı kılıyor: bir gün CRLF ile kaydedilmiş bir dosya
+# eklense bile depoya LF girer.
+*.sh text eol=lf
+*.service text eol=lf
+*.timer text eol=lf

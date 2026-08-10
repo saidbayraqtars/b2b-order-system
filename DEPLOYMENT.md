@@ -153,6 +153,117 @@ başarılı" sanılmasın.
 Göç başarısız olursa betik **web'e hiç dokunmadan** durur: eski sürüm çalışmaya
 devam eder, şema da eskidir. Güncellemenin en güvenli durma noktası orasıdır.
 
+### Sürüm adı
+
+`update.sh` sürümü `git describe --tags --always --dirty` ile üretir; imaj
+etiketi, `/api/health`in döndürdüğü değer ve geri alma hedefi hep aynı dizedir.
+Etiketli bir sürüme geçildiğinde kurulum kendini `v1.4.0` diye tanıtır — merkezî
+akış sürümleri etiket adıyla duyurduğu için bu eşitlik şart.
+
+---
+
+## 5b. Merkezden güncelleme (ajan)
+
+Elli kurulumu tek tek elle güncellemek sürdürülebilir değil. Ajan
+(`scripts/agent.sh`) satıcının yayımladığı **sürüm akışına** bakar, kurulumun
+sürümüyle karşılaştırır ve politikaya göre ya yalnızca ekranda gösterir ya da
+bakım penceresinde güncellemeyi kendisi uygular.
+
+### Merkez bir sunucu değil
+
+Akış statik bir JSON dosyasıdır (S3, statik site, kendi alan adınız) ve yön tek
+taraflıdır: **sunucular okur, merkez hiçbir sunucuya bağlanmaz.** Müşteri
+sunucularına komut geçirebilen merkezî bir kontrol paneli, ele geçirildiğinde
+elli kurulumda birden kod çalıştırma imkânı olurdu.
+
+Akış **yalnızca bir git etiketinin adını** söyler; kod her zaman kurulumun kendi
+`origin`'inden gelir. Akışı ele geçirmek kod çalıştırmaya yetmez — saldırganın
+ayrıca depoya yazabiliyor olması gerekir. İki kilit daha: etiket adı katı bir
+karakter kümesinden geçmeden `git`e verilmez, ve `UPDATE_REQUIRE_SIGNED_TAG=1`
+ile etiketin GPG imzası doğrulanır.
+
+### Akış biçimi
+
+Kanal başına ayrı ve **düz** dosya — `<UPDATE_FEED_URL>/<kanal>.json`:
+
+```json
+{
+  "schema": 1,
+  "version": "v1.4.0",
+  "releasedAt": "2026-08-11T09:00:00+03:00",
+  "mandatory": false,
+  "notes": "Tek satır özet",
+  "notesUrl": "https://ornek/surum-notlari"
+}
+```
+
+İç içe yapı yok: müşteri sunucusunda `jq` olduğunu varsayamayız, ajanın
+bağımlılığı `sh` + `git` + `docker` ile sınırlı. `notes` bu yüzden tırnak ve
+satır sonu içeremez; `release.sh` bunu yayımlarken reddeder, uzun metin
+`notesUrl`de durur.
+
+### Yayımlama (satıcının makinesinde)
+
+```bash
+git tag -a v1.4.0 -m "Sürüm özeti"
+git push origin v1.4.0
+./scripts/release.sh v1.4.0 --mandatory --notes-url https://...
+# dist/feed/stable.json → akış adresine kopyalayın
+```
+
+Betik dosyayı **yazar, yayına almaz**. Kopyalama ayrı ve kasıtlı bir adım: bir
+betiğin sonunda kazara elli kuruluma sürüm duyurulmasın diye. Etiket `origin`'de
+yoksa yayımlamayı reddeder — duyurulan ama gönderilmemiş bir etiket, her
+kurulumda "etiket depoda yok" hatası demektir.
+
+### Kurulum (müşteri sunucusunda)
+
+```bash
+sudo cp deploy/b2b-update.service deploy/b2b-update.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now b2b-update.timer
+```
+
+`.env.production` içinde: `UPDATE_FEED_URL`, `UPDATE_CHANNEL`, `UPDATE_POLICY`,
+`UPDATE_WINDOW`, `UPDATE_STATE_DIR`, `UPDATE_STATE_FILE`.
+
+| Politika | Ne yapar |
+|---|---|
+| `off` | Akışa bakmaz |
+| `notify` | Bakar, ekranda gösterir, **dokunmaz** — varsayılan |
+| `auto` | Bakım penceresinde kendisi günceller |
+
+Varsayılan bilerek `notify`: müşterinin ERP'ye bağlı sipariş sistemini haberi
+olmadan yeniden başlatan bir yazılım, kazandığından çok güven kaybettirir.
+
+Ajanın uygulamadan önce baktığı üç şart:
+
+1. **Bakım penceresi** içinde olmalı (`UPDATE_WINDOW`, sunucunun yerel saati).
+2. **Kurulum sağlıklı** olmalı. Yarım kalmış bir göçün üstüne yeni sürüm koymak
+   teşhisi imkânsız hâle getirir; operatör önce neden bozuk olduğunu görmeli.
+3. **Çalışma ağacı temiz** olmalı. Sunucuda elle düzenlenmiş bir dosya varsa
+   `git checkout` onu ezerdi ve kaybolanın ne olduğunu kimse bilemezdi.
+
+Elle çalıştırma: `./scripts/agent.sh --check` (yalnızca bak),
+`./scripts/agent.sh --now` (pencere ve politika dinlemeden şimdi güncelle).
+
+### Sürüm ekranı
+
+`/admin/surum` — çalışan sürüm, kanalın yayımladığı sürüm, son kontrol zamanı ve
+son güncelleme denemesinin sonucu. **Salt okunur ve bilerek öyle:** web bir
+kapsayıcının içinde ve orada `git` de `docker` da yok. Erişebilsin diye docker
+soketi kapsayıcıya bağlansaydı, uygulamada bulunacak herhangi bir açık host'ta
+root'a çıkardı. Bir "Güncelle" düğmesinin bedeli budur; düğme yoktur.
+
+Ekran ajanın bıraktığı durum dosyasını okur, akışa kendi bakmaz: güncellemeyi
+uygulayacak olanın gördüğü şey neyse ekranda o yazmalı. Ajan bir günden uzun
+süredir susuyorsa ekran "güncel" demez, **"ajan susuyor"** der — ölmüş bir
+ajanın "güncelsiniz" cevabı, aylarca yamasız kalan kurulum demektir.
+
+> Durum dosyası web'e **dizin olarak** bağlanır (`UPDATE_STATE_DIR` → `/data/state`).
+> Ajan dosyayı geçici ada yazıp taşıyarak günceller; bind ile bağlanan tek bir
+> *dosya* eski inode'a takılı kalır ve taşımadan sonra bir daha hiç değişmez.
+
 ---
 
 ## 6. İmaj yapısı
@@ -226,8 +337,13 @@ herkesi kilitler.
 
 ## 9. Bu adımda kapanmayanlar
 
-- **Merkezden güncelleme yok.** Her sunucu kendi `update.sh`'ını çalıştırır;
-  merkezî bir "paket çek" ajanı yazılmadı.
+- ~~**Merkezden güncelleme yok.**~~ Kapandı: sürüm akışı + ajan + sürüm ekranı
+  (bölüm 5b).
+- **Filo görünümü yok.** Ajan kurulumun durumunu kendi diskine yazar; "hangi
+  müşteri hangi sürümde" sorusunu tek ekranda cevaplayan merkezî bir liste yok.
+  Bunun için kurulumların merkeze rapor vermesi gerekir — yani merkezin bir
+  sunucuya dönüşmesi ve her kurulumdan gelen isteği kimliklendirmesi. Ayrı bir
+  iş; akışın tek yönlü kalması bilinçli bir tercih.
 - **Yedek dışarı kopyalanmıyor.** Aynı diskte duruyor; harici hedef operatörün
   kurması gereken şey.
 - **Tek makine.** Yatay ölçekleme, oturum önbelleğinin süreçler arası

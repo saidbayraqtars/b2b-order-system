@@ -26,6 +26,7 @@ import {
   Coins,
   Timer,
   Wand2,
+  ArrowUpCircle,
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission, type Permission } from "@repo/types";
@@ -103,6 +104,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
       { href: "/admin/activity", label: "Hareketler", icon: Activity, permission: "activity.view" },
       { href: "/admin/audit", label: "Güvenlik", icon: ShieldCheck, permission: "audit.view" },
       { href: "/admin/jobs", label: "Bakım işleri", icon: Timer, permission: "jobs.manage" },
+      { href: "/admin/surum", label: "Sürüm", icon: ArrowUpCircle, permission: "system.update" },
     ],
   },
 ];

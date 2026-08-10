@@ -51,6 +51,10 @@ uploads/
 !/tenants/README.md
 !/tenants/demo/
 
+# Güncelleme ajanının çalışma dizini (UPDATE_STATE_DIR): durum dosyası ve
+# günlük. Kurulumun o anki hâli, kaynağın parçası değil.
+/var/
+
 # misc
 .DS_Store
 *.log

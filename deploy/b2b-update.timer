@@ -1,0 +1,24 @@
+# Ajanı çalıştıran zamanlayıcı.
+#
+# Günde dört kez bakılıyor, ama **güncelleme yalnızca UPDATE_WINDOW içinde**
+# uygulanıyor (ajanın kendi kontrolü). İkisi ayrı olmak zorunda: sürüm bilgisi
+# gün içinde de tazelensin isteniyor — ekranda "üç gündür bakılmadı" yazan bir
+# kurulum, penceresi gecede olduğu için öyle görünmemeli.
+#
+# Sunucunun yerel saati esas. Bakım penceresi müşterinin gecesi olmalı, sizin
+# değil.
+
+[Unit]
+Description=B2B guncelleme ajanini calistir
+
+[Timer]
+OnCalendar=*-*-* 02,08,14,20:15:00
+# Sunucu kapalıyken kaçan koşu, açılışta telafi edilir. Aksi hâlde hafta sonu
+# kapatılan bir sunucu pazartesi hâlâ eski sürümde ve kimse fark etmemiş olur.
+Persistent=true
+# Elli kurulum aynı dakikada akışa yüklenmesin; ayrıca hepsi aynı anda
+# güncellenirse aynı anda bozulur.
+RandomizedDelaySec=1800
+
+[Install]
+WantedBy=timers.target

@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-10 · Adım 49 (barkod, push, çevrimdışı) sonu
+Son güncelleme: 2026-08-10 · Adım 50 (merkezden güncelleme) sonu
 
 ---
 
@@ -63,6 +63,7 @@ Son güncelleme: 2026-08-10 · Adım 49 (barkod, push, çevrimdışı) sonu
 | 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
 | 48 | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi | ✅ |
 | 49 | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma | ✅ |
+| 50 | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı | ✅ |
 
 ---
 
@@ -336,7 +337,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
   - **Birim (83 test)** — saf domain matematiği, veritabanı yok: fiyat kademesi seçimi ve sınır değerleri, iskonto önceliği, sıfır tabanı, kuruş yuvarlama; kampanya motorunda öncelik sırası, bileşik uygulama, `stopFurther`, oransal dağıtım artığı, koşul modu (VE/VEYA), hediye adedi ve nakliye indiriminin tükenmesi; ödeme yönteminin cari borç doğurup doğurmadığı, firma kısıtlamasının satıcıyı da bağlaması, alıcının vade uyduramaması, peşin yönteme vade konamaması; görsel imza tanıma ve yol kaçışı denemeleri; rapor kayıt defterinin kendi tutarlılığı (her alanın join'i bildirilmiş mi, takma adlar çakışıyor mu, join'ler ebeveyninden sonra mı geliyor).
   - **Entegrasyon (91 test)** — gerçek Prisma + gerçek Postgres. Kendi fixture'ını kurar (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge serileri), sadece kendi kayıtlarına dokunur; seed verisi olan bir veritabanında da güvenle çalışır. `DATABASE_URL` yoksa **atlanır**, veritabanı olmayan makinede birim takımı yine geçer.
   - Kapsam: teklif ↔ sipariş tutarlılığı, KDV tabanı, kupon kotası, onay akışı, kredi limiti tutması, iptalde stok + cari geri alma, geçersiz durum geçişi, yetkisiz sevkiyat denemesi, kampanyanın pasife alınması ve süresinin dolması; kısmi sevkiyat/faturalama ve faturaların kuruşu kuruşuna siparişe eşitlenmesi, belge numarası yarışı; sepetin okurken fiyatlanması ve pasif ürünü düşürmesi; şifre sıfırlama biletinin tek kullanımlığı ve hesap ifşa etmemesi; hediye + nakliye indiriminin genel toplamı bozmaması; gruplanmış raporda kapsam zorlaması ve saat dilimi kovaları; adres bazlı giriş sınırı, denetim saklaması ve önbellek tahliyesi; tahsilatın defter ile önbelleği birlikte hareket ettirmesi, iptalin ters kayıtla yazılması ve iki kez yapılamaması, başka firmanın tahsilatına erişilememesi, açık ziyaret varken ikinci ziyaretin reddi.
-- **Rota testleri** Adım 47'de eklendi (`apps/web/test`) — aşağıdaki bölüme bakın. Bugünkü toplam: **466 test / 34 dosya** (359 servis + 107 rota).
+- **Rota testleri** Adım 47'de eklendi (`apps/web/test`) — aşağıdaki bölüme bakın. Bugünkü toplam: **489 test / 36 dosya** (374 servis + 115 rota).
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): Postgres servis konteyneri, `db:deploy`, ardından typecheck → lint → test → build. Aynı ref'e gelen yeni push eskisini iptal ediyor.
 
 ## 14. Belgeler & Sevkiyat (Adım 14)
@@ -1683,6 +1684,7 @@ kırıldı. `turbo.json`'da `web#test` artık `@repo/services#test`'i bekliyor.
 | `/reports/new` · `/reports/[id]` | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme |
 | `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli |
 | `/admin/activity` | süper admin | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda |
+| `/admin/surum` | süper admin (`system.update`) | Çalışan sürüm, kanalın yayımladığı sürüm, son güncelleme sonucu — salt okunur |
 | `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
 | `/rep` | plasiyer, süper admin | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **Sipariş · Tahsilat · Ziyaret** |
 | `/rep/tahsilat` | plasiyer, süper admin | Tahsilat girişi (onay adımlı), firmanın tahsilat geçmişi, satır bazında iptal |
@@ -1879,7 +1881,123 @@ uygulamanın kendi oluşturduğu satırları (sipariş, adres, kullanıcı, kamp
 adlandırıyor ve oralarda kimlik her zaman Prisma'dan geliyor. İçe aktarma ya da
 ERP eşlemesi o tablolara da uzanırsa aynı değişiklik oralarda da gerekecek.
 
-## 45. API Uçları
+## 45. Merkezden Güncelleme (Adım 50)
+
+Adım 40 dağıtımı çözdü ama her sunucu kendi `update.sh`'ını bekliyordu: elli
+kurulum, elli el hareketi ve "hangi müşteri hangi sürümde" sorusuna cevap yok.
+Bu adım güncellemeyi merkezden **duyurulabilir** hâle getiriyor. Ayrıntı:
+`DEPLOYMENT.md` bölüm 5b.
+
+### Merkez bir sunucu değil, bir dosya
+
+Akış statik bir JSON (`<UPDATE_FEED_URL>/<kanal>.json`) ve yön tek taraflı:
+**kurulumlar okur, merkez hiçbir sunucuya bağlanmaz.** Müşteri sunucularına
+komut geçirebilen merkezî bir kontrol paneli, ele geçirildiğinde elli kurulumda
+birden kod çalıştırma imkânı olurdu — bu ürün için kabul edilemeyecek bir tek
+hata noktası.
+
+Akış **yalnızca bir git etiketinin adını** söyler; kod her zaman kurulumun kendi
+`origin`'inden gelir. Akış adresini ele geçirmek kod çalıştırmaya yetmez,
+saldırganın ayrıca depoya yazabiliyor olması gerekir. İki kilit daha: etiket adı
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$` süzgecinden geçmeden `git`e verilmez (o dize
+kabuğa da giriyor), ve `UPDATE_REQUIRE_SIGNED_TAG=1` ile etiketin GPG imzası
+doğrulanır.
+
+Akış dosyası kanal başına ayrı ve **düz**: iç içe JSON yok, çünkü müşteri
+sunucusunda `jq` olduğunu varsayamayız. Ajanın bağımlılığı `sh` + `git` +
+`docker`. Bunun bedeli `notes` alanının tırnak ve satır sonu içerememesi;
+`release.sh` bunu yayımlarken reddediyor, uzun metin `notesUrl`de duruyor.
+
+### Ajan: ne zaman dokunur, ne zaman durur
+
+`scripts/agent.sh` zamanlayıcıdan günde dört kez koşuyor
+(`deploy/b2b-update.timer`). Bakmak ile uygulamak ayrı: sürüm bilgisi gün içinde
+tazeleniyor, güncelleme yalnızca bakım penceresinde uygulanıyor. Ekranda "üç
+gündür bakılmadı" yazan bir kurulum, penceresi gecede olduğu için öyle
+görünmemeli.
+
+| Politika | Ne yapar |
+|---|---|
+| `off` | Akışa bakmaz |
+| `notify` | Bakar, ekranda gösterir, **dokunmaz** — varsayılan |
+| `auto` | Bakım penceresinde kendisi günceller |
+
+Varsayılan bilerek `notify`. Müşterinin ERP'ye bağlı sipariş sistemini haberi
+olmadan yeniden başlatan bir yazılım, kazandığından çok güven kaybettirir.
+
+`auto` politikasında bile uygulamadan önce üç şart aranıyor:
+
+1. **Bakım penceresi** içinde olunmalı (sunucunun yerel saati).
+2. **Kurulum sağlıklı** olmalı. Yarım kalmış bir göçün üstüne yeni sürüm koymak
+   teşhisi imkânsız hâle getirir; operatör önce neden bozuk olduğunu görmeli.
+3. **Çalışma ağacı temiz** olmalı. Sunucuda elle düzenlenmiş bir dosya varsa
+   `git checkout` onu ezerdi ve kaybolanın ne olduğunu kimse bilemezdi.
+
+Uygulama işini ajan yapmıyor, `update.sh`'a devrediyor: yedek → derle → göç →
+geçir → sağlığı bekle → tutmazsa geri al. Ajanın eklediği tek şey, betik
+"başarılı" dönse bile çalışan sürümü tekrar okuyup beklenen sürüm olduğunu
+doğrulaması — sessizce güncellenmemiş bir kurulum, bilinen en sinsi arıza.
+
+### Sürüm artık etiket adı
+
+`update.sh` sürümü `git rev-parse --short HEAD` yerine `git describe --tags
+--always --dirty` ile üretiyor. Zorunluydu: akış sürümü `v1.4.0` diye duyuruyor,
+kurulum kendini kısa sha ile tanıtsaydı iki ad hiçbir zaman eşleşmez, her
+kontrolde "güncelleme var" denirdi.
+
+Aynı kodu tekrar yayına almak için kullanılan "sürüme zaman soneki ekle" numarası
+da kaldırıldı; yerine `--force-recreate` geldi. **Sürüm adı kodun kimliğidir,
+çalıştırma sayısının değil.**
+
+### Sürüm ekranı — ve neden düğme yok
+
+`/admin/surum` (izin: `system.update`, yalnızca satıcı tarafı) çalışan sürümü,
+kanalın yayımladığını, son kontrol zamanını ve son güncelleme denemesinin
+sonucunu gösteriyor. Salt okunur ve bilerek öyle: web bir kapsayıcının içinde,
+orada `git` de `docker` da yok. Erişebilsin diye docker soketi kapsayıcıya
+bağlansaydı, uygulamada bulunacak herhangi bir açık **host'ta root'a** çıkardı.
+Bir "Güncelle" düğmesinin bedeli budur.
+
+Ekran akışa kendi bakmıyor, ajanın bıraktığı durum dosyasını okuyor:
+güncellemeyi uygulayacak olanın gördüğü şey neyse ekranda o yazmalı.
+
+**En önemli durum `stale`.** Ajan ölmüşse dosya son baktığı anı anlatmaya devam
+eder; "güncelsiniz" cevabı üç haftadır akışa bakmamış bir kurulumda yanlıştır.
+36 saatten eski kontrol "ajan susuyor" olarak gösteriliyor. Düşen güncelleme de
+bekleyen güncellemenin önüne geçiyor: ikisi aynı anda doğrudur ve operatörün
+önce görmesi gereken, tekrar denemeden önce neyin düştüğü.
+
+### Durum dosyası: dizin bağlanır, dosya değil
+
+Ajan durumu geçici ada yazıp taşıyarak güncelliyor — web yarısı yazılmış bir
+JSON okumasın diye. Bu yüzden Compose'da bağlanan şey **dizin**
+(`UPDATE_STATE_DIR` → `/data/state:ro`): bind ile bağlanan tek bir *dosya* eski
+inode'a takılı kalır ve taşımadan sonra bir daha hiç değişmez. Ekran ilk günün
+verisini sonsuza kadar gösterirdi.
+
+Okuma tarafı hiçbir bozuklukta atmıyor: dosya yoksa, yarım yazılmışsa ya da
+şema tutmuyorsa `null` → ekran "bilinmiyor" diyor. Sürüm ekranının kendisi, bir
+sürüm dosyası bozuk diye 500 vermemeli.
+
+### Doğrulama
+
+15 birim testi (`update-channel.test.ts`) durum çıkarımını ve bozuk dosya
+yollarını tutuyor. Ayrıca ajan **canlı çalıştırıldı**: sahte bir akış sunucusuna
+karşı ürettiği durum dosyası Zod şemasıyla okundu (bash'in yazdığı JSON ile TS'in
+beklediği şema arasındaki dikiş, kırılmaya en açık yer), `v1.4.0; rm -rf /`
+sürüm adının reddedildiği ve akışa ulaşılamadığında hatanın dosyaya yazıldığı
+görüldü. `release.sh`'ın üç kapısı da denendi: geçersiz ad, depoda olmayan
+etiket, `origin`'e gönderilmemiş etiket.
+
+### Kapanmayan
+
+**Filo görünümü yok.** "Hangi müşteri hangi sürümde" sorusunu tek ekranda
+cevaplayan merkezî bir liste için kurulumların merkeze rapor vermesi gerekir —
+yani merkezin bir sunucuya dönüşmesi ve her kurulumdan gelen isteği
+kimliklendirmesi. Akışın tek yönlü kalması bilinçli tercih; filo görünümü ayrı
+bir iş.
+
+## 46. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2036,7 +2154,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Sanal POS yok**~~ — Adım 28'de bağlantı noktası kapatıldı: kayıt defteri, ödeme niyeti, elden POS sağlayıcısı. **Gerçek bir sağlayıcı adaptörü hâlâ yok** — iyzico/PayTR/VPOS'tan hangisinin yazılacağı müşteri seçimine ve sözleşmesine bağlı. Arayüz hazır; yazılacak şey tek dosyalık adaptör + 3-D Secure dönüş ve webhook rotaları.
 - ~~**Çek/senet portföyü yok**~~ — Adım 41'de kapatıldı: kâğıt tahsilattan doğuyor (zorunlu ve tekil bağ), vade/banka/durum takibi var, para tahsilde kasaya giriyor, karşılıksızda kapanan borç ters kayıtla geri açılıyor.
 - **E-Fatura / E-İrsaliye yok** — belge basılıyor, GİB'e gitmiyor; sunucu tarafı PDF de yok. Entegratör (EDM/Foriba/Sovos) ücretli dış bağımlılık, ve müşteriye göre değişir → eklenti noktası.
-- ~~**Dağıtım hikâyesi yok**~~ — Adım 40'ta kapatıldı: üretim imajı, ayrı göç konteyneri, sağlık ucu, kurulum/yedek/geri yükleme/güncelleme betikleri, `DEPLOYMENT.md`. **Merkezden güncelleme hâlâ yok** — her sunucu kendi `update.sh`'ını çalıştırıyor; yedekler aynı diskte duruyor, dışarı kopyalama operatörün işi.
+- ~~**Dağıtım hikâyesi yok**~~ — Adım 40'ta kapatıldı: üretim imajı, ayrı göç konteyneri, sağlık ucu, kurulum/yedek/geri yükleme/güncelleme betikleri, `DEPLOYMENT.md`. Merkezden güncelleme Adım 50'de kapandı (sürüm akışı + ajan + `/admin/surum`). **Filo görünümü yok** — hangi müşteri hangi sürümde sorusu tek ekranda cevaplanmıyor; yedekler aynı diskte duruyor, dışarı kopyalama operatörün işi.
 
 ### Yakın sırada
 
