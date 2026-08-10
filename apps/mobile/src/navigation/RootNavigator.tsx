@@ -1,8 +1,12 @@
 import { useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  createNavigationContainerRef,
+  NavigationContainer,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { hasAnyPermission, hasPermission } from "@repo/types";
 import { useAuthStore, isFieldRole } from "@/store/auth";
+import { useNotificationTap } from "@/lib/push";
 import { Loading } from "@/components/ui";
 import type { RootStackParamList } from "./types";
 import LoginScreen from "@/screens/LoginScreen";
@@ -22,12 +26,34 @@ import AccountScreen from "@/screens/AccountScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export default function RootNavigator() {
   const { user, hydrated, hydrate } = useAuthStore();
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Bildirime dokunulduğunda hedefe git.
+  //
+  // Ekran adı sunucudan geliyor ama körü körüne kullanılmıyor: yığında olmayan
+  // bir ekrana gitmek çökmeye yol açar ve yığın **izne göre** kuruluyor —
+  // kuryede OrderDetail yok. Bilinmeyen ya da erişilemeyen hedefte hiçbir şey
+  // yapmamak doğrusu; bildirim zaten okundu.
+  useNotificationTap((target) => {
+    if (!navigationRef.isReady()) return;
+    if (target.screen === "OrderDetail" && target.orderId) {
+      navigationRef.navigate("OrderDetail", {
+        orderId: target.orderId,
+        orderNumber: target.orderNumber ?? "",
+      });
+    } else if (target.screen === "Deliveries") {
+      navigationRef.navigate("Deliveries");
+    } else if (target.screen === "VisitPlan") {
+      navigationRef.navigate("VisitPlan");
+    }
+  });
 
   if (!hydrated) return <Loading />;
 
@@ -44,7 +70,7 @@ export default function RootNavigator() {
   const canBuy = hasPermission(user?.permissions, "products.view");
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerBackTitle: "Geri" }}>
         {!user ? (
           <Stack.Screen

@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { VisitRequestStatus } from "@repo/types";
 import { BusinessError } from "./errors";
+import { sendPush } from "./push";
 
 // "Bizi arayın / uğrayın" çağrıları ve plasiyerin günlük ziyaret listesi.
 //
@@ -135,7 +136,24 @@ export async function createVisitRequest(
         select: SELECT,
       });
 
-  return toRow(row);
+  const visit = toRow(row);
+
+  // Çağrıyı açan bayi, temsilcinin telefonunu aramak yerine buraya yazıyor;
+  // karşılığında temsilcinin bunu **görmesi** gerekiyor. Bildirim olmadan çağrı,
+  // plasiyer uygulamayı açana kadar bekleyen sessiz bir satır.
+  //
+  // Açan kişinin kendisi temsilciyse susuyor; zaten açık bir çağrı
+  // güncellendiyse de — aynı ziyaret için ikinci kez uyarmak, üçüncüsünde
+  // bildirimleri kapattırır.
+  if (!open && company.salesRepId && company.salesRepId !== args.createdById) {
+    await sendPush([company.salesRepId], {
+      title: "Ziyaret çağrısı",
+      body: `${visit.companyName}${args.note ? ` · ${args.note}` : ""}`,
+      data: { screen: "VisitPlan" },
+    });
+  }
+
+  return visit;
 }
 
 export interface ListVisitRequestArgs {

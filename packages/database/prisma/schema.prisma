@@ -162,6 +162,7 @@ model User {
   passwordResets PasswordResetToken[]
   salesTargets   SalesTarget[]        @relation("SalesTargetRep")
   targetsAuthored SalesTarget[]       @relation("SalesTargetAuthor")
+  pushDevices     PushDevice[]        @relation("PushDeviceOwner")
   visitRequests   VisitRequest[]      @relation("VisitRequestRep")
   visitRequestsAuthored VisitRequest[] @relation("VisitRequestAuthor")
   deliveries     Shipment[]           @relation("ShipmentCourier")
@@ -2023,4 +2024,38 @@ model Announcement {
   updatedAt DateTime @updatedAt
 
   @@index([enabled, placement, priority])
+}
+
+// ─────────────────────────────────────────────
+// PUSH BİLDİRİM
+// ─────────────────────────────────────────────
+
+/// Bir telefona bildirim göndermek için gereken adres.
+///
+/// Kullanıcı başına birden çok satır olabilir — aynı kişi hem kendi telefonunu
+/// hem şirket tabletini kullanıyor olabilir — ama bir jeton (`token`) yalnızca
+/// bir kullanıcıya ait olabilir. Bu yüzden `token` tekil: aynı cihazdan başka
+/// biri giriş yaptığında satır yeni kullanıcıya taşınır. Aksi halde eski
+/// kullanıcının sipariş bildirimleri, o cihazı devralan kişiye düşerdi.
+model PushDevice {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("PushDeviceOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Expo'nun ürettiği adres: `ExponentPushToken[...]`. Sır değil ama kişiye
+  /// bağlı bir tanıtıcı, bu yüzden dışarıya hiçbir uçtan geri dönülmüyor.
+  token    String  @unique
+  platform String
+  /// "Said'in telefonu" gibi — kullanıcı hangi cihazı çıkardığını görebilsin.
+  deviceName String?
+
+  /// Expo "bu cihaz artık kayıtlı değil" dediğinde doluyor (uygulama silinmiş
+  /// ya da izin kapatılmış). Satır silinmiyor: aynı cihaz geri geldiğinde
+  /// hangi kullanıcıya ait olduğu bilinsin ve kaç cihazın düştüğü görülsün.
+  disabledAt DateTime?
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId, disabledAt])
 }

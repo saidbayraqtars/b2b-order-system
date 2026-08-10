@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import { BusinessError } from "./errors";
 import { recordStatusChange } from "./order-lifecycle";
+import { sendPush } from "./push";
 
 // Kurye masası: kime hangi sevkiyat düştü, teslim edildi mi, kanıtı ne.
 //
@@ -158,7 +159,23 @@ export async function assignCourier(
     data: { courierId },
     select: SELECT,
   });
-  return toRow(row);
+  const delivery = toRow(row);
+
+  // Atama yapıldıktan sonra, işlem içinde değil. Kurye telefonunu açtığında
+  // listeyi kendisi tazeliyordu; bildirim, "sana yeni iş düştü"yü söyleyen tek
+  // şey — kuryenin ekranı sürekli açık tutmasını beklemek gerçekçi değil.
+  // Kuryenin kendini ataması durumunda susuyor.
+  if (courierId) {
+    await sendPush([courierId], {
+      title: "Yeni teslimat",
+      body: `${delivery.companyName} · ${delivery.orderNumber}${
+        delivery.district ? ` · ${delivery.district}` : ""
+      }`,
+      data: { screen: "Deliveries" },
+    });
+  }
+
+  return delivery;
 }
 
 export interface ConfirmDeliveryArgs {

@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/format";
 import { useAuthStore } from "@/store/auth";
 import { Button, Card, ErrorState, Field, Loading, Row } from "@/components/ui";
 import ServerSettings from "@/components/ServerSettings";
+import { PushSettings } from "@/components/PushSettings";
 import { appVersion, runningVersion, useOtaUpdate } from "@/lib/ota";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -170,6 +171,13 @@ export default function AccountScreen(_props: ScreenProps<"Account">) {
         </Text>
         {/* Değişince önbellekteki her şey başka bir kurulumun verisi olur. */}
         <ServerSettings onChanged={() => queryClient.clear()} />
+      </Card>
+
+      <Card className="gap-3">
+        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
+          Bildirimler
+        </Text>
+        <PushSettings />
       </Card>
 
       <Card className="gap-3">

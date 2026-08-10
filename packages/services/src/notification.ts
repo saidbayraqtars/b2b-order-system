@@ -2,6 +2,7 @@ import type { OrderStatus } from "@prisma/client";
 import { prisma } from "@repo/database";
 import { recordAudit } from "./audit";
 import { appUrl, sendMail, type MailResult } from "./mail";
+import { sendPush } from "./push";
 import {
   invoiceIssuedMail,
   orderPlacedMail,
@@ -58,25 +59,44 @@ async function companyAudience(companyId: string): Promise<{
   name: string;
   emails: string[];
   salesRepEmail: string | null;
+  /**
+   * Aynı kitlenin telefon tarafı. E-posta bir adrese gider, push bir **hesaba**
+   * — firmanın genel e-posta kutusunun karşılığı yok, bu yüzden liste yalnızca
+   * gerçek kullanıcılardan oluşuyor.
+   */
+  memberIds: string[];
+  salesRepId: string | null;
 }> {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     select: {
       name: true,
       email: true,
-      salesRep: { select: { email: true, isActive: true } },
+      salesRep: { select: { id: true, email: true, isActive: true } },
       members: {
         where: { isActive: true, role: "COMPANY_ADMIN" },
-        select: { email: true },
+        select: { id: true, email: true },
       },
     },
   });
-  if (!company) return { name: "", emails: [], salesRepEmail: null };
+  if (!company) {
+    return {
+      name: "",
+      emails: [],
+      salesRepEmail: null,
+      memberIds: [],
+      salesRepId: null,
+    };
+  }
+
+  const rep = company.salesRep?.isActive ? company.salesRep : null;
 
   return {
     name: company.name,
     emails: recipients(company.email, ...company.members.map((m) => m.email)),
-    salesRepEmail: company.salesRep?.isActive ? company.salesRep.email : null,
+    salesRepEmail: rep?.email ?? null,
+    memberIds: company.members.map((m) => m.id),
+    salesRepId: rep?.id ?? null,
   };
 }
 
@@ -144,6 +164,7 @@ export async function notifyOrderPlaced(orderId: string): Promise<void> {
       status: true,
       grandTotal: true,
       companyId: true,
+      createdById: true,
       createdBy: { select: { email: true } },
     },
   });
@@ -175,6 +196,30 @@ export async function notifyOrderPlaced(orderId: string): Promise<void> {
     entityId: orderId,
     summary: `Sipariş bildirimi: ${order.orderNumber}`,
   });
+
+  // Telefona düşen kısım siparişi **girenden** başkasına gidiyor: kendi
+  // yaptığın işi sana bildiren bir uygulama, bir hafta sonra bildirimleri
+  // kapattırır. Onay bekleyen bir sipariş firma yöneticisinin işi; canlıya
+  // geçmiş bir sipariş plasiyerin haberi.
+  await sendPush(
+    [
+      ...audience.memberIds,
+      ...(needsApproval ? [] : [audience.salesRepId ?? ""]),
+    ].filter((id) => id && id !== order.createdById),
+    {
+      title: needsApproval ? "Onay bekleyen sipariş" : "Yeni sipariş",
+      body: `${audience.name} · ${order.orderNumber} · ${formatTotal(order.grandTotal)}`,
+      data: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
+    },
+  );
+}
+
+/** Bildirim metni için kısa tutar. Kuruş, iki satırlık bir bildirimde yer kaplar. */
+function formatTotal(value: { toFixed(digits: number): string }): string {
+  return `${Number(value.toFixed(2)).toLocaleString("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ₺`;
 }
 
 /**
@@ -202,6 +247,7 @@ export async function notifyOrderStatusChanged(
     select: {
       orderNumber: true,
       companyId: true,
+      createdById: true,
       createdBy: { select: { email: true } },
     },
   });
@@ -223,6 +269,15 @@ export async function notifyOrderStatusChanged(
     entity: "Order",
     entityId: orderId,
     summary: `Sipariş durum bildirimi: ${order.orderNumber} → ${status}`,
+  });
+
+  // Durum değişimi siparişi girenin beklediği haber — onaylandı mı, yola çıktı
+  // mı. Firma yöneticileri de listede: onay kendilerinde olmasa bile firmanın
+  // siparişinin reddedildiğini duymaları gerekiyor.
+  await sendPush([order.createdById, ...audience.memberIds], {
+    title: `Sipariş ${orderStatusLabel(status).toLocaleLowerCase("tr")}`,
+    body: `${order.orderNumber}${note ? ` · ${note}` : ""}`,
+    data: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
   });
 }
 

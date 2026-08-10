@@ -12,6 +12,7 @@ import type {
   VisitRequestStatus,
 } from "@repo/types";
 import { apiFetch, apiUpload, qs } from "./api";
+import { OFFLINE_MUTATIONS } from "./offline";
 import { authToken } from "@/store/auth";
 import type {
   AccountProfile,
@@ -350,6 +351,9 @@ export interface CheckInVars {
 export function useCreateCheckIn() {
   const qc = useQueryClient();
   return useMutation({
+    // Anahtarlı: şebeke yokken kuyruğa alınıyor ve dönünce gönderiliyor.
+    // Uygulama arada kapanırsa işlevi `registerOfflineMutations` geri veriyor.
+    mutationKey: OFFLINE_MUTATIONS.checkIn,
     mutationFn: (vars: CheckInVars) =>
       post<{ checkIn: CheckInRecord }>("/api/checkins", vars),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["checkins"] }),
@@ -359,6 +363,7 @@ export function useCreateCheckIn() {
 export function useCheckOut() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: OFFLINE_MUTATIONS.checkOut,
     mutationFn: (checkInId: string) =>
       post<{ checkIn: CheckInRecord }>(`/api/checkins/${checkInId}/checkout`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["checkins"] }),
@@ -386,6 +391,9 @@ export interface PaymentVars {
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
+    // Kuyruğa alınabiliyor. Güvenli olmasının sebebi `idempotencyKey`: kuyruk
+    // aynı tahsilatı iki kez göndermeye kalksa da sunucu ikinci kaydı yazmıyor.
+    mutationKey: OFFLINE_MUTATIONS.payment,
     mutationFn: (vars: PaymentVars) =>
       post<RecordPaymentResult>("/api/payments", vars),
     onSuccess: (_res, vars) => {
@@ -520,6 +528,7 @@ export interface ConfirmDeliveryVars {
 export function useConfirmDelivery() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: OFFLINE_MUTATIONS.delivery,
     mutationFn: ({ shipmentId, ...body }: ConfirmDeliveryVars) =>
       post<{ delivery: DeliveryRow }>(`/api/deliveries/${shipmentId}`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["deliveries"] }),

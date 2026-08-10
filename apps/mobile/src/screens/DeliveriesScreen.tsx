@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, Switch, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { hasPermission } from "@repo/types";
@@ -21,6 +21,7 @@ import {
   Field,
   Loading,
 } from "@/components/ui";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import type { Courier, DeliveryRow } from "@/lib/types";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -38,6 +39,26 @@ export default function DeliveriesScreen({
   const [showDelivered, setShowDelivered] = useState(false);
   const list = useDeliveries(showDelivered);
   const assign = useAssignCourier();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  // Etiketten okunan iş. Dolu olduğu sürece liste tek karta iniyor: kuryenin
+  // elindeki koliyi ekrandaki satırlar arasında gözle aramaması için.
+  const [scanned, setScanned] = useState<string | null>(null);
+
+  // Etiket ne taşıyorsa onunla eşleşiyor: tasarımcıda hem sipariş numarası hem
+  // sevkiyat belge numarası basılabiliyor ve hangisinin seçildiği müşteriye
+  // göre değişiyor. İkisine de bakmak, kuryeye "yanlış etiket" dedirtmekten
+  // ucuz.
+  const rows = list.data?.deliveries;
+  const matches = useMemo(() => {
+    const all = rows ?? [];
+    if (!scanned) return all;
+    const needle = scanned.trim().toLocaleUpperCase("tr");
+    return all.filter(
+      (d) =>
+        d.orderNumber.toLocaleUpperCase("tr") === needle ||
+        d.documentNumber.toLocaleUpperCase("tr") === needle,
+    );
+  }, [rows, scanned]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -54,7 +75,7 @@ export default function DeliveriesScreen({
     return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
   }
 
-  const { deliveries, couriers } = list.data;
+  const { couriers } = list.data;
   // Asked of the session, not inferred from the answer: the endpoint sends an
   // empty courier list both to a courier (who may not dispatch) and to a
   // dispatcher who has not hired one yet, and those two deserve different
@@ -70,13 +91,43 @@ export default function DeliveriesScreen({
         <Switch value={showDelivered} onValueChange={setShowDelivered} />
       </View>
 
+      <View className="px-4 pb-3">
+        {scanned ? (
+          <View className="flex-row items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-900 dark:bg-indigo-950">
+            <Text className="flex-1 text-sm text-indigo-800 dark:text-indigo-200">
+              Etiket: {scanned}
+              {matches.length === 0 ? " · listede yok" : ""}
+            </Text>
+            <Pressable accessibilityRole="button" onPress={() => setScanned(null)}>
+              <Text className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                Temizle
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Button
+            title="Etiket okut"
+            variant="secondary"
+            onPress={() => setScannerOpen(true)}
+          />
+        )}
+      </View>
+
       <FlatList
-        data={deliveries}
+        data={matches}
         keyExtractor={(d) => d.shipmentId}
         contentContainerClassName="gap-3 px-4 pb-8"
         onRefresh={() => void list.refetch()}
         refreshing={list.isRefetching}
-        ListEmptyComponent={<Empty text="Bekleyen teslimat yok." />}
+        ListEmptyComponent={
+          <Empty
+            text={
+              scanned
+                ? "Okunan etiket bu listede yok. Başka bir kuryeye atanmış ya da henüz sevk edilmemiş olabilir."
+                : "Bekleyen teslimat yok."
+            }
+          />
+        }
         renderItem={({ item }) => (
           <DeliveryCard
             delivery={item}
@@ -86,6 +137,16 @@ export default function DeliveriesScreen({
             }
           />
         )}
+      />
+
+      <BarcodeScanner
+        visible={scannerOpen}
+        title="Sevkiyat etiketini okutun"
+        onClose={() => setScannerOpen(false)}
+        onScan={(code) => {
+          setScannerOpen(false);
+          setScanned(code);
+        }}
       />
     </View>
   );

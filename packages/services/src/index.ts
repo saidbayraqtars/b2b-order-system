@@ -38,6 +38,7 @@ export * from "./mail";
 export * from "./mail-templates";
 export * from "./password-reset";
 export * from "./notification";
+export * from "./push";
 export * from "./cart";
 export * from "./media";
 export * from "./rate-limit";

@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-10 · Adım 48 (kurulabilir APK) sonu
+Son güncelleme: 2026-08-10 · Adım 49 (barkod, push, çevrimdışı) sonu
 
 ---
 
@@ -62,6 +62,7 @@ Son güncelleme: 2026-08-10 · Adım 48 (kurulabilir APK) sonu
 | 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş | ↩ geri alındı (2026-08-10) |
 | 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
 | 48 | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi | ✅ |
+| 49 | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma | ✅ |
 
 ---
 
@@ -1776,6 +1777,87 @@ gerekirse `eas credentials` ile buluta yüklenebilir.
 **Güncelleme yolu ikiye ayrılıyor:** JS değişiklikleri `eas update` ile uzaktan
 iniyor, yeni APK yalnızca native bir kütüphane eklendiğinde gerekiyor.
 
+### Barkod / QR okuyucu (Adım 49)
+
+`src/components/BarcodeScanner.tsx` — kamerayı açan tek bileşen, iki yerde
+kullanılıyor.
+
+**Katalogda:** okutulan barkod aramaya yazılıyor ve **birebir eşleşme varsa**
+ürün doğrudan sepete giriyor (koli katına yuvarlanmış açılış adediyle). Birebir
+şartı bilerek: sunucu araması `contains` çalıştığı için bir barkod ürün adına ya
+da SKU'ya da denk gelebiliyor, ve öyle bir eşleşmeye dayanarak sipariş satırı
+açmak plasiyerin okuttuğunu sandığı şeyle sepete gireni ayırır. Eşleşme yoksa
+liste süzülmüş halde bırakılıyor, seçim insana kalıyor. Açık kategori süzgeci de
+temizleniyor — yoksa okutulan ürün "bulunamadı" gibi görünürdü.
+
+**Teslimatta:** sevkiyat etiketi okutulunca liste tek işe iniyor. Hem sipariş
+numarası hem sevkiyat belge numarası eşleştiriliyor; etiket tasarımcısında
+hangisinin basıldığı müşteriye göre değişiyor.
+
+Okunan biçimler sayılı (EAN-13/8, UPC-A/E, Code128, Code39, ITF-14, QR): kamera
+ne kadar az biçim denerse o kadar hızlı kilitleniyor. İlk okumadan sonra dinleme
+kapanıyor — kamera aynı barkodu saniyede onlarca kez bildiriyor ve bu, tek
+okutmayla üç koli sipariş etmek demekti. Kamera izni katman açılınca isteniyor,
+uygulama açılışında değil.
+
+### Push bildirim (Adım 49)
+
+Taşıyıcı Expo'nun push servisi; uygulama zaten Expo ile derlendiği için jetonu o
+üretiyor ve FCM anahtarı/sertifika döngüsü bizde durmuyor.
+
+| Olay | Kime | Neden ona |
+|------|------|-----------|
+| Yeni sipariş (onay bekliyor) | Firma yöneticileri | Onay onların işi |
+| Yeni sipariş (canlı) | Plasiyer | Kendi müşterisinin hareketi |
+| Sipariş durum değişimi | Siparişi giren + firma yöneticileri | Bekledikleri cevap |
+| Ziyaret çağrısı açıldı | Portföy temsilcisi | Çağrı ona düşüyor |
+| Teslimat ataması | Atanan kurye | Ekranı sürekli açık tutmuyor |
+
+İşi **yapan kişiye** bildirim gitmiyor: kendi girdiğin siparişi sana duyuran bir
+uygulama, bir hafta içinde bildirimleri kapattırır.
+
+**Jeton tek kullanıcıya ait** (`PushDevice.token` tekil) ve **taşınabilir**: aynı
+telefondan başka biri giriş yaparsa satır yeni kullanıcıya geçiyor. Eski sahipte
+kalsaydı, cihazı devralan kişi öncekinin sipariş ve tahsilat bildirimlerini
+okumaya devam ederdi. Sahip her zaman **oturumdan** okunuyor, istekten değil.
+Çıkışta cihaz çözülüyor — jeton silinmeden önce, çünkü çözme isteği oturumla
+yetkileniyor.
+
+Gönderim e-posta bildirimleriyle aynı iki kuralı izliyor: hiçbir zaman
+fırlatmıyor ve işlem dışında çağrılıyor. Expo "DeviceNotRegistered" dediğinde
+satır kapatılıyor (silinmiyor: aynı cihaz geri geldiğinde kime ait olduğu
+bilinsin). 8 rota testi bu sınırları koruyor.
+
+### Çevrimdışı çalışma (Adım 49)
+
+Üç ayrı davranış, üçü de bilerek farklı:
+
+- **Okuma** — son görülen veri diske yazılıyor (`AsyncStorage`, bir hafta), şebeke
+  yokken ekranlar boş değil eski veriyle açılıyor. Stok yarım saat önceki sayı
+  olabilir; bu gizlenmiyor, üstte turuncu bir şerit "çevrimdışı" yazıyor.
+- **Saha yazmaları (tahsilat, ziyaret aç/kapat, teslim onayı)** — kuyruğa
+  alınıyor, şebeke gelince kendiliğinden gidiyor, uygulama kapanıp açılsa bile
+  duruyor. Üçü de *olmuş bir şeyin kaydı*: para alındı, kapıya gidildi, mal
+  teslim edildi. On dakika geç düşmesi işi bozmuyor, hiç düşmemesi bozuyor.
+  Tahsilatın kuyruğa girebilmesinin sebebi Adım 43'teki **tekrar anahtarı**:
+  kuyruk aynı kaydı iki kez gönderse de sunucu ikincisini yazmıyor.
+- **Sipariş — kuyruğa alınmıyor.** Fiyat, kampanya, stok ve limit sunucuda
+  çözülüyor; çevrimdışı yazılan bir sipariş gönderildiği anda başka bir fiyata ya
+  da tükenmiş stoğa denk gelebilir ve müşteriye okunan tutar tutmaz. Sepet zaten
+  sunucuda, kaybolmuyor.
+
+Şebeke durumu NetInfo'dan geliyor ve `isInternetReachable` de bakılıyor: Wi-Fi'ye
+bağlı ama internete çıkamayan bir telefon (otel ağı, kotası bitmiş hat) NetInfo'ya
+"bağlı" görünüyor.
+
+Tahsilat ekranı duraklamayı bir sonuç sayıyor: çevrimdışı gönderilen tahsilatta
+`onSuccess` hiç çalışmıyor, ekran dönen bir düğmeyle açık kalırdı ve plasiyer
+parayı aldığı hâlde kaydın gidip gitmediğini bilemezdi. Ekran kapanıyor, şeritte
+"N kayıt bekliyor" yazıyor.
+
+**Çıkışta disk önbelleği siliniyor** — içinde müşteri listesi, cari bakiye ve
+sipariş tutarları var; hesap değişince veri de değişmeli.
+
 ### Kayıt kimliği doğrulaması (Adım 45'te düzeltildi)
 
 Ürün, varyant ve kategori kimlikleri `z.string().cuid()` ile doğrulanıyordu.
@@ -1807,6 +1889,7 @@ ERP eşlemesi o tablolara da uzanırsa aynı değişiklik oralarda da gerekecek.
 | POST | `/api/auth/reset-password` | bağlantı sahibi (token'ın kendisi kimlik) |
 | POST | `/api/mobile/login` | herkes (bearer token üretir) |
 | GET | `/api/mobile/me` | kimliği doğrulanmış |
+| POST/DELETE | `/api/mobile/push-token` | kimliği doğrulanmış (sahip oturumdan, gövdeden değil) |
 | GET | `/api/catalog?companyId&categoryId&search` | 4 rol |
 | GET | `/api/categories` | 4 rol |
 | GET | `/api/companies` | kimliği doğrulanmış (role göre kapsam) |
@@ -1963,7 +2046,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
 - ~~**Ziyaret raporu yok**~~ — Adım 44'te kapatıldı: `CHECKINS` veri kümesine `source` ve saklanan `durationMinutes` eklendi; "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" artık gruplanabiliyor.
-- ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı: 107 rota testi, ağırlığı yetki sınırında. **Ekranlar (41 sayfa) hâlâ testsiz** ve tarayıcı seviyesinde e2e (Playwright) yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
+- ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı: 115 rota testi (Adım 49'da 8 push testi eklendi), ağırlığı yetki sınırında. **Ekranlar (41 sayfa) hâlâ testsiz** ve tarayıcı seviyesinde e2e (Playwright) yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
 
 ### Mobil
 
@@ -1971,8 +2054,8 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Sepet hâlâ cihazda**~~ — Adım 45'te kapandı: mobil sepet web ile aynı `Cart` satırını kullanıyor.
 - ~~Uygulama gerçek cihazda çalıştırılmadı~~ — Adım 45'te Android emülatöründe (API 37) uçtan uca koşturuldu.
 - **Cari ekstre hâlâ salt okunur** — telefondan ekstre satırına müdahale edilmiyor; doğrusu bu, düzeltme ters kayıtla yapılır.
-- **Bildirim yok** — push bildirimi kurulmadı; onay bekleyen sipariş ya da gününe düşen ziyaret çağrısı için cihaza haber gitmiyor, kullanıcının uygulamayı açması gerekiyor.
-- **Çevrimdışı çalışmıyor** — şebeke yoksa ekranlar boş kalır; saha uygulaması için sıradaki gerçek eksik bu.
+- ~~**Bildirim yok**~~ — Adım 49'da kapatıldı: `expo-notifications` + Expo push servisi; yeni/onaylanan sipariş, ziyaret çağrısı ve teslimat ataması cihaza düşüyor.
+- ~~**Çevrimdışı çalışmıyor**~~ — Adım 49'da kapatıldı: okumalar diskten açılıyor, saha yazmaları kuyruğa giriyor. **Sipariş bilerek kapsam dışı** (gerekçe aşağıda).
 - ~~**Sunucu adresi derlemeye gömülü**~~ — Adım 48'de kapatıldı: adres cihaz ayarı, giriş ekranından değiştirilebiliyor.
 - ~~**Uzaktan güncelleme yok**~~ — Adım 48'de kapatıldı: `expo-updates` + EAS Update kanalı; JS düzeltmeleri Play Store'suz iniyor.
 - **iOS'ta çalıştırılmadı** — yalnızca Android emülatöründe koşturuldu.
@@ -1981,7 +2064,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 - **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
 - **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
-- **Bildirim yalnızca e-posta** — SMS, push ya da uygulama içi bildirim yok; kullanıcı hangi bildirimi alacağını seçemiyor (abonelik tercihi yok). Önce sağlayıcı seçimi gerekir.
+- **Bildirim tercihi yok** — Adım 49'da push eklendi (e-postanın yanına), ama kullanıcı hangi olay için bildirim alacağını seçemiyor: ya hepsi ya hiçbiri. SMS kanalı da yok; o, sağlayıcı seçimi gerektiriyor.
 
 ### Canlıya çıkışta çözülecek
 

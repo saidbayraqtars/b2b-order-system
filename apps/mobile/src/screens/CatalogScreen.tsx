@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import {
   useCart,
@@ -10,6 +10,7 @@ import { mediaUrl } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { initialQty } from "@/lib/quantity";
 import { Badge, Card, Empty, ErrorState, Loading } from "@/components/ui";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import type { CatalogProduct, CatalogVariant, Category } from "@/lib/types";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -20,6 +21,12 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  // Okunmuş ama sonucu henüz değerlendirilmemiş barkod. Katalog isteği
+  // dönünceye kadar burada bekliyor; dönünce aşağıdaki etki tek eşleşmeyi
+  // sepete atıyor ve alanı boşaltıyor.
+  const [pendingScan, setPendingScan] = useState<string | null>(null);
+  const [scanNote, setScanNote] = useState<ScanNote | null>(null);
 
   const { data, isPending, error, refetch, isRefetching } = useCatalog(
     companyId,
@@ -46,6 +53,60 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
     return map;
   }, [cart.data]);
 
+  // Okunan barkodun sonucu.
+  //
+  // Sepete **kendiliğinden ekleme yalnızca barkod kolonu birebir tuttuğunda**
+  // yapılıyor. Sunucu araması `contains` çalıştığı için bir barkod ürün adına ya
+  // da SKU'ya da denk gelebiliyor; öyle bir eşleşmeye dayanarak sipariş satırı
+  // açmak, plasiyerin okuttuğunu sandığı şeyle sepete gireni ayırır. Birebir
+  // eşleşme yoksa liste süzülmüş halde bırakılıyor, seçim insana kalıyor.
+  useEffect(() => {
+    if (!pendingScan || query !== pendingScan || isPending || !data) return;
+
+    const hits = data.flatMap((p) =>
+      p.variants
+        .filter((v) => v.barcode && v.barcode === pendingScan)
+        .map((v) => ({ product: p, variant: v })),
+    );
+
+    setPendingScan(null);
+
+    if (hits.length === 1) {
+      const { product, variant } = hits[0]!;
+      if (variant.netUnitPrice == null) {
+        setScanNote({ tone: "amber", text: `${product.name}: fiyat tanımsız` });
+      } else if (variant.stock < Math.max(variant.moqUnits, 1)) {
+        setScanNote({ tone: "amber", text: `${product.name}: stok yok` });
+      } else {
+        upsert.mutate({
+          companyId,
+          variantId: variant.id,
+          quantity: initialQty(variant),
+          increment: true,
+        });
+        setScanNote({
+          tone: "green",
+          text: `${product.name} · ${initialQty(variant)} adet sepete eklendi`,
+        });
+      }
+      return;
+    }
+
+    if (hits.length > 1) {
+      setScanNote({
+        tone: "amber",
+        text: `Bu barkod ${hits.length} varyanta tanımlı, birini seçin.`,
+      });
+      return;
+    }
+
+    setScanNote(
+      data.length > 0
+        ? { tone: "amber", text: `Barkod eşleşmedi, ${data.length} benzer sonuç.` }
+        : { tone: "red", text: `Barkod bulunamadı: ${pendingScan}` },
+    );
+  }, [pendingScan, query, isPending, data, companyId, upsert]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title: companyName,
@@ -68,15 +129,44 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
   return (
     <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <View className="gap-3 p-4">
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={() => setQuery(search.trim())}
-          returnKeyType="search"
-          placeholder="Ürün, SKU veya barkod ara"
-          placeholderTextColor="#9ca3af"
-          className="h-11 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-        />
+        <View className="flex-row gap-2">
+          <TextInput
+            value={search}
+            onChangeText={(t) => {
+              setSearch(t);
+              setScanNote(null);
+            }}
+            onSubmitEditing={() => setQuery(search.trim())}
+            returnKeyType="search"
+            placeholder="Ürün, SKU veya barkod ara"
+            placeholderTextColor="#9ca3af"
+            className="h-11 flex-1 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Barkod okut"
+            onPress={() => setScannerOpen(true)}
+            className="h-11 w-11 items-center justify-center rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <Text className="text-lg">▥</Text>
+          </Pressable>
+        </View>
+
+        {scanNote ? (
+          <Pressable onPress={() => setScanNote(null)}>
+            <Text
+              className={`text-sm ${
+                scanNote.tone === "green"
+                  ? "text-green-700 dark:text-green-400"
+                  : scanNote.tone === "amber"
+                    ? "text-amber-700 dark:text-amber-400"
+                    : "text-red-600"
+              }`}
+            >
+              {scanNote.text}
+            </Text>
+          </Pressable>
+        ) : null}
         {categoryChips.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-2 pr-4">
@@ -131,8 +221,30 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
           />
         )}
       />
+
+      <BarcodeScanner
+        visible={scannerOpen}
+        title="Ürün barkodunu okutun"
+        onClose={() => setScannerOpen(false)}
+        onScan={(code) => {
+          setScannerOpen(false);
+          // Açık bir kategori süzgeci okunan ürünü listeden dışarıda bırakabilir
+          // ve sonuç "barkod bulunamadı" gibi görünür. Okutma niyeti açık: bu
+          // ürünü bul.
+          setCategoryId(null);
+          setSearch(code);
+          setQuery(code);
+          setScanNote(null);
+          setPendingScan(code);
+        }}
+      />
     </View>
   );
+}
+
+interface ScanNote {
+  tone: "green" | "amber" | "red";
+  text: string;
 }
 
 /** Depth-first walk of the category tree, indenting children by one level. */

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import {
   COLLECTION_METHOD_LABELS,
@@ -12,6 +12,7 @@ import {
   useRecordPayment,
 } from "@/lib/queries";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { useIsOffline } from "@/lib/offline";
 import { Badge, Button, Card, Empty, Field, Row } from "@/components/ui";
 import type { ScreenProps } from "@/navigation/types";
 
@@ -56,6 +57,17 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
+  const offline = useIsOffline();
+
+  // Şebeke yokken tahsilat kuyruğa giriyor ve `onSuccess` hiç çalışmıyor: ekran
+  // dönen bir düğmeyle açık kalırdı, plasiyer de parayı aldığı hâlde kaydın
+  // gidip gitmediğini bilemezdi. Duraklama da bir sonuç — üstteki şerit kaç
+  // kaydın beklediğini yazıyor, bu ekranın işi bitti.
+  useEffect(() => {
+    if (!recordPayment.isPaused) return;
+    setIdempotencyKey(newIdempotencyKey());
+    navigation.goBack();
+  }, [recordPayment.isPaused, navigation]);
 
   // Turkish keypads emit a comma; the API wants a JSON number.
   const parsed = Number(amount.replace(",", "."));
@@ -200,11 +212,18 @@ export default function PaymentScreen({ navigation, route }: ScreenProps<"Paymen
 
         {error ? <Text className="text-red-600">{error}</Text> : null}
 
+        {offline ? (
+          <Text className="text-sm text-amber-700 dark:text-amber-400">
+            Çevrimdışısınız. Tahsilat kaydedilir ve bağlantı gelince gönderilir;
+            cari bakiye o zaman güncellenir.
+          </Text>
+        ) : null}
+
         <Button
-          title="Tahsilatı kaydet"
+          title={offline ? "Tahsilatı kuyruğa al" : "Tahsilatı kaydet"}
           onPress={onSubmit}
           disabled={!valid || dueInvalid}
-          loading={recordPayment.isPending}
+          loading={recordPayment.isPending && !recordPayment.isPaused}
         />
       </Card>
 

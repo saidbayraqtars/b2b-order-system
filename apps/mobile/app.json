@@ -44,6 +44,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Ürün barkodunu ve sevkiyat etiketini okutmak için kamera izni gerekiyor."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "cameraPermission": "Teslim edilen malın imzalı belgesini fotoğraflamak için kamera izni gerekiyor.",
