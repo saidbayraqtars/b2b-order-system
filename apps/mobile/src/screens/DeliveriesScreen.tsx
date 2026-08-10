@@ -43,7 +43,7 @@ export default function DeliveriesScreen({
     navigation.setOptions({
       headerRight: () => (
         <Pressable onPress={() => void logout()} accessibilityRole="button">
-          <Text className="text-primary">Çıkış</Text>
+          <Text className="text-indigo-600">Çıkış</Text>
         </Pressable>
       ),
     });
@@ -62,9 +62,9 @@ export default function DeliveriesScreen({
   const canDispatch = hasPermission(user?.permissions, "orders.fulfil");
 
   return (
-    <View className="flex-1 bg-surface2">
+    <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <View className="flex-row items-center justify-between p-4">
-        <Text className="text-fg">
+        <Text className="text-neutral-700 dark:text-neutral-300">
           Teslim edilenleri de göster
         </Text>
         <Switch value={showDelivered} onValueChange={setShowDelivered} />
@@ -106,14 +106,14 @@ function DeliveryCard({
     <Card className="gap-2">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="font-semibold text-fg">
+          <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
             {d.companyName}
           </Text>
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             İrsaliye {d.documentNumber} · Sipariş {d.orderNumber} · {d.itemCount}{" "}
             kalem · {formatMoney(d.grandTotal)}
           </Text>
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             {[d.addressLine, d.district, d.city].filter(Boolean).join(" · ") ||
               "Adres yok"}
           </Text>
@@ -132,9 +132,9 @@ function DeliveryCard({
           accessibilityRole="button"
           disabled={!dest}
           onPress={() => openExternal(directionsUrl(dest))}
-          className="h-9 justify-center rounded-lg border border-border-strong px-3"
+          className="h-9 justify-center rounded-lg border border-neutral-300 px-3 dark:border-neutral-700"
         >
-          <Text className="text-sm text-fg">
+          <Text className="text-sm text-neutral-800 dark:text-neutral-200">
             Yol tarifi
           </Text>
         </Pressable>
@@ -142,9 +142,9 @@ function DeliveryCard({
           <Pressable
             accessibilityRole="button"
             onPress={() => callNumber(d.companyPhone!)}
-            className="h-9 justify-center rounded-lg border border-border-strong px-3"
+            className="h-9 justify-center rounded-lg border border-neutral-300 px-3 dark:border-neutral-700"
           >
-            <Text className="text-sm text-fg">
+            <Text className="text-sm text-neutral-800 dark:text-neutral-200">
               {d.companyPhone}
             </Text>
           </Pressable>
@@ -161,15 +161,15 @@ function DeliveryCard({
               onPress={() => onAssign(d.courierId === c.id ? null : c.id)}
               className={`h-9 justify-center rounded-lg border px-3 ${
                 d.courierId === c.id
-                  ? "border-primary bg-primary-soft"
-                  : "border-border-strong"
+                  ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+                  : "border-neutral-300 dark:border-neutral-700"
               }`}
             >
               <Text
                 className={`text-sm ${
                   d.courierId === c.id
-                    ? "font-semibold text-on-primary-soft"
-                    : "text-fg"
+                    ? "font-semibold text-indigo-700 dark:text-indigo-300"
+                    : "text-neutral-700 dark:text-neutral-300"
                 }`}
               >
                 {c.name}
@@ -181,14 +181,14 @@ function DeliveryCard({
 
       {d.deliveredAt ? (
         <View className="gap-1">
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             Teslim alan: {d.receivedByName ?? "—"}
             {d.deliveryNote ? ` · ${d.deliveryNote}` : ""}
           </Text>
           {d.proofPhotoUrl ? (
             <Image
               source={{ uri: mediaUrl(d.proofPhotoUrl) }}
-              className="h-32 w-full rounded-lg bg-surface3"
+              className="h-32 w-full rounded-lg bg-neutral-100 dark:bg-neutral-800"
               resizeMode="contain"
             />
           ) : null}
@@ -256,7 +256,7 @@ function ConfirmForm({ shipmentId }: { shipmentId: string }) {
   }
 
   return (
-    <View className="gap-3 rounded-xl border border-border p-3">
+    <View className="gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
       <Field
         label="Teslim alan (zorunlu)"
         value={name}
@@ -274,12 +274,12 @@ function ConfirmForm({ shipmentId }: { shipmentId: string }) {
       {photo ? (
         <Image
           source={{ uri: mediaUrl(photo) }}
-          className="h-32 w-full rounded-lg bg-surface3"
+          className="h-32 w-full rounded-lg bg-neutral-100 dark:bg-neutral-800"
           resizeMode="contain"
         />
       ) : null}
 
-      {error ? <Text className="text-sm text-warning">{error}</Text> : null}
+      {error ? <Text className="text-sm text-amber-600">{error}</Text> : null}
 
       <Button
         title="Kaydet"

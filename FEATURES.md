@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-08 · Adım 46 (tema motoru) sonu
+Son güncelleme: 2026-08-08 · Adım 45 (mobil tamamlama) sonu
 
 ---
 
@@ -59,7 +59,6 @@ Son güncelleme: 2026-08-08 · Adım 46 (tema motoru) sonu
 | 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
 | 44 | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3 | ✅ |
 | 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
-| 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında anında geçiş, vitrin + mobil, NEO-MART ilk paket | ✅ |
 
 ---
 
@@ -1686,87 +1685,7 @@ uygulamanın kendi oluşturduğu satırları (sipariş, adres, kullanıcı, kamp
 adlandırıyor ve oralarda kimlik her zaman Prisma'dan geliyor. İçe aktarma ya da
 ERP eşlemesi o tablolara da uzanırsa aynı değişiklik oralarda da gerekecek.
 
-## 44. Tema Motoru (Adım 46)
-
-Müşterinin karşısında, cümlenin ortasında kimlik değiştirebilmek için. İstenen
-tek seferlik bir yeniden boyama değildi: **birden çok isimli tasarım paketi elde
-dursun, sunum sırasında anında geçilsin.**
-
-**Paket bir veri, kod değil** (`packages/theme`). İçinde renk, yazı rolü, köşe
-yarıçapı ve birkaç yüzey etkisi var; hiçbir paket ürün kartının nasıl
-göründüğünü bilmiyor. Bileşenler aynı kalıyor, altlarındaki değerler
-değişiyor — "her tasarımın kendi bileşeni" yaklaşımının bedeli tam olarak
-yeniden derleme olurdu.
-
-- **Renkler `"R G B"` kanal üçlüsü olarak saklanıyor**, `#rrggbb` olarak değil.
-  Hem Tailwind hem NativeWind'in `rgb(var(--c-x) / <alpha-value>)` arkasına
-  koyabildiği tek biçim bu; hex olsaydı `bg-primary/15` gibi her saydamlık
-  yardımcısı kırılırdı.
-- **Anlamsal sözlük:** `bg`, `fg`, `fg-muted`, `surface`/`surface2`/`surface3`,
-  `border`/`border-strong`, `primary`+`on-primary`+`primary-soft`, `accent`,
-  `highlight`, `success`/`warning`/`danger`/`info` (+`-soft`), `ring`. Her
-  anahtar zorunlu: eksik bırakılan bir yüzey, bir önceki paketten kalanı
-  gösterirdi ve yarım uygulanmış kimlik hiç değişmemiş olmaktan kötüdür.
-- **`on-*` renkleri paketin kendi kararı.** Rozet zemini `primary-soft`, üstündeki
-  yazı `on-primary-soft` — açık pakette bu koyu indigo, neon pakette açık pembe.
-  Sabit bir yazı rengi paketlerden birinde mutlaka okunmaz olurdu.
-- **Köşe yarıçapı da pakete ait**, `rounded-full` dahil. Keskin köşeli bir kimlik
-  rozetleri hapdan dikdörtgene çevirir; bu, görünüşünün yarısıdır.
-
-**İki paket var, ikisi de veri:**
-
-| Paket | Şema | Karakter |
-|-------|------|----------|
-| `kurumsal` | aydınlık + karanlık | Adım 20-21'in indigo/nötr dili, teknik kâğıt ızgarası. Varsayılan. |
-| `neo-mart` | yalnızca karanlık | Google Stitch'ten gelen 4 ekran (`docs/design/stitch/`): neon pembe + nane, keskin köşeler, parıltı gölgeleri. |
-
-`kurumsal` paketi yeni bir tasarım değil — vitrinin **zaten sahip olduğu**
-kimliğin token'a çevrilmiş hâli. Motoru kanıtlayan da bu: bu pakete geçince
-ekranda hiçbir şey değişmiyorsa taşıma kayıpsız olmuş ve diğer her paket artık
-sadece veri demektir. NEO-MART'ın aydınlık şeması **bilerek yok**; tasarımcının
-çizmediği bir şemayı uydurmak, müşterinin adının arkasına ikinci bir uydurma
-kimlik koymak olurdu. Aydınlık/karanlık düğmesi tek şemalı pakette kendini
-gizliyor.
-
-**Web tarafı — kapsam `<html>` değil, sarmalayıcı.** Paket değişkenleri
-`/portal` düzenindeki `ThemeScope` sarmalayıcısına yazılıyor. Böylece yönetim
-paneli, plasiyer ve kurye ekranları dışarıda kalıp nötr dilinde çalışmaya devam
-ediyor — "yönetim tarafı nötr kalır" kararı korunuyor. Yönetim panelinin kendi
-aydınlık/karanlık anahtarı da bozulmuyor: `:root` ve `.dark` blokları yedek
-paketi taşıyor, paket bloğu ise iki öznitelikle (`[data-pack][data-scheme]`)
-daha yüksek özgüllüğe sahip olduğu için koyu bir `<html>` içindeki vitrini yine
-kendi paketi çiziyor.
-
-- **Her paket × her şema tek bir `<style>` olarak `<head>`'de.** Paket
-  değiştirmek tek bir öznitelik yazımına iniyor: yeni paketin kuralı zaten
-  belgede, ne istek atılıyor ne yeniden derleme gerekiyor.
-- **Seçim sunucuda çözülüyor, çerezden.** localStorage olsaydı ilk boyama
-  varsayılanla yapılır, sonra doğrusuna atlardı — canlı sunumun kaldıramayacağı
-  tek şey de bu. Sıra: ziyaretçinin çerezi > `tenant.json` tercihi > paketin
-  varsayılanı.
-- **Sunum anahtarı:** sağ altta küçük bir palet düğmesi, `Alt+T` ile sıradaki
-  pakete geçiş, ve `?tema=neo-mart` biçiminde bir bağlantı (ara katman çerezi
-  yazıp parametreyi adresten temizliyor). Seçim yalnızca o tarayıcıda geçerli —
-  kimsenin vitrini değişmiyor.
-- **Kurulum anahtarı kapatabiliyor:** `tenant.json` → `theme.switcher: false`.
-  Müşterinin kendi üretim kurulumunda paletin izleyicisi yok.
-
-**Mobil taraf.** Aynı sözlük NativeWind'de: `tailwind.config.js` paylaşılan
-`@repo/theme/tailwind` eşlemesini kullanıyor, `ThemeProvider` de değişkenleri
-`vars()` ile kök görünüme yazıyor. Fark, telefonun bir yolunun daha olması:
-`/api/theme` ucu kurulumun tercihini **ve uygulamanın hiç bilmediği paketleri**
-gönderiyor. Renkler veri olduğu için yeni bir kimlik mağaza güncellemesi
-beklemeden uygulanıyor; sunucuya ulaşılamazsa gömülü paketlerle devam ediyor.
-Gezinme başlığı ve sayfa arkası yerli görünüm olduğu için NativeWind sınıfı
-işlemiyor: renkler `toHex()` ile React Navigation temasına ayrıca veriliyor,
-aksi hâlde koyu bir pakette ekranın üstünde beyaz bir şerit kalıyordu.
-
-**Bozulmaya karşı tek test noktası.** Tailwind eşlemesi (`tailwind.cjs`) düz
-CommonJS — mobilin yapılandırması onu düz Node ile okuyor. İçinde tek bir renk
-değeri yok, yalnızca değişken adları var; ad listesinin token listesinden
-ayrılması ise `packages/theme/src/theme.test.ts` ile derlemeyi kırıyor.
-
-## 45. API Uçları
+## 44. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -1942,7 +1861,6 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - **Bildirim yok** — push bildirimi kurulmadı; onay bekleyen sipariş ya da gününe düşen ziyaret çağrısı için cihaza haber gitmiyor, kullanıcının uygulamayı açması gerekiyor.
 - **Çevrimdışı çalışmıyor** — şebeke yoksa ekranlar boş kalır; saha uygulaması için sıradaki gerçek eksik bu.
 - **iOS'ta çalıştırılmadı** — yalnızca Android emülatöründe koşturuldu.
-- **Tasarım paketi yazı tipini değiştirmiyor (mobil)** — renk, köşe ve yüzeyler pakete uyuyor ama yazı tipi cihazın kendi ailesi. Yeni bir aile eklemek `expo-font` ile paketin içine gömmeyi gerektiriyor; webde `next/font` bunu bedavaya yapıyor, telefonda etmiyor.
 
 ### Daha büyük
 
@@ -1969,11 +1887,9 @@ değil, canlıya çıkış turunda ele alınır.
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
-- ~~**Mobil tamamlama**~~ — Adım 45'te kapandı.
-- **Yeni tasarım paketleri:** motor Adım 46'da kuruldu, paket eklemek `packages/theme/src/packs/` altına bir dosya yazmak. Gelen her tasarım buraya paket olarak giriyor.
+- **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Paketlerin kiracı klasöründen okunması:** paketler şu an kodda; `tenants/<slug>/themes/*.json` okunursa müşteriye özel bir kimlik yeniden derleme olmadan kurulabilir. Motor bunu zaten kaldırıyor (mobil tarafta bilinmeyen paket uygulanabiliyor), eksik olan dosya okuyucusu.
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada). Performans raporu Adım 44'te geldi.
 - **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).

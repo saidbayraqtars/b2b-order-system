@@ -6,7 +6,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@repo/auth", "@repo/types", "@repo/theme"],
+  transpilePackages: ["@repo/auth", "@repo/types"],
   // Üretim imajı için: Next yalnızca gerçekten kullanılan dosyaları izleyip
   // .next/standalone altına kendi kendine yeten bir sunucu çıkarıyor. Aksi
   // hâlde imaja tüm monorepo'nun node_modules'ünü koymak gerekirdi.

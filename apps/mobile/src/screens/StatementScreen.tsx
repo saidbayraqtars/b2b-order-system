@@ -45,7 +45,7 @@ export default function StatementScreen({
 
   return (
     <FlatList
-      className="flex-1 bg-surface2"
+      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       contentContainerClassName="gap-3 p-4 pb-10"
       data={[...s.rows].reverse()} // newest first reads better on a phone
       keyExtractor={(r) => r.id}
@@ -67,7 +67,7 @@ export default function StatementScreen({
               label="Kullanılabilir"
               value={formatMoney(available, currency)}
             />
-            <Text className="mt-1 text-xs text-fg-muted">
+            <Text className="mt-1 text-xs text-neutral-500">
               Vade: {s.company.paymentTermDays} gün
             </Text>
           </Card>
@@ -75,7 +75,7 @@ export default function StatementScreen({
           {aging.data ? (
             <Card>
               <View className="mb-2 flex-row items-center justify-between">
-                <Text className="font-semibold text-fg">
+                <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
                   Yaşlandırma
                 </Text>
                 {Number(aging.data.overdue) > 0 ? (
@@ -95,7 +95,7 @@ export default function StatementScreen({
                 />
               ))}
               {Number(aging.data.unappliedCredit) > 0 ? (
-                <Text className="mt-1 text-xs text-fg-muted">
+                <Text className="mt-1 text-xs text-neutral-500">
                   Mahsup edilmemiş tahsilat:{" "}
                   {formatMoney(aging.data.unappliedCredit, currency)}
                 </Text>
@@ -103,7 +103,7 @@ export default function StatementScreen({
             </Card>
           ) : null}
 
-          <Text className="px-1 pt-1 font-semibold text-fg">
+          <Text className="px-1 pt-1 font-semibold text-neutral-900 dark:text-neutral-100">
             Hareketler
           </Text>
         </View>
@@ -125,10 +125,10 @@ function LedgerRow({ row, currency }: { row: StatementRow; currency: string }) {
     <Card>
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-fg">
+          <Text className="text-neutral-900 dark:text-neutral-100">
             {row.description}
           </Text>
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             {formatDateTime(row.createdAt)}
             {row.recordedByName ? ` · ${row.recordedByName}` : ""}
           </Text>
@@ -137,14 +137,14 @@ function LedgerRow({ row, currency }: { row: StatementRow; currency: string }) {
           <Text
             className={
               isDebit
-                ? "font-semibold text-fg"
-                : "font-semibold text-success"
+                ? "font-semibold text-neutral-900 dark:text-neutral-100"
+                : "font-semibold text-green-700 dark:text-green-400"
             }
           >
             {isDebit ? "+" : "−"}
             {formatMoney(isDebit ? row.debit : row.credit, currency)}
           </Text>
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             Bakiye {formatMoney(row.balance, currency)}
           </Text>
         </View>

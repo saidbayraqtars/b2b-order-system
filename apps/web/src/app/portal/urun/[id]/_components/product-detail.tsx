@@ -35,7 +35,7 @@ export function ProductDetail({
       <nav className="flex items-center gap-2 py-4">
         <Link
           href={`/portal?companyId=${encodeURIComponent(companyId)}`}
-          className="tech-label flex items-center gap-1.5 transition-colors hover:text-primary"
+          className="tech-label flex items-center gap-1.5 transition-colors hover:text-brand-600"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Katalog
@@ -51,7 +51,7 @@ export function ProductDetail({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
         {/* Görsel */}
         <div>
-          <div className="aspect-square border border-border-strong bg-surface">
+          <div className="aspect-square border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
             {product.images[activeImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -61,7 +61,7 @@ export function ProductDetail({
               />
             ) : (
               <div className="flex h-full items-center justify-center">
-                <Package className="h-10 w-10 text-fg-muted" />
+                <Package className="h-10 w-10 text-neutral-300 dark:text-neutral-700" />
               </div>
             )}
           </div>
@@ -74,10 +74,10 @@ export function ProductDetail({
                   onClick={() => setActiveImage(i)}
                   aria-label={`Görsel ${i + 1}`}
                   className={cn(
-                    "h-16 w-16 border bg-surface transition-colors",
+                    "h-16 w-16 border bg-white transition-colors dark:bg-neutral-900",
                     i === activeImage
-                      ? "border-primary"
-                      : "border-border-strong hover:border-primary",
+                      ? "border-brand-600"
+                      : "border-neutral-300 hover:border-neutral-400 dark:border-neutral-700",
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -101,7 +101,7 @@ export function ProductDetail({
             {product.name}
           </h1>
 
-          <dl className="mt-4 grid grid-cols-3 border border-border-strong">
+          <dl className="mt-4 grid grid-cols-3 border border-neutral-300 dark:border-neutral-700">
             <Spec label="Varyant" value={String(product.variants.length)} />
             <Spec
               label="Toplam stok"
@@ -112,7 +112,7 @@ export function ProductDetail({
           </dl>
 
           <p className="tech-label mt-6 mb-2">Varyantlar</p>
-          <div className="border border-border-strong">
+          <div className="border border-neutral-300 dark:border-neutral-700">
             {product.variants.map((v, i) => (
               <VariantRow
                 key={v.id}
@@ -143,14 +143,14 @@ function Spec({
     <div
       className={cn(
         "px-3 py-2",
-        !last && "border-r border-border-strong",
+        !last && "border-r border-neutral-300 dark:border-neutral-700",
       )}
     >
       <dt className="tech-label">{label}</dt>
       <dd
         className={cn(
           "tech-num mt-0.5 text-sm font-semibold",
-          muted && "text-fg-muted",
+          muted && "text-neutral-400",
         )}
       >
         {value}
@@ -184,19 +184,19 @@ function VariantRow({
     <div
       className={cn(
         "flex flex-wrap items-center gap-3 px-3 py-2.5",
-        !first && "border-t border-border",
-        !orderable && "bg-surface2",
+        !first && "border-t border-neutral-200 dark:border-neutral-800",
+        !orderable && "bg-neutral-50 dark:bg-neutral-900/50",
       )}
     >
       <div className="min-w-[8rem] flex-1">
         <p className="text-sm font-medium">{variantLabel(v)}</p>
-        <p className="tech-num mt-0.5 text-[10px] text-fg-muted">
+        <p className="tech-num mt-0.5 text-[10px] text-neutral-500">
           {v.sku}
           {v.barcode ? ` · ${v.barcode}` : ""}
         </p>
       </div>
 
-      <div className="tech-num text-right text-[11px] text-fg-muted">
+      <div className="tech-num text-right text-[11px] text-neutral-500">
         <p>STK {v.stock}</p>
         <p>KOL {v.unitsPerCase}</p>
       </div>
@@ -206,7 +206,7 @@ function VariantRow({
           {priced ? formatTRY(v.netUnitPrice!) : "—"}
         </p>
         {v.discountPerUnit && Number(v.discountPerUnit) > 0 && (
-          <p className="text-[10px] text-success">
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
             −{formatTRY(v.discountPerUnit)}
           </p>
         )}
@@ -222,7 +222,7 @@ function VariantRow({
             onChange={(e) => setLocalQty(Number(e.target.value))}
             onBlur={() => setLocalQty(normalizeQty(v, qty))}
             aria-label={`${variantLabel(v)} adet`}
-            className="tech-num h-8 w-20 border border-border-strong bg-surface px-2 text-right text-xs outline-none focus:border-primary"
+            className="tech-num h-8 w-20 border border-neutral-300 bg-white px-2 text-right text-xs outline-none focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
           />
           <span className="tech-num hidden min-w-[5.5rem] text-right text-xs font-semibold sm:block">
             {formatTRY(lineTotal)}
@@ -230,7 +230,7 @@ function VariantRow({
           <button
             type="button"
             onClick={() => setQty(v.id, normalizeQty(v, qty))}
-            className="inline-flex h-8 items-center gap-1.5 bg-primary px-3 font-mono text-[11px] font-medium uppercase tracking-wider text-on-primary transition-colors hover:bg-primary/90"
+            className="inline-flex h-8 items-center gap-1.5 bg-brand-600 px-3 font-mono text-[11px] font-medium uppercase tracking-wider text-white transition-colors hover:bg-brand-700"
           >
             {inCart ? (
               <>
@@ -246,7 +246,7 @@ function VariantRow({
           </button>
         </div>
       ) : (
-        <span className="tech-label text-fg-muted">
+        <span className="tech-label text-neutral-400">
           {priced ? "stok yok" : "fiyat tanımsız"}
         </span>
       )}

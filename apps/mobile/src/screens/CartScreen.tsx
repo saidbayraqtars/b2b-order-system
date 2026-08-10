@@ -127,7 +127,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
   if (!lines.length) return <Empty text="Sepet boş." />;
 
   return (
-    <View className="flex-1 bg-surface2">
+    <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <FlatList
         data={lines}
         keyExtractor={(l) => l.variantId}
@@ -139,20 +139,20 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
             <Card>
               <View className="flex-row items-start justify-between gap-3">
                 <View className="flex-1">
-                  <Text className="font-semibold text-fg">
+                  <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
                     {item.productName}
                   </Text>
-                  <Text className="text-xs text-fg-muted">
+                  <Text className="text-xs text-neutral-500">
                     {attrs ? `${attrs} · ` : ""}
                     {item.sku}
                   </Text>
-                  <Text className="mt-1 text-sm text-fg-muted">
+                  <Text className="mt-1 text-sm text-neutral-500">
                     {unit != null
                       ? `${formatMoney(unit)} × ${item.quantity} adet`
                       : "Bu firmaya fiyat tanımlı değil"}
                   </Text>
                 </View>
-                <Text className="font-bold text-fg">
+                <Text className="font-bold text-neutral-900 dark:text-neutral-100">
                   {unit != null ? formatMoney(unit * item.quantity) : "—"}
                 </Text>
               </View>
@@ -167,7 +167,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
                     )
                   }
                 />
-                <Text className="w-16 text-center text-fg">
+                <Text className="w-16 text-center text-neutral-900 dark:text-neutral-100">
                   {item.quantity}
                 </Text>
                 <Stepper
@@ -184,10 +184,10 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
                   onPress={() => setQty(item.variantId, 0)}
                   className="ml-auto"
                 >
-                  <Text className="text-danger">Kaldır</Text>
+                  <Text className="text-red-600">Kaldır</Text>
                 </Pressable>
               </View>
-              <Text className="mt-1 text-xs text-fg-muted">
+              <Text className="mt-1 text-xs text-neutral-400">
                 Koli {item.unitsPerCase} adet · min {item.moqUnits} · stok{" "}
                 {item.stock}
               </Text>
@@ -196,9 +196,9 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         }}
       />
 
-      <View className="gap-3 border-t border-border bg-surface p-4">
+      <View className="gap-3 border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         {unpriced.length > 0 ? (
-          <Text className="text-warning">
+          <Text className="text-amber-600">
             {unpriced.length} kalemin bu firmaya fiyatı yok — çıkarmadan sipariş
             verilemez.
           </Text>
@@ -235,7 +235,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
 
         {/* What the chosen settlement actually does, before the order is sent. */}
         {q ? (
-          <Text className="text-xs text-fg-muted">
+          <Text className="text-xs text-neutral-500">
             {q.createsReceivable
               ? `Cari hesaba işlenir · ${q.paymentTermDays} gün vade`
               : "Sipariş anında ödenir — cari hesaba işlenmez"}
@@ -262,29 +262,29 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
                 setCouponDraft("");
               }
             }}
-            className="h-12 items-center justify-center rounded-xl border border-border-strong px-4"
+            className="h-12 items-center justify-center rounded-xl border border-neutral-300 px-4 dark:border-neutral-700"
           >
-            <Text className="text-fg">
+            <Text className="text-neutral-900 dark:text-neutral-100">
               {coupon === null ? "Uygula" : "Kaldır"}
             </Text>
           </Pressable>
         </View>
 
         {quote.isError ? (
-          <Text className="text-danger">
+          <Text className="text-red-600">
             {quote.error instanceof Error ? quote.error.message : "Fiyat alınamadı"}
           </Text>
         ) : null}
 
         <View className="flex-row justify-between">
-          <Text className="text-fg-muted">Ara toplam</Text>
-          <Text className="text-fg">
+          <Text className="text-neutral-500">Ara toplam</Text>
+          <Text className="text-neutral-900 dark:text-neutral-100">
             {q ? formatMoney(Number(q.subtotal) - Number(q.discountTotal)) : "—"}
           </Text>
         </View>
         {q?.volumeDiscount ? (
           // Named, not deducted: the ara toplam above is already net of it.
-          <Text className="text-xs text-success">
+          <Text className="text-xs text-emerald-700 dark:text-emerald-400">
             Hacim iskontosu — {q.volumeDiscount.tierName} (%
             {q.volumeDiscount.percent}), ara toplama dahil: −
             {formatMoney(q.volumeDiscount.amount)}
@@ -292,33 +292,33 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
         ) : null}
         {q?.promotions.map((p) => (
           <View key={p.promotionId} className="flex-row justify-between">
-            <Text className="flex-1 text-success">
+            <Text className="flex-1 text-emerald-700 dark:text-emerald-400">
               Kampanya: {p.name}
             </Text>
-            <Text className="text-success">
+            <Text className="text-emerald-700 dark:text-emerald-400">
               − {formatMoney(p.amount)}
             </Text>
           </View>
         ))}
         <View className="flex-row justify-between">
-          <Text className="text-fg-muted">KDV</Text>
-          <Text className="text-fg">
+          <Text className="text-neutral-500">KDV</Text>
+          <Text className="text-neutral-900 dark:text-neutral-100">
             {q ? formatMoney(q.taxTotal) : "—"}
           </Text>
         </View>
         <View className="flex-row justify-between">
-          <Text className="font-semibold text-fg">
+          <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
             Genel toplam
           </Text>
-          <Text className="text-lg font-bold text-fg">
+          <Text className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
             {q ? formatMoney(q.grandTotal) : "—"}
           </Text>
         </View>
         {quote.isFetching ? (
-          <Text className="text-xs text-fg-muted">Fiyat güncelleniyor…</Text>
+          <Text className="text-xs text-neutral-400">Fiyat güncelleniyor…</Text>
         ) : null}
 
-        {error ? <Text className="text-danger">{error}</Text> : null}
+        {error ? <Text className="text-red-600">{error}</Text> : null}
 
         <Button
           title="Siparişi gönder"
@@ -340,7 +340,7 @@ export default function CartScreen({ navigation, route }: ScreenProps<"Cart">) {
           }
           className="items-center py-1"
         >
-          <Text className="text-sm text-fg-muted">Sepeti boşalt</Text>
+          <Text className="text-sm text-neutral-500">Sepeti boşalt</Text>
         </Pressable>
       </View>
     </View>
@@ -363,15 +363,15 @@ function Chip({
       onPress={onPress}
       className={`rounded-xl border px-3 py-2 ${
         selected
-          ? "border-primary bg-primary-soft"
-          : "border-border-strong"
+          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+          : "border-neutral-300 dark:border-neutral-700"
       }`}
     >
       <Text
         className={`text-sm ${
           selected
-            ? "font-semibold text-on-primary-soft"
-            : "text-fg"
+            ? "font-semibold text-indigo-700 dark:text-indigo-300"
+            : "text-neutral-700 dark:text-neutral-300"
         }`}
       >
         {label}
@@ -385,9 +385,9 @@ function Stepper({ label, onPress }: { label: string; onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="h-10 w-10 items-center justify-center rounded-xl border border-border-strong"
+      className="h-10 w-10 items-center justify-center rounded-xl border border-neutral-300 dark:border-neutral-700"
     >
-      <Text className="text-lg text-fg">{label}</Text>
+      <Text className="text-lg text-neutral-900 dark:text-neutral-100">{label}</Text>
     </Pressable>
   );
 }

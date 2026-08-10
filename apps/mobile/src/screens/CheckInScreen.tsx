@@ -59,14 +59,14 @@ export default function CheckInScreen({ route }: ScreenProps<"CheckIn">) {
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   return (
-    <View className="flex-1 bg-surface2">
+    <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <View className="gap-3 p-4">
         {open ? (
           <Card>
-            <Text className="mb-1 font-semibold text-fg">
+            <Text className="mb-1 font-semibold text-neutral-900 dark:text-neutral-100">
               Açık ziyaret
             </Text>
-            <Text className="mb-3 text-sm text-fg-muted">
+            <Text className="mb-3 text-sm text-neutral-500">
               Başlangıç: {formatDateTime(open.checkInAt)}
             </Text>
             <Button
@@ -91,7 +91,7 @@ export default function CheckInScreen({ route }: ScreenProps<"CheckIn">) {
             />
           </Card>
         )}
-        {notice ? <Text className="text-sm text-warning">{notice}</Text> : null}
+        {notice ? <Text className="text-sm text-amber-600">{notice}</Text> : null}
       </View>
 
       <FlatList
@@ -101,7 +101,7 @@ export default function CheckInScreen({ route }: ScreenProps<"CheckIn">) {
         onRefresh={() => void refetch()}
         refreshing={isRefetching}
         ListHeaderComponent={
-          <Text className="pb-1 text-sm font-medium text-fg-muted">
+          <Text className="pb-1 text-sm font-medium text-neutral-500">
             Geçmiş ziyaretler
           </Text>
         }
@@ -109,7 +109,7 @@ export default function CheckInScreen({ route }: ScreenProps<"CheckIn">) {
         renderItem={({ item }) => (
           <Card>
             <View className="flex-row items-center justify-between">
-              <Text className="text-fg">
+              <Text className="text-neutral-900 dark:text-neutral-100">
                 {formatDateTime(item.checkInAt)}
               </Text>
               <Badge
@@ -118,19 +118,19 @@ export default function CheckInScreen({ route }: ScreenProps<"CheckIn">) {
               />
             </View>
             {item.checkOutAt ? (
-              <Text className="text-sm text-fg-muted">
+              <Text className="text-sm text-neutral-500">
                 Bitiş: {formatDateTime(item.checkOutAt)}
               </Text>
             ) : null}
             {item.latitude != null && item.longitude != null ? (
-              <Text className="text-sm text-fg-muted">
+              <Text className="text-sm text-neutral-500">
                 Konum: {item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}
               </Text>
             ) : (
-              <Text className="text-sm text-fg-muted">Konum yok</Text>
+              <Text className="text-sm text-neutral-400">Konum yok</Text>
             )}
             {item.note ? (
-              <Text className="mt-1 text-fg">
+              <Text className="mt-1 text-neutral-700 dark:text-neutral-300">
                 {item.note}
               </Text>
             ) : null}

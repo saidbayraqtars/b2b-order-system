@@ -62,29 +62,29 @@ export function VisitRequestPanel({ companyId }: { companyId: string }) {
     <div className="space-y-6">
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Temsilcinizi çağırın</h2>
-        <p className="mb-3 text-sm text-fg-muted">
+        <p className="mb-3 text-sm text-neutral-500">
           Çağrınız satış temsilcinizin o günkü ziyaret listesine düşer.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-xs text-fg-muted">
+            <span className="mb-1 block text-xs text-neutral-500">
               Tercih ettiğiniz gün (isteğe bağlı)
             </span>
             <input
               type="date"
               value={day}
               onChange={(e) => setDay(e.target.value)}
-              className="h-9 w-full rounded-md border border-border-strong bg-surface2 px-2 text-sm text-fg"
+              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs text-fg-muted">Not</span>
+            <span className="mb-1 block text-xs text-neutral-500">Not</span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Örn. sipariş vereceğiz, numune isteriz"
-              className="h-9 w-full rounded-md border border-border-strong bg-surface2 px-2 text-sm text-fg"
+              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
         </div>
@@ -93,15 +93,15 @@ export function VisitRequestPanel({ companyId }: { companyId: string }) {
           type="button"
           onClick={() => send.mutate()}
           disabled={send.isPending}
-          className="mt-3 h-9 rounded-md bg-primary px-4 text-sm font-medium text-on-primary hover:bg-primary/90 disabled:opacity-50"
+          className="mt-3 h-9 rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {send.isPending ? "Gönderiliyor…" : "Ziyaret çağrısı gönder"}
         </button>
 
         {done && !error && (
-          <p className="mt-2 text-sm text-success">Çağrınız iletildi.</p>
+          <p className="mt-2 text-sm text-emerald-600">Çağrınız iletildi.</p>
         )}
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </Card>
 
       <section>
@@ -121,9 +121,9 @@ export function VisitRequestPanel({ companyId }: { companyId: string }) {
                         İstenen gün: {trDate(r.requestedFor)}
                       </p>
                       {r.note && (
-                        <p className="text-sm text-fg-muted">“{r.note}”</p>
+                        <p className="text-sm text-neutral-500">“{r.note}”</p>
                       )}
-                      <p className="text-xs text-fg-muted">
+                      <p className="text-xs text-neutral-400">
                         Gönderildi: {trDate(r.createdAt)}
                         {r.completedAt
                           ? ` · Ziyaret: ${trDate(r.completedAt)}`

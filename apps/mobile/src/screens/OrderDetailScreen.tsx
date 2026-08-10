@@ -74,22 +74,22 @@ export default function OrderDetailScreen({
 
   return (
     <ScrollView
-      className="flex-1 bg-surface2"
+      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       contentContainerClassName="gap-4 p-4 pb-10"
     >
       <Card>
         <View className="mb-2 flex-row items-start justify-between gap-3">
-          <Text className="text-lg font-bold text-fg">
+          <Text className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
             {o.orderNumber}
           </Text>
           <Badge label={ORDER_STATUS_LABEL[o.status]} tone="blue" />
         </View>
-        <Text className="text-sm text-fg-muted">
+        <Text className="text-sm text-neutral-500">
           {o.company.name} · {formatDateTime(o.createdAt)}
         </Text>
-        <Text className="text-sm text-fg-muted">Oluşturan: {o.createdByName}</Text>
+        <Text className="text-sm text-neutral-500">Oluşturan: {o.createdByName}</Text>
         {o.carrier ? (
-          <Text className="mt-1 text-sm text-fg-muted">
+          <Text className="mt-1 text-sm text-neutral-500">
             Kargo: {o.carrier}
             {o.trackingNumber ? ` · ${o.trackingNumber}` : ""}
           </Text>
@@ -98,7 +98,7 @@ export default function OrderDetailScreen({
 
       {canApprove || canCancel || fulfilment.length > 0 ? (
         <Card className="gap-2">
-          <Text className="text-sm font-semibold text-fg">
+          <Text className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             İşlemler
           </Text>
           {canApprove ? (
@@ -161,28 +161,28 @@ export default function OrderDetailScreen({
             />
           ) : null}
           {actionError ? (
-            <Text className="text-danger">{actionError}</Text>
+            <Text className="text-red-600">{actionError}</Text>
           ) : null}
         </Card>
       ) : null}
 
       <Card>
-        <Text className="mb-2 text-sm font-semibold text-fg">
+        <Text className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           Kalemler ({o.items.length})
         </Text>
         {o.items.map((i) => (
           <View
             key={i.id}
-            className="border-t border-border py-2"
+            className="border-t border-neutral-100 py-2 dark:border-neutral-800"
           >
-            <Text className="text-fg">
+            <Text className="text-neutral-900 dark:text-neutral-100">
               {i.productName}
             </Text>
             <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-fg-muted">
+              <Text className="text-xs text-neutral-500">
                 {i.sku} · {formatMoney(i.unitPrice)} × {i.quantity}
               </Text>
-              <Text className="font-medium text-fg">
+              <Text className="font-medium text-neutral-900 dark:text-neutral-100">
                 {formatMoney(i.lineTotal)}
               </Text>
             </View>
@@ -216,10 +216,10 @@ export default function OrderDetailScreen({
 
       {o.shippingAddress ? (
         <Card>
-          <Text className="mb-1 text-sm font-semibold text-fg">
+          <Text className="mb-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Sevkiyat adresi
           </Text>
-          <Text className="text-fg-muted">
+          <Text className="text-neutral-500">
             {o.shippingAddress.label} · {o.shippingAddress.line1}
             {"\n"}
             {o.shippingAddress.district ? `${o.shippingAddress.district}, ` : ""}
@@ -229,21 +229,21 @@ export default function OrderDetailScreen({
       ) : null}
 
       <Card>
-        <Text className="mb-2 text-sm font-semibold text-fg">
+        <Text className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
           Durum geçmişi
         </Text>
         {o.history.map((h) => (
           <View key={h.id} className="py-1">
-            <Text className="text-fg">
+            <Text className="text-neutral-900 dark:text-neutral-100">
               {h.fromStatus
                 ? `${ORDER_STATUS_LABEL[h.fromStatus]} → ${ORDER_STATUS_LABEL[h.toStatus]}`
                 : `Oluşturuldu (${ORDER_STATUS_LABEL[h.toStatus]})`}
             </Text>
-            <Text className="text-xs text-fg-muted">
+            <Text className="text-xs text-neutral-500">
               {formatDateTime(h.createdAt)} · {h.changedByName}
             </Text>
             {h.note ? (
-              <Text className="text-sm text-fg-muted">{h.note}</Text>
+              <Text className="text-sm text-neutral-500">{h.note}</Text>
             ) : null}
           </View>
         ))}

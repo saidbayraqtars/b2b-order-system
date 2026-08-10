@@ -31,21 +31,18 @@ export function AppHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-30 mb-6 border-b border-border bg-surface/90 backdrop-blur">
+    <header className="sticky top-0 z-30 mb-6 border-b border-neutral-200 bg-white/90 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
       <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          {/* Marka işareti paketin iki kimlik renginden geçer: tek renkli bir
-              kare her tasarımda aynı görünürdü, oysa ayırt edici olan tam da
-              bu ikili. */}
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-sm font-bold text-on-primary shadow-primary">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-sm shadow-brand-600/30">
             B
           </span>
           <span className="hidden flex-col leading-none sm:flex">
-            <span className="font-display text-sm font-bold text-fg">
+            <span className="font-display text-sm font-bold text-neutral-900 dark:text-white">
               B2B Portal
             </span>
             {context && (
-              <span className="mt-0.5 text-xs text-fg-muted">{context}</span>
+              <span className="mt-0.5 text-xs text-neutral-500">{context}</span>
             )}
           </span>
         </Link>
@@ -64,8 +61,8 @@ export function AppHeader({
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary-soft text-on-primary-soft"
-                    : "text-fg-muted hover:bg-surface3 hover:text-fg",
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
+                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
                 )}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
@@ -80,7 +77,7 @@ export function AppHeader({
           <ThemeToggle />
           <Link
             href="/hesabim"
-            className="hidden px-2 text-sm text-fg-muted hover:text-fg sm:inline"
+            className="hidden px-2 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white sm:inline"
           >
             {userLabel}
           </Link>

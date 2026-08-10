@@ -3,9 +3,6 @@
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
-/** Kimliksiz uçlar için (tema, marka) doğrudan taban adres. */
-export const API_BASE = BASE_URL;
-
 export class ApiError extends Error {
   constructor(
     public readonly status: number,

@@ -20,7 +20,7 @@ export function Card({
 }) {
   return (
     <View
-      className={`rounded-xl border border-border bg-surface p-4 ${className}`}
+      className={`rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 ${className}`}
     >
       {children}
     </View>
@@ -44,17 +44,14 @@ export function Button({
 }) {
   const base =
     variant === "primary"
-      ? "bg-primary active:bg-primary/90"
+      ? "bg-indigo-600 active:bg-indigo-700"
       : variant === "danger"
-        ? "bg-danger active:bg-danger/90"
-        // İkincil düğmenin basılı hâli renkle değil saydamlıkla veriliyor:
-        // yüzey tonları pakete göre değişiyor ve "bir ton koyusu" her pakette
-        // görünür bir fark üretmiyor.
-        : "bg-surface3 active:opacity-80";
+        ? "bg-red-600 active:bg-red-700"
+        : "bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800";
   const text =
     variant === "secondary"
-      ? "text-fg"
-      : "text-on-primary";
+      ? "text-neutral-900 dark:text-neutral-100"
+      : "text-white";
   const off = disabled || loading ? "opacity-50" : "";
 
   return (
@@ -78,16 +75,15 @@ export function Field({
 }: TextInputProps & { label: string; error?: string; className?: string }) {
   return (
     <View className={`gap-1.5 ${className}`}>
-      <Text className="text-sm font-medium text-fg">
+      <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
         {label}
       </Text>
-      {/* İpucu metni de paketten: sabit gri, koyu bir pakette zeminle
-          karışıyordu. */}
       <TextInput
-        className="h-12 rounded-xl border border-border-strong bg-surface px-3 text-base text-fg placeholder:text-fg-muted"
+        placeholderTextColor="#9ca3af"
+        className="h-12 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         {...props}
       />
-      {error ? <Text className="text-sm text-danger">{error}</Text> : null}
+      {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
     </View>
   );
 }
@@ -100,11 +96,11 @@ export function Badge({
   tone?: "neutral" | "green" | "amber" | "red" | "blue";
 }) {
   const tones = {
-    neutral: "bg-surface3 text-fg",
-    green: "bg-success-soft text-success",
-    amber: "bg-warning-soft text-warning",
-    red: "bg-danger-soft text-danger",
-    blue: "bg-info-soft text-info",
+    neutral: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
+    green: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+    amber: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    red: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+    blue: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
   } as const;
   return (
     <View className={`self-start rounded-full px-2 py-0.5 ${tones[tone]}`}>
@@ -134,8 +130,8 @@ export function ErrorState({
     error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu";
   return (
     <View className="gap-3 p-4">
-      <Card className="border-danger/40">
-        <Text className="text-danger">{message}</Text>
+      <Card className="border-red-200 dark:border-red-900">
+        <Text className="text-red-700 dark:text-red-400">{message}</Text>
       </Card>
       {onRetry ? (
         <Button title="Tekrar dene" variant="secondary" onPress={onRetry} />
@@ -147,7 +143,7 @@ export function ErrorState({
 export function Empty({ text }: { text: string }) {
   return (
     <View className="items-center justify-center p-8">
-      <Text className="text-center text-fg-muted">{text}</Text>
+      <Text className="text-center text-neutral-500">{text}</Text>
     </View>
   );
 }
@@ -163,12 +159,12 @@ export function Row({
 }) {
   return (
     <View className="flex-row items-center justify-between py-1">
-      <Text className="text-fg-muted">{label}</Text>
+      <Text className="text-neutral-500 dark:text-neutral-400">{label}</Text>
       <Text
         className={
           strong
-            ? "text-base font-bold text-fg"
-            : "text-fg"
+            ? "text-base font-bold text-neutral-900 dark:text-neutral-100"
+            : "text-neutral-900 dark:text-neutral-100"
         }
       >
         {value}

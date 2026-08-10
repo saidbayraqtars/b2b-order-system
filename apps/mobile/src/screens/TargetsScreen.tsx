@@ -21,7 +21,7 @@ export default function TargetsScreen(_props: ScreenProps<"Targets">) {
 
   return (
     <ScrollView
-      className="flex-1 bg-surface2"
+      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       contentContainerClassName="gap-3 p-4 pb-10"
     >
       {(data ?? []).length === 0 ? (
@@ -43,35 +43,35 @@ function TargetCard({ target: t }: { target: TargetProgress }) {
   return (
     <Card className="gap-2">
       <View className="flex-row items-start justify-between gap-3">
-        <Text className="font-semibold text-fg">
+        <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
           {TARGET_METRIC_LABELS[t.metric]} · {TARGET_PERIOD_LABELS[t.period]}
         </Text>
         <Text
           className={`text-lg font-bold ${
             behind
-              ? "text-warning"
-              : "text-success"
+              ? "text-amber-600 dark:text-amber-400"
+              : "text-emerald-600 dark:text-emerald-400"
           }`}
         >
           %{t.percent}
         </Text>
       </View>
 
-      <Text className="text-xs text-fg-muted">
+      <Text className="text-xs text-neutral-500">
         {formatDate(t.periodStart)} — {formatDate(t.periodEnd)}
       </Text>
 
       <Bar
         label="Gerçekleşen"
         ratio={t.percent / 100}
-        tone={behind ? "bg-warning" : "bg-success"}
+        tone={behind ? "bg-amber-500" : "bg-emerald-500"}
       />
-      <Bar label="Geçen süre" ratio={t.elapsed} tone="bg-fg-muted" />
+      <Bar label="Geçen süre" ratio={t.elapsed} tone="bg-neutral-400" />
 
       <Row label="Hedef" value={show(t.targetValue)} />
       <Row label="Gerçekleşen" value={show(t.achieved)} strong />
       {t.note ? (
-        <Text className="text-sm text-fg-muted">{t.note}</Text>
+        <Text className="text-sm text-neutral-500">{t.note}</Text>
       ) : null}
     </Card>
   );
@@ -91,8 +91,8 @@ function Bar({
   const width = `${Math.min(100, Math.max(0, Math.round(ratio * 100)))}%` as const;
   return (
     <View className="gap-1">
-      <Text className="text-xs text-fg-muted">{label}</Text>
-      <View className="h-2 overflow-hidden rounded-full bg-surface3">
+      <Text className="text-xs text-neutral-500">{label}</Text>
+      <View className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
         <View className={`h-2 rounded-full ${tone}`} style={{ width }} />
       </View>
     </View>

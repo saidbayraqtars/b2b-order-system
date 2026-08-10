@@ -2,8 +2,6 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@repo/auth/config";
 import { canAccess, defaultRouteForRole } from "@repo/auth/rbac";
-import { THEME_PACKS } from "@repo/theme";
-import { PACK_COOKIE, PACK_COOKIE_MAX_AGE, PACK_QUERY } from "@/lib/theme-pack";
 
 // Edge instance: authConfig has NO Credentials provider, so this stays edge-safe.
 const { auth } = NextAuth(authConfig);
@@ -18,27 +16,6 @@ export default auth((req) => {
   const path = nextUrl.pathname;
   const user = req.auth?.user;
   const isLoggedIn = Boolean(user);
-
-  // `?tema=neo-mart` — bir tasarımı doğrudan açan bağlantı. Çerez burada
-  // yazılıyor ki sayfa daha ilk boyamada doğru kimlikle gelsin; parametre
-  // ayıklanıp adrese geri dönülüyor, aksi hâlde her paylaşılan bağlantı
-  // ziyaretçinin seçimini sessizce ezerdi.
-  const requestedPack = nextUrl.searchParams.get(PACK_QUERY);
-  if (requestedPack) {
-    const url = new URL(nextUrl);
-    url.searchParams.delete(PACK_QUERY);
-    const response = NextResponse.redirect(url);
-    // Bilinmeyen ad yazılmaz: çerez, silinmiş bir paketin adını yıllarca
-    // taşımasın. Bilinmeyeni `findPack` zaten varsayılana düşürüyor.
-    if (THEME_PACKS.some((p) => p.id === requestedPack)) {
-      response.cookies.set(PACK_COOKIE, requestedPack, {
-        path: "/",
-        maxAge: PACK_COOKIE_MAX_AGE,
-        sameSite: "lax",
-      });
-    }
-    return response;
-  }
 
   // Logged-in user hitting /login → send to their home. A revoked session is
   // an exception: it looks valid here, but the page guard will bounce them

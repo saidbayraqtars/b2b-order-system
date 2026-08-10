@@ -2,10 +2,8 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import {
   tenantConfigSchema,
-  themeSettingsSchema,
   type PaymentSettings,
   type TenantConfig,
-  type ThemeSettings,
 } from "@repo/types";
 
 // The tenant folder: what this installation is, and what has been customised
@@ -153,25 +151,6 @@ export function paymentSecret(provider: string, name: string): string | undefine
   );
   const value = process.env[key];
   return value && value.trim() !== "" ? value : undefined;
-}
-
-/**
- * Which design pack this installation opens with, and whether the storefront
- * offers the switcher.
- *
- * Falls back to the schema's defaults instead of propagating a
- * `TenantConfigError`. Everything else read from this file is refused when the
- * file is wrong — an invoice with no seller must not print. A theme is not that
- * kind of fact: a storefront that will not render because somebody typo'd a
- * colour pack name is a self-inflicted outage, and the default pack is always a
- * correct answer.
- */
-export async function themeSettings(): Promise<ThemeSettings> {
-  try {
-    return (await loadTenant()).theme;
-  } catch {
-    return themeSettingsSchema.parse({});
-  }
 }
 
 // ─────────────────────────────────────────────

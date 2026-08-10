@@ -128,31 +128,6 @@ export const paymentSettingsSchema = z
   .default({});
 export type PaymentSettings = z.infer<typeof paymentSettingsSchema>;
 
-/**
- * Which design pack this installation opens with.
- *
- * The packs themselves live in code (`@repo/theme`) because they are drawing
- * instructions, not customer data. What belongs in the tenant folder is the
- * *choice*: this customer's storefront is NEO-MART, that one's is the default.
- * Changing it is a one-line edit in a file the support workflow already opens.
- *
- * `switcher` is the demo lever. During a presentation the seller wants to flip
- * identities mid-sentence, so the storefront carries a small palette control;
- * on a customer's own production install that control has no audience and gets
- * turned off. It only ever affects the visitor's own browser — a pack chosen
- * from it is stored in that browser and seen by nobody else.
- */
-export const themeSettingsSchema = z
-  .object({
-    /** Pack id from @repo/theme. An unknown id falls back, it does not fail. */
-    pack: z.string().trim().min(1).max(40).default("kurumsal"),
-    /** Omitted = whatever the pack itself opens with. */
-    scheme: z.enum(["light", "dark"]).optional(),
-    switcher: z.boolean().default(true),
-  })
-  .default({});
-export type ThemeSettings = z.infer<typeof themeSettingsSchema>;
-
 export const tenantConfigSchema = z.object({
   /** Folder name and update target. Lowercase so it is safe in a path or a URL. */
   slug: z
@@ -162,6 +137,5 @@ export const tenantConfigSchema = z.object({
   seller: sellerSchema,
   branding: brandingSchema,
   payment: paymentSettingsSchema,
-  theme: themeSettingsSchema,
 });
 export type TenantConfig = z.infer<typeof tenantConfigSchema>;

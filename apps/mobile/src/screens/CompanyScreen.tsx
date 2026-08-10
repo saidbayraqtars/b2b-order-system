@@ -33,7 +33,7 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
               onPress={() => navigation.navigate("Account")}
               accessibilityRole="button"
             >
-              <Text className="text-primary">Hesabım</Text>
+              <Text className="text-indigo-600">Hesabım</Text>
             </Pressable>
           ),
     });
@@ -50,18 +50,18 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
 
   return (
     <ScrollView
-      className="flex-1 bg-surface2"
+      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       contentContainerClassName="gap-4 p-4 pb-10"
     >
       {/* Duyurular sunucuda süzülüyor: "yalnızca bayilere" işaretli bir duyuru
           başka gruptaki firmaya hiç gönderilmez, gönderilip burada gizlenmez. */}
       {(announcements.data ?? []).map((a) => (
-        <Card key={a.id} className="border-primary/40">
-          <Text className="font-semibold text-fg">
+        <Card key={a.id} className="border-indigo-200 dark:border-indigo-900">
+          <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
             {a.title}
           </Text>
           {a.body ? (
-            <Text className="mt-1 text-sm text-fg-muted">
+            <Text className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
               {a.body}
             </Text>
           ) : null}
@@ -70,7 +70,7 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
               accessibilityRole="link"
               onPress={() => void Linking.openURL(a.linkUrl!).catch(() => {})}
             >
-              <Text className="mt-1 text-sm text-primary">
+              <Text className="mt-1 text-sm text-indigo-600">
                 {a.linkLabel ?? "Ayrıntı"}
               </Text>
             </Pressable>
@@ -79,11 +79,11 @@ export default function CompanyScreen({ navigation, route }: ScreenProps<"Compan
       ))}
 
       <Card>
-        <Text className="mb-2 text-lg font-bold text-fg">
+        <Text className="mb-2 text-lg font-bold text-neutral-900 dark:text-neutral-100">
           {company.name}
         </Text>
         {company.city ? (
-          <Text className="mb-2 text-sm text-fg-muted">
+          <Text className="mb-2 text-sm text-neutral-500">
             {company.district ? `${company.district}, ` : ""}
             {company.city}
           </Text>

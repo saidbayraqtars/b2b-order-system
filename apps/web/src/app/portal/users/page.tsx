@@ -13,7 +13,7 @@ export default async function PortalUsersPage() {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
         <h1 className="text-2xl font-bold">Kullanıcılar</h1>
-        <p className="mt-2 text-fg-muted">
+        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
           Hesabınıza firma atanmamış.
         </p>
       </main>
@@ -42,7 +42,7 @@ export default async function PortalUsersPage() {
           allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
           grantablePermissions={user.permissions}
         />
-        <p className="mt-4 text-sm text-fg-muted">
+        <p className="mt-4 text-sm text-neutral-500">
           Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir;
           personel yalnızca sipariş oluşturur.
         </p>

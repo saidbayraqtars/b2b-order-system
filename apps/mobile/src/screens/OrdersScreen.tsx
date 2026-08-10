@@ -30,7 +30,7 @@ export default function OrdersScreen({
 
   return (
     <FlatList
-      className="flex-1 bg-surface2"
+      className="flex-1 bg-neutral-50 dark:bg-neutral-950"
       data={data}
       keyExtractor={(o) => o.id}
       contentContainerClassName="gap-3 p-4 pb-8"
@@ -49,7 +49,7 @@ export default function OrdersScreen({
         >
           <Card>
             <View className="mb-2 flex-row items-start justify-between gap-3">
-              <Text className="font-semibold text-fg">
+              <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
                 {item.orderNumber}
               </Text>
               <Badge
@@ -58,13 +58,13 @@ export default function OrdersScreen({
               />
             </View>
             {!companyId ? (
-              <Text className="text-sm text-fg-muted">{item.company.name}</Text>
+              <Text className="text-sm text-neutral-500">{item.company.name}</Text>
             ) : null}
             <View className="mt-1 flex-row items-center justify-between">
-              <Text className="text-sm text-fg-muted">
+              <Text className="text-sm text-neutral-500">
                 {formatDate(item.createdAt)} · {item._count.items} kalem
               </Text>
-              <Text className="text-base font-bold text-fg">
+              <Text className="text-base font-bold text-neutral-900 dark:text-neutral-100">
                 {formatMoney(item.grandTotal)}
               </Text>
             </View>

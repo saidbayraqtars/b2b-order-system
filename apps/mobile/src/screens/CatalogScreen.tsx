@@ -54,7 +54,7 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
           accessibilityRole="button"
           onPress={() => navigation.navigate("Cart", { companyId, companyName })}
         >
-          <Text className="text-primary">
+          <Text className="text-indigo-600">
             Sepet{itemCount ? ` (${itemCount})` : ""}
           </Text>
         </Pressable>
@@ -66,7 +66,7 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   return (
-    <View className="flex-1 bg-surface2">
+    <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <View className="gap-3 p-4">
         <TextInput
           value={search}
@@ -74,7 +74,8 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
           onSubmitEditing={() => setQuery(search.trim())}
           returnKeyType="search"
           placeholder="Ürün, SKU veya barkod ara"
-          className="h-11 rounded-xl border border-border-strong bg-surface px-3 text-base text-fg placeholder:text-fg-muted"
+          placeholderTextColor="#9ca3af"
+          className="h-11 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         />
         {categoryChips.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -98,7 +99,7 @@ export default function CatalogScreen({ navigation, route }: ScreenProps<"Catalo
       </View>
 
       {upsert.isError ? (
-        <Text className="px-4 pb-2 text-danger">
+        <Text className="px-4 pb-2 text-red-600">
           {upsert.error instanceof Error
             ? upsert.error.message
             : "Sepete eklenemedi"}
@@ -161,15 +162,15 @@ function CategoryChip({
       onPress={onPress}
       className={`h-9 justify-center rounded-full border px-3 ${
         selected
-          ? "border-primary bg-primary-soft"
-          : "border-border-strong"
+          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950"
+          : "border-neutral-300 dark:border-neutral-700"
       }`}
     >
       <Text
         className={`text-sm ${
           selected
-            ? "font-semibold text-on-primary-soft"
-            : "text-fg"
+            ? "font-semibold text-indigo-700 dark:text-indigo-300"
+            : "text-neutral-700 dark:text-neutral-300"
         }`}
       >
         {label}
@@ -197,16 +198,16 @@ function ProductCard({
         {image ? (
           <Image
             source={{ uri: mediaUrl(image) }}
-            className="h-14 w-14 rounded-lg bg-surface3"
+            className="h-14 w-14 rounded-lg bg-neutral-100 dark:bg-neutral-800"
             resizeMode="contain"
           />
         ) : null}
         <View className="flex-1">
-          <Text className="text-base font-semibold text-fg">
+          <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
             {product.name}
           </Text>
           {product.brand ? (
-            <Text className="text-sm text-fg-muted">{product.brand}</Text>
+            <Text className="text-sm text-neutral-500">{product.brand}</Text>
           ) : null}
         </View>
       </View>
@@ -222,29 +223,29 @@ function ProductCard({
           return (
             <View
               key={v.id}
-              className="flex-row items-center justify-between gap-3 border-t border-border pt-2"
+              className="flex-row items-center justify-between gap-3 border-t border-neutral-100 pt-2 dark:border-neutral-800"
             >
               <View className="flex-1">
-                <Text className="text-fg">
+                <Text className="text-neutral-900 dark:text-neutral-100">
                   {attrs || v.sku}
                 </Text>
-                <Text className="text-xs text-fg-muted">
+                <Text className="text-xs text-neutral-500">
                   {v.sku} · koli {v.unitsPerCase} · min {v.moqUnits} · stok {v.stock}
                 </Text>
                 {priced ? (
                   <View className="mt-0.5 flex-row items-center gap-2">
-                    <Text className="font-semibold text-fg">
+                    <Text className="font-semibold text-neutral-900 dark:text-neutral-100">
                       {formatMoney(v.netUnitPrice!)}
                     </Text>
                     {Number(v.discountPerUnit) > 0 ? (
-                      <Text className="text-xs text-fg-muted line-through">
+                      <Text className="text-xs text-neutral-400 line-through">
                         {formatMoney(v.unitPrice!)}
                       </Text>
                     ) : null}
                     {/* Yabancı para listeden geliyorsa hangi sayıdan çevrildiği
                         yazılıyor — müşteri dolarla anlaştıysa onu arıyor. */}
                     {v.listCurrency && v.listCurrency !== "TRY" && v.listUnitPrice ? (
-                      <Text className="text-xs text-fg-muted">
+                      <Text className="text-xs text-neutral-400">
                         ≈ {formatMoney(v.listUnitPrice, v.listCurrency)}
                       </Text>
                     ) : null}
@@ -253,7 +254,7 @@ function ProductCard({
                   <Badge label="Fiyat tanımsız" tone="amber" />
                 )}
                 {already > 0 ? (
-                  <Text className="mt-0.5 text-xs text-primary">
+                  <Text className="mt-0.5 text-xs text-indigo-600 dark:text-indigo-400">
                     Sepette {already} adet
                   </Text>
                 ) : null}
@@ -264,12 +265,12 @@ function ProductCard({
                 disabled={disabled}
                 onPress={() => onAdd(v)}
                 className={`h-10 items-center justify-center rounded-xl px-4 ${
-                  disabled ? "bg-surface3" : "bg-primary"
+                  disabled ? "bg-neutral-200 dark:bg-neutral-800" : "bg-indigo-600"
                 }`}
               >
                 <Text
                   className={
-                    disabled ? "text-fg-muted" : "font-semibold text-on-primary"
+                    disabled ? "text-neutral-500" : "font-semibold text-white"
                   }
                 >
                   {outOfStock ? "Stok yok" : "Ekle"}

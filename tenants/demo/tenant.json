@@ -28,9 +28,5 @@
     "provider": "manual",
     "installments": [],
     "autoCapture": false
-  },
-  "theme": {
-    "pack": "kurumsal",
-    "switcher": true
   }
 }

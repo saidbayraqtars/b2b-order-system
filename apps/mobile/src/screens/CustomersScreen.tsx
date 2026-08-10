@@ -35,7 +35,7 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
           onPress={() => navigation.navigate("Account")}
           accessibilityRole="button"
         >
-          <Text className="text-primary">Hesabım</Text>
+          <Text className="text-indigo-600">Hesabım</Text>
         </Pressable>
       ),
     });
@@ -53,7 +53,7 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   return (
-    <View className="flex-1 bg-surface2">
+    <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
       <View className="gap-3 p-4">
         <View className="flex-row gap-2">
           {canPlanVisits ? (
@@ -81,7 +81,8 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
           value={search}
           onChangeText={setSearch}
           placeholder="Müşteri ara"
-          className="h-11 rounded-xl border border-border-strong bg-surface px-3 text-base text-fg placeholder:text-fg-muted"
+          placeholderTextColor="#9ca3af"
+          className="h-11 rounded-xl border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
         />
       </View>
 
@@ -107,7 +108,7 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
               <Card>
                 <View className="gap-2">
                   <View className="flex-row items-start justify-between gap-3">
-                    <Text className="flex-1 text-base font-semibold text-fg">
+                    <Text className="flex-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">
                       {item.name}
                     </Text>
                     <Badge
@@ -116,22 +117,22 @@ export default function CustomersScreen({ navigation }: ScreenProps<"Customers">
                     />
                   </View>
                   {item.city ? (
-                    <Text className="text-sm text-fg-muted">
+                    <Text className="text-sm text-neutral-500">
                       {item.district ? `${item.district}, ` : ""}
                       {item.city}
                     </Text>
                   ) : null}
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-fg-muted">Bakiye</Text>
-                    <Text className="text-sm font-medium text-fg">
+                    <Text className="text-sm text-neutral-500">Bakiye</Text>
+                    <Text className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                       {formatMoney(item.currentBalance, item.currency)}
                     </Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-fg-muted">
+                    <Text className="text-sm text-neutral-500">
                       Kullanılabilir limit
                     </Text>
-                    <Text className="text-sm font-medium text-fg">
+                    <Text className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                       {formatMoney(item.availableCredit, item.currency)}
                     </Text>
                   </View>
@@ -150,11 +151,11 @@ function NavTile({ label, onPress }: { label: string; onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="h-11 flex-1 items-center justify-center rounded-xl border border-border-strong bg-surface px-2"
+      className="h-11 flex-1 items-center justify-center rounded-xl border border-neutral-300 bg-white px-2 dark:border-neutral-700 dark:bg-neutral-900"
     >
       <Text
         numberOfLines={1}
-        className="text-sm font-medium text-fg"
+        className="text-sm font-medium text-neutral-800 dark:text-neutral-200"
       >
         {label}
       </Text>

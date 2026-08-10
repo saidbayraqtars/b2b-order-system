@@ -45,27 +45,27 @@ export function CompanyPicker({
   return (
     <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
       <div className="mb-1 flex items-center gap-2">
-        <Building2 className="h-4 w-4 text-primary" />
+        <Building2 className="h-4 w-4 text-brand-600" />
         <span className="tech-label">{eyebrow}</span>
       </div>
       <h1 className="mb-1 font-display text-xl font-bold">{title}</h1>
-      <p className="mb-5 text-sm text-fg-muted">{subtitle}</p>
+      <p className="mb-5 text-sm text-neutral-500">{subtitle}</p>
 
       <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
         <input
           autoFocus
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Firma ara…"
-          className="h-10 w-full border border-border-strong bg-surface pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary"
+          className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </div>
 
       {query.isLoading ? (
         <LoadingState />
       ) : query.isError ? (
-        <p className="border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-danger">
+        <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
           {(query.error as Error).message}
         </p>
       ) : companies.length === 0 ? (
@@ -77,33 +77,33 @@ export function CompanyPicker({
           }
         />
       ) : (
-        <ul className="border border-border-strong">
+        <ul className="border border-neutral-300 dark:border-neutral-700">
           {companies.map((c, i) => {
             const available = Number(c.availableCredit);
             return (
               <li
                 key={c.id}
-                className={i > 0 ? "border-t border-border" : ""}
+                className={i > 0 ? "border-t border-neutral-200 dark:border-neutral-800" : ""}
               >
                 <Link
                   href={`${basePath}?companyId=${encodeURIComponent(c.id)}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-surface3"
+                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <p className="tech-num mt-0.5 text-[10px] text-fg-muted">
+                    <p className="tech-num mt-0.5 text-[10px] text-neutral-500">
                       {[c.city, c.district].filter(Boolean).join(" / ") || "—"}
                     </p>
                   </div>
                   <div className="tech-num shrink-0 text-right text-[11px]">
-                    <p className="text-fg-muted">
+                    <p className="text-neutral-500">
                       bakiye {formatTRY(c.currentBalance)}
                     </p>
                     <p
                       className={
                         available < 0
-                          ? "font-bold text-danger"
-                          : "text-success"
+                          ? "font-bold text-red-600 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
                       }
                     >
                       limit {formatTRY(c.availableCredit)}

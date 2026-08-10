@@ -1,11 +1,8 @@
-import { useEffect, useMemo } from "react";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
-import type { Theme } from "@react-navigation/native";
+import { useEffect } from "react";
+import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { hasAnyPermission, hasPermission } from "@repo/types";
-import { toHex } from "@repo/theme";
 import { useAuthStore, isFieldRole } from "@/store/auth";
-import { useTheme } from "@/lib/theme";
 import { Loading } from "@/components/ui";
 import type { RootStackParamList } from "./types";
 import LoginScreen from "@/screens/LoginScreen";
@@ -27,27 +24,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { user, hydrated, hydrate } = useAuthStore();
-  const { colors, scheme } = useTheme();
-
-  // Başlık çubuğu ve sayfa arkası yerli görünüm: NativeWind sınıfı işlemiyor,
-  // renk düz dize olarak veriliyor. Verilmezse koyu bir pakette ekranın üstünde
-  // beyaz bir şerit kalıyor ve tasarım yarım uygulanmış görünüyor.
-  const navTheme = useMemo<Theme>(
-    () => ({
-      ...DefaultTheme,
-      dark: scheme === "dark",
-      colors: {
-        ...DefaultTheme.colors,
-        primary: toHex(colors.primary),
-        background: toHex(colors.bg),
-        card: toHex(colors.surface),
-        text: toHex(colors.fg),
-        border: toHex(colors.border),
-        notification: toHex(colors.danger),
-      },
-    }),
-    [colors, scheme],
-  );
 
   useEffect(() => {
     void hydrate();
@@ -68,7 +44,7 @@ export default function RootNavigator() {
   const canBuy = hasPermission(user?.permissions, "products.view");
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerBackTitle: "Geri" }}>
         {!user ? (
           <Stack.Screen
