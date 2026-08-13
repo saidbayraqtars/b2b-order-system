@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { REPORT_DATASET_LABELS } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import type { DefinitionSummary } from "./types";
 
 export function ReportsList() {
@@ -14,10 +15,12 @@ export function ReportsList() {
   });
 
   if (query.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (query.isError) {
-    return <p className="text-sm text-red-600">{(query.error as Error).message}</p>;
+    return (
+      <p className="text-sm text-red-600">{(query.error as Error).message}</p>
+    );
   }
 
   const definitions = query.data!.definitions;
@@ -37,7 +40,10 @@ export function ReportsList() {
           {definitions.map((d) => (
             <tr key={d.id}>
               <td className="px-3 py-2">
-                <Link href={`/reports/${d.id}`} className="font-medium underline">
+                <Link
+                  href={`/reports/${d.id}`}
+                  className="font-medium underline"
+                >
                   {d.name}
                 </Link>
                 {d.description && (
@@ -62,7 +68,10 @@ export function ReportsList() {
           ))}
           {definitions.length === 0 && (
             <tr>
-              <td className="px-3 py-6 text-center text-neutral-500" colSpan={4}>
+              <td
+                className="px-3 py-6 text-center text-neutral-500"
+                colSpan={4}
+              >
                 Henüz kayıtlı rapor yok. &quot;Yeni rapor&quot; ile başlayın.
               </td>
             </tr>

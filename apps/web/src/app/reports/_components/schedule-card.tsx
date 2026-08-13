@@ -4,8 +4,16 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail, Plus, X } from "lucide-react";
 import { apiGet, apiPut } from "@/lib/fetcher";
-import { Badge } from "@/components/ui";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import { Badge, LoadingState } from "@/components/ui";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Zamanlanmış gönderim paneli.
 //
@@ -99,13 +107,15 @@ export function ScheduleCard({
       action={
         schedule?.lastStatus ? (
           <Badge tone={schedule.lastStatus === "OK" ? "success" : "danger"}>
-            {schedule.lastStatus === "OK" ? "Son gönderim başarılı" : "Son gönderim hatalı"}
+            {schedule.lastStatus === "OK"
+              ? "Son gönderim başarılı"
+              : "Son gönderim hatalı"}
           </Badge>
         ) : null
       }
     >
       {query.isLoading ? (
-        <p className="text-sm text-neutral-500">Yükleniyor…</p>
+        <LoadingState />
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -114,16 +124,12 @@ export function ScheduleCard({
             sahibinin görebildiğinden fazlasını görmez.
           </p>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isOn}
-              disabled={!canEdit}
-              onChange={(e) => setEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300"
-            />
-            Bu raporu düzenli olarak gönder
-          </label>
+          <Checkbox
+            checked={isOn}
+            disabled={!canEdit}
+            onChange={(e) => setEnabled(e.target.checked)}
+            label="Bu raporu düzenli olarak gönder"
+          />
 
           {isOn && (
             <>
@@ -162,7 +168,11 @@ export function ScheduleCard({
                       }
                     }}
                   />
-                  <Button variant="secondary" disabled={!canEdit} onClick={addRecipient}>
+                  <Button
+                    variant="secondary"
+                    disabled={!canEdit}
+                    onClick={addRecipient}
+                  >
                     <Plus className="h-4 w-4" />
                     Ekle
                   </Button>
@@ -182,7 +192,9 @@ export function ScheduleCard({
                             type="button"
                             aria-label={`${r} adresini kaldır`}
                             onClick={() =>
-                              setRecipients(currentRecipients.filter((x) => x !== r))
+                              setRecipients(
+                                currentRecipients.filter((x) => x !== r),
+                              )
                             }
                             className="text-neutral-400 hover:text-red-600"
                           >

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { CompanyRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { Select, TextInput } from "@/components/form";
 
@@ -41,7 +42,7 @@ export function CompaniesList() {
         </Select>
       </div>
 
-      {query.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {query.isLoading && <LoadingState />}
       {query.isError && (
         <p className="text-sm text-red-600">{(query.error as Error).message}</p>
       )}
@@ -65,11 +66,16 @@ export function CompaniesList() {
               {query.data.companies.map((c) => (
                 <tr key={c.id} className={c.isActive ? "" : "opacity-60"}>
                   <td className="px-3 py-2 font-medium">
-                    <Link href={`/admin/companies/${c.id}`} className="hover:underline">
+                    <Link
+                      href={`/admin/companies/${c.id}`}
+                      className="hover:underline"
+                    >
                       {c.name}
                     </Link>
                     {!c.isActive && (
-                      <span className="ml-2 text-xs text-neutral-500">(pasif)</span>
+                      <span className="ml-2 text-xs text-neutral-500">
+                        (pasif)
+                      </span>
                     )}
                     <p className="text-xs text-neutral-500">
                       {c.counts.orders} sipariş · {c.counts.users} kullanıcı ·{" "}
@@ -90,7 +96,9 @@ export function CompaniesList() {
                   </td>
                   <td
                     className={`px-3 py-2 text-right tabular-nums ${
-                      Number(c.availableCredit) < 0 ? "text-red-600" : "text-emerald-600"
+                      Number(c.availableCredit) < 0
+                        ? "text-red-600"
+                        : "text-emerald-600"
                     }`}
                   >
                     {formatTRY(c.availableCredit)}
@@ -110,7 +118,10 @@ export function CompaniesList() {
               ))}
               {query.data.companies.length === 0 && (
                 <tr>
-                  <td className="px-3 py-6 text-center text-neutral-500" colSpan={8}>
+                  <td
+                    className="px-3 py-6 text-center text-neutral-500"
+                    colSpan={8}
+                  >
                     Firma bulunamadı.
                   </td>
                 </tr>

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ReportRunResult } from "@repo/services";
 import {
@@ -22,6 +21,17 @@ import {
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { ReportPreview } from "@/components/report-preview";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  LinkButton,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
+import { Badge, LoadingState } from "@/components/ui";
 import type { CatalogDataset, CatalogField } from "./types";
 
 // The report designer. Everything it offers comes from the server's dataset
@@ -227,52 +237,43 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
   const outputColumns = result?.columns ?? [];
 
-  if (catalog.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
-  }
-  if (catalog.isError) {
-    return (
-      <p className="text-sm text-red-600">{(catalog.error as Error).message}</p>
-    );
-  }
+  if (catalog.isLoading) return <LoadingState />;
+  if (catalog.isError) return <ErrorLine error={catalog.error} />;
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
-              Rapor adı
-            </span>
-            <input
+          <div>
+            <Label htmlFor="report-name">Rapor adı</Label>
+            <TextInput
+              id="report-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={readOnly}
               placeholder="Örn. Aylık ciro"
-              className="h-9 w-56 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              className="w-56"
             />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
-              Açıklama
-            </span>
-            <input
+          </div>
+          <div>
+            <Label htmlFor="report-description">Açıklama</Label>
+            <TextInput
+              id="report-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={readOnly}
-              className="h-9 w-72 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              className="w-72"
             />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
-              Veri kümesi
-            </span>
+          </div>
+          <div>
+            <Label htmlFor="report-dataset">Veri kümesi</Label>
             {saved ? (
-              <p className="flex h-9 items-center text-sm">
+              <p className="flex h-10 items-center text-sm">
                 {REPORT_DATASET_LABELS[dataset]}
               </p>
             ) : (
-              <select
+              <Select
+                id="report-dataset"
                 value={dataset}
                 onChange={(e) => {
                   // Fields belong to a dataset, so switching resets the design.
@@ -280,69 +281,55 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                   setConfig(EMPTY_CONFIG);
                   setResult(null);
                 }}
-                className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="w-auto"
               >
                 {catalog.data!.datasets.map((d) => (
                   <option key={d.key} value={d.key}>
                     {d.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
-          </label>
-          <label className="flex h-9 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isShared}
-              disabled={readOnly}
-              onChange={(e) => setIsShared(e.target.checked)}
-            />
-            Paylaş
-          </label>
+          </div>
+          <Checkbox
+            checked={isShared}
+            disabled={readOnly}
+            onChange={(e) => setIsShared(e.target.checked)}
+            label="Paylaş"
+            className="mb-3"
+          />
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/reports"
-            className="h-9 rounded-md border border-neutral-300 px-3 text-sm leading-9 dark:border-neutral-700"
-          >
+          <LinkButton href="/reports" size="md">
             Raporlar
-          </Link>
+          </LinkButton>
           {saved && saved.canEdit && (
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              loading={remove.isPending}
               onClick={() => {
                 if (confirm(`"${saved.name}" raporu silinsin mi?`))
                   remove.mutate();
               }}
-              className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white"
             >
               Sil
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            disabled={
-              readOnly ||
-              !name.trim() ||
-              config.columns.length === 0 ||
-              save.isPending
-            }
+          <Button
+            disabled={readOnly || !name.trim() || config.columns.length === 0}
+            loading={save.isPending}
             onClick={() => save.mutate()}
-            className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white disabled:opacity-50"
           >
             {saved ? "Kaydet" : "Oluştur"}
-          </button>
+          </Button>
         </div>
       </header>
 
-      {save.isError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-          {(save.error as Error).message}
-        </p>
-      )}
+      <ErrorLine error={save.error} />
+      <ErrorLine error={remove.error} />
       {readOnly && (
-        <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+        <p className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
           Bu rapor {saved!.ownerName} tarafından paylaşıldı — salt okunur.
           Sonuçlar sizin yetkinize göre filtrelenir.
         </p>
@@ -357,10 +344,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
       */}
       <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_minmax(380px,0.95fr)]">
         {/* ── field palette ── */}
-        <section className="rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <header className="border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
-            <h2 className="text-sm font-semibold">Alanlar</h2>
-          </header>
+        <Panel title="Alanlar" bodyClassName="p-0">
           <ul className="max-h-[28rem] divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
             {fieldGroups.map(([source, fields]) => (
               <li key={source}>
@@ -375,18 +359,19 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                     >
                       <span className="text-sm">{f.label}</span>
                       <span className="flex gap-1">
-                        <button
-                          type="button"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           disabled={readOnly}
                           onClick={() => addColumn(f.key)}
                           title="Sütun olarak ekle"
-                          className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
                         >
                           sütun
-                        </button>
+                        </Button>
                         {f.groupable && (
-                          <button
-                            type="button"
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             disabled={
                               readOnly || config.groupBy.includes(f.key)
                             }
@@ -394,13 +379,13 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                               patch({ groupBy: [...config.groupBy, f.key] })
                             }
                             title="Bu alana göre grupla"
-                            className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
                           >
                             grupla
-                          </button>
+                          </Button>
                         )}
-                        <button
-                          type="button"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           disabled={readOnly}
                           onClick={() =>
                             patch({
@@ -408,10 +393,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                             })
                           }
                           title="Filtre ekle"
-                          className="rounded border border-neutral-300 px-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
                         >
                           filtre
-                        </button>
+                        </Button>
                       </span>
                     </li>
                   ))}
@@ -419,32 +403,33 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
 
         {/* ── design ── */}
         <div className="space-y-4">
           {config.groupBy.length > 0 && (
             <Panel title="Gruplama">
               <div className="flex flex-wrap gap-2">
+                {/* Rozet marka renginde: burası indigo yazılmıştı ve
+                    `brand` skalası da indigo olduğu için fark edilmiyordu —
+                    ama marka rengi değişince bu tek yer geride kalırdı. */}
                 {config.groupBy.map((g) => (
-                  <span
-                    key={g}
-                    className="flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300"
-                  >
+                  <Badge key={g} tone="brand">
                     {fieldMap.get(g)?.label ?? g}
                     <button
                       type="button"
                       disabled={readOnly}
+                      aria-label={`${fieldMap.get(g)?.label ?? g} gruplamasını kaldır`}
                       onClick={() =>
                         patch({
                           groupBy: config.groupBy.filter((x) => x !== g),
                         })
                       }
-                      className="text-indigo-500"
+                      className="opacity-60 hover:opacity-100 disabled:opacity-30"
                     >
                       ×
                     </button>
-                  </span>
+                  </Badge>
                 ))}
               </div>
               <p className="mt-2 text-xs text-neutral-500">
@@ -471,16 +456,18 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                       <span className="min-w-32 text-sm font-medium">
                         {f?.label ?? c.field}
                       </span>
-                      <select
+                      <Select
+                        size="sm"
                         value={c.aggregate ?? ""}
                         disabled={readOnly}
+                        aria-label="Özet fonksiyonu"
                         onChange={(e) =>
                           updateColumn(i, {
                             aggregate: (e.target.value || undefined) as
                               Aggregate | undefined,
                           })
                         }
-                        className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="w-auto"
                       >
                         <option value="">Özet yok</option>
                         {(f?.aggregates ?? []).map((a) => (
@@ -488,39 +475,45 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                             {AGGREGATE_LABELS[a]}
                           </option>
                         ))}
-                      </select>
-                      <select
+                      </Select>
+                      <Select
+                        size="sm"
                         value={c.format ?? f?.format ?? "text"}
                         disabled={readOnly}
+                        aria-label="Biçim"
                         onChange={(e) =>
                           updateColumn(i, {
                             format: e.target.value as ColumnFormat,
                           })
                         }
-                        className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="w-auto"
                       >
                         {FORMATS.map((fmt) => (
                           <option key={fmt} value={fmt}>
                             {FORMAT_LABELS[fmt]}
                           </option>
                         ))}
-                      </select>
-                      <input
+                      </Select>
+                      <TextInput
+                        size="sm"
                         value={c.label ?? ""}
                         disabled={readOnly}
                         placeholder="Başlık (ops.)"
+                        aria-label="Sütun başlığı"
                         onChange={(e) =>
                           updateColumn(i, {
                             label: e.target.value || undefined,
                           })
                         }
-                        className="h-8 w-36 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="w-36"
                       />
-                      <input
+                      <TextInput
+                        size="sm"
                         type="number"
                         value={c.width ?? ""}
                         disabled={readOnly}
                         placeholder="px"
+                        aria-label="Sütun genişliği"
                         min={60}
                         max={600}
                         onChange={(e) =>
@@ -530,21 +523,18 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                               : undefined,
                           })
                         }
-                        className="h-8 w-20 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        className="w-20"
                       />
-                      <label className="flex items-center gap-1 text-xs text-neutral-500">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(c.hidden)}
-                          disabled={readOnly}
-                          onChange={(e) =>
-                            updateColumn(i, {
-                              hidden: e.target.checked || undefined,
-                            })
-                          }
-                        />
-                        gizle
-                      </label>
+                      <Checkbox
+                        checked={Boolean(c.hidden)}
+                        disabled={readOnly}
+                        onChange={(e) =>
+                          updateColumn(i, {
+                            hidden: e.target.checked || undefined,
+                          })
+                        }
+                        label="gizle"
+                      />
                       <span className="ml-auto flex gap-1">
                         <IconBtn
                           label="↑"
@@ -598,11 +588,10 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
           <Panel title="Sıralama, limit ve grafik">
             <div className="flex flex-wrap items-end gap-3">
-              <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">
-                  Sırala
-                </span>
-                <select
+              <div>
+                <Label htmlFor="sort-field">Sırala</Label>
+                <Select
+                  id="sort-field"
                   value={config.sort[0]?.field ?? ""}
                   disabled={readOnly}
                   onChange={(e) =>
@@ -617,7 +606,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         : [],
                     })
                   }
-                  className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="w-auto"
                 >
                   <option value="">Varsayılan</option>
                   {outputColumns.map((c) => (
@@ -625,11 +614,12 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                       {c.label}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">Yön</span>
-                <select
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="sort-direction">Yön</Label>
+                <Select
+                  id="sort-direction"
                   value={config.sort[0]?.direction ?? "desc"}
                   disabled={readOnly || config.sort.length === 0}
                   onChange={(e) =>
@@ -644,17 +634,16 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         : [],
                     })
                   }
-                  className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="w-auto"
                 >
                   <option value="desc">Azalan</option>
                   <option value="asc">Artan</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">
-                  Satır limiti
-                </span>
-                <input
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="row-limit">Satır limiti</Label>
+                <TextInput
+                  id="row-limit"
                   type="number"
                   min={1}
                   max={5000}
@@ -668,14 +657,13 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                         : undefined,
                     })
                   }
-                  className="h-9 w-24 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="w-24"
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-neutral-500">
-                  Görünüm
-                </span>
-                <select
+              </div>
+              <div>
+                <Label htmlFor="chart-type">Görünüm</Label>
+                <Select
+                  id="chart-type"
                   value={config.chart?.type ?? "table"}
                   disabled={readOnly}
                   onChange={(e) =>
@@ -687,22 +675,21 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                       },
                     })
                   }
-                  className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                  className="w-auto"
                 >
                   {(Object.keys(CHART_TYPE_LABELS) as ChartType[]).map((t) => (
                     <option key={t} value={t}>
                       {CHART_TYPE_LABELS[t]}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </div>
               {config.chart && config.chart.type !== "table" && (
                 <>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-neutral-500">
-                      Etiket sütunu
-                    </span>
-                    <select
+                  <div>
+                    <Label htmlFor="chart-category">Etiket sütunu</Label>
+                    <Select
+                      id="chart-category"
                       value={config.chart.categoryField ?? ""}
                       disabled={readOnly}
                       onChange={(e) =>
@@ -713,7 +700,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                           },
                         })
                       }
-                      className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                      className="w-auto"
                     >
                       <option value="">Seçin</option>
                       {outputColumns.map((c) => (
@@ -721,13 +708,12 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                           {c.label}
                         </option>
                       ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-neutral-500">
-                      Değer sütunu
-                    </span>
-                    <select
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="chart-value">Değer sütunu</Label>
+                    <Select
+                      id="chart-value"
                       value={config.chart.valueField ?? ""}
                       disabled={readOnly}
                       onChange={(e) =>
@@ -738,7 +724,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                           },
                         })
                       }
-                      className="h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                      className="w-auto"
                     >
                       <option value="">Seçin</option>
                       {outputColumns
@@ -750,13 +736,12 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                             {c.label}
                           </option>
                         ))}
-                    </select>
-                  </label>
+                    </Select>
+                  </div>
                 </>
               )}
             </div>
           </Panel>
-
         </div>
 
         {/* ── live preview ── */}
@@ -764,30 +749,29 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
           <Panel
             title="Önizleme"
             action={
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => preview.mutate({ dataset, config })}
-                disabled={config.columns.length === 0 || preview.isPending}
-                className="h-7 rounded-md border border-neutral-300 px-2 text-xs disabled:opacity-40 dark:border-neutral-700"
+                disabled={config.columns.length === 0}
+                loading={preview.isPending}
               >
-                {preview.isPending ? "Çalışıyor…" : "Yenile"}
-              </button>
+                Yenile
+              </Button>
             }
           >
             {previewError ? (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-                {previewError}
-              </p>
+              <ErrorLine error={new Error(previewError)} />
             ) : preview.isPending && !result ? (
-              <p className="text-sm text-neutral-500">Çalıştırılıyor…</p>
+              <LoadingState label="Çalıştırılıyor…" />
             ) : result ? (
               <div className="max-h-[70vh] overflow-y-auto">
                 <ReportPreview result={result} title={name || "rapor"} />
               </div>
             ) : (
               <p className="text-sm text-neutral-500">
-                Soldaki alan listesinden <strong>sütun</strong> ekleyin —
-                sonuç anında burada görünür.
+                Soldaki alan listesinden <strong>sütun</strong> ekleyin — sonuç
+                anında burada görünür.
               </p>
             )}
           </Panel>
@@ -829,9 +813,11 @@ function FilterRow({
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2 dark:border-neutral-800">
       <span className="min-w-32 text-sm font-medium">{field.label}</span>
-      <select
+      <Select
+        size="sm"
         value={filter.operator}
         disabled={readOnly}
+        aria-label={`${field.label} karşılaştırması`}
         onChange={(e) => {
           const operator = e.target.value as FilterOperator;
           const value =
@@ -844,14 +830,14 @@ function FilterRow({
                   : "";
           onChange({ ...filter, operator, value });
         }}
-        className="h-8 rounded-md border border-neutral-300 px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+        className="w-auto"
       >
         {field.operators.map((op) => (
           <option key={op} value={op}>
             {FILTER_OPERATOR_LABELS[op as FilterOperator] ?? op}
           </option>
         ))}
-      </select>
+      </Select>
 
       {needsValue && (
         <FilterValue
@@ -880,42 +866,39 @@ function FilterValue({
   readOnly: boolean;
   onChange: (next: ReportFilter) => void;
 }) {
-  const cls =
-    "h-8 rounded-md border border-neutral-300 px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900";
-
   if (filter.operator === "in" || filter.operator === "notIn") {
     const selected = Array.isArray(filter.value)
       ? (filter.value as string[])
       : [];
     if (field.enumValues) {
       return (
-        <span className="flex flex-wrap gap-2">
+        <span className="flex flex-wrap gap-3">
           {field.enumValues.map((v) => (
-            <label key={v} className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                disabled={readOnly}
-                checked={selected.includes(v)}
-                onChange={(e) =>
-                  onChange({
-                    ...filter,
-                    value: e.target.checked
-                      ? [...selected, v]
-                      : selected.filter((x) => x !== v),
-                  })
-                }
-              />
-              {ENUM_LABELS[v] ?? v}
-            </label>
+            <Checkbox
+              key={v}
+              disabled={readOnly}
+              checked={selected.includes(v)}
+              onChange={(e) =>
+                onChange({
+                  ...filter,
+                  value: e.target.checked
+                    ? [...selected, v]
+                    : selected.filter((x) => x !== v),
+                })
+              }
+              label={ENUM_LABELS[v] ?? v}
+            />
           ))}
         </span>
       );
     }
     return (
-      <input
+      <TextInput
+        size="sm"
         value={selected.join(", ")}
         disabled={readOnly}
         placeholder="virgülle ayırın"
+        aria-label={`${field.label} değerleri`}
         onChange={(e) =>
           onChange({
             ...filter,
@@ -925,7 +908,7 @@ function FilterValue({
               .filter(Boolean),
           })
         }
-        className={`${cls} w-56`}
+        className="w-56"
       />
     );
   }
@@ -938,9 +921,11 @@ function FilterValue({
     return (
       <span className="flex items-center gap-1">
         {[0, 1].map((idx) => (
-          <input
+          <TextInput
             key={idx}
+            size="sm"
             type={type}
+            aria-label={`${field.label} ${idx === 0 ? "alt" : "üst"} sınır`}
             value={pair[idx] ?? ""}
             disabled={readOnly}
             onChange={(e) => {
@@ -948,7 +933,7 @@ function FilterValue({
               next[idx] = e.target.value;
               onChange({ ...filter, value: next });
             }}
-            className={`${cls} w-36`}
+            className="w-36"
           />
         ))}
       </span>
@@ -958,16 +943,18 @@ function FilterValue({
   if (filter.operator === "lastNDays") {
     return (
       <span className="flex items-center gap-1 text-xs">
-        <input
+        <TextInput
+          size="sm"
           type="number"
           min={1}
           max={3650}
+          aria-label={`${field.label}: son kaç gün`}
           value={Number(filter.value ?? 30)}
           disabled={readOnly}
           onChange={(e) =>
             onChange({ ...filter, value: Number(e.target.value) })
           }
-          className={`${cls} w-20`}
+          className="w-20"
         />
         gün
       </span>
@@ -976,11 +963,13 @@ function FilterValue({
 
   if (field.enumValues) {
     return (
-      <select
+      <Select
+        size="sm"
         value={String(filter.value ?? "")}
         disabled={readOnly}
+        aria-label={field.label}
         onChange={(e) => onChange({ ...filter, value: e.target.value })}
-        className={cls}
+        className="w-auto"
       >
         <option value="">Seçin</option>
         {field.enumValues.map((v) => (
@@ -988,28 +977,32 @@ function FilterValue({
             {ENUM_LABELS[v] ?? v}
           </option>
         ))}
-      </select>
+      </Select>
     );
   }
 
   if (field.type === "boolean") {
     return (
-      <select
+      <Select
+        size="sm"
         value={String(filter.value ?? "true")}
         disabled={readOnly}
+        aria-label={field.label}
         onChange={(e) =>
           onChange({ ...filter, value: e.target.value === "true" })
         }
-        className={cls}
+        className="w-auto"
       >
         <option value="true">Evet</option>
         <option value="false">Hayır</option>
-      </select>
+      </Select>
     );
   }
 
   return (
-    <input
+    <TextInput
+      size="sm"
+      aria-label={field.label}
       type={
         field.type === "date"
           ? "date"
@@ -1020,49 +1013,39 @@ function FilterValue({
       value={String(filter.value ?? "")}
       disabled={readOnly}
       onChange={(e) => onChange({ ...filter, value: e.target.value })}
-      className={`${cls} w-44`}
+      className="w-44"
     />
   );
 }
 
-function Panel({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  /** Başlığın sağına düşen düğme (önizlemeyi elle yenilemek gibi). */
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-800">
-      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {action}
-      </header>
-      <div className="p-4">{children}</div>
-    </section>
-  );
-}
-
+/**
+ * Kare, tek karakterlik düğme (↑ ↓ ×).
+ *
+ * `Button`ın kendisi değil: buradaki hedef kare bir kutu ve `Button`ın yatay
+ * dolgusu onu dikdörtgen yapıyor. Görünümün geri kalanı — kenarlık, odak,
+ * kapalıyken solma — ortak `secondary` düğmeden geliyor.
+ */
 function IconBtn({
   label,
   onClick,
   disabled,
+  title,
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  title?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="secondary"
+      size="sm"
       disabled={disabled}
       onClick={onClick}
-      className="h-7 w-7 rounded border border-neutral-300 text-sm disabled:opacity-30 dark:border-neutral-700"
+      title={title}
+      className="w-8 px-0"
     >
       {label}
-    </button>
+    </Button>
   );
 }

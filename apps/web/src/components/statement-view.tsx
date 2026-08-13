@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { CompanyAging, Statement } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 
 // Cari ekstre for one company. Used by both /portal/statement (the company
@@ -54,11 +55,13 @@ export function StatementView({ companyId }: { companyId: string }) {
   });
 
   if (statement.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (statement.isError) {
     return (
-      <p className="text-sm text-red-600">{(statement.error as Error).message}</p>
+      <p className="text-sm text-red-600">
+        {(statement.error as Error).message}
+      </p>
     );
   }
 
@@ -248,7 +251,10 @@ export function StatementView({ companyId }: { companyId: string }) {
             ))}
             {s.rows.length === 0 && (
               <tr>
-                <td className="px-3 py-6 text-center text-neutral-500" colSpan={6}>
+                <td
+                  className="px-3 py-6 text-center text-neutral-500"
+                  colSpan={6}
+                >
                   Bu aralıkta hareket yok.
                 </td>
               </tr>
@@ -301,7 +307,14 @@ function downloadCsv(s: Statement) {
         num(r.balance),
       ].join(";"),
     ),
-    ["", esc("Toplam"), "", num(s.totalDebit), num(s.totalCredit), num(s.closingBalance)].join(";"),
+    [
+      "",
+      esc("Toplam"),
+      "",
+      num(s.totalDebit),
+      num(s.totalCredit),
+      num(s.closingBalance),
+    ].join(";"),
   ];
 
   const blob = new Blob(["﻿" + lines.join("\r\n")], {

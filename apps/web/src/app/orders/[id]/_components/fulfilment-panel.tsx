@@ -7,7 +7,16 @@ import type { InvoiceView, OpenLine, ShipmentView } from "@repo/services";
 import type { Role } from "@repo/types";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  LinkButton,
+  Panel,
+  TextInput,
+} from "@/components/form";
+import { Badge, LoadingState } from "@/components/ui";
 
 // Despatch and invoice, side by side, because in practice they are decided
 // together: what left the warehouse, and what has been billed for it.
@@ -53,9 +62,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel title="İrsaliyeler">
         <ErrorLine error={shipments.error} />
-        {shipments.isLoading && (
-          <p className="text-sm text-neutral-500">Yükleniyor…</p>
-        )}
+        {shipments.isLoading && <LoadingState />}
 
         {shipments.data && shipments.data.shipments.length === 0 && (
           <p className="text-sm text-neutral-500">Henüz sevkiyat yapılmadı.</p>
@@ -79,27 +86,27 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                     {new Date(s.shippedAt).toLocaleDateString("tr-TR")} ·{" "}
                     {s.items.reduce((n, i) => n + i.quantity, 0)} adet
                     {s.carrier ? ` · ${s.carrier}` : ""}
-                    {s.invoiceNumber ? ` · fatura ${s.invoiceNumber}` : " · faturasız"}
+                    {s.invoiceNumber
+                      ? ` · fatura ${s.invoiceNumber}`
+                      : " · faturasız"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Kargo etiketi ve teslim fişi sevkiyattan basılır: koliye
                       yapıştırılan etiket bir siparişin değil, bir sevkiyatın
                       etiketi (kısmi sevkte iki koli, iki etiket). */}
-                  <Link
+                  <LinkButton
                     href={`/documents/labels?kind=CARGO_LABEL&shipments=${s.id}`}
                     target="_blank"
-                    className="rounded border border-neutral-300 px-2 py-0.5 text-xs dark:border-neutral-700"
                   >
                     Kargo etiketi
-                  </Link>
-                  <Link
+                  </LinkButton>
+                  <LinkButton
                     href={`/documents/labels?kind=DELIVERY_RECEIPT&shipments=${s.id}`}
                     target="_blank"
-                    className="rounded border border-neutral-300 px-2 py-0.5 text-xs dark:border-neutral-700"
                   >
                     Teslim fişi
-                  </Link>
+                  </LinkButton>
                   {isAdmin && !s.invoiceId && (
                     <CancelShipmentButton id={s.id} onDone={refresh} />
                   )}
@@ -127,9 +134,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
 
       <Panel title="Faturalar">
         <ErrorLine error={invoices.error} />
-        {invoices.isLoading && (
-          <p className="text-sm text-neutral-500">Yükleniyor…</p>
-        )}
+        {invoices.isLoading && <LoadingState />}
 
         {invoices.data && invoices.data.invoices.length === 0 && (
           <p className="text-sm text-neutral-500">Henüz fatura kesilmedi.</p>
@@ -150,8 +155,8 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                     {inv.documentNumber}
                   </Link>
                   {inv.status === "CANCELLED" && (
-                    <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
-                      iptal
+                    <span className="ml-2">
+                      <Badge tone="danger">iptal</Badge>
                     </span>
                   )}
                   <p className="text-neutral-500">
@@ -194,7 +199,9 @@ function ShipmentForm({
   // Pre-filled with everything outstanding: shipping the whole remainder is the
   // common case, and trimming a number is quicker than typing every one.
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
-    Object.fromEntries(lines.map((l) => [l.orderItemId, String(l.remainingToShip)])),
+    Object.fromEntries(
+      lines.map((l) => [l.orderItemId, String(l.remainingToShip)]),
+    ),
   );
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -226,7 +233,10 @@ function ShipmentForm({
       <h3 className="mb-2 text-sm font-semibold">Yeni irsaliye</h3>
       <ul className="space-y-2">
         {lines.map((l) => (
-          <li key={l.orderItemId} className="flex items-center justify-between gap-3">
+          <li
+            key={l.orderItemId}
+            className="flex items-center justify-between gap-3"
+          >
             <span className="min-w-0 truncate text-sm">
               {l.productName}
               <span className="ml-1 text-xs text-neutral-500">
@@ -240,7 +250,10 @@ function ShipmentForm({
               className="w-24"
               value={quantities[l.orderItemId] ?? ""}
               onChange={(e) =>
-                setQuantities((q) => ({ ...q, [l.orderItemId]: e.target.value }))
+                setQuantities((q) => ({
+                  ...q,
+                  [l.orderItemId]: e.target.value,
+                }))
               }
             />
           </li>
@@ -272,7 +285,10 @@ function ShipmentForm({
             onChange={(e) => setExternalNumber(e.target.value)}
           />
         </label>
-        <Button disabled={total === 0 || create.isPending} onClick={() => create.mutate()}>
+        <Button
+          disabled={total === 0 || create.isPending}
+          onClick={() => create.mutate()}
+        >
           {create.isPending ? "Kaydediliyor…" : `Sevk et (${total} adet)`}
         </Button>
       </div>
@@ -320,21 +336,17 @@ function InvoiceForm({
           <ul className="mb-2 space-y-1 text-sm">
             {uninvoicedShipments.map((s) => (
               <li key={s.id}>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(s.id)}
-                    onChange={(e) =>
-                      setSelected((cur) =>
-                        e.target.checked
-                          ? [...cur, s.id]
-                          : cur.filter((id) => id !== s.id),
-                      )
-                    }
-                  />
-                  {s.documentNumber} ·{" "}
-                  {s.items.reduce((n, i) => n + i.quantity, 0)} adet
-                </label>
+                <Checkbox
+                  checked={selected.includes(s.id)}
+                  onChange={(e) =>
+                    setSelected((cur) =>
+                      e.target.checked
+                        ? [...cur, s.id]
+                        : cur.filter((id) => id !== s.id),
+                    )
+                  }
+                  label={`${s.documentNumber} · ${s.items.reduce((n, i) => n + i.quantity, 0)} adet`}
+                />
               </li>
             ))}
           </ul>
@@ -372,7 +384,13 @@ function InvoiceForm({
   );
 }
 
-function CancelShipmentButton({ id, onDone }: { id: string; onDone: () => void }) {
+function CancelShipmentButton({
+  id,
+  onDone,
+}: {
+  id: string;
+  onDone: () => void;
+}) {
   const remove = useMutation({
     mutationFn: () => apiDelete(`/api/shipments/${id}`),
     onSuccess: onDone,
@@ -381,7 +399,8 @@ function CancelShipmentButton({ id, onDone }: { id: string; onDone: () => void }
     <>
       <Button
         variant="danger"
-        disabled={remove.isPending}
+        size="sm"
+        loading={remove.isPending}
         onClick={() => {
           if (confirm("İrsaliye iptal edilsin mi? Numara geri alınmaz.")) {
             remove.mutate();
@@ -395,7 +414,13 @@ function CancelShipmentButton({ id, onDone }: { id: string; onDone: () => void }
   );
 }
 
-function CancelInvoiceButton({ id, onDone }: { id: string; onDone: () => void }) {
+function CancelInvoiceButton({
+  id,
+  onDone,
+}: {
+  id: string;
+  onDone: () => void;
+}) {
   const remove = useMutation({
     mutationFn: () => apiDelete(`/api/invoices/${id}`),
     onSuccess: onDone,
@@ -404,7 +429,8 @@ function CancelInvoiceButton({ id, onDone }: { id: string; onDone: () => void })
     <>
       <Button
         variant="danger"
-        disabled={remove.isPending}
+        size="sm"
+        loading={remove.isPending}
         onClick={() => {
           if (confirm("Fatura iptal edilsin mi? Numara geri alınmaz.")) {
             remove.mutate();

@@ -15,7 +15,7 @@ import {
   Th,
   THead,
 } from "@/components/ui";
-import { Button, ErrorLine, Panel, Select } from "@/components/form";
+import { Button, Checkbox, ErrorLine, Panel, Select } from "@/components/form";
 
 // Bakım işleri paneli.
 //
@@ -78,7 +78,8 @@ export function JobBoard() {
 
   const data = useQuery({
     queryKey: ["admin", "jobs"],
-    queryFn: () => apiGet<{ jobs: JobRow[]; runs: RunRow[] }>("/api/admin/jobs"),
+    queryFn: () =>
+      apiGet<{ jobs: JobRow[]; runs: RunRow[] }>("/api/admin/jobs"),
     // Elle tetiklenen iş birkaç saniye sürebiliyor; sayfa açıkken kendini
     // tazelemesi, kullanıcının F5'e basmasından iyi.
     refetchInterval: 30_000,
@@ -174,19 +175,16 @@ export function JobBoard() {
                 ))}
               </Select>
 
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={j.isEnabled}
-                  onChange={(e) =>
-                    patch.mutate({
-                      name: j.name,
-                      body: { isEnabled: e.target.checked },
-                    })
-                  }
-                />
-                Açık
-              </label>
+              <Checkbox
+                checked={j.isEnabled}
+                onChange={(e) =>
+                  patch.mutate({
+                    name: j.name,
+                    body: { isEnabled: e.target.checked },
+                  })
+                }
+                label="Açık"
+              />
 
               <Button
                 variant="secondary"

@@ -5,7 +5,15 @@ import { useMutation } from "@tanstack/react-query";
 import type { PromotionRow } from "@repo/services";
 import type { PromotionRuleCatalog, PromotionRuleInput } from "@repo/types";
 import { apiPatch, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, TextArea, TextInput } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  TextArea,
+  TextInput,
+} from "@/components/form";
 import { RuleList, type RuleOptions } from "./rule-editor";
 
 // One campaign, edited as a whole: the header fields, then the conditions that
@@ -51,7 +59,9 @@ export function PromotionForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [code, setCode] = useState(initial?.code ?? "");
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
-  const [startsAt, setStartsAt] = useState(toLocalInput(initial?.startsAt ?? null));
+  const [startsAt, setStartsAt] = useState(
+    toLocalInput(initial?.startsAt ?? null),
+  );
   const [endsAt, setEndsAt] = useState(toLocalInput(initial?.endsAt ?? null));
   const [priority, setPriority] = useState(String(initial?.priority ?? 0));
   const [stopFurther, setStopFurther] = useState(initial?.stopFurther ?? false);
@@ -192,22 +202,16 @@ export function PromotionForm({
         </div>
 
         <div className="flex flex-wrap gap-5 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-            />
-            Aktif
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={stopFurther}
-              onChange={(e) => setStopFurther(e.target.checked)}
-            />
-            Uygulanırsa sonraki kampanyalar çalışmasın
-          </label>
+          <Checkbox
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+            label="Aktif"
+          />
+          <Checkbox
+            checked={stopFurther}
+            onChange={(e) => setStopFurther(e.target.checked)}
+            label="Uygulanırsa sonraki kampanyalar çalışmasın"
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -220,7 +224,9 @@ export function PromotionForm({
                 checked={conditionMode === mode}
                 onChange={() => setConditionMode(mode)}
               />
-              {mode === "ALL" ? "Hepsi sağlanmalı (VE)" : "En az biri yeterli (VEYA)"}
+              {mode === "ALL"
+                ? "Hepsi sağlanmalı (VE)"
+                : "En az biri yeterli (VEYA)"}
             </label>
           ))}
         </div>
@@ -248,7 +254,10 @@ export function PromotionForm({
         />
 
         <div className="flex items-center gap-2">
-          <Button disabled={!canSave || save.isPending} onClick={() => save.mutate()}>
+          <Button
+            disabled={!canSave || save.isPending}
+            onClick={() => save.mutate()}
+          >
             {save.isPending ? "Kaydediliyor…" : "Kaydet"}
           </Button>
           <Button variant="secondary" onClick={onCancel}>

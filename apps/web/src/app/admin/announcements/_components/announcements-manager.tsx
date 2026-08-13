@@ -12,6 +12,7 @@ import {
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import {
   Button,
+  Checkbox,
   ErrorLine,
   Label,
   Panel,
@@ -158,7 +159,9 @@ export function AnnouncementsManager() {
             <TextInput
               value={draft.linkLabel}
               placeholder="Kampanyayı gör"
-              onChange={(e) => setDraft({ ...draft, linkLabel: e.target.value })}
+              onChange={(e) =>
+                setDraft({ ...draft, linkLabel: e.target.value })
+              }
             />
           </label>
 
@@ -173,19 +176,19 @@ export function AnnouncementsManager() {
             />
           </label>
 
-          <label className="flex items-end gap-2 pb-2">
-            <input
-              type="checkbox"
-              checked={draft.dismissible}
-              onChange={(e) =>
-                setDraft({ ...draft, dismissible: e.target.checked })
-              }
-              className="h-4 w-4 accent-brand-600"
-            />
-            <span className="text-xs text-neutral-600 dark:text-neutral-400">
-              Müşteri kapatabilsin
-            </span>
-          </label>
+          <Checkbox
+            checked={draft.dismissible}
+            onChange={(e) =>
+              setDraft({ ...draft, dismissible: e.target.checked })
+            }
+            label={
+              <>
+                <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                  Müşteri kapatabilsin
+                </span>
+              </>
+            }
+          />
 
           {groups.length > 0 && (
             <div className="sm:col-span-2">

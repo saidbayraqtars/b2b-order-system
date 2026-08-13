@@ -11,8 +11,7 @@ import {
   type Permission,
   type Role,
 } from "@repo/types";
-import { Button } from "@/components/form";
-import { cn } from "@/lib/utils";
+import { Button, Checkbox } from "@/components/form";
 
 /**
  * Yetkilerin tek tek seçildiği onay kutusu ızgarası.
@@ -94,7 +93,12 @@ export function PermissionPicker({
           </p>
         </div>
         <div className="flex gap-1">
-          <Button size="sm" variant="secondary" disabled={disabled} onClick={applyTemplate}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={disabled}
+            onClick={applyTemplate}
+          >
             Rol şablonunu uygula
           </Button>
           <Button
@@ -130,7 +134,9 @@ export function PermissionPicker({
               </fieldset>
             );
           }
-          const groupSelected = selectable.filter((p) => selected.has(p)).length;
+          const groupSelected = selectable.filter((p) =>
+            selected.has(p),
+          ).length;
 
           return (
             <fieldset key={group.title} className="min-w-0">
@@ -161,44 +167,32 @@ export function PermissionPicker({
                   const hint = PERMISSION_HINTS[perm];
                   const blocked = !inScope(perm);
                   return (
-                    <label
+                    <Checkbox
                       key={perm}
-                      title={
-                        blocked
-                          ? `Bu yetki ${familyLabel.toLowerCase()} hesabına verilemez`
-                          : undefined
-                      }
-                      className={cn(
-                        "flex items-start gap-2 rounded-md px-1.5 py-1 text-sm",
-                        blocked || disabled
-                          ? "cursor-not-allowed opacity-50"
-                          : "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 text-brand-600 focus:ring-brand-500/30 dark:border-neutral-600"
-                        checked={selected.has(perm) && !blocked}
-                        disabled={disabled || blocked}
-                        onChange={() => toggle(perm)}
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-neutral-800 dark:text-neutral-200">
-                          {PERMISSION_LABELS[perm]}
-                        </span>
-                        {blocked ? (
-                          <span className="block text-[11px] leading-snug text-neutral-500">
-                            {familyLabel} hesabına verilemez
-                          </span>
-                        ) : (
-                          hint && (
-                            <span className="block text-[11px] leading-snug text-neutral-500">
-                              {hint}
+                      checked={selected.has(perm) && !blocked}
+                      disabled={disabled || blocked}
+                      onChange={() => toggle(perm)}
+                      label={
+                        <>
+                          <span className="min-w-0">
+                            <span className="block text-neutral-800 dark:text-neutral-200">
+                              {PERMISSION_LABELS[perm]}
                             </span>
-                          )
-                        )}
-                      </span>
-                    </label>
+                            {blocked ? (
+                              <span className="block text-[11px] leading-snug text-neutral-500">
+                                {familyLabel} hesabına verilemez
+                              </span>
+                            ) : (
+                              hint && (
+                                <span className="block text-[11px] leading-snug text-neutral-500">
+                                  {hint}
+                                </span>
+                              )
+                            )}
+                          </span>
+                        </>
+                      }
+                    />
                   );
                 })}
               </div>

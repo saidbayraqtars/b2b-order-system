@@ -8,6 +8,7 @@ import { VAT_RATES } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import {
   Button,
+  Checkbox,
   ErrorLine,
   Label,
   Panel,
@@ -75,11 +76,16 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
           payload(),
         );
       }
-      return apiPost<{ product: { id: string } }>("/api/admin/products", payload());
+      return apiPost<{ product: { id: string } }>(
+        "/api/admin/products",
+        payload(),
+      );
     },
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["admin", "products"] });
-      void qc.invalidateQueries({ queryKey: ["admin", "product", res.product.id] });
+      void qc.invalidateQueries({
+        queryKey: ["admin", "product", res.product.id],
+      });
       if (!product) router.push(`/admin/products/${res.product.id}`);
     },
   });
@@ -139,7 +145,9 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
           <Label>KDV oranı</Label>
           <Select
             value={form.vatRate}
-            onChange={(e) => setForm({ ...form, vatRate: Number(e.target.value) })}
+            onChange={(e) =>
+              setForm({ ...form, vatRate: Number(e.target.value) })
+            }
           >
             {VAT_RATES.map((r) => (
               <option key={r} value={r}>
@@ -150,15 +158,11 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
         </div>
 
         <div className="flex items-end">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              className="h-4 w-4"
-            />
-            Aktif (katalogda görünür)
-          </label>
+          <Checkbox
+            checked={form.isActive}
+            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+            label="Aktif (katalogda görünür)"
+          />
         </div>
 
         <div className="sm:col-span-2">
@@ -193,7 +197,8 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
             variant="danger"
             disabled={remove.isPending}
             onClick={() => {
-              if (confirm(`"${product.name}" ürünü silinsin mi?`)) remove.mutate();
+              if (confirm(`"${product.name}" ürünü silinsin mi?`))
+                remove.mutate();
             }}
           >
             Sil

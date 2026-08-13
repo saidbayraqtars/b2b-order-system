@@ -3,10 +3,27 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderDetail } from "@repo/services";
-import { PAYMENT_METHOD_LABELS, type OrderStatus, type Role } from "@repo/types";
+import {
+  PAYMENT_METHOD_LABELS,
+  type OrderStatus,
+  type Role,
+} from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { CurrencyNote } from "@/components/currency-note";
+import { Button, ErrorLine, Panel, TextInput } from "@/components/form";
+import {
+  Badge,
+  type BadgeTone,
+  Card,
+  LoadingState,
+  PageHeader,
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+} from "@/components/ui";
 import { FulfilmentPanel } from "./fulfilment-panel";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -21,16 +38,20 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Reddedildi",
 };
 
-const STATUS_CLASS: Record<OrderStatus, string> = {
-  DRAFT: "bg-neutral-100 text-neutral-700",
-  PENDING_APPROVAL: "bg-amber-100 text-amber-800",
-  PENDING_CREDIT: "bg-orange-100 text-orange-800",
-  CONFIRMED: "bg-emerald-100 text-emerald-800",
-  PROCESSING: "bg-blue-100 text-blue-800",
-  SHIPPED: "bg-indigo-100 text-indigo-800",
-  DELIVERED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-neutral-200 text-neutral-600",
-  REJECTED: "bg-red-100 text-red-800",
+// Renkler elle yazılmış Tailwind sınıfıydı ve koyu temada hiçbiri
+// tanımlanmamıştı: koyu zeminde açık amber üzerine koyu amber metin okunmuyordu.
+// `Badge` tonları ikisini birden tanımlıyor. Ton sayısı sınıf sayısından az —
+// PROCESSING ile SHIPPED ayrı iki mavi değil, ikisi de "işlemde".
+const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
+  DRAFT: "neutral",
+  PENDING_APPROVAL: "warning",
+  PENDING_CREDIT: "warning",
+  CONFIRMED: "success",
+  PROCESSING: "info",
+  SHIPPED: "info",
+  DELIVERED: "success",
+  CANCELLED: "neutral",
+  REJECTED: "danger",
 };
 
 function dateTime(iso: string) {
@@ -81,59 +102,51 @@ export function OrderDetailView({
     },
   });
 
-  if (query.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
-  }
-  if (query.isError) {
-    return <p className="text-sm text-red-600">{(query.error as Error).message}</p>;
-  }
+  if (query.isLoading) return <LoadingState />;
+  if (query.isError) return <ErrorLine error={query.error} />;
 
   const o = query.data!.order;
   const shipping = o.availableTransitions.includes("SHIPPED");
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">{o.orderNumber}</h1>
-          <p className="text-sm text-neutral-500">
-            {o.company.name} · {dateTime(o.createdAt)} · {o.createdByName}
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 text-sm ${STATUS_CLASS[o.status]}`}
-        >
-          {STATUS_LABEL[o.status]}
-        </span>
-      </header>
+      <PageHeader
+        title={o.orderNumber}
+        subtitle={`${o.company.name} · ${dateTime(o.createdAt)} · ${o.createdByName}`}
+        actions={
+          <Badge tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
+        }
+      />
 
-      <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+      <Card className="p-0">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-3 py-2">Ürün</th>
-              <th className="px-3 py-2">SKU</th>
-              <th className="px-3 py-2 text-right">Adet</th>
-              <th className="px-3 py-2 text-right">Birim</th>
-              <th className="px-3 py-2 text-right">İskonto</th>
-              <th className="px-3 py-2 text-right">Kampanya</th>
-              <th className="px-3 py-2 text-right">Tutar</th>
+              <Th>Ürün</Th>
+              <Th>SKU</Th>
+              <Th align="right">Adet</Th>
+              <Th align="right">Birim</Th>
+              <Th align="right">İskonto</Th>
+              <Th align="right">Kampanya</Th>
+              <Th align="right">Tutar</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          </THead>
+          <TBody>
             {o.items.map((i) => (
               <tr key={i.id}>
-                <td className="px-3 py-2">
+                <Td>
                   {i.productName}
                   {i.isGift && (
-                    <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      hediye
+                    <span className="ml-2">
+                      <Badge tone="success">hediye</Badge>
                     </span>
                   )}
-                </td>
-                <td className="px-3 py-2 text-neutral-500">{i.sku}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{i.quantity}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td muted>{i.sku}</Td>
+                <Td align="right" numeric>
+                  {i.quantity}
+                </Td>
+                <Td align="right" numeric>
                   {formatTRY(i.unitPrice)}
                   {/* Dövizle listelenmişse hangi sayıdan hangi kurla
                       çevrildiği: sipariş bir kez fiyatlanır ve o kur burada
@@ -144,26 +157,30 @@ export function OrderDetailView({
                     rate={i.exchangeRate}
                     className="block text-[11px] font-normal text-neutral-500"
                   />
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td align="right" numeric>
                   {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                </Td>
+                <Td
+                  align="right"
+                  numeric
+                  className="text-emerald-700 dark:text-emerald-400"
+                >
                   {Number(i.promotionDiscount) > 0
                     ? `− ${formatTRY(i.promotionDiscount)}`
                     : "—"}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td align="right" numeric>
                   {formatTRY(i.lineTotal)}
-                </td>
+                </Td>
               </tr>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </TBody>
+        </Table>
+      </Card>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1 text-sm">
+        <Card className="space-y-1 text-sm">
           <Row label="Ara toplam" value={formatTRY(o.subtotal)} />
           <Row label="İskonto" value={formatTRY(o.discountTotal)} />
           {o.volumeTier && (
@@ -197,9 +214,9 @@ export function OrderDetailView({
               OPEN_ACCOUNT and call everything else "Kredi kartı", so a çek
               order showed the wrong settlement. */}
           <Row label="Ödeme" value={PAYMENT_METHOD_LABELS[o.paymentMethod]} />
-        </div>
+        </Card>
 
-        <div className="space-y-1 text-sm">
+        <Card className="space-y-1 text-sm">
           {o.shippingAddress ? (
             <>
               <p className="font-medium">{o.shippingAddress.label}</p>
@@ -216,13 +233,15 @@ export function OrderDetailView({
             <p className="text-neutral-500">Sevkiyat adresi seçilmemiş.</p>
           )}
           {o.carrier && <Row label="Kargo" value={o.carrier} />}
-          {o.trackingNumber && <Row label="Takip no" value={o.trackingNumber} />}
+          {o.trackingNumber && (
+            <Row label="Takip no" value={o.trackingNumber} />
+          )}
           {o.note && (
             <p className="pt-2 text-neutral-500">
               <span className="font-medium">Not:</span> {o.note}
             </p>
           )}
-        </div>
+        </Card>
       </section>
 
       <FulfilmentPanel
@@ -232,65 +251,64 @@ export function OrderDetailView({
       />
 
       {o.availableTransitions.length > 0 && (
-        <section className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-          <h2 className="mb-3 text-sm font-semibold">Durum güncelle</h2>
-
-          <input
+        <Panel title="Durum güncelle">
+          <TextInput
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Not (opsiyonel)"
-            className="mb-2 h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="mb-2"
           />
 
           {shipping && (
             <div className="mb-2 flex flex-wrap gap-2">
-              <input
+              <TextInput
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
                 placeholder="Kargo firması"
-                className="h-9 flex-1 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="flex-1"
               />
-              <input
+              <TextInput
                 value={tracking}
                 onChange={(e) => setTracking(e.target.value)}
                 placeholder="Takip numarası"
-                className="h-9 flex-1 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                className="flex-1"
               />
             </div>
           )}
 
           <div className="flex flex-wrap gap-2">
             {o.availableTransitions.map((s) => (
-              <button
+              <Button
                 key={s}
-                type="button"
+                // İptal kırmızı: geri alınamayan tek geçiş ve onay penceresi
+                // tek başına yeterli değil — düğme de öyle görünmeli.
+                variant={s === "CANCELLED" ? "danger" : "primary"}
+                // Dönen simge yalnızca tıklanan düğmede: `isPending` tek başına
+                // hepsini birden döndürüyordu ve hangisinin işlendiği
+                // kaybolurdu. Ötekiler yine kilitli — `disabled`.
+                loading={change.isPending && change.variables === s}
                 disabled={change.isPending}
                 onClick={() => {
-                  if (s !== "CANCELLED" || confirm(`${o.orderNumber} iptal edilsin mi? Stoklar iade edilir, cari borç geri alınır.`)) {
+                  if (
+                    s !== "CANCELLED" ||
+                    confirm(
+                      `${o.orderNumber} iptal edilsin mi? Stoklar iade edilir, cari borç geri alınır.`,
+                    )
+                  ) {
                     change.mutate(s);
                   }
                 }}
-                className={`h-9 rounded-md px-3 text-sm font-medium text-white disabled:opacity-50 ${
-                  s === "CANCELLED"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-indigo-600 hover:bg-indigo-700"
-                }`}
               >
                 {STATUS_LABEL[s]}
-              </button>
+              </Button>
             ))}
           </div>
 
-          {change.isError && (
-            <p className="mt-2 text-sm text-red-600">
-              {(change.error as Error).message}
-            </p>
-          )}
-        </section>
+          <ErrorLine error={change.error} />
+        </Panel>
       )}
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Durum geçmişi</h2>
+      <Panel title="Durum geçmişi">
         <ol className="space-y-2 border-l border-neutral-200 pl-4 dark:border-neutral-800">
           {o.history.map((h) => (
             <li key={h.id} className="text-sm">
@@ -305,7 +323,7 @@ export function OrderDetailView({
             </li>
           ))}
         </ol>
-      </section>
+      </Panel>
     </div>
   );
 }

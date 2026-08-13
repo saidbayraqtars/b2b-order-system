@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LoadingState } from "@/components/ui";
 import Link from "next/link";
 import { ResetPasswordForm } from "../_components/reset-password-form";
 
@@ -15,7 +16,7 @@ export default function ResetPasswordPage() {
           Şifreniz değiştiğinde açık olan tüm oturumlar kapanır.
         </p>
       </div>
-      <Suspense fallback={<p className="text-sm text-neutral-500">Yükleniyor…</p>}>
+      <Suspense fallback={<LoadingState />}>
         <ResetPasswordForm />
       </Suspense>
       <Link href="/login" className="text-sm text-neutral-500 underline">

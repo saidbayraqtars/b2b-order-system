@@ -10,6 +10,7 @@ import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
 import { Announcements } from "@/components/storefront/announcements";
 import { ActingAsBar } from "@/components/storefront/acting-as-bar";
+import { Checkbox } from "@/components/form";
 import { LoadingState, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./product-card";
@@ -160,15 +161,15 @@ export function PortalClient({
             />
           </div>
 
-          <label className="flex h-10 cursor-pointer items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
-            <input
-              type="checkbox"
-              checked={inStockOnly}
-              onChange={(e) => setInStockOnly(e.target.checked)}
-              className="h-3.5 w-3.5 accent-brand-600"
-            />
-            <span className="tech-label">stokta</span>
-          </label>
+          <Checkbox
+            checked={inStockOnly}
+            onChange={(e) => setInStockOnly(e.target.checked)}
+            label={
+              <>
+                <span className="tech-label">stokta</span>
+              </>
+            }
+          />
 
           <div className="flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
             <SlidersHorizontal className="h-3.5 w-3.5 text-neutral-400" />
@@ -218,7 +219,9 @@ export function PortalClient({
           <section>
             <div className="mb-2 flex items-baseline justify-between">
               <span className="tech-label">
-                {catalogQuery.isLoading ? "yükleniyor" : `${products.length} ürün`}
+                {catalogQuery.isLoading
+                  ? "yükleniyor"
+                  : `${products.length} ürün`}
               </span>
             </div>
 

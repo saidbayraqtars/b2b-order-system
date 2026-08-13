@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuditStats } from "@repo/services";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+} from "@/components/form";
 
 const RETENTION_CHOICES = [90, 180, 365, 730, 1095];
 
@@ -48,7 +55,10 @@ export function RetentionPanel() {
     <Panel title="Saklama ve arşiv">
       <div className="flex flex-col gap-4 text-sm">
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Stat label="Toplam kayıt" value={s ? s.total.toLocaleString("tr-TR") : "…"} />
+          <Stat
+            label="Toplam kayıt"
+            value={s ? s.total.toLocaleString("tr-TR") : "…"}
+          />
           <Stat label="En eski" value={s ? date(s.oldest) : "…"} />
           <Stat label="En yeni" value={s ? date(s.newest) : "…"} />
           <Stat
@@ -73,14 +83,11 @@ export function RetentionPanel() {
             </Select>
           </label>
 
-          <label className="flex items-center gap-2 pb-2">
-            <input
-              type="checkbox"
-              checked={keepSecurity}
-              onChange={(e) => setKeepSecurity(e.target.checked)}
-            />
-            Güvenlik olaylarını sakla
-          </label>
+          <Checkbox
+            checked={keepSecurity}
+            onChange={(e) => setKeepSecurity(e.target.checked)}
+            label="Güvenlik olaylarını sakla"
+          />
 
           <a
             href="/api/admin/audit/export"

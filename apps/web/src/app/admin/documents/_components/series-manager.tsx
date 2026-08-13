@@ -5,7 +5,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DocumentSeriesRow } from "@repo/services";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import { LoadingState } from "@/components/ui";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Numbering serials. The counter is the delicate part of this screen: it may be
 // pushed forward (to continue an ERP serial that is already at 4711) but never
@@ -21,7 +30,8 @@ export function SeriesManager() {
 
   const query = useQuery({
     queryKey: ["document-series"],
-    queryFn: () => apiGet<{ series: DocumentSeriesRow[] }>("/api/admin/document-series"),
+    queryFn: () =>
+      apiGet<{ series: DocumentSeriesRow[] }>("/api/admin/document-series"),
   });
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["document-series"] });
@@ -89,22 +99,22 @@ export function SeriesManager() {
             onChange={(e) => setStartFrom(e.target.value)}
           />
         </label>
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={externalOnly}
-            onChange={(e) => setExternalOnly(e.target.checked)}
-          />
-          Numarayı ERP veriyor
-        </label>
-        <Button disabled={!prefix.trim() || create.isPending} onClick={() => create.mutate()}>
+        <Checkbox
+          checked={externalOnly}
+          onChange={(e) => setExternalOnly(e.target.checked)}
+          label="Numarayı ERP veriyor"
+        />
+        <Button
+          disabled={!prefix.trim() || create.isPending}
+          onClick={() => create.mutate()}
+        >
           Ekle
         </Button>
       </div>
       <ErrorLine error={create.error} />
       <ErrorLine error={query.error} />
 
-      {query.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {query.isLoading && <LoadingState />}
 
       <ul className="space-y-2">
         {rows.map((s) => (
@@ -196,7 +206,8 @@ function SeriesRow({
               series.lastNumber > 0 ? "Numara vermiş seri silinemez" : undefined
             }
             onClick={() => {
-              if (confirm(`${series.prefix} serisi silinsin mi?`)) remove.mutate();
+              if (confirm(`${series.prefix} serisi silinsin mi?`))
+                remove.mutate();
             }}
           >
             Sil

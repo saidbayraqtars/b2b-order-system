@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminCategoryRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import {
   Button,
   ErrorLine,
@@ -57,7 +58,10 @@ export function CategoriesManager() {
       apiGet<{ categories: AdminCategoryRow[] }>("/api/admin/categories"),
   });
 
-  const rows = useMemo(() => toTree(query.data?.categories ?? []), [query.data]);
+  const rows = useMemo(
+    () => toTree(query.data?.categories ?? []),
+    [query.data],
+  );
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["admin", "categories"] });
 
@@ -84,8 +88,13 @@ export function CategoriesManager() {
   });
 
   const move = useMutation({
-    mutationFn: ({ id, newParentId }: { id: string; newParentId: string | null }) =>
-      apiPatch(`/api/admin/categories/${id}`, { parentId: newParentId }),
+    mutationFn: ({
+      id,
+      newParentId,
+    }: {
+      id: string;
+      newParentId: string | null;
+    }) => apiPatch(`/api/admin/categories/${id}`, { parentId: newParentId }),
     onSuccess: invalidate,
   });
 
@@ -134,7 +143,7 @@ export function CategoriesManager() {
       </Panel>
 
       <Panel title={`Kategoriler (${rows.length})`}>
-        {query.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+        {query.isLoading && <LoadingState />}
         {rows.length === 0 && query.isSuccess && (
           <p className="text-sm text-neutral-500">Henüz kategori yok.</p>
         )}
@@ -180,7 +189,10 @@ export function CategoriesManager() {
                 <Select
                   value={c.parentId ?? ""}
                   onChange={(e) =>
-                    move.mutate({ id: c.id, newParentId: e.target.value || null })
+                    move.mutate({
+                      id: c.id,
+                      newParentId: e.target.value || null,
+                    })
                   }
                   className="w-44"
                   title="Üst kategoriyi değiştir"

@@ -18,7 +18,15 @@ import {
   type VolumeDiscountMode,
 } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Company create / edit. The same form serves both; `company` decides which.
 
@@ -68,8 +76,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       volumeTierId: "",
     },
   );
-  const set = <K extends keyof CompanyFormValues>(k: K, val: CompanyFormValues[K]) =>
-    setV((prev) => ({ ...prev, [k]: val }));
+  const set = <K extends keyof CompanyFormValues>(
+    k: K,
+    val: CompanyFormValues[K],
+  ) => setV((prev) => ({ ...prev, [k]: val }));
 
   /** Toggle one id in a list-valued field, keeping the rest untouched. */
   const toggleIn = <K extends "allowedPaymentMethods" | "paymentTermIds">(
@@ -86,20 +96,25 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
 
   const groups = useQuery({
     queryKey: ["admin-customer-groups"],
-    queryFn: () => apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
+    queryFn: () =>
+      apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
   });
   const terms = useQuery({
     queryKey: ["admin-payment-terms"],
-    queryFn: () => apiGet<{ terms: PaymentTermRow[] }>("/api/admin/payment-terms"),
+    queryFn: () =>
+      apiGet<{ terms: PaymentTermRow[] }>("/api/admin/payment-terms"),
   });
   const reps = useQuery({
     queryKey: ["admin-sales-reps"],
     queryFn: () =>
-      apiGet<{ salesReps: { id: string; name: string }[] }>("/api/admin/sales-reps"),
+      apiGet<{ salesReps: { id: string; name: string }[] }>(
+        "/api/admin/sales-reps",
+      ),
   });
   const tiers = useQuery({
     queryKey: ["admin-volume-tiers"],
-    queryFn: () => apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
+    queryFn: () =>
+      apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
   });
 
   const save = useMutation({
@@ -154,7 +169,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="sm:col-span-2">
           <Label>Firma adı</Label>
-          <TextInput value={v.name} onChange={(e) => set("name", e.target.value)} />
+          <TextInput
+            value={v.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
         </label>
         <label>
           <Label hint="10 veya 11 hane">Vergi / TC no</Label>
@@ -180,7 +198,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         </label>
         <label>
           <Label>Telefon</Label>
-          <TextInput value={v.phone} onChange={(e) => set("phone", e.target.value)} />
+          <TextInput
+            value={v.phone}
+            onChange={(e) => set("phone", e.target.value)}
+          />
         </label>
         <label>
           <Label>Kredi limiti</Label>
@@ -222,7 +243,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         </label>
         <label>
           <Label>Plasiyer</Label>
-          <Select value={v.salesRepId} onChange={(e) => set("salesRepId", e.target.value)}>
+          <Select
+            value={v.salesRepId}
+            onChange={(e) => set("salesRepId", e.target.value)}
+          >
             <option value="">— atanmamış —</option>
             {(reps.data?.salesReps ?? []).map((r) => (
               <option key={r.id} value={r.id}>
@@ -244,37 +268,37 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         </p>
         <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
           {PaymentMethodEnum.options.map((m) => (
-            <label key={m} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={v.allowedPaymentMethods.includes(m)}
-                onChange={() => toggleIn("allowedPaymentMethods", m)}
-              />
-              {PAYMENT_METHOD_LABELS[m]}
-            </label>
+            <Checkbox
+              key={m}
+              checked={v.allowedPaymentMethods.includes(m)}
+              onChange={() => toggleIn("allowedPaymentMethods", m)}
+              label={<>{PAYMENT_METHOD_LABELS[m]}</>}
+            />
           ))}
         </div>
 
         <p className="mb-2 text-xs text-neutral-500">
           Vade seçenekleri — boş bırakılırsa müşteriye menü çıkmaz, sipariş
-          yukarıdaki varsayılan vadeyi alır. Tanımlar{" "}
-          <strong>Vadeler</strong> sayfasında yapılır.
+          yukarıdaki varsayılan vadeyi alır. Tanımlar <strong>Vadeler</strong>{" "}
+          sayfasında yapılır.
         </p>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           {(terms.data?.terms ?? [])
             .filter((t) => t.isActive || v.paymentTermIds.includes(t.id))
             .map((t) => (
-              <label key={t.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={v.paymentTermIds.includes(t.id)}
-                  onChange={() => toggleIn("paymentTermIds", t.id)}
-                />
-                {t.name}
-                <span className="text-neutral-400">
-                  ({t.days === 0 ? "peşin" : `${t.days}g`})
-                </span>
-              </label>
+              <Checkbox
+                key={t.id}
+                checked={v.paymentTermIds.includes(t.id)}
+                onChange={() => toggleIn("paymentTermIds", t.id)}
+                label={
+                  <>
+                    {t.name}
+                    <span className="text-neutral-400">
+                      ({t.days === 0 ? "peşin" : `${t.days}g`})
+                    </span>
+                  </>
+                }
+              />
             ))}
           {terms.data?.terms.length === 0 && (
             <span className="text-sm text-neutral-500">
@@ -289,11 +313,11 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           Hacim iskontosu
         </legend>
         <p className="mb-3 text-xs text-neutral-500">
-          Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı kendiliğinden
-          alır. Elle atadığınızda ciroya hiç bakılmaz — sözleşmeyle söz verilmiş
-          bir oran, düşük geçen bir çeyrekte kaybolmasın diye. Basamak
-          seçmezseniz bu firma hacim iskontosu almaz. Tanımlar{" "}
-          <strong>Hacim</strong> sayfasında yapılır.
+          Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı
+          kendiliğinden alır. Elle atadığınızda ciroya hiç bakılmaz —
+          sözleşmeyle söz verilmiş bir oran, düşük geçen bir çeyrekte
+          kaybolmasın diye. Basamak seçmezseniz bu firma hacim iskontosu almaz.
+          Tanımlar <strong>Hacim</strong> sayfasında yapılır.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label>
@@ -337,26 +361,23 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       </fieldset>
 
       <div className="mt-3 flex flex-wrap gap-5">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={v.requiresOrderApproval}
-            onChange={(e) => set("requiresOrderApproval", e.target.checked)}
-          />
-          Personel siparişleri yönetici onayı istesin
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={v.isActive}
-            onChange={(e) => set("isActive", e.target.checked)}
-          />
-          Aktif
-        </label>
+        <Checkbox
+          checked={v.requiresOrderApproval}
+          onChange={(e) => set("requiresOrderApproval", e.target.checked)}
+          label="Personel siparişleri yönetici onayı istesin"
+        />
+        <Checkbox
+          checked={v.isActive}
+          onChange={(e) => set("isActive", e.target.checked)}
+          label="Aktif"
+        />
       </div>
 
       <div className="mt-4">
-        <Button disabled={save.isPending || !v.name.trim()} onClick={() => save.mutate()}>
+        <Button
+          disabled={save.isPending || !v.name.trim()}
+          onClick={() => save.mutate()}
+        >
           {editing ? "Kaydet" : "Firmayı oluştur"}
         </Button>
       </div>

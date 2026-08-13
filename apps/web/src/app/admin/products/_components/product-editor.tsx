@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AdminProductDetail } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { ProductForm } from "./product-form";
 import { VariantList } from "./variant-list";
 
@@ -11,14 +12,18 @@ export function ProductEditor({ productId }: { productId: string }) {
   const query = useQuery({
     queryKey: ["admin", "product", productId],
     queryFn: () =>
-      apiGet<{ product: AdminProductDetail }>(`/api/admin/products/${productId}`),
+      apiGet<{ product: AdminProductDetail }>(
+        `/api/admin/products/${productId}`,
+      ),
   });
 
   if (query.isLoading) {
-    return <p className="text-sm text-neutral-500">Yükleniyor…</p>;
+    return <LoadingState />;
   }
   if (query.isError) {
-    return <p className="text-sm text-red-600">{(query.error as Error).message}</p>;
+    return (
+      <p className="text-sm text-red-600">{(query.error as Error).message}</p>
+    );
   }
 
   const product = query.data!.product;

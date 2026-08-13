@@ -9,6 +9,7 @@ import type {
 } from "@repo/services";
 import type { DiscountType } from "@repo/types";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import {
   Button,
   ErrorLine,
@@ -48,7 +49,8 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
 
   const products = useQuery({
     queryKey: ["admin", "products", "", ""],
-    queryFn: () => apiGet<{ products: AdminProductRow[] }>("/api/admin/products"),
+    queryFn: () =>
+      apiGet<{ products: AdminProductRow[] }>("/api/admin/products"),
   });
 
   const invalidate = () =>
@@ -141,7 +143,10 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
             />
           </div>
 
-          <Button disabled={!canSave || create.isPending} onClick={() => create.mutate()}>
+          <Button
+            disabled={!canSave || create.isPending}
+            onClick={() => create.mutate()}
+          >
             Ekle
           </Button>
         </div>
@@ -149,9 +154,7 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
       </Panel>
 
       <Panel title={`Tanımlı iskontolar (${rows.length})`}>
-        {discounts.isLoading && (
-          <p className="text-sm text-neutral-500">Yükleniyor…</p>
-        )}
+        {discounts.isLoading && <LoadingState />}
         {rows.length === 0 && discounts.isSuccess && (
           <p className="text-sm text-neutral-500">
             Bu firmaya özel iskonto tanımlı değil.

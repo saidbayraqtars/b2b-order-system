@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CustomerGroupRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 
 // Customer groups drive the group-specific price tiers, so a group that any
@@ -16,7 +17,8 @@ export function GroupsManager() {
 
   const query = useQuery({
     queryKey: ["admin-customer-groups"],
-    queryFn: () => apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
+    queryFn: () =>
+      apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
   });
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["admin-customer-groups"] });
@@ -54,13 +56,16 @@ export function GroupsManager() {
             className="w-72"
           />
         </label>
-        <Button disabled={create.isPending || !name.trim()} onClick={() => create.mutate()}>
+        <Button
+          disabled={create.isPending || !name.trim()}
+          onClick={() => create.mutate()}
+        >
           Ekle
         </Button>
       </div>
       <ErrorLine error={create.error} />
 
-      {query.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {query.isLoading && <LoadingState />}
       <ErrorLine error={query.error} />
 
       {query.data && (
@@ -147,10 +152,13 @@ function GroupRow({
               variant="danger"
               disabled={locked || remove.isPending}
               title={
-                locked ? "Firması veya fiyat kademesi olan grup silinemez" : undefined
+                locked
+                  ? "Firması veya fiyat kademesi olan grup silinemez"
+                  : undefined
               }
               onClick={() => {
-                if (confirm(`"${group.name}" grubu silinsin mi?`)) remove.mutate();
+                if (confirm(`"${group.name}" grubu silinsin mi?`))
+                  remove.mutate();
               }}
             >
               Sil

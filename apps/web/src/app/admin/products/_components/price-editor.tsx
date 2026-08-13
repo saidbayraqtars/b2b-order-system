@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminPriceRow, CustomerGroupRow } from "@repo/services";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { CURRENCIES, CURRENCY_SYMBOLS, type Currency } from "@repo/types";
 import { formatTRY } from "@/lib/format";
 import { Button, ErrorLine, Select, TextInput } from "@/components/form";
@@ -81,7 +82,7 @@ export function PriceEditor({
         Fiyat kademeleri
       </p>
 
-      {prices.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {prices.isLoading && <LoadingState />}
       {rows.length === 0 && prices.isSuccess && (
         <p className="mb-2 text-sm text-amber-600">
           Fiyat tanımlı değil — bu varyant sipariş edilemez.
@@ -100,13 +101,18 @@ export function PriceEditor({
           </thead>
           <tbody>
             {rows.map((p) => (
-              <tr key={p.id} className="border-t border-neutral-200 dark:border-neutral-800">
+              <tr
+                key={p.id}
+                className="border-t border-neutral-200 dark:border-neutral-800"
+              >
                 <td className="py-1">
                   {p.customerGroupName ?? (
                     <span className="text-neutral-500">Varsayılan (liste)</span>
                   )}
                 </td>
-                <td className="py-1 text-right tabular-nums">{p.minQuantity}</td>
+                <td className="py-1 text-right tabular-nums">
+                  {p.minQuantity}
+                </td>
                 <td className="py-1 text-right tabular-nums">
                   {p.currency === "TRY"
                     ? formatTRY(p.price)

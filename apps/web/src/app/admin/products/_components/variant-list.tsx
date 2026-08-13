@@ -6,6 +6,7 @@ import type { AdminVariantDetail } from "@repo/services";
 import { apiDelete, apiPatch, apiPost } from "@/lib/fetcher";
 import {
   Button,
+  Checkbox,
   ErrorLine,
   Label,
   Panel,
@@ -108,7 +109,9 @@ export function VariantList({
                 </span>
                 <span
                   className={`text-xs ${
-                    v.prices.length === 0 ? "text-amber-600" : "text-neutral-400"
+                    v.prices.length === 0
+                      ? "text-amber-600"
+                      : "text-neutral-400"
                   }`}
                 >
                   {v.prices.length === 0
@@ -232,7 +235,9 @@ export function VariantList({
             <TextInput
               value={draft.costPrice}
               inputMode="decimal"
-              onChange={(e) => setDraft({ ...draft, costPrice: e.target.value })}
+              onChange={(e) =>
+                setDraft({ ...draft, costPrice: e.target.value })
+              }
             />
           </div>
           <div>
@@ -247,7 +252,9 @@ export function VariantList({
             <Label>Raf kodu</Label>
             <TextInput
               value={draft.shelfCode}
-              onChange={(e) => setDraft({ ...draft, shelfCode: e.target.value })}
+              onChange={(e) =>
+                setDraft({ ...draft, shelfCode: e.target.value })
+              }
             />
           </div>
           <div className="flex items-end">
@@ -365,14 +372,11 @@ function StockCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.isActive}
-            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-          />
-          Aktif (pasif varyant katalogda görünmez)
-        </label>
+        <Checkbox
+          checked={form.isActive}
+          onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+          label="Aktif (pasif varyant katalogda görünmez)"
+        />
         <Button
           disabled={pending}
           onClick={() =>

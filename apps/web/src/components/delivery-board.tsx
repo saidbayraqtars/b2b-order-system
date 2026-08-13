@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Phone, Printer } from "lucide-react";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { Checkbox } from "@/components/form";
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
 // Teslimat listesi. İki kullanıcıya birden hizmet ediyor:
@@ -88,7 +89,9 @@ export function DeliveryBoard({ canDispatch }: { canDispatch: boolean }) {
 
   if (list.isLoading) return <LoadingState />;
   if (list.isError) {
-    return <p className="text-sm text-red-600">{(list.error as Error).message}</p>;
+    return (
+      <p className="text-sm text-red-600">{(list.error as Error).message}</p>
+    );
   }
 
   const deliveries = list.data!.deliveries;
@@ -96,14 +99,11 @@ export function DeliveryBoard({ canDispatch }: { canDispatch: boolean }) {
 
   return (
     <div className="space-y-4">
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={showDelivered}
-          onChange={(e) => setShowDelivered(e.target.checked)}
-        />
-        Teslim edilenleri de göster
-      </label>
+      <Checkbox
+        checked={showDelivered}
+        onChange={(e) => setShowDelivered(e.target.checked)}
+        label="Teslim edilenleri de göster"
+      />
 
       {deliveries.length === 0 ? (
         <EmptyState label="Bekleyen teslimat yok." />
@@ -339,7 +339,9 @@ function ConfirmForm({ shipmentId }: { shipmentId: string }) {
           }}
           className="text-xs"
         />
-        {uploading && <span className="text-xs text-neutral-500">Yükleniyor…</span>}
+        {uploading && (
+          <span className="text-xs text-neutral-500">Yükleniyor…</span>
+        )}
         {photo && (
           <a
             href={photo}

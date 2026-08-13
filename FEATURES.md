@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-13 · Adım 52 (döviz belgede) sonu
+Son güncelleme: 2026-08-13 · Adım 53 (arayüz Faz 3 kapandı) sonu
 
 ---
 
@@ -66,6 +66,7 @@ Son güncelleme: 2026-08-13 · Adım 52 (döviz belgede) sonu
 | 50 | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı | ✅ |
 | 51 | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır | ✅ |
 | 52 | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı | ✅ |
+| 53 | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı | ✅ |
 
 ---
 
@@ -2197,7 +2198,57 @@ cevaplanıyor. Kur toplanabilir bir sayı değil; süzmek ve bakmak için duruyo
 satırın künye basmaması, fatura satırının siparişinkiyle **birebir** aynı olması
 ve ekstrenin defterin para birimini basması. Toplam **513 test**.
 
-## 48. API Uçları
+## 48. Arayüz Faz 3 Kapandı (Adım 53)
+
+Faz 3'ün kalanı "rapor tasarımcısı ve sipariş detayı" diye yazılmıştı. Sayınca
+asıl kalan başka çıktı: **ortak dilde iki bileşen hiç yoktu**, ve o boşluk 19
+ekranda ayrı ayrı doldurulmuştu.
+
+### Eksik iki ilkel
+
+- **`Checkbox`** — 19 ekranda ham `<input type="checkbox">`. Kimi etiketiyle
+  `<label>` içindeydi, kimi değildi: o ekranlarda metne tıklamak kutuyu
+  işaretlemiyordu. Hiçbirinde odak halkası yoktu, üçünde farklı bir marka rengi
+  vardı. Yerli kutu korundu (klavye ve erişilebilirlik bedava); rengi, odak
+  halkası ve etikete bağlanması tek yere alındı.
+- **`LinkButton`** — beş ekranda `<Link>`e elle buton sınıfı yazılmıştı, üçü
+  farklı yükseklikteydi. Eleman `<a>` kalıyor çünkü orada gerçekten gezinme var:
+  `<button onClick={router.push}>` yeni sekmede açmayı, orta tıklamayı ve
+  bağlantı adresini görmeyi bozardı.
+
+Ayrıca `TextInput`/`Select`e **yoğun boy** (`size="sm"`) eklendi. Rapor
+tasarımcısı gibi tek satıra beş kontrol dizen ekranlar bunu kendi sınıflarını
+yazarak elde ediyordu ve ortaya **üç ayrı yükseklik** çıkmıştı (`h-7`, `h-8`,
+`h-9`); ikisi seçildi, gerisi gitti.
+
+### Rapor tasarımcısındaki kopya panel
+
+`report-builder.tsx` dosyanın en altında **kendi `Panel` bileşenini** tanımlıyordu
+ve o, paylaşılanı gölgeliyordu: aynı isim, farklı köşe yarıçapı, gölge yok.
+Ekranların ayrı ayrı yazıldığını ele veren tam olarak bu tür bir kopya. Silindi;
+dosya artık ortak `Panel`, `Button`, `Select`, `TextInput`, `Checkbox`,
+`ErrorLine`, `LoadingState` ve `Badge` kullanıyor. Filtre satırındaki
+`h-8 rounded-md border…` dizesi altı yerde tekrarlanıyordu — hepsi `size="sm"`
+oldu ve her kontrol bir `aria-label` kazandı (dizili kutuların hiçbirinin adı
+yoktu).
+
+### Sipariş detayı
+
+Durum rozetinin renkleri elle yazılmış Tailwind sınıflarıydı ve **koyu temada
+hiçbiri tanımlanmamıştı**: koyu zeminde açık amber üzerine koyu amber metin
+okunmuyordu. `Badge` tonlarına geçildi. Tablo, `Table/THead/Td` ilkelerine;
+durum düğmeleri `Button`a taşındı — dönen simge artık yalnızca **tıklanan**
+düğmede, öncesinde `isPending` hepsini birden döndürüyor ve hangisinin işlendiği
+kayboluyordu.
+
+### Süpürme
+
+`Yükleniyor…` metni 17 ekranda elle yazılmış bir `<p>` idi; hepsi `LoadingState`
+oldu (dönen simge dahil). İki yer bilerek dışarıda: teslimat ekranındaki
+"Yükleniyor…" **dosya yükleme**, veri bekleme değil; firma seçicideki ise bir
+`<li>` içinde ve liste anlamını bozmamalı.
+
+## 49. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2365,7 +2416,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 ### Yakın sırada
 
-- **Yönetim ekranları Faz 3 — büyük kısmı taşındı** — Adım 44'te ortak dile `Table`, `Tabs` ve `Modal` eklendi; çek & senet, kurlar, hedefler, bakım işleri, etiket tasarımcısı, hazır raporlar, görsel seçici ve kullanıcı yöneticisi taşındı. **Kalanlar:** rapor tasarımcısının kendisi, sipariş detayı ve form ekranlarında serpiştirilmiş birkaç ham `<button>`/`<input>`. Bunlar vitrin kimliğini **almayacak** — yönetim tarafı nötr dilde kalır.
+- ~~**Yönetim ekranları Faz 3**~~ — Adım 53'te kapatıldı: ortak dile `Checkbox` ve `LinkButton` eklendi, kontrol boyu ikiye indirildi, rapor tasarımcısı (kendi kopya `Panel`iyle birlikte) ve sipariş detayı taşındı, 19 ham checkbox ile 17 elle yazılmış "Yükleniyor…" süpürüldü. Yönetim tarafı vitrin kimliğini **almadı** — nötr dilde kaldı, karar buydu.
 - ~~**Kampanya performans raporu yok**~~ — Adım 44'te kapatıldı: `PROMOTIONS` veri kümesi (kampanya × sipariş), kapsamı sipariş raporlarıyla aynı. **Hazır bir kampanya ekranı hâlâ yok** — rapor tasarımcısından kuruluyor.
 - ~~**İş zamanlayıcı yok**~~ — Adım 43'te kapatıldı: uygulama içi zamanlayıcı, iş kayıt defteri, sahiplenme kuralı, `/admin/jobs` ekranı. Adım 44'te üzerine iki iş bindi: zamanlanmış rapor gönderimi ve TCMB kuru.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.

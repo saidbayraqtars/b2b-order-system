@@ -18,6 +18,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Badge, LoadingState, Tabs } from "@/components/ui";
 import {
   Button,
+  Checkbox,
   ErrorLine,
   Label,
   Panel,
@@ -127,7 +128,9 @@ export function LabelDesigner() {
 
   function patchBlock(index: number, patch: Partial<LabelBlock>) {
     if (!draft) return;
-    const blocks = draft.blocks.map((b, i) => (i === index ? { ...b, ...patch } : b));
+    const blocks = draft.blocks.map((b, i) =>
+      i === index ? { ...b, ...patch } : b,
+    );
     setDraft({ ...draft, blocks });
   }
 
@@ -191,7 +194,9 @@ export function LabelDesigner() {
                   <TextInput
                     id="tpl-name"
                     value={draft.name}
-                    onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    onChange={(e) =>
+                      setDraft({ ...draft, name: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -216,7 +221,9 @@ export function LabelDesigner() {
                     onChange={(e) =>
                       setDraft({
                         ...draft,
-                        heightMm: e.target.value ? Number(e.target.value) : null,
+                        heightMm: e.target.value
+                          ? Number(e.target.value)
+                          : null,
                       })
                     }
                   />
@@ -224,28 +231,20 @@ export function LabelDesigner() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={draft.isDefault}
-                    onChange={(e) =>
-                      setDraft({ ...draft, isDefault: e.target.checked })
-                    }
-                    className="h-4 w-4 rounded border-neutral-300"
-                  />
-                  Bu türün varsayılanı
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={draft.isActive}
-                    onChange={(e) =>
-                      setDraft({ ...draft, isActive: e.target.checked })
-                    }
-                    className="h-4 w-4 rounded border-neutral-300"
-                  />
-                  Aktif
-                </label>
+                <Checkbox
+                  checked={draft.isDefault}
+                  onChange={(e) =>
+                    setDraft({ ...draft, isDefault: e.target.checked })
+                  }
+                  label="Bu türün varsayılanı"
+                />
+                <Checkbox
+                  checked={draft.isActive}
+                  onChange={(e) =>
+                    setDraft({ ...draft, isActive: e.target.checked })
+                  }
+                  label="Aktif"
+                />
               </div>
             </Panel>
 
@@ -291,7 +290,9 @@ export function LabelDesigner() {
                         b.kind === "signature") && (
                         <TextInput
                           value={b.value ?? ""}
-                          onChange={(e) => patchBlock(i, { value: e.target.value })}
+                          onChange={(e) =>
+                            patchBlock(i, { value: e.target.value })
+                          }
                           placeholder="Metin ya da {{alan}}"
                           className="h-8 min-w-[12rem] flex-1"
                         />
@@ -317,7 +318,9 @@ export function LabelDesigner() {
                         value={b.scale}
                         onChange={(e) =>
                           patchBlock(i, {
-                            scale: Number(e.target.value) as LabelBlock["scale"],
+                            scale: Number(
+                              e.target.value,
+                            ) as LabelBlock["scale"],
                           })
                         }
                         className="h-8 w-auto text-xs"
@@ -327,15 +330,13 @@ export function LabelDesigner() {
                         <option value={3}>3x</option>
                       </Select>
 
-                      <label className="flex items-center gap-1 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={b.bold}
-                          onChange={(e) => patchBlock(i, { bold: e.target.checked })}
-                          className="h-4 w-4 rounded border-neutral-300"
-                        />
-                        kalın
-                      </label>
+                      <Checkbox
+                        checked={b.bold}
+                        onChange={(e) =>
+                          patchBlock(i, { bold: e.target.checked })
+                        }
+                        label="kalın"
+                      />
 
                       <span className="ml-auto flex items-center gap-1">
                         <Button
@@ -445,7 +446,12 @@ function Preview({ template }: { template: TemplateRow }) {
           } as const;
 
           if (b.kind === "divider")
-            return <hr key={i} className="my-1 border-t border-dashed border-black" />;
+            return (
+              <hr
+                key={i}
+                className="my-1 border-t border-dashed border-black"
+              />
+            );
           if (b.kind === "spacer")
             return <div key={i} style={{ height: `${b.scale * 4}mm` }} />;
           if (b.kind === "items")
@@ -469,7 +475,10 @@ function Preview({ template }: { template: TemplateRow }) {
             );
           if (b.kind === "barcode")
             return (
-              <div key={i} className="my-1 h-6 bg-[repeating-linear-gradient(90deg,#000_0_1px,#fff_1px_3px)]" />
+              <div
+                key={i}
+                className="my-1 h-6 bg-[repeating-linear-gradient(90deg,#000_0_1px,#fff_1px_3px)]"
+              />
             );
           return (
             <p key={i} style={style}>

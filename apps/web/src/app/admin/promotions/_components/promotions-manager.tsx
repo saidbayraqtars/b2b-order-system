@@ -12,6 +12,7 @@ import type {
 } from "@repo/services";
 import type { PromotionRuleCatalog } from "@repo/types";
 import { apiDelete, apiGet, apiPatch } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { Button, ErrorLine, Panel } from "@/components/form";
 import { PromotionForm } from "./promotion-form";
@@ -34,7 +35,8 @@ export function PromotionsManager() {
 
   const promotions = useQuery({
     queryKey: ["admin-promotions"],
-    queryFn: () => apiGet<{ promotions: PromotionRow[] }>("/api/admin/promotions"),
+    queryFn: () =>
+      apiGet<{ promotions: PromotionRow[] }>("/api/admin/promotions"),
   });
   const rules = useQuery({
     queryKey: ["promotion-rules"],
@@ -47,7 +49,8 @@ export function PromotionsManager() {
   });
   const products = useQuery({
     queryKey: ["admin-products", "promotions"],
-    queryFn: () => apiGet<{ products: AdminProductRow[] }>("/api/admin/products"),
+    queryFn: () =>
+      apiGet<{ products: AdminProductRow[] }>("/api/admin/products"),
   });
   const groups = useQuery({
     queryKey: ["admin-customer-groups"],
@@ -60,8 +63,7 @@ export function PromotionsManager() {
   });
   const variants = useQuery({
     queryKey: ["admin-variants"],
-    queryFn: () =>
-      apiGet<{ variants: VariantOption[] }>("/api/admin/variants"),
+    queryFn: () => apiGet<{ variants: VariantOption[] }>("/api/admin/variants"),
   });
 
   const options: RuleOptions = useMemo(
@@ -84,7 +86,13 @@ export function PromotionsManager() {
         name: v.name,
       })),
     }),
-    [categories.data, products.data, groups.data, companies.data, variants.data],
+    [
+      categories.data,
+      products.data,
+      groups.data,
+      companies.data,
+      variants.data,
+    ],
   );
 
   const invalidate = () =>
@@ -118,9 +126,7 @@ export function PromotionsManager() {
           )
         }
       >
-        {promotions.isLoading && (
-          <p className="text-sm text-neutral-500">Yükleniyor…</p>
-        )}
+        {promotions.isLoading && <LoadingState />}
         <ErrorLine error={promotions.error ?? rules.error} />
 
         {promotions.data && rows.length === 0 && (
@@ -204,8 +210,8 @@ function PromotionRowItem({
             )}
           </p>
           <p className="text-neutral-500">
-            {promotion.conditions.length} koşul · {promotion.actions.length} aksiyon
-            · öncelik {promotion.priority}
+            {promotion.conditions.length} koşul · {promotion.actions.length}{" "}
+            aksiyon · öncelik {promotion.priority}
             {promotion.stopFurther ? " · tekil" : ""} · {windowLabel}
             {limits.length > 0 ? ` · limit: ${limits.join(", ")}` : ""}
           </p>

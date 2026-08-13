@@ -7,8 +7,18 @@ import { Printer } from "lucide-react";
 import type { OrderStatus, PaymentMethod } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Button } from "@/components/form";
-import { Badge, EmptyState, LoadingState, type BadgeTone } from "@/components/ui";
+import { Button, Checkbox, ErrorLine, LinkButton } from "@/components/form";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  type BadgeTone,
+} from "@/components/ui";
 
 export interface OrderListItem {
   id: string;
@@ -92,13 +102,7 @@ export function OrdersBoard({
   if (ordersQuery.isLoading) {
     return <LoadingState />;
   }
-  if (ordersQuery.isError) {
-    return (
-      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-        {(ordersQuery.error as Error).message}
-      </p>
-    );
-  }
+  if (ordersQuery.isError) return <ErrorLine error={ordersQuery.error} />;
 
   const orders = ordersQuery.data?.orders ?? [];
   if (orders.length === 0) {
@@ -107,11 +111,7 @@ export function OrdersBoard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
-      {action.isError && (
-        <p className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
-          {(action.error as Error).message}
-        </p>
-      )}
+      <ErrorLine error={action.error} />
       {canPrint && (
         <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
           <span className="text-xs text-neutral-500">
@@ -119,20 +119,22 @@ export function OrdersBoard({
               ? `${selected.length} sipariş seçili`
               : "Toplu basım için satırları işaretleyin"}
           </span>
-          <a
+          {/* Hiçbir şey seçilmemişken tıklanamaz: `disabled` bir bağlantıda
+              yok, o yüzden hem işaretleniyor hem olayı yutuluyor. */}
+          <LinkButton
             href={`/documents/labels?kind=ORDER_RECEIPT&orders=${selected.join(",")}`}
             target="_blank"
             rel="noreferrer"
             aria-disabled={selected.length === 0}
             className={
               selected.length === 0
-                ? "pointer-events-none inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs opacity-40 dark:border-neutral-700"
-                : "inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
+                ? "pointer-events-none opacity-40"
+                : undefined
             }
           >
             <Printer className="h-3.5 w-3.5" />
             Sipariş fişi (80 mm)
-          </a>
+          </LinkButton>
           {selected.length > 0 && (
             <button
               type="button"
@@ -144,44 +146,44 @@ export function OrdersBoard({
           )}
         </div>
       )}
-      <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+      <Table>
+        <THead>
           <tr>
             {canPrint && (
-              <th className="w-8 px-3 py-2">
-                <input
-                  type="checkbox"
+              <Th className="w-8">
+                <Checkbox
                   aria-label="Tümünü seç"
-                  checked={selected.length > 0 && selected.length === orders.length}
+                  checked={
+                    selected.length > 0 && selected.length === orders.length
+                  }
                   onChange={(e) =>
                     setSelected(e.target.checked ? orders.map((o) => o.id) : [])
                   }
                 />
-              </th>
+              </Th>
             )}
-            <th className="px-3 py-2">Sipariş</th>
-            <th className="px-3 py-2">Firma</th>
-            <th className="px-3 py-2">Oluşturan</th>
-            <th className="px-3 py-2 text-right">Tutar</th>
-            <th className="px-3 py-2">Durum</th>
-            <th className="px-3 py-2 text-right">İşlem</th>
+            <Th>Sipariş</Th>
+            <Th>Firma</Th>
+            <Th>Oluşturan</Th>
+            <Th align="right">Tutar</Th>
+            <Th>Durum</Th>
+            <Th align="right">İşlem</Th>
           </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        </THead>
+        <TBody>
           {orders.map((o) => {
             const pending =
               canAct &&
-              (o.status === "PENDING_APPROVAL" || o.status === "PENDING_CREDIT");
+              (o.status === "PENDING_APPROVAL" ||
+                o.status === "PENDING_CREDIT");
             const canApprove =
               o.status === "PENDING_APPROVAL" ||
               (o.status === "PENDING_CREDIT" && canApproveCredit);
             return (
               <tr key={o.id}>
                 {canPrint && (
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
+                  <Td>
+                    <Checkbox
                       aria-label={`${o.orderNumber} seç`}
                       checked={selected.includes(o.id)}
                       onChange={(e) =>
@@ -192,27 +194,27 @@ export function OrdersBoard({
                         )
                       }
                     />
-                  </td>
+                  </Td>
                 )}
-                <td className="px-3 py-2 font-medium">
+                <Td className="font-medium">
                   <Link href={`/orders/${o.id}`} className="hover:underline">
                     {o.orderNumber}
                   </Link>
                   <span className="ml-1 text-xs text-neutral-400">
                     ({o._count.items} kalem)
                   </span>
-                </td>
-                <td className="px-3 py-2">{o.company.name}</td>
-                <td className="px-3 py-2 text-neutral-500">
-                  {o.createdBy.name}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td>{o.company.name}</Td>
+                <Td muted>{o.createdBy.name}</Td>
+                <Td align="right" numeric>
                   {formatTRY(o.grandTotal)}
-                </td>
-                <td className="px-3 py-2">
-                  <Badge tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
-                </td>
-                <td className="px-3 py-2 text-right">
+                </Td>
+                <Td>
+                  <Badge tone={STATUS_TONE[o.status]}>
+                    {STATUS_LABEL[o.status]}
+                  </Badge>
+                </Td>
+                <Td align="right">
                   {canPrint && (
                     <a
                       href={`/documents/labels?kind=ORDER_RECEIPT&orders=${o.id}`}
@@ -250,13 +252,12 @@ export function OrdersBoard({
                       </Button>
                     </div>
                   )}
-                </td>
+                </Td>
               </tr>
             );
           })}
-        </tbody>
-      </table>
-      </div>
+        </TBody>
+      </Table>
     </div>
   );
 }

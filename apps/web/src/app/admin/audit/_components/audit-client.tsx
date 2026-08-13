@@ -10,8 +10,9 @@ import {
   type AuditAction,
   type AuditEntry,
 } from "@repo/types";
-import { Button, Label, Select, TextInput } from "@/components/form";
+import { Button, Checkbox, Label, Select, TextInput } from "@/components/form";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 
 interface Page {
   entries: AuditEntry[];
@@ -103,20 +104,17 @@ export function AuditClient() {
             }}
           />
         </div>
-        <label className="flex items-end gap-2 pb-1 text-sm">
-          <input
-            type="checkbox"
-            checked={securityOnly}
-            onChange={(e) => {
-              setSecurityOnly(e.target.checked);
-              resetPaging();
-            }}
-          />
-          Sadece güvenlik olayları
-        </label>
+        <Checkbox
+          checked={securityOnly}
+          onChange={(e) => {
+            setSecurityOnly(e.target.checked);
+            resetPaging();
+          }}
+          label="Sadece güvenlik olayları"
+        />
       </div>
 
-      {query.isPending && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {query.isPending && <LoadingState />}
       {query.isError && (
         <p className="text-sm text-red-600">
           {query.error instanceof Error ? query.error.message : "Hata"}

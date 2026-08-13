@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LoadingState } from "@/components/ui";
 import { LoginForm } from "./_components/login-form";
 
 // The form reads ?callbackUrl via useSearchParams, which App Router requires to
@@ -22,9 +23,7 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-6 shadow-card dark:border-neutral-800 dark:bg-neutral-900">
-        <Suspense
-          fallback={<p className="text-sm text-neutral-500">Yükleniyor…</p>}
-        >
+        <Suspense fallback={<LoadingState />}>
           <LoginForm />
         </Suspense>
       </div>

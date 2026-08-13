@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminCategoryRow, AdminProductRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { Button, Select, TextInput } from "@/components/form";
 
 export function ProductsTable() {
@@ -70,9 +71,7 @@ export function ProductsTable() {
         </Link>
       </div>
 
-      {products.isLoading && (
-        <p className="text-sm text-neutral-500">Yükleniyor…</p>
-      )}
+      {products.isLoading && <LoadingState />}
       {products.isError && (
         <p className="text-sm text-red-600">
           {(products.error as Error).message}

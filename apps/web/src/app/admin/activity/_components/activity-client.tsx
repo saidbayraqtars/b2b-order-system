@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ActivityEntry, ActivityKind, CompanyRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { LoadingState } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { Label, Select } from "@/components/form";
 
@@ -15,9 +16,12 @@ const KIND_LABEL: Record<ActivityKind, string> = {
 };
 
 const KIND_CLASS: Record<ActivityKind, string> = {
-  ORDER_STATUS: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
-  LEDGER: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  AUDIT: "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
+  ORDER_STATUS:
+    "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
+  LEDGER:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  AUDIT:
+    "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
 };
 
 function when(iso: string): string {
@@ -89,15 +93,20 @@ export function ActivityClient() {
       </div>
 
       {activity.isLoading ? (
-        <p className="text-sm text-neutral-500">Yükleniyor…</p>
+        <LoadingState />
       ) : activity.isError ? (
-        <p className="text-sm text-red-600">{(activity.error as Error).message}</p>
+        <p className="text-sm text-red-600">
+          {(activity.error as Error).message}
+        </p>
       ) : entries.length === 0 ? (
         <p className="text-sm text-neutral-500">Bu aralıkta hareket yok.</p>
       ) : (
         <ol className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
           {entries.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-sm">
+            <li
+              key={e.id}
+              className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-sm"
+            >
               <span className="w-28 shrink-0 tabular-nums text-neutral-500">
                 {when(e.at)}
               </span>

@@ -15,12 +15,23 @@ import {
   type RoleFamily,
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 import { PermissionPicker } from "@/components/permission-picker";
-import { Tabs } from "@/components/ui";
+import { LoadingState, Tabs } from "@/components/ui";
 
 /** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
-function samePermissionSet(a: readonly Permission[], b: readonly Permission[]): boolean {
+function samePermissionSet(
+  a: readonly Permission[],
+  b: readonly Permission[],
+): boolean {
   if (a.length !== b.length) return false;
   const set = new Set(b);
   return a.every((p) => set.has(p));
@@ -31,7 +42,10 @@ function samePermissionSet(a: readonly Permission[], b: readonly Permission[]): 
  * tipinin kapsamı. Şablon zaten kapsam içinde olmalı, ama süzgeç yine burada —
  * kayıt defteri ile şablon bir gün ayrışırsa form yine geçerli bir küme üretir.
  */
-function templateFor(role: Role, grantable: readonly Permission[]): Permission[] {
+function templateFor(
+  role: Role,
+  grantable: readonly Permission[],
+): Permission[] {
   return defaultPermissionsFor(role).filter(
     (p) => grantable.includes(p) && isPermissionGrantableTo(p, role),
   );
@@ -93,8 +107,10 @@ export function UserManager({
   const all = query.data?.users ?? [];
   // Süzme sunucuda değil burada: liste zaten tek istekte geliyor ve sekme
   // değiştirmek yeni bir sorgu beklemeden çalışsın.
-  const rows = family === "ALL" ? all : all.filter((u) => ROLE_FAMILY[u.role] === family);
-  const countOf = (f: RoleFamily) => all.filter((u) => ROLE_FAMILY[u.role] === f).length;
+  const rows =
+    family === "ALL" ? all : all.filter((u) => ROLE_FAMILY[u.role] === family);
+  const countOf = (f: RoleFamily) =>
+    all.filter((u) => ROLE_FAMILY[u.role] === f).length;
 
   return (
     <Panel
@@ -157,17 +173,14 @@ export function UserManager({
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-64"
         />
-        <label className="flex items-center gap-2 text-sm text-neutral-500">
-          <input
-            type="checkbox"
-            checked={includeInactive}
-            onChange={(e) => setIncludeInactive(e.target.checked)}
-          />
-          Pasifleri de göster
-        </label>
+        <Checkbox
+          checked={includeInactive}
+          onChange={(e) => setIncludeInactive(e.target.checked)}
+          label="Pasifleri de göster"
+        />
       </div>
 
-      {query.isLoading && <p className="text-sm text-neutral-500">Yükleniyor…</p>}
+      {query.isLoading && <LoadingState />}
       <ErrorLine error={query.error} />
 
       {query.data && (
@@ -248,7 +261,9 @@ function CreateUserForm({
     }
     // Elle seçim korunur, ama yeni hesap tipine verilemeyecek olanlar düşer:
     // aksi hâlde form sunucunun kesin reddedeceği bir küme gönderirdi.
-    setPermissions((prev) => prev.filter((p) => isPermissionGrantableTo(p, next)));
+    setPermissions((prev) =>
+      prev.filter((p) => isPermissionGrantableTo(p, next)),
+    );
   };
 
   // Only the two company roles carry a company; the picker would be misleading
@@ -296,7 +311,10 @@ function CreateUserForm({
         </label>
         <label>
           <Label hint="yetki şablonunu belirler">Rol</Label>
-          <Select value={role} onChange={(e) => changeRole(e.target.value as Role)}>
+          <Select
+            value={role}
+            onChange={(e) => changeRole(e.target.value as Role)}
+          >
             {allowedRoles.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
@@ -307,7 +325,10 @@ function CreateUserForm({
         {needsCompany && !fixedCompanyId && (
           <label>
             <Label>Firma</Label>
-            <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+            <Select
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+            >
               <option value="">Seçin</option>
               {(companies ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
@@ -382,7 +403,9 @@ function UserRowView({
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone ?? "");
   const [role, setRole] = useState<Role>(user.role);
-  const [permissions, setPermissions] = useState<Permission[]>(user.permissions);
+  const [permissions, setPermissions] = useState<Permission[]>(
+    user.permissions,
+  );
   const [password, setPassword] = useState("");
 
   const patch = useMutation({
@@ -395,7 +418,8 @@ function UserRowView({
   });
 
   const setPass = useMutation({
-    mutationFn: () => apiPost(`/api/admin/users/${user.id}/password`, { password }),
+    mutationFn: () =>
+      apiPost(`/api/admin/users/${user.id}/password`, { password }),
     onSuccess: () => setPassword(""),
   });
 
@@ -536,7 +560,9 @@ function UserRowView({
         </span>
       </td>
       {showCompany && (
-        <td className="px-3 py-2 text-neutral-500">{user.company?.name ?? "—"}</td>
+        <td className="px-3 py-2 text-neutral-500">
+          {user.company?.name ?? "—"}
+        </td>
       )}
       <td className="px-3 py-2">
         {user.isActive ? (
@@ -566,7 +592,11 @@ function UserRowView({
             variant="danger"
             disabled={isSelf || remove.isPending}
             onClick={() => {
-              if (confirm(`${user.name} silinsin mi? İşlem geçmişi varsa silinemez.`)) {
+              if (
+                confirm(
+                  `${user.name} silinsin mi? İşlem geçmişi varsa silinemez.`,
+                )
+              ) {
                 remove.mutate();
               }
             }}
