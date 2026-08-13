@@ -122,7 +122,10 @@ export type BusinessErrorCode =
   | "MISSING_EXCHANGE_RATE"
   // ── zamanlanmış işler ──
   | "JOB_NOT_FOUND"
-  | "INVALID_JOB_INTERVAL";
+  | "INVALID_JOB_INTERVAL"
+  // ── sayfa düzeni ──
+  | "PAGE_NOT_FOUND"
+  | "INVALID_BLOCK";
 
 export class BusinessError extends Error {
   constructor(

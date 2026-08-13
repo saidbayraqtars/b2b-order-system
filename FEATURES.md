@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-13 · Adım 53 (arayüz Faz 3 kapandı) sonu
+Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 
 ---
 
@@ -67,6 +67,7 @@ Son güncelleme: 2026-08-13 · Adım 53 (arayüz Faz 3 kapandı) sonu
 | 51 | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır | ✅ |
 | 52 | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı | ✅ |
 | 53 | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı | ✅ |
+| 54 | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni | ✅ |
 
 ---
 
@@ -2248,7 +2249,81 @@ oldu (dönen simge dahil). İki yer bilerek dışarıda: teslimat ekranındaki
 "Yükleniyor…" **dosya yükleme**, veri bekleme değil; firma seçicideki ise bir
 `<li>` içinde ve liste anlamını bozmamalı.
 
-## 49. API Uçları
+## 49. Sayfa Düzeni (Adım 54)
+
+Vitrinin hangi bloktan oluştuğu ve blokların sırası koda gömülüydü: duyuru şeridi
+arama kutusunun üstündeydi çünkü JSX'te oradaydı. Bunu değiştirmek derleme ve
+dağıtım istiyordu, oysa "kampanya bandını yukarı al" bir tasarım kararı.
+
+Düzen artık **veri**: sıralı bir blok listesi (`PageLayout`, sayfa başına tek
+satır).
+
+### Kayıt defteri, üçüncü kez
+
+Rapor tasarımcısı (Adım 9) ve kampanya motorundaki (Adım 12) kalıbın aynısı —
+**kayıt defteri güvenlik sınırıdır.** Blok tipleri sunucuda tanımlı; istemciden
+gelen tip asla doğrudan kullanılmıyor.
+
+İki yön, iki farklı davranış ve bu bilinçli:
+
+- **Yazarken tanınmayan tip reddediliyor.** Sessizce yutmak, kullanıcının
+  eklediği bloğun sebebi söylenmeden kaybolması olurdu.
+- **Okurken tanınmayan tip atılıyor.** Bir kurulum eski bir sürüme geri
+  alındığında vitrinin açılmaya devam etmesi, o bloğun görünmesinden önemli.
+
+Bilinmeyen ayar anahtarları atılıyor, sayılar aralığa kırpılıyor, aynı blok iki
+kez konamıyor (ürün ızgarasını iki kez çizmek düzen değil, hata).
+
+### Kaydı olmayan sayfa varsayılanla çiziliyor
+
+Varsayılan liste, Adım 53'e kadar JSX'te duran sıranın **ta kendisi**. Göç bir
+satır oluşturmuyor; yükselten kurulumda vitrin görünüş olarak hiç değişmiyor.
+"Varsayılan boş liste" olsaydı ilk açılışta vitrin bomboş çıkardı.
+
+Aynı gerekçeyle `PRODUCT_GRID` **zorunlu**: kaldırılamıyor, kapatılamıyor ve
+kayıttan düşmüşse okurken geri konuyor. Ürünsüz bir vitrini yönetim ekranından
+yapılabilir kılmak, kendini vurmanın kolay yolu.
+
+### İki bölge, çünkü sayfa gerçekten öyle
+
+Bloklar `stack` (tam genişlik: duyurular, serbest metin, arama şeridi) ve `row`
+(üç sütunlu katalog satırı: kategori çubuğu, ürün ızgarası, sepet paneli) diye
+ayrılıyor. Sıra her bölgenin **kendi içinde** kayıttan geliyor. Sepet panelini
+duyuruların üstüne tam genişlikte bir bant olarak koyabilmek "esneklik" değil,
+bozuk sayfa olurdu.
+
+Kapatılan sütun yer kaplamıyor, kalanlar genişliyor — sabit ızgara bırakılsaydı
+kapatılan kenar çubuğu yerinde bir boşluk olarak durur ve "kapanmadı" gibi
+görünürdü.
+
+### Kapatmak ≠ silmek
+
+Kapalı blok listede duruyor, yalnızca çizilmiyor. "Kampanya bandını bu hafta
+kaldır" isteğinin doğru karşılığı bu: ayarları kaybetmeden geri açmak.
+
+### Rol değil, izin
+
+Backlog'da "design admin **rolü**" diye yazılıydı. Yapılmadı: rol yalnızca hangi
+kabuğa girileceğini belirliyor, ne yapılabileceğini izinler belirliyor (Adım 30).
+Beşinci bir rol o ayrımı bozardı. Bunun yerine **`design.manage`** izni —
+yalnızca `SELLER` ailesine açık, çünkü vitrin satıcının vitrini.
+
+### Ekran
+
+`/admin/sayfa-duzeni`: blokları sırala (↑/↓), aç/kapat, kaldır, ayarlarını
+düzenle, varsayılana dön. Sürükle-bırak yok — ↑/↓ klavyeyle çalışıyor,
+dokunmatikte şaşırtmıyor ve beş bloklu bir listede sürüklemekten hızlı.
+
+Yeni blok eklemek için form yazmaya gerek yok: ayar formu kayıt defterindeki
+`params` tanımından çiziliyor (metin / sayı / evet-hayır).
+
+### Doğrulama
+
+10 entegrasyon testi: kayıtsız sayfanın varsayılanı, tanınmayan bloğun
+reddedilmesi, zorunlu bloğun korunması, ayar kırpma, sıranın geri okunması ve
+**elle bozulmuş kaydın** vitrini düşürmemesi. Toplam **523 test**.
+
+## 50. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2355,6 +2430,7 @@ oldu (dönen simge dahil). İki yer bilerek dışarıda: teslimat ekranındaki
 | GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
+| GET · PUT · DELETE | `/api/admin/page-layout/:key` | süper admin (`design.manage`; GET katalogla birlikte döner, DELETE varsayılana döndürür) |
 | GET | `/api/admin/audit` | süper admin (yalnız GET — POST/PATCH/DELETE 405) |
 
 ---
@@ -2463,7 +2539,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
-- **Sayfa düzeni editörü + "design admin" rolü:** duyuruların yeri/sırası kod yerine yönetim ekranından ayarlanabilsin; yeni bir yetki seviyesi gerekiyor (şu an 4 rol var).
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada). Performans raporu Adım 44'te geldi.
 - **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).

@@ -1,3 +1,4 @@
+import { getPageLayout } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
@@ -40,6 +41,10 @@ export default async function PortalPage({ searchParams }: Props) {
     );
   }
 
+  // Düzen sunucuda okunuyor: vitrin ilk boyamada doğru sırayla çıksın, blokların
+  // yerine oturması için ikinci bir istek beklenmesin.
+  const layout = await getPageLayout("PORTAL_HOME");
+
   return (
     <PortalClient
       companyId={ctx.companyId}
@@ -49,6 +54,7 @@ export default async function PortalPage({ searchParams }: Props) {
       permissions={user.permissions}
       isProxy={ctx.isProxy}
       availableCredit={ctx.availableCredit}
+      blocks={layout.blocks}
     />
   );
 }

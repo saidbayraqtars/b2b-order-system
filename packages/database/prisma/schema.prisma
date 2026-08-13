@@ -155,6 +155,7 @@ model User {
   jobRuns        JobRun[]       @relation("JobRunTriggeredBy")
   cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
   stockMovements StockMovement[] @relation("StockMovementRecordedBy")
+  pageLayouts    PageLayout[]    @relation("PageLayoutUpdatedBy")
   paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
   paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
@@ -2119,6 +2120,41 @@ model Announcement {
   updatedAt DateTime @updatedAt
 
   @@index([enabled, placement, priority])
+}
+
+// ─────────────────────────────────────────────
+// SAYFA DÜZENİ
+// ─────────────────────────────────────────────
+//
+// Vitrinin hangi bloktan oluştuğu ve blokların sırası koda gömülüydü: duyuru
+// şeridi arama kutusunun üstündeydi çünkü JSX'te oradaydı. Bunu değiştirmek
+// derleme ve dağıtım istiyordu, oysa "kampanya bandını yukarı al" bir tasarım
+// kararı, bir yazılım değişikliği değil.
+//
+// Düzen artık **veri**: sıralı bir blok listesi. Rapor tasarımcısı (Adım 9) ve
+// kampanya motoruyla (Adım 12) aynı kalıp — blok tipleri sunucudaki kayıt
+// defterinde tanımlı ve istemciden gelen hiçbir tip doğrudan kabul edilmiyor.
+// Kayıt defterinde olmayan blok **çizilmez**; böylece eski bir kayıt yeni sürümü
+// düşüremez.
+
+/// Bir sayfanın blok dizilimi. Sayfa başına tek satır (`key` tekil) — kurulum
+/// başına tek vitrin var, `tenantId` yok (bkz. ürün modeli).
+model PageLayout {
+  id String @id @default(cuid())
+
+  /// Hangi sayfa. Kayıt defterindeki sayfa anahtarlarından biri ("PORTAL_HOME").
+  key String @unique
+
+  /// Sıralı blok listesi: `[{ "type": "PRODUCT_GRID", "params": {…} }]`.
+  /// Şeması sunucuda doğrulanıyor; burada JSON çünkü blok tipleri kod
+  /// sürümüyle birlikte büyüyor ve her yeni blok bir göç istememeli.
+  blocks Json @default("[]")
+
+  updatedById String?
+  updatedBy   User?   @relation("PageLayoutUpdatedBy", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────

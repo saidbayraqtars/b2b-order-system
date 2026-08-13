@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
-import type { CatalogProduct, CategoryNode } from "@repo/services";
+import type { CatalogProduct, CategoryNode, PageBlock } from "@repo/services";
 import type { Permission, Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { useCart } from "@/store/cart";
@@ -25,6 +25,11 @@ interface Props {
   /** Plasiyer / süper admin müşteri adına mı çalışıyor? */
   isProxy?: boolean;
   availableCredit?: string | null;
+  /**
+   * Sayfa düzeni: hangi blok, hangi sırayla. Sunucudan geliyor ve kayıt
+   * defterinden geçmiş — burada tanınmayan tip zaten elenmiş oluyor.
+   */
+  blocks: readonly PageBlock[];
 }
 
 /** Flatten the category tree to a single ordered list for the sidebar. */
@@ -68,7 +73,41 @@ export function PortalClient({
   permissions,
   isProxy = false,
   availableCredit = null,
+  blocks,
 }: Props) {
+  // Düzenden okunan kararlar. Kapalı blok listede durur ama çizilmez, bu yüzden
+  // her sorunun cevabı "açık mı" — "var mı" değil.
+  const on = useMemo(() => {
+    const map = new Map<string, PageBlock>();
+    for (const b of blocks) if (b.enabled) map.set(b.type, b);
+    return map;
+  }, [blocks]);
+
+  const stack = blocks.filter(
+    (b) => b.enabled && (b.type === "ANNOUNCEMENTS" || b.type === "RICH_TEXT"),
+  );
+  const searchBlock = on.get("SEARCH_BAR");
+  const showSearch = Boolean(searchBlock);
+  const showStockFilter = searchBlock?.params.showStockFilter !== false;
+  const showSidebar = on.has("CATEGORY_SIDEBAR");
+  const showCart = on.has("CART_PANEL");
+
+  // Üç sütunlu satır: kapatılan sütun yer kaplamıyor, kalanlar genişliyor.
+  // Sabit `lg:grid-cols-[180px_1fr_300px]` bırakılsaydı kapatılan kenar çubuğu
+  // yerinde bir boşluk olarak durur ve "kapanmadı" gibi görünürdü.
+  const rowTemplate = showSidebar
+    ? showCart
+      ? "lg:grid-cols-[180px_1fr_300px]"
+      : "lg:grid-cols-[180px_1fr]"
+    : showCart
+      ? "lg:grid-cols-[1fr_300px]"
+      : "lg:grid-cols-1";
+
+  const gridColumns =
+    { 2: "xl:grid-cols-2", 3: "xl:grid-cols-3", 4: "xl:grid-cols-4" }[
+      Number(on.get("PRODUCT_GRID")?.params.columns) || 3
+    ] ?? "xl:grid-cols-3";
+
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
@@ -145,75 +184,88 @@ export function PortalClient({
         />
       )}
 
-      <Announcements companyId={companyId} />
+      {/* Duyurular ve serbest metin: tam genişlikte, kayıttaki sırayla. */}
+      {stack.map((b) =>
+        b.type === "ANNOUNCEMENTS" ? (
+          <Announcements key={b.type} companyId={companyId} />
+        ) : b.type === "RICH_TEXT" ? (
+          <RichText
+            key={b.type}
+            title={String(b.params.title ?? "")}
+            body={String(b.params.body ?? "")}
+          />
+        ) : null,
+      )}
 
       <div className="mx-auto max-w-6xl px-4 pb-10">
         {/* Arama + sıralama şeridi */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[16rem] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="search"
-              placeholder="Ürün adı, marka, SKU veya barkod…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </div>
+        {showSearch && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[16rem] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="search"
+                placeholder="Ürün adı, marka, SKU veya barkod…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+              />
+            </div>
 
-          <Checkbox
-            checked={inStockOnly}
-            onChange={(e) => setInStockOnly(e.target.checked)}
-            label={
-              <>
-                <span className="tech-label">stokta</span>
-              </>
-            }
-          />
+            {showStockFilter && (
+              <Checkbox
+                checked={inStockOnly}
+                onChange={(e) => setInStockOnly(e.target.checked)}
+                label={<span className="tech-label">stokta</span>}
+              />
+            )}
 
-          <div className="flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-neutral-400" />
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              aria-label="Sıralama"
-              className="bg-transparent font-mono text-[11px] uppercase tracking-wider outline-none"
-            >
-              {Object.entries(SORTS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[180px_1fr_300px]">
-          {/* Kategori kenar çubuğu */}
-          <aside className="h-fit border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-            <p className="tech-label border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
-              Kategoriler
-            </p>
-            <ul className="max-h-[28rem] overflow-y-auto py-1">
-              <CategoryItem
-                active={categoryId === null}
-                depth={0}
-                onClick={() => setCategoryId(null)}
+            <div className="flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-neutral-400" />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                aria-label="Sıralama"
+                className="bg-transparent font-mono text-[11px] uppercase tracking-wider outline-none"
               >
-                Tümü
-              </CategoryItem>
-              {categories.map((c) => (
+                {Object.entries(SORTS).map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className={cn("grid gap-6", rowTemplate)}>
+          {/* Kategori kenar çubuğu */}
+          {showSidebar && (
+            <aside className="h-fit border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+              <p className="tech-label border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+                Kategoriler
+              </p>
+              <ul className="max-h-[28rem] overflow-y-auto py-1">
                 <CategoryItem
-                  key={c.id}
-                  active={categoryId === c.id}
-                  depth={c.depth}
-                  onClick={() => setCategoryId(c.id)}
+                  active={categoryId === null}
+                  depth={0}
+                  onClick={() => setCategoryId(null)}
                 >
-                  {c.name}
+                  Tümü
                 </CategoryItem>
-              ))}
-            </ul>
-          </aside>
+                {categories.map((c) => (
+                  <CategoryItem
+                    key={c.id}
+                    active={categoryId === c.id}
+                    depth={c.depth}
+                    onClick={() => setCategoryId(c.id)}
+                  >
+                    {c.name}
+                  </CategoryItem>
+                ))}
+              </ul>
+            </aside>
+          )}
 
           {/* Ürün ızgarası */}
           <section>
@@ -234,7 +286,7 @@ export function PortalClient({
             ) : products.length === 0 ? (
               <EmptyState label="Ürün bulunamadı." />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className={cn("grid gap-3 sm:grid-cols-2", gridColumns)}>
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} companyId={companyId} />
                 ))}
@@ -242,7 +294,7 @@ export function PortalClient({
             )}
           </section>
 
-          <CartPanel companyId={companyId} />
+          {showCart && <CartPanel companyId={companyId} />}
         </div>
       </div>
     </div>
@@ -276,5 +328,28 @@ function CategoryItem({
         {children}
       </button>
     </li>
+  );
+}
+
+/**
+ * Kalıcı vitrin metni.
+ *
+ * Duyurudan (Announcement) ayrı: onun tarihi, hedef grubu ve kapatılabilirliği
+ * var — bu ise sayfanın bir parçası. İkisini tek modelde toplamak, bir metin
+ * düzeltmesini kampanya hedeflemesine yazma hâline getirirdi.
+ */
+function RichText({ title, body }: { title: string; body: string }) {
+  if (!title.trim() && !body.trim()) return null;
+  return (
+    <div className="mx-auto max-w-6xl px-4 pt-4">
+      <div className="border border-neutral-300 bg-white px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900">
+        {title.trim() && <p className="tech-label mb-1">{title}</p>}
+        {body.trim() && (
+          <p className="whitespace-pre-line text-sm text-neutral-700 dark:text-neutral-300">
+            {body}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

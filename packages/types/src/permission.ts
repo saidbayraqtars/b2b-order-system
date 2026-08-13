@@ -65,6 +65,7 @@ export const PermissionEnum = z.enum([
   "organization.manage",
   "erp.manage",
   "announcements.manage",
+  "design.manage",
   "activity.view",
   "audit.view",
   "audit.manage",
@@ -109,6 +110,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "organization.manage": "Kuruluş ayarlarını yönet",
   "erp.manage": "ERP köprüsünü yönet",
   "announcements.manage": "Duyuruları yönet",
+  "design.manage": "Sayfa düzenini yönet",
   "activity.view": "Hareket kayıtlarını gör",
   "audit.view": "Güvenlik kayıtlarını gör",
   "audit.manage": "Denetim kaydını dışa aktar / temizle",
@@ -133,6 +135,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
     "Temizlik işlerini açar/kapatır, periyodunu değiştirir, elle çalıştırır",
   "system.update":
     "Çalışan sürümü, yayımlanan sürümü ve son güncelleme sonucunu gösterir — güncellemeyi başlatmaz",
+  "design.manage":
+    "Vitrinin hangi bloklardan oluştuğu ve sırası. Rol değil bir yetki: rol hangi kabuğa girileceğini belirler",
   "targets.manage":
     "Ziyaret ve ciro hedefi koyar. Hedefini görmek için gerekmez — yalnızca koymak için",
   "delivery.confirm":
@@ -202,6 +206,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "organization.manage",
       "erp.manage",
       "announcements.manage",
+      "design.manage",
       "activity.view",
       "audit.view",
       "audit.manage",
@@ -417,6 +422,9 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "organization.manage": ["SELLER"],
   "erp.manage": ["SELLER"],
   "announcements.manage": ["SELLER"],
+  // Vitrinin düzeni satıcının vitrini. Bayiye vermek, müşterinin kendi gördüğü
+  // sayfayı yeniden dizmesi demek olurdu.
+  "design.manage": ["SELLER"],
   // Hareket akışı kendi kapsamına göre süzülüyor (bayi kendi firmasını görür).
   "activity.view": ["SELLER", "DEALER", "FIELD"],
   "audit.view": ["SELLER"],

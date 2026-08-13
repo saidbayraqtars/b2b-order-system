@@ -42,6 +42,9 @@ let productId: string;
  * satırlarını tarih olarak geçiyordu. Tablo boşaltılıp sonunda geri konuyor —
  * silmek değil, ödünç almak.
  */
+/** Takımın kendi kurduğu fatura serisi; hazır bir seri varsa null kalır. */
+let ownInvoiceSeriesId: string | null = null;
+
 let borrowedRates: Array<{
   id: string;
   currency: string;
@@ -120,6 +123,24 @@ suite("çoklu para birimi integration", () => {
       ],
     });
 
+    // Fatura serisi.
+    //
+    // Fatura kesen test bir seriye ihtiyaç duyuyor ve geliştirme veritabanında
+    // seed'den gelen bir tane **vardı** — bu yüzden yerelde geçip CI'ın temiz
+    // veritabanında düştü. Takım artık kendi serisini kuruyor; zaten bir seri
+    // varsa ona dokunmuyor ve sonunda yalnızca kendi kurduğunu siliyor.
+    const existingSeries = await prisma.documentSeries.findFirst({
+      where: { type: "INVOICE" },
+      select: { id: true },
+    });
+    if (!existingSeries) {
+      ownInvoiceSeriesId = (
+        await prisma.documentSeries.create({
+          data: { type: "INVOICE", prefix: `FX${TAG.slice(-8)}`, isDefault: true },
+        })
+      ).id;
+    }
+
     borrowedRates = await prisma.exchangeRate.findMany();
     await prisma.exchangeRate.deleteMany({});
 
@@ -158,6 +179,9 @@ suite("çoklu para birimi integration", () => {
         data: borrowedRates as never,
         skipDuplicates: true,
       });
+    }
+    if (ownInvoiceSeriesId) {
+      await prisma.documentSeries.deleteMany({ where: { id: ownInvoiceSeriesId } });
     }
     await prisma.user.deleteMany({ where: { id: { in: [buyerId, adminId] } } });
     await prisma.company.deleteMany({ where: { id: companyId } });

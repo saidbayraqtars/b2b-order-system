@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   FileText,
+  LayoutTemplate,
   Landmark,
   LayoutDashboard,
   Layers,
@@ -61,6 +62,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
       { href: "/admin/categories", label: "Kategoriler", icon: Tags, permission: "products.view" },
       { href: "/admin/promotions", label: "Kampanyalar", icon: Percent, permission: "promotions.manage" },
       { href: "/admin/stok", label: "Stok defteri", icon: Boxes, permission: "stock.view" },
+      { href: "/admin/sayfa-duzeni", label: "Sayfa düzeni", icon: LayoutTemplate, permission: "design.manage" },
     ],
   },
   {

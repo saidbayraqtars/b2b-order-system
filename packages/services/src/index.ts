@@ -55,6 +55,7 @@ export * from "./visit-request";
 export * from "./delivery";
 export * from "./label-template";
 export * from "./label-render";
+export * from "./page-layout";
 export * from "./stock-admin";
 export * from "./stock-ledger";
 export * from "./runtime-env";

@@ -437,6 +437,9 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // depo & stok
   WAREHOUSE_NOT_FOUND: 404,
   WAREHOUSE_CODE_TAKEN: 409,
+  // sayfa düzeni
+  PAGE_NOT_FOUND: 404,
+  INVALID_BLOCK: 422,
   INVALID_STOCK: 422,
   STOCK_MOVEMENT_NOT_FOUND: 404,
   // çek/senet portföyü
