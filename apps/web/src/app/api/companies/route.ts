@@ -39,7 +39,6 @@ export function GET() {
         phone: true,
         creditLimit: true,
         currentBalance: true,
-        currency: true,
         addresses: {
           where: { isDefault: true },
           select: { city: true, district: true },
@@ -56,7 +55,6 @@ export function GET() {
       creditLimit: c.creditLimit.toFixed(2),
       currentBalance: c.currentBalance.toFixed(2),
       availableCredit: c.creditLimit.minus(c.currentBalance).toFixed(2),
-      currency: c.currency,
       city: c.addresses[0]?.city ?? null,
       district: c.addresses[0]?.district ?? null,
     }));

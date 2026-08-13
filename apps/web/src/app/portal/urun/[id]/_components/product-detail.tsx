@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Package, ShoppingCart } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart, normalizeQty } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
+import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
 
 // Ürün detayı — vitrinin teknik kimliği: sol tarafta görsel, sağda künye ve
@@ -205,6 +206,13 @@ function VariantRow({
         <p className="text-sm font-bold">
           {priced ? formatTRY(v.netUnitPrice!) : "—"}
         </p>
+        {/* Dövizle listelenen ürünün orijinal fiyatı — karttakiyle aynı not.
+            Tahsil edilen tutar her zaman yukarıdaki TL. */}
+        <CurrencyNote
+          currency={v.listCurrency}
+          amount={v.listUnitPrice}
+          className="block text-[10px] text-neutral-500"
+        />
         {v.discountPerUnit && Number(v.discountPerUnit) > 0 && (
           <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
             −{formatTRY(v.discountPerUnit)}

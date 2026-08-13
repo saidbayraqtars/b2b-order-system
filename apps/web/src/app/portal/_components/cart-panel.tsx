@@ -7,6 +7,7 @@ import type { CreateOrderResult, OrderQuoteView, PaymentOptions } from "@repo/se
 import type { PaymentMethod } from "@repo/types";
 import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
+import { CurrencyNote } from "@/components/currency-note";
 import { apiGet, apiPost } from "@/lib/fetcher";
 
 const STATUS_MESSAGE: Record<string, string> = {
@@ -181,10 +182,19 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     +
                   </button>
                 </div>
-                <span className="tech-num text-xs font-semibold">
+                <span className="tech-num text-right text-xs font-semibold">
                   {l.netUnitPrice === null
                     ? "fiyat yok"
                     : formatTRY(Number(l.netUnitPrice) * l.quantity)}
+                  {/* Kur yok: sepetteki kur henüz donmadı, sipariş
+                      verildiğinde donacak. Burada gösterilen sayı bir söz
+                      değil, malın hangi para biriminde listelendiği. */}
+                  <CurrencyNote
+                    currency={l.listCurrency}
+                    amount={l.listUnitPrice}
+                    prefix="birim"
+                    className="block text-[10px] font-normal text-neutral-500"
+                  />
                 </span>
               </div>
             </li>

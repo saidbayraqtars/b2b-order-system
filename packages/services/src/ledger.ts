@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { BASE_CURRENCY } from "@repo/types";
 import type {
   AgingBucketKey,
   CollectionMethod,
@@ -44,6 +45,12 @@ export interface Statement {
   company: {
     id: string;
     name: string;
+    /**
+     * Her zaman TL — defterin para birimi, firmanın değil. Firmada bir
+     * `currency` kolonu vardı ve ekstre onu basıyordu; "USD" işaretli bir
+     * firmanın TL bakiyesi dolar diye basılıyordu. Alan burada duruyor çünkü
+     * belge para birimini yazmak zorunda, ama kaynağı artık defter.
+     */
     currency: string;
     creditLimit: string;
     /** The cached Company.currentBalance, for comparison against closingBalance. */
@@ -74,7 +81,6 @@ export async function getStatement(
     select: {
       id: true,
       name: true,
-      currency: true,
       creditLimit: true,
       currentBalance: true,
       paymentTermDays: true,
@@ -147,7 +153,7 @@ export async function getStatement(
     company: {
       id: company.id,
       name: company.name,
-      currency: company.currency,
+      currency: BASE_CURRENCY,
       creditLimit: company.creditLimit.toFixed(2),
       currentBalance: company.currentBalance.toFixed(2),
       paymentTermDays: company.paymentTermDays,
@@ -243,7 +249,6 @@ export async function getCompanyAging(
     select: {
       id: true,
       name: true,
-      currency: true,
       creditLimit: true,
       currentBalance: true,
       paymentTermDays: true,
@@ -270,7 +275,7 @@ export async function getCompanyAging(
     {
       id: company.id,
       name: company.name,
-      currency: company.currency,
+      currency: BASE_CURRENCY,
       creditLimit: company.creditLimit,
       currentBalance: company.currentBalance,
       paymentTermDays: company.paymentTermDays,
@@ -299,7 +304,6 @@ export async function getReceivables(
     select: {
       id: true,
       name: true,
-      currency: true,
       creditLimit: true,
       currentBalance: true,
       paymentTermDays: true,
@@ -340,7 +344,7 @@ export async function getReceivables(
       {
         id: c.id,
         name: c.name,
-        currency: c.currency,
+        currency: BASE_CURRENCY,
         creditLimit: c.creditLimit,
         currentBalance: c.currentBalance,
         paymentTermDays: c.paymentTermDays,
@@ -470,7 +474,7 @@ function ageRows(
   return {
     companyId: company.id,
     companyName: company.name,
-    currency: company.currency,
+    currency: BASE_CURRENCY,
     creditLimit: company.creditLimit.toFixed(2),
     balance: openTotal.minus(unapplied).toFixed(2),
     cachedBalance: company.currentBalance.toFixed(2),

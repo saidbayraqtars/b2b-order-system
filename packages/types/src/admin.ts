@@ -48,7 +48,9 @@ export const createCompanySchema = z.object({
   creditLimit: money.default(0),
   /** Default vade: what an order gets when no term is picked from the menu. */
   paymentTermDays: z.coerce.number().int().min(0).max(365).default(0),
-  currency: z.string().trim().length(3).default("TRY"),
+  // Firmanın para birimi diye bir alan yok — bilerek. Defter TL ve bir firmayı
+  // "USD" işaretlemek hiçbir hesabı değiştirmiyordu, yalnız ekstre belgesine
+  // yanlış bir satır bastırıyordu. Yabancı para **liste fiyatının** özelliği.
   requiresOrderApproval: z.boolean().default(false),
   isActive: z.boolean().default(true),
   customerGroupId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
@@ -76,7 +78,6 @@ export const updateCompanySchema = z
     phone: optionalText(40).nullable(),
     creditLimit: money.optional(),
     paymentTermDays: z.coerce.number().int().min(0).max(365).optional(),
-    currency: z.string().trim().length(3).optional(),
     requiresOrderApproval: z.boolean().optional(),
     isActive: z.boolean().optional(),
     customerGroupId: z.string().cuid().nullable().optional(),

@@ -205,7 +205,12 @@ model Company {
   // Cari / limit
   creditLimit    Decimal @default(0) @db.Decimal(14, 2)
   currentBalance Decimal @default(0) @db.Decimal(14, 2) // cache derived from Transaction ledger
-  currency       String  @default("TRY")
+
+  /// Buradaki `currency` kolonu **kaldırıldı** (Adım 52). Hiçbir hesap onu
+  /// okumuyordu — defter TL — ama cari ekstre belgesi basıyordu: "USD"
+  /// işaretlenmiş bir firmanın TL bakiyesi dolar diye çıkıyordu. Yabancı para
+  /// `Price.currency`in özelliği; sipariş anında TL'ye çevrilir ve kullanılan
+  /// kur `OrderItem.exchangeRate`e donar.
 
   /// Vade: days a debit may stay open before it counts as overdue in aging.
   /// This is the customer's *default* term — what an order gets when nobody

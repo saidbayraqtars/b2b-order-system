@@ -34,6 +34,13 @@ export interface CartLineView {
   quantity: number;
   /** Null when the company has no applicable price — the line is not orderable. */
   netUnitPrice: string | null;
+  /**
+   * Fiyatın listelendiği para birimi ve o birimdeki liste fiyatı. Tutar her
+   * zaman TL; bunlar sepette "≈ 12,50 USD" notu için. Kur burada taşınmıyor:
+   * sepetteki kur henüz donmadı, sipariş verildiğinde donacak.
+   */
+  listCurrency: string | null;
+  listUnitPrice: string | null;
   image: string | null;
 }
 
@@ -113,6 +120,8 @@ export async function getCart(
     }
 
     let netUnitPrice: string | null = null;
+    let listCurrency: string | null = null;
+    let listUnitPrice: string | null = null;
     try {
       const priced = resolvePrice({
         prices: convertPriceRows(v.prices, ctx.rates),
@@ -124,6 +133,8 @@ export async function getCart(
         volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
       });
       netUnitPrice = priced.netUnitPrice.toFixed(2);
+      listCurrency = priced.listCurrency;
+      listUnitPrice = priced.listUnitPrice.toFixed(2);
     } catch {
       // Priceless for this company: still shown, so the buyer understands why
       // checkout refuses, rather than the line vanishing without explanation.
@@ -142,6 +153,8 @@ export async function getCart(
       vatRate: v.product.vatRate,
       quantity: item.quantity,
       netUnitPrice,
+      listCurrency,
+      listUnitPrice,
       image: v.product.images[0] ?? null,
     });
   }

@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
+import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
 
 // Vitrin ürün kartı — endüstriyel/teknik kimlik: ölçen her sayı (SKU, fiyat,
@@ -113,11 +114,11 @@ export function ProductCard({
                     anlaştıysa hangi sayıdan çevrildiğini görmek istiyor.
                     Tahsil edilen tutar her zaman yukarıdaki TL.
                   */}
-                  {v.listCurrency && v.listCurrency !== "TRY" && v.listUnitPrice ? (
-                    <span className="ml-1 font-normal text-neutral-500">
-                      ({v.listUnitPrice} {v.listCurrency})
-                    </span>
-                  ) : null}
+                  <CurrencyNote
+                    currency={v.listCurrency}
+                    amount={v.listUnitPrice}
+                    className="ml-1 font-normal text-neutral-500"
+                  />
                 </span>
                 <button
                   type="button"

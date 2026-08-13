@@ -81,7 +81,6 @@ export default async function AdminCompanyPage({
           phone: company.phone ?? "",
           creditLimit: company.creditLimit,
           paymentTermDays: String(company.paymentTermDays),
-          currency: company.currency,
           requiresOrderApproval: company.requiresOrderApproval,
           isActive: company.isActive,
           customerGroupId: company.customerGroup?.id ?? "",

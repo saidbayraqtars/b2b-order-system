@@ -6,6 +6,7 @@ import type { OrderDetail } from "@repo/services";
 import { PAYMENT_METHOD_LABELS, type OrderStatus, type Role } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { CurrencyNote } from "@/components/currency-note";
 import { FulfilmentPanel } from "./fulfilment-panel";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -134,6 +135,15 @@ export function OrderDetailView({
                 <td className="px-3 py-2 text-right tabular-nums">{i.quantity}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {formatTRY(i.unitPrice)}
+                  {/* Dövizle listelenmişse hangi sayıdan hangi kurla
+                      çevrildiği: sipariş bir kez fiyatlanır ve o kur burada
+                      donmuştur, bugünkü kurla yeniden hesaplanamaz. */}
+                  <CurrencyNote
+                    currency={i.listCurrency}
+                    amount={i.listUnitPrice}
+                    rate={i.exchangeRate}
+                    className="block text-[11px] font-normal text-neutral-500"
+                  />
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}

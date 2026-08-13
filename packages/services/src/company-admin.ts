@@ -27,7 +27,6 @@ export interface CompanyRow {
   currentBalance: string;
   availableCredit: string;
   paymentTermDays: number;
-  currency: string;
   requiresOrderApproval: boolean;
   isActive: boolean;
   customerGroup: { id: string; name: string } | null;
@@ -77,7 +76,6 @@ const companySelect = {
   creditLimit: true,
   currentBalance: true,
   paymentTermDays: true,
-  currency: true,
   requiresOrderApproval: true,
   isActive: true,
   createdAt: true,
@@ -106,7 +104,6 @@ function toRow(c: CompanyPayload): CompanyRow {
     currentBalance: c.currentBalance.toFixed(2),
     availableCredit: c.creditLimit.minus(c.currentBalance).toFixed(2),
     paymentTermDays: c.paymentTermDays,
-    currency: c.currency,
     requiresOrderApproval: c.requiresOrderApproval,
     isActive: c.isActive,
     customerGroup: c.customerGroup,
@@ -267,7 +264,6 @@ export async function createCompany(
       phone: input.phone ?? null,
       creditLimit: input.creditLimit,
       paymentTermDays: input.paymentTermDays,
-      currency: input.currency,
       requiresOrderApproval: input.requiresOrderApproval,
       isActive: input.isActive,
       customerGroupId: input.customerGroupId ?? null,
@@ -312,7 +308,6 @@ export async function updateCompany(
       ...(input.paymentTermDays !== undefined
         ? { paymentTermDays: input.paymentTermDays }
         : {}),
-      ...(input.currency !== undefined ? { currency: input.currency } : {}),
       ...(input.requiresOrderApproval !== undefined
         ? { requiresOrderApproval: input.requiresOrderApproval }
         : {}),

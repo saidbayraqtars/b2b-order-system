@@ -31,7 +31,6 @@ export interface CompanyFormValues {
   phone: string;
   creditLimit: string;
   paymentTermDays: string;
-  currency: string;
   requiresOrderApproval: boolean;
   isActive: boolean;
   customerGroupId: string;
@@ -59,7 +58,6 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       phone: "",
       creditLimit: "0",
       paymentTermDays: "0",
-      currency: "TRY",
       requiresOrderApproval: false,
       isActive: true,
       customerGroupId: "",
@@ -116,7 +114,6 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         phone: v.phone || (editing ? null : undefined),
         creditLimit: Number(v.creditLimit || 0),
         paymentTermDays: Number(v.paymentTermDays || 0),
-        currency: v.currency || "TRY",
         requiresOrderApproval: v.requiresOrderApproval,
         isActive: v.isActive,
         customerGroupId: v.customerGroupId || (editing ? null : undefined),
@@ -205,14 +202,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             onChange={(e) => set("paymentTermDays", e.target.value)}
           />
         </label>
-        <label>
-          <Label>Para birimi</Label>
-          <TextInput
-            value={v.currency}
-            maxLength={3}
-            onChange={(e) => set("currency", e.target.value.toUpperCase())}
-          />
-        </label>
+        {/* Firma para birimi alanı kaldırıldı: defter TL ve buraya "USD"
+            yazmak hiçbir hesabı değiştirmiyor, yalnızca ekstre belgesine
+            yanlış bir satır bastırıyordu. Döviz, ürünün liste fiyatında
+            (`/admin/products` → fiyat satırı) seçiliyor. */}
         <label>
           <Label>Müşteri grubu</Label>
           <Select

@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-13 · Adım 51 (stok hareket defteri) sonu
+Son güncelleme: 2026-08-13 · Adım 52 (döviz belgede) sonu
 
 ---
 
@@ -65,6 +65,7 @@ Son güncelleme: 2026-08-13 · Adım 51 (stok hareket defteri) sonu
 | 49 | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma | ✅ |
 | 50 | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı | ✅ |
 | 51 | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır | ✅ |
+| 52 | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı | ✅ |
 
 ---
 
@@ -2136,7 +2137,67 @@ sayım farkı, aktarımın iki bacağı, ters kaydın çift iptali reddetmesi, E
 farkının sıfırken hiçbir şey yazmaması, eksi bakiye kuralları. Toplam **509 test**
 (394 servis + 115 rota).
 
-## 47. API Uçları
+## 47. Döviz Belgede (Adım 52)
+
+Adım 42 dövizi hesaplatmıştı: dolarla listelenen ürün TL'ye çevriliyor, kullanılan
+kur sipariş satırına donuyor. Ama o kur **hiçbir yerde basılmıyordu**. Şemadaki
+yorum "belgede `100 USD × 34,2150` satırı basılacak" diyordu ve basan bir ekran
+yoktu — yazılıp gösterilmeyen kur, "100 dolardan anlaşmıştık" diyen müşteriyle
+yapılacak tartışmayı çözmüyor.
+
+### Künye artık dört yerde
+
+`CurrencyNote` tek bileşen, dört yüzeyde:
+
+| Yer | Ne basar | Neden |
+|-----|----------|-------|
+| Vitrin kartı ve ürün detayı | `12,50 USD` | Müşteri hangi sayıdan çevrildiğini görür |
+| Sepet satırı | `birim 12,50 USD` | Sipariş öncesi son kontrol |
+| Sipariş detayı | `100,00 USD × 34,2150` | Kur artık donmuş, gösterilebilir |
+| Fatura | `100,00 USD × 34,2150` | Faturayı kontrol eden çarpımı kendi yapar |
+
+Sepette **kur yok**, ötekilerde var: sepetteki kur henüz donmadı, sipariş
+verildiğinde donacak. Orada bir kur göstermek, tutulmayacak bir söz verirdi.
+
+Kur dört ondalıkla basılıyor. İki basamağa yuvarlamak belgedeki çarpımı tutmaz
+hâle getiriyor — 100 × 34,21 ile 100 × 34,2150 arasında 15 kuruş var ve faturayı
+kontrol eden kişi o farkı hesap hatası sanıyor.
+
+Not yalnızca **üçü de varsa** basılıyor (para birimi yabancı + tutar var). "USD"
+yazıp sayıyı göstermemek, TL fiyatın dolar olduğu izlenimini bırakırdı.
+
+### Fatura künyeyi kopyalamıyor, okuyor
+
+`InvoiceItem`e üç yeni kolon eklenmedi; künye `orderItem` ilişkisinden okunuyor.
+Faturanın diğer alanları (ürün adı, SKU, fiyat) anlık görüntüdür çünkü değişebilen
+bir şeyi dondururlar. Kur ise **zaten dondurulmuş** bir anlık görüntü: kopyalamak
+ikinci bir doğru kaynağı yaratır ve ikisinin ayrışması an meselesidir.
+
+### Firmanın para birimi diye bir şey yok (kaldırıldı)
+
+`Company.currency` üç harflik serbest metin bir alandı. Hiçbir hesap onu
+okumuyordu — defter TL — ama **cari ekstre belgesi basıyordu**: "USD" işaretlenmiş
+bir firmanın TL bakiyesi, belgede dolar diye çıkıyordu. Yönetim formundaki kutu,
+bir müşteriyi dolarla faturalayabileceği izlenimi de veriyordu.
+
+Kolon düşürüldü (`20260813120000_drop_company_currency`), formdaki alan kaldırıldı,
+ekstre artık defterin para birimini basıyor. Yabancı para **liste fiyatının**
+özelliğidir; firmanın değil.
+
+### Rapor alanları
+
+`ORDER_ITEMS` veri kümesine üç alan: liste para birimi (gruplanabilir), donmuş kur
+ve döviz cinsinden liste birim fiyatı. Gruplanabilir olması asıl işi — "dolarla
+satılan malın cirosu ne kadar" sorusu ancak para birimine göre kırılınca
+cevaplanıyor. Kur toplanabilir bir sayı değil; süzmek ve bakmak için duruyor.
+
+### Doğrulama
+
+`currency.test.ts` 6 testten 10'a çıktı: sipariş detayının künyeyi taşıması, TL
+satırın künye basmaması, fatura satırının siparişinkiyle **birebir** aynı olması
+ve ekstrenin defterin para birimini basması. Toplam **513 test**.
+
+## 48. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2404,7 +2465,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 **Platform & entegrasyon**
 - ERP çift yönlü senkron (Logo, Mikro, SAP, Nebim, DIA): stok/fiyat/cari ERP→B2B, sipariş+tahsilat B2B→ERP.
 - Bildirim motoru: FCM push + SendGrid/Twilio; sipariş durumu, onay bekleyen, limit aşımı tetikleyicileri.
-- Çoklu dil: arayüz yalnızca Türkçe. (Çoklu para birimi Adım 42'de geldi; **TCMB kuru elle giriliyor**, otomatik çekim yok — zamanlayıcı hazır olduğuna göre bir iş tanımı yeter.)
+- Çoklu dil: arayüz yalnızca Türkçe. (Çoklu para birimi kapandı: hesap Adım 42'de, TCMB kuru çeken zamanlanmış iş Adım 44'te, belgede gösterim Adım 52'de.)
 - Dışa açık B2B API + Webhook + OpenAPI: büyük bayi kendi ERP'sinden otomatik sipariş geçer.
 - Temsilci devir defteri: plasiyer değişince sipariş, çek-senet, ziyaret ve sepet devri.
 - Sunum/maskeleme modu: plasiyer müşteri yanındayken maliyet ve diğer müşteri bakiyeleri gizlenir.

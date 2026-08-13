@@ -3,6 +3,7 @@ import {
   CashAccountKindEnum,
   CashDirectionEnum,
   CashMovementSourceEnum,
+  CURRENCIES,
   FieldEntrySourceEnum,
   PaymentMethodEnum,
   StockDirectionEnum,
@@ -387,6 +388,24 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         format: "number",
       },
       isGift: { label: "Hediye", type: "boolean", path: "isGift", groupable: true },
+      // Döviz künyesi. Gruplanabilir olması asıl işi: "dolarla satılan malın
+      // cirosu ne kadar" sorusu ancak para birimine göre kırılınca cevaplanıyor.
+      // Kur toplanabilir bir sayı değil — ortalaması bile yanıltıcı, çünkü
+      // satırların ağırlığı farklı; süzmek ve bakmak için duruyor.
+      listCurrency: {
+        label: "Liste para birimi",
+        type: "enum",
+        path: "listCurrency",
+        groupable: true,
+        enumValues: CURRENCIES,
+      },
+      exchangeRate: {
+        label: "Kur (donmuş)",
+        type: "number",
+        path: "exchangeRate",
+        format: "number",
+      },
+      listUnitPrice: money("Liste birim fiyatı (döviz)", "listUnitPrice"),
       orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
       orderStatus: {
         label: "Sipariş durumu",

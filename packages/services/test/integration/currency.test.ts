@@ -2,7 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@repo/database";
 import { listCatalog } from "../../src/catalog";
 import { getCurrentRates, recordExchangeRate } from "../../src/exchange-rate";
+import { createInvoice, getInvoice } from "../../src/invoice";
+import { getStatement } from "../../src/ledger";
 import { createOrder } from "../../src/order";
+import { getOrderDetail } from "../../src/order-lifecycle";
 import { quoteOrder } from "../../src/order-quote";
 
 // Çoklu para birimi.
@@ -132,6 +135,9 @@ suite("çoklu para birimi integration", () => {
       select: { id: true },
     });
     const orderIds = orders.map((o) => o.id);
+    // Fatura siparişten önce: satırları sipariş satırına bağlı.
+    await prisma.invoice.deleteMany({ where: { orderId: { in: orderIds } } });
+    await prisma.stockMovement.deleteMany({ where: { orderId: { in: orderIds } } });
     await prisma.transaction.deleteMany({ where: { companyId } });
     await prisma.orderStatusHistory.deleteMany({ where: { orderId: { in: orderIds } } });
     await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
@@ -247,6 +253,92 @@ suite("çoklu para birimi integration", () => {
         items: [{ variantId: usdVariantId, quantity: 1 }],
       });
       expect(next.lines[0]!.unitPrice).toBe("4000.00");
+    });
+  });
+
+  describe("belgede görünür", () => {
+    // Kuru siparişe yazmanın tek amacı belgede basılabilmesiydi; yazılıp
+    // gösterilmeyen kur, "100 dolardan anlaşmıştık" diyen müşteriyle
+    // yapılacak tartışmayı çözmüyor.
+    it("sipariş detayı satırın döviz künyesini taşır", async () => {
+      const order = await createOrder(
+        {
+          companyId,
+          paymentMethod: "OPEN_ACCOUNT",
+          items: [{ variantId: usdVariantId, quantity: 1 }],
+        },
+        { createdById: buyerId, createdByRole: "COMPANY_ADMIN" },
+      );
+
+      const detail = await getOrderDetail(order.orderId, {
+        userId: adminId,
+        role: "SUPER_ADMIN",
+      });
+      const line = detail.items[0]!;
+      expect(line.listCurrency).toBe("USD");
+      expect(line.listUnitPrice).toBe("100.00");
+      // Dört ondalık: iki basamağa yuvarlanan kur belgedeki çarpımı tutmuyor.
+      expect(line.exchangeRate).toMatch(/^\d+\.\d{4}$/);
+      expect(Number(line.unitPrice)).toBeCloseTo(
+        100 * Number(line.exchangeRate),
+        2,
+      );
+    });
+
+    it("TL satır künye basmaz", async () => {
+      const order = await createOrder(
+        {
+          companyId,
+          paymentMethod: "OPEN_ACCOUNT",
+          items: [{ variantId: tryVariantId, quantity: 1 }],
+        },
+        { createdById: buyerId, createdByRole: "COMPANY_ADMIN" },
+      );
+
+      const detail = await getOrderDetail(order.orderId, {
+        userId: adminId,
+        role: "SUPER_ADMIN",
+      });
+      expect(detail.items[0]!.listCurrency).toBe("TRY");
+      expect(Number(detail.items[0]!.exchangeRate)).toBe(1);
+    });
+
+    it("fatura satırı künyeyi sipariş satırından okur", async () => {
+      const order = await createOrder(
+        {
+          companyId,
+          paymentMethod: "OPEN_ACCOUNT",
+          items: [{ variantId: usdVariantId, quantity: 3 }],
+        },
+        { createdById: buyerId, createdByRole: "COMPANY_ADMIN" },
+      );
+
+      const created = await createInvoice(
+        order.orderId,
+        {},
+        { userId: adminId, role: "SUPER_ADMIN" },
+      );
+      const invoice = await getInvoice(created.invoiceId);
+
+      const orderLine = (
+        await getOrderDetail(order.orderId, { userId: adminId, role: "SUPER_ADMIN" })
+      ).items[0]!;
+      const invoiceLine = invoice.items[0]!;
+
+      // Kopyalanmadığı için birebir aynı: fatura o satırı faturalıyor ve
+      // ikinci bir doğru kaynağı olmamalı.
+      expect(invoiceLine.listCurrency).toBe(orderLine.listCurrency);
+      expect(invoiceLine.listUnitPrice).toBe(orderLine.listUnitPrice);
+      expect(invoiceLine.exchangeRate).toBe(orderLine.exchangeRate);
+    });
+  });
+
+  describe("firmanın para birimi diye bir şey yok", () => {
+    it("ekstre defterin para birimini basar, firmanınkini değil", async () => {
+      // Firmadaki `currency` kolonu kaldırıldı: hiçbir hesabı değiştirmeden
+      // ekstre belgesine yanlış bir satır bastırıyordu.
+      const statement = await getStatement(companyId);
+      expect(statement.company.currency).toBe("TRY");
     });
   });
 

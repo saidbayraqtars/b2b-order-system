@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { BASE_CURRENCY } from "@repo/types";
 import type { CreateInvoiceInput, InvoiceStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
@@ -39,6 +40,17 @@ export interface InvoiceLineView {
   promotionDiscount: string;
   vatRate: number;
   lineTotal: string;
+  /**
+   * Faturalanan malın döviz künyesi — sipariş satırından okunuyor, buraya
+   * kopyalanmıyor.
+   *
+   * Kopyalamak ikinci bir doğru kaynağı olurdu; oysa siparişteki kur zaten
+   * dondurulmuş bir anlık görüntü ve fatura o satırı faturalıyor. Sipariş satırı
+   * silinmişse (bugün hiçbir akış silmiyor) TL kabul ediliyor.
+   */
+  listCurrency: string;
+  listUnitPrice: string | null;
+  exchangeRate: string;
 }
 
 export interface InvoiceView {
@@ -466,6 +478,9 @@ const invoiceSelect = {
       promotionDiscount: true,
       vatRate: true,
       lineTotal: true,
+      orderItem: {
+        select: { listCurrency: true, listUnitPrice: true, exchangeRate: true },
+      },
     },
     orderBy: { productName: "asc" },
   },
@@ -504,6 +519,9 @@ function toView(r: InvoiceRow): InvoiceView {
       promotionDiscount: i.promotionDiscount.toFixed(2),
       vatRate: i.vatRate,
       lineTotal: i.lineTotal.toFixed(2),
+      listCurrency: i.orderItem?.listCurrency ?? BASE_CURRENCY,
+      listUnitPrice: i.orderItem?.listUnitPrice?.toFixed(2) ?? null,
+      exchangeRate: i.orderItem?.exchangeRate.toFixed(4) ?? "1.0000",
     })),
     shipmentNumbers: r.shipments.map((s) => s.documentNumber),
   };

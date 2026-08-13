@@ -300,6 +300,16 @@ export interface OrderDetailItem {
   quantityInvoiced: number;
   /** A line a campaign added free of charge. */
   isGift: boolean;
+  /**
+   * Yabancı parayla listelenen satırın orijinal fiyatı ve o gün donan kur.
+   *
+   * `unitPrice` ve `lineTotal` **her zaman TL** — defter TL. Bunlar yalnızca
+   * "100,00 USD × 34,2150" satırını basmak için. TL satırda `listCurrency`
+   * "TRY" ve kur 1; ekran o durumda hiçbir şey basmaz.
+   */
+  listCurrency: string;
+  listUnitPrice: string | null;
+  exchangeRate: string;
 }
 
 export interface OrderStatusEvent {
@@ -409,6 +419,9 @@ export async function getOrderDetail(
           quantityShipped: true,
           quantityInvoiced: true,
           isGift: true,
+          listCurrency: true,
+          listUnitPrice: true,
+          exchangeRate: true,
         },
         orderBy: { productName: "asc" },
       },
@@ -474,6 +487,11 @@ export async function getOrderDetail(
       quantityShipped: i.quantityShipped,
       quantityInvoiced: i.quantityInvoiced,
       isGift: i.isGift,
+      listCurrency: i.listCurrency,
+      // Dört ondalık: kur 34,2150 gibi girilir ve iki basamağa yuvarlamak
+      // belgede basılan çarpımı tutmaz hâle getirir.
+      listUnitPrice: i.listUnitPrice?.toFixed(2) ?? null,
+      exchangeRate: i.exchangeRate.toFixed(4),
     })),
     history: o.statusHistory.map((h) => ({
       id: h.id,
