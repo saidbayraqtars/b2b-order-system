@@ -69,6 +69,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 53 | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı | ✅ |
 | 54 | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni | ✅ |
 | 55 | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven | ✅ |
+| 56 | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili | ✅ |
 
 ---
 
@@ -2380,7 +2381,72 @@ toplanmaması, karışık sırada saklanmış kademe, hedeflenmemiş satırın s
 girmemesi, geri giden merdivenin reddi ve bozuk kaydın atlanması. Toplam
 **535 test**.
 
-## 51. API Uçları
+## 51. Rapor v3: Hesaplanmış Sütun (Adım 56)
+
+Rapor tasarımcısı topluyor ama **bölemiyordu**: "sipariş başına ortalama sepet",
+"iskontonun ciroya oranı", "KDV tutarı" gibi bir sütun kurulamıyor, rapor CSV
+olarak indirilip Excel'de bölünüyordu. Artık raporun kendi çıktı sütunları
+üzerinde dört işlem yapan sütunlar tanımlanabiliyor.
+
+### Formül veritabanına gitmiyor
+
+Akla gelen ilk çözüm ifadeyi `SELECT` listesine yapıştırmak; rapor tasarımcısını
+SQL konsoluna çeviren de tam olarak budur. Kayıt defteri zaten "istemciden gelen
+hiçbir şey SQL olarak kullanılmaz" diye var.
+
+Formül `report-formula.ts` içinde küçük bir ağaca **ayrıştırılıyor** ve sorgu
+koştuktan **sonra**, dönen satırlar üzerinde JavaScript'te hesaplanıyor.
+Veritabanına hiç ulaşmıyor. Bozuk bir formülün yapabileceği en kötü şey
+ayrıştırılamamak, geçerli bir formülün yapabileceği en kötü şey bir sayı
+üretmek.
+
+Dilde **bilerek olmayanlar:** fonksiyon çağrısı, metin, karşılaştırma ve raporun
+zaten seçmediği bir alanı adlandırmanın herhangi bir yolu. Her tanımlayıcı aynı
+raporun bir çıktı sütununa karşılık gelmek zorunda — gelmiyorsa **kaydederken**
+hata, çalışırken sessiz boş sütun değil.
+
+### Sayı yerine boş
+
+- **Sıfıra bölmek** `Infinity` değil **boş** üretiyor.
+- **Boş bir değer sıfır sayılmıyor**, boşluk yayılıyor.
+
+İkisi de "bu satır bu soruyu cevaplayamıyor" diyor ve bu doğru. Bilinmeyeni 0'a
+çevirmek, insanların karar verdiği bir rapora yanlış bir sayı yazardı.
+
+Ondalık hem `0.5` hem `0,5` yazılabiliyor — Türkçe klavyede ikincisi daha kolay
+ve reddetmek kural değil bilmece olurdu. Sonuç iki haneye yuvarlanıyor, raporun
+geri kalanıyla aynı.
+
+### Sıralama yok, grafik var
+
+Hesaplanmış sütuna göre **sıralanamıyor** ve bu bilerek: sıralama veritabanında
+yapılıyor, orada bu sütun yok. Getirilmiş sayfayı sıralamak raporu değil
+**dilimi** sıralar — "en yüksek 10" gibi görünür, değildir. Hata mesajı bunu
+söylüyor.
+
+Grafikler bitmiş satırlardan çizildiği için hesaplanmış sütun **grafik değeri
+olabiliyor**. Sütunlar birbirine dayanabiliyor: dizideki sıra hesap sırası.
+
+### Ekranda
+
+Tasarımcıda "Hesaplanmış sütunlar" paneli: başlık, anahtar, formül, biçim.
+Panelin asıl işi **ne yazılabileceğini göstermek** — formül ekrandaki Türkçe
+başlıklara değil çıktı **anahtarlarına** başvuruyor, bu yüzden anahtarlar
+listeleniyor ve tıklayınca formüle ekleniyor (`lineTotal__sum` tahmin edilecek
+bir şey değil). Tanınmayan ad varsa satırın altında uyarı çıkıyor.
+
+Sütun silindiğinde ona başvuran formül **silinmiyor**, uyarı veriyor: kullanıcının
+yazdığı formülü sessizce atmak yanlış olurdu.
+
+### Doğrulama
+
+11 birim + 5 entegrasyon testi: işlem önceliği, virgüllü ondalık, metin gelen
+toplamın sayıya çevrilmesi, sıfıra bölme, boş yayılması, bilinmeyen ad,
+aritmetik olmayan her şeyin reddi (`>`, `SUM(x)`, `;`, tırnak), uzunluk/derinlik
+sınırı, kademeli sütun ve gruplanmış/düz raporda uçtan uca hesap. Toplam
+**551 test**.
+
+## 52. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2597,7 +2663,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).
+- **Rapor tasarımcısı v3 (kalanı):** pano (birden çok raporu tek ekranda), PDF/XLSX eki. Hesaplanmış sütun Adım 56'da, zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
 ### Uzun vadeli backlog

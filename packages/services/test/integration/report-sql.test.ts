@@ -352,4 +352,135 @@ suite("grouped reports run in the database", () => {
     expect(result.rows).toHaveLength(2);
     expect(result.rows[0]!.orderNumber).toBeTruthy();
   });
+
+  describe("computed columns", () => {
+    const perOrder = {
+      key: "sepetOrt",
+      label: "Sipariş başına",
+      expression: "grandTotal__sum / orderNumber__count",
+    };
+
+    it("divides one aggregate by another, per group", async () => {
+      const result = await runReport(
+        "ORDERS",
+        {
+          columns: [
+            { field: "companyName" },
+            { field: "grandTotal", aggregate: "SUM" },
+            { field: "orderNumber", aggregate: "COUNT" },
+          ],
+          computed: [perOrder],
+          filters: [onlyOurs],
+          groupBy: ["companyName"],
+          sort: [{ field: "companyName", direction: "asc" }],
+        },
+        admin(),
+      );
+
+      expect(result.rows[0]!.sepetOrt).toBe(1200); // 2400 / 2
+      expect(result.rows[1]!.sepetOrt).toBe(600); //   600 / 1
+      // It is a column like any other, so it carries a header and a format.
+      const column = result.columns.find((c) => c.key === "sepetOrt")!;
+      expect(column.label).toBe("Sipariş başına");
+      expect(column.format).toBe("number");
+    });
+
+    it("lets one computed column build on the one before it", async () => {
+      const result = await runReport(
+        "ORDERS",
+        {
+          columns: [
+            { field: "companyName" },
+            { field: "grandTotal", aggregate: "SUM" },
+            { field: "orderNumber", aggregate: "COUNT" },
+          ],
+          computed: [
+            perOrder,
+            { key: "yuzde", label: "Payı", expression: "sepetOrt / grandTotal__sum * 100" },
+          ],
+          filters: [onlyOurs],
+          groupBy: ["companyName"],
+          sort: [{ field: "companyName", direction: "asc" }],
+        },
+        admin(),
+      );
+      expect(result.rows[0]!.yuzde).toBe(50); // 1200 / 2400
+    });
+
+    it("refuses a formula naming something the report does not produce", async () => {
+      await expect(
+        runReport(
+          "ORDERS",
+          {
+            columns: [{ field: "companyName" }, { field: "grandTotal", aggregate: "SUM" }],
+            computed: [{ key: "x", label: "X", expression: "grandTotal__sum / maliyet" }],
+            filters: [onlyOurs],
+            groupBy: ["companyName"],
+            sort: [],
+          },
+          admin(),
+        ),
+      ).rejects.toThrow(/maliyet/);
+    });
+
+    it("refuses a key that is already a column, and a sort on a computed one", async () => {
+      const base = {
+        columns: [{ field: "companyName" }, { field: "grandTotal", aggregate: "SUM" }],
+        filters: [onlyOurs],
+        groupBy: ["companyName"],
+      };
+
+      await expect(
+        runReport(
+          "ORDERS",
+          {
+            ...base,
+            computed: [
+              { key: "companyName", label: "Çakışan", expression: "grandTotal__sum * 2" },
+            ],
+            sort: [],
+          },
+          admin(),
+        ),
+      ).rejects.toThrow(/zaten var/);
+
+      // Ordering happens in the database, where this column does not exist.
+      await expect(
+        runReport(
+          "ORDERS",
+          {
+            ...base,
+            computed: [
+              { key: "iki", label: "İki katı", expression: "grandTotal__sum * 2" },
+            ],
+            sort: [{ field: "iki", direction: "desc" }],
+          },
+          admin(),
+        ),
+      ).rejects.toThrow(/sıralanamaz/i);
+    });
+
+    it("works on a plain listing as well as on a grouped one", async () => {
+      const result = await runReport(
+        "ORDERS",
+        {
+          columns: [
+            { field: "orderNumber" },
+            { field: "subtotal" },
+            { field: "grandTotal" },
+          ],
+          computed: [
+            { key: "kdv", label: "KDV", expression: "grandTotal - subtotal" },
+          ],
+          filters: [onlyOurs],
+          groupBy: [],
+          sort: [],
+          limit: 1,
+        },
+        admin(),
+      );
+      const row = result.rows[0]!;
+      expect(row.kdv).toBe(Number(row.grandTotal) - Number(row.subtotal));
+    });
+  });
 });

@@ -15,6 +15,7 @@ import {
   type ColumnFormat,
   type FilterOperator,
   type ReportColumn,
+  type ReportComputedColumn,
   type ReportConfig,
   type ReportDataset,
   type ReportFilter,
@@ -77,6 +78,7 @@ const FORMAT_LABELS: Record<ColumnFormat, string> = {
 
 const EMPTY_CONFIG: ReportConfig = {
   columns: [],
+  computed: [],
   filters: [],
   groupBy: [],
   sort: [],
@@ -559,6 +561,14 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             )}
           </Panel>
 
+          <ComputedPanel
+            columns={config.columns}
+            fieldMap={fieldMap}
+            computed={config.computed ?? []}
+            readOnly={readOnly}
+            onChange={(computed) => patch({ computed })}
+          />
+
           {config.filters.length > 0 && (
             <Panel title="Filtreler">
               <ul className="space-y-2">
@@ -782,6 +792,171 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 }
 
 // ─────────────────────────────────────────────
+
+/** Output key of a column — mirrors `columnKey` in the engine. */
+function outKey(c: ReportColumn): string {
+  return c.aggregate ? `${c.field}__${c.aggregate.toLowerCase()}` : c.field;
+}
+
+/**
+ * Computed columns: arithmetic over the columns the report already produces.
+ *
+ * The panel's real job is telling the user what they are allowed to type. The
+ * expression refers to output *keys*, not to the Turkish labels on screen, so
+ * the keys are listed and clicking one drops it into the formula — otherwise
+ * "toplam tutar (toplam)" would have to be guessed as `lineTotal__sum`.
+ */
+function ComputedPanel({
+  columns,
+  fieldMap,
+  computed,
+  readOnly,
+  onChange,
+}: {
+  columns: ReportColumn[];
+  fieldMap: Map<string, CatalogField>;
+  computed: ReportComputedColumn[];
+  readOnly: boolean;
+  onChange: (next: ReportComputedColumn[]) => void;
+}) {
+  const [focused, setFocused] = useState(0);
+
+  const available = columns
+    .filter((c) => !c.hidden)
+    .map((c) => ({
+      key: outKey(c),
+      label: c.label ?? fieldMap.get(c.field)?.label ?? c.field,
+    }));
+  const known = new Set(available.map((a) => a.key));
+
+  const update = (index: number, patch: Partial<ReportComputedColumn>) =>
+    onChange(computed.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  const remove = (index: number) =>
+    onChange(computed.filter((_, i) => i !== index));
+  const add = () =>
+    onChange([
+      ...computed,
+      { key: `hesap${computed.length + 1}`, label: "", expression: "" },
+    ]);
+  const insert = (index: number, key: string) => {
+    const current = computed[index];
+    if (!current) return;
+    const joiner = current.expression.trim() === "" ? "" : " ";
+    update(index, { expression: `${current.expression}${joiner}${key}` });
+  };
+
+  return (
+    <Panel title={`Hesaplanmış sütunlar (${computed.length})`}>
+      <p className="mb-3 text-xs text-neutral-500">
+        Diğer sütunlar üzerinde dört işlem: <code>+ - * / ( )</code>. Sıralama
+        veritabanında yapıldığı için hesaplanmış sütuna göre sıralanamaz.
+      </p>
+
+      {computed.length === 0 ? (
+        <p className="text-sm text-neutral-500">
+          Örnek: iskonto tutarı ÷ ciro, ciro ÷ sipariş adedi.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {computed.map((c, i) => {
+            const unknown = [...c.expression.matchAll(/[A-Za-z_][A-Za-z0-9_]*/g)]
+              .map((m) => m[0])
+              .filter((name) => !known.has(name));
+            return (
+              <li
+                key={i}
+                className="rounded-md border border-neutral-200 p-2 dark:border-neutral-800"
+                onFocus={() => setFocused(i)}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <TextInput
+                    size="sm"
+                    value={c.label}
+                    disabled={readOnly}
+                    placeholder="Başlık"
+                    aria-label="Hesaplanmış sütun başlığı"
+                    onChange={(e) => update(i, { label: e.target.value })}
+                    className="w-40"
+                  />
+                  <TextInput
+                    size="sm"
+                    value={c.key}
+                    disabled={readOnly}
+                    placeholder="anahtar"
+                    aria-label="Hesaplanmış sütun anahtarı"
+                    onChange={(e) => update(i, { key: e.target.value })}
+                    className="w-28 font-mono"
+                  />
+                  <TextInput
+                    size="sm"
+                    value={c.expression}
+                    disabled={readOnly}
+                    placeholder="ör. tutar__sum / adet__count"
+                    aria-label="Formül"
+                    onChange={(e) => update(i, { expression: e.target.value })}
+                    className="w-72 font-mono"
+                  />
+                  <Select
+                    size="sm"
+                    value={c.format ?? "number"}
+                    disabled={readOnly}
+                    aria-label="Biçim"
+                    onChange={(e) =>
+                      update(i, { format: e.target.value as ColumnFormat })
+                    }
+                    className="w-auto"
+                  >
+                    {FORMATS.map((fmt) => (
+                      <option key={fmt} value={fmt}>
+                        {FORMAT_LABELS[fmt]}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="ml-auto">
+                    <IconBtn
+                      label="×"
+                      disabled={readOnly}
+                      onClick={() => remove(i)}
+                    />
+                  </span>
+                </div>
+                {unknown.length > 0 && (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                    Tanınmayan sütun: {unknown.join(", ")}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={readOnly || columns.length === 0}
+          onClick={add}
+        >
+          + Hesaplanmış sütun
+        </Button>
+        {computed.length > 0 &&
+          available.map((a) => (
+            <button
+              key={a.key}
+              type="button"
+              disabled={readOnly}
+              onClick={() => insert(Math.min(focused, computed.length - 1), a.key)}
+              title={a.label}
+              className="rounded border border-neutral-300 px-1.5 py-0.5 font-mono text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              {a.key}
+            </button>
+          ))}
+      </div>
+    </Panel>
+  );
+}
 
 function defaultFilter(f: CatalogField): ReportFilter {
   const operator = (f.operators[0] ?? "eq") as FilterOperator;

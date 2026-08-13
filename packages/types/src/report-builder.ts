@@ -104,6 +104,31 @@ export const reportColumnSchema = z.object({
 });
 export type ReportColumn = z.infer<typeof reportColumnSchema>;
 
+/**
+ * A column the report works out for itself: "kâr / ciro", "toplam / adet".
+ *
+ * The expression is arithmetic over the report's *own output columns* and is
+ * evaluated after the query, never sent to the database. Whether it parses and
+ * whether every name in it exists is decided in @repo/services — same split as
+ * everything else here.
+ */
+export const reportComputedSchema = z.object({
+  /** Output key; must not collide with a source column. */
+  key: z
+    .string()
+    .min(1)
+    .max(30)
+    .regex(
+      /^[A-Za-z_][A-Za-z0-9_]*$/,
+      "Sütun anahtarı harfle başlamalı, harf/rakam/alt çizgi içerebilir",
+    ),
+  label: z.string().min(1, "Sütun başlığı gerekli").max(120),
+  expression: z.string().min(1, "Formül gerekli").max(400),
+  format: ColumnFormatEnum.optional(),
+  width: z.number().int().min(60).max(600).optional(),
+});
+export type ReportComputedColumn = z.infer<typeof reportComputedSchema>;
+
 /** `value` is validated against the field's type by the registry, not here. */
 export const reportFilterSchema = z.object({
   field: z.string().min(1).max(120),
@@ -138,6 +163,7 @@ export type ReportChart = z.infer<typeof reportChartSchema>;
 
 export const reportConfigSchema = z.object({
   columns: z.array(reportColumnSchema).min(1, "En az bir sütun seçin").max(30),
+  computed: z.array(reportComputedSchema).max(10).default([]),
   filters: z.array(reportFilterSchema).max(20).default([]),
   groupBy: z.array(z.string().min(1).max(120)).max(5).default([]),
   sort: z.array(reportSortSchema).max(5).default([]),

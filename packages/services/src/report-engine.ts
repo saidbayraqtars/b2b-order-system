@@ -19,6 +19,7 @@ import {
   type ReportFieldDef,
 } from "./report-registry";
 import { MAX_GROUPS, buildGroupedQuery } from "./report-sql";
+import { FormulaError, compileFormula } from "./report-formula";
 
 // Compiles a user-defined report into a Prisma query and runs it.
 //
@@ -150,13 +151,47 @@ export function normalizeConfig(
     return f;
   });
 
-  // ── sort ──
   // Hidden columns are kept in the definition (so the builder can toggle them
   // back) but never appear in the output, so nothing may reference them.
   const outKeys = new Set(
     finalColumns.filter((c) => !c.hidden).map(columnKey),
   );
+
+  // ── computed ──
+  // Each one may read the source columns and any computed column declared
+  // before it; the order in the array is the order they are worked out in, so
+  // that is also the order they may refer to each other in. Nothing here can
+  // reach the database — see report-formula.ts.
+  const computedKeys = new Set<string>();
+  // `?? []` on purpose: a report saved before computed columns existed has no
+  // such key, and reading one must not depend on Zod having filled it in.
+  const computed = (config.computed ?? []).map((c) => {
+    if (outKeys.has(c.key) || computedKeys.has(c.key)) {
+      invalid(`"${c.key}" adında bir sütun zaten var`, { key: c.key });
+    }
+    try {
+      compileFormula(c.expression, new Set([...outKeys, ...computedKeys]));
+    } catch (err) {
+      if (err instanceof FormulaError) {
+        invalid(`"${c.label}": ${err.message}`, { key: c.key });
+      }
+      throw err;
+    }
+    computedKeys.add(c.key);
+    return { ...c, format: c.format ?? ("number" as const) };
+  });
+
+  // ── sort ──
   const sort = config.sort.filter((s) => {
+    if (computedKeys.has(s.field)) {
+      // Ordering happens in the database and a computed column does not exist
+      // there. Sorting the page we already fetched would order a slice rather
+      // than the report, which reads like a top-10 and is not one.
+      invalid(
+        `Hesaplanmış sütuna göre sıralanamaz ("${s.field}") — sıralama veritabanında yapılıyor`,
+        { field: s.field },
+      );
+    }
     if (!outKeys.has(s.field)) {
       invalid(`Sıralama alanı "${s.field}" çıktı sütunları arasında değil`, {
         field: s.field,
@@ -166,12 +201,15 @@ export function normalizeConfig(
   });
 
   // ── chart ──
+  // Charts are drawn from the finished rows, so a computed column can carry
+  // one.
+  const chartKeys = new Set([...outKeys, ...computedKeys]);
   let chart = config.chart;
   if (chart && chart.type !== "table") {
-    if (!chart.categoryField || !outKeys.has(chart.categoryField)) {
+    if (!chart.categoryField || !chartKeys.has(chart.categoryField)) {
       invalid("Grafik için geçerli bir etiket sütunu seçin");
     }
-    if (!chart.valueField || !outKeys.has(chart.valueField)) {
+    if (!chart.valueField || !chartKeys.has(chart.valueField)) {
       invalid("Grafik için geçerli bir değer sütunu seçin");
     }
   }
@@ -179,6 +217,7 @@ export function normalizeConfig(
 
   return {
     columns: finalColumns,
+    computed,
     filters,
     groupBy: config.groupBy,
     sort,
@@ -384,21 +423,43 @@ export async function runReport(
     truncated = result.truncated;
   }
 
+  const outColumns: ReportColumnOut[] = columns.map((c) => {
+    const def = ds.fields[c.field]!;
+    return {
+      key: columnKey(c),
+      label: c.label ?? labelFor(def, c.aggregate),
+      type: def.type,
+      format: c.aggregate === "COUNT" || c.aggregate === "COUNT_DISTINCT"
+        ? "number"
+        : (c.format ?? defaultFormat(def)),
+      aggregate: c.aggregate ?? null,
+      width: c.width ?? null,
+    };
+  });
+
+  // Computed columns are worked out here, on the rows the database returned,
+  // and in the order they were declared so that one may build on the last.
+  for (const c of config.computed ?? []) {
+    const formula = compileFormula(
+      c.expression,
+      new Set(outColumns.map((o) => o.key)),
+    );
+    for (const row of rows) {
+      row[c.key] = formula.evaluate(row);
+    }
+    outColumns.push({
+      key: c.key,
+      label: c.label,
+      type: "number",
+      format: c.format ?? "number",
+      aggregate: null,
+      width: c.width ?? null,
+    });
+  }
+
   return {
     dataset,
-    columns: columns.map((c) => {
-      const def = ds.fields[c.field]!;
-      return {
-        key: columnKey(c),
-        label: c.label ?? labelFor(def, c.aggregate),
-        type: def.type,
-        format: c.aggregate === "COUNT" || c.aggregate === "COUNT_DISTINCT"
-          ? "number"
-          : (c.format ?? defaultFormat(def)),
-        aggregate: c.aggregate ?? null,
-        width: c.width ?? null,
-      };
-    }),
+    columns: outColumns,
     rows,
     rowCount: rows.length,
     scannedRows,
