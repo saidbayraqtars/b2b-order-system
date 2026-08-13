@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getReportDefinition } from "@repo/services";
 import { requirePage } from "@/lib/guard";
+import { LinkButton } from "@/components/form";
 import { REPORT_BUILDER_ROLES, reportContext } from "@/lib/report-context";
 import { ReportBuilder } from "../_components/report-builder";
 import { ScheduleCard } from "../_components/schedule-card";
@@ -23,7 +24,27 @@ export default async function ReportPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">
-      <h1 className="mb-5 text-xl font-bold">{definition.name}</h1>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">{definition.name}</h1>
+        {/* Server-built downloads: the file someone saves and the file that
+            arrives by e-mail are then the same bytes. The designer's own CSV
+            button stays for previews that were never saved. */}
+        <div className="flex items-center gap-2">
+          <LinkButton
+            href={`/api/reports/definitions/${definition.id}/export?format=XLSX`}
+          >
+            Excel indir
+          </LinkButton>
+          <LinkButton
+            href={`/api/reports/definitions/${definition.id}/export?format=CSV`}
+          >
+            CSV indir
+          </LinkButton>
+          <LinkButton href={`/reports/${definition.id}/print`}>
+            Yazdır / PDF
+          </LinkButton>
+        </div>
+      </div>
       <ReportBuilder
         saved={{
           id: definition.id,

@@ -196,6 +196,21 @@ export type UpdateReportDefinitionInput = z.infer<
 >;
 
 /**
+ * What a delivered or downloaded report is packed as.
+ *
+ * CSV survives anywhere; XLSX carries numbers as numbers, which matters because
+ * a Turkish-locale Excel reads "1234.56" out of a CSV as text and totals a
+ * column of text as zero.
+ */
+export const ReportFileFormatEnum = z.enum(["CSV", "XLSX"]);
+export type ReportFileFormat = z.infer<typeof ReportFileFormatEnum>;
+
+export const REPORT_FILE_FORMAT_LABELS: Record<ReportFileFormat, string> = {
+  CSV: "CSV",
+  XLSX: "Excel (.xlsx)",
+};
+
+/**
  * Scheduled delivery of a saved report.
  *
  * `intervalMinutes: null` turns the schedule off — sending an explicit null is
@@ -210,6 +225,7 @@ export const reportScheduleSchema = z
       .array(z.string().email("Geçerli bir e-posta girin").max(200))
       .max(20)
       .default([]),
+    format: ReportFileFormatEnum.default("CSV"),
   })
   .refine(
     (v) => v.intervalMinutes === null || v.recipients.length > 0,

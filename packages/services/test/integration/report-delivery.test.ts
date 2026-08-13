@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@repo/database";
 import {
   deliverDueReports,
+  getReportSchedule,
   reportToCsv,
   setReportSchedule,
 } from "../../src/report-delivery";
@@ -178,6 +179,27 @@ suite("zamanlanmış rapor", () => {
 
     const outcomes = await deliverDueReports();
     expect(outcomes.some((o) => o.reportId === reportId)).toBe(false);
+  });
+
+  it("gönderim biçimi saklanır ve tanınmayan değer CSV'ye düşer", async () => {
+    const view = await setReportSchedule(
+      reportId,
+      {
+        intervalMinutes: 1440,
+        recipients: ["patron@test.local"],
+        format: "XLSX",
+      },
+      ctx(),
+    );
+    expect(view.format).toBe("XLSX");
+
+    // Daha yeni bir sürümün yazdığı değer gönderimi düşürmemeli.
+    await prisma.reportDefinition.update({
+      where: { id: reportId },
+      data: { scheduleFormat: "PARQUET" },
+    });
+    const after = await getReportSchedule(reportId);
+    expect(after!.format).toBe("CSV");
   });
 
   it("CSV Excel'in açabileceği biçimde çıkar", () => {

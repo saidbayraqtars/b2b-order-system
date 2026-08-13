@@ -71,6 +71,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 55 | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven | ✅ |
 | 56 | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili | ✅ |
 | 57 | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez | ✅ |
+| 58 | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası | ✅ |
 
 ---
 
@@ -2504,7 +2505,65 @@ erişilemeyen kart, silinmiş rapor, göremediği rapora kart açma reddi,
 paylaşım/düzenleme yetkileri ve elle bozulmuş kartın atılması. Toplam
 **562 test**.
 
-## 53. API Uçları
+## 53. Rapor Çıktısı: Excel ve PDF (Adım 58)
+
+Rapor yalnızca CSV olarak iniyordu ve CSV'yi tarayıcı üretiyordu.
+
+### XLSX'i kendimiz yazıyoruz
+
+`xlsx.ts` bir .xlsx dosyasını sıfırdan üretiyor: birkaç XML parçası + elle
+yazılmış bir ZIP (deflate + CRC32). Bir tablo için gereken bu kadarı bağımlılık
+eklemeye değmiyordu ve karşılığında iki şey kazandırıyor:
+
+- **Sayı sayı olarak giriyor.** Türkçe Excel CSV'deki `1234.56`yı metin okur;
+  metin sütununun toplamı sıfırdır. Asıl dert buydu.
+- **Türkçe karakter UTF-8.** CSV'nin BOM + noktalı virgül numarasına gerek yok.
+
+Bilerek yapılmayanlar: biçem (styles), formül, ikinci sayfa, Excel tarih serisi.
+Tarih zaten metin olarak giriyor — ISO metni de doğru sıralanıyor ve tarih
+biçimi için ayrı bir styles parçası gerekirdi.
+
+ZIP zaman damgaları "şimdi" değil **sabit**: aynı rapor iki kez üretildiğinde
+bayt bayt aynı dosya çıkıyor, test edilebilir olmasının sebebi bu.
+
+### Dosyayı sunucu üretiyor
+
+`GET /api/reports/definitions/:id/export?format=XLSX|CSV`. İndirilen dosya ile
+e-postayla gelen dosya artık **aynı bayt**. Kapsam yine çalıştıranın kapsamı.
+Tasarımcının içindeki CSV düğmesi duruyor — o, henüz kaydedilmemiş önizleme
+için.
+
+Zamanlanmış gönderim de biçim seçiyor (`scheduleFormat`). Kolon metin, enum
+değil: değeri Zod tarafı sahipleniyor ve **tanınmayan bir değer CSV'ye düşüyor**,
+gönderimi düşürmüyor. Mevcut gönderimler dünkü dosyanın aynısını almaya devam
+ediyor.
+
+### PDF: tarayıcı yazdırıyor
+
+`/reports/:id/print` yazdırmaya hazır sayfa; PDF'i tarayıcının kendi yazdırma
+penceresi üretiyor. Sunucuda PDF üreticisi **yok ve bu bir karar**:
+
+- Başlıksız tarayıcı (puppeteer) imaja bir tarayıcı kadar megabayt ve yama
+  yükü ekler — hem de sipariş alan makineye.
+- PDF kütüphanesi ise gömülü font ister: standart PDF fontlarında **ş, ğ, İ
+  yok**; Türkçe rapor delikli basılır.
+
+Tarayıcıda ikisi de zaten var, doğru fontlarla, dosyayı isteyen kişinin
+makinesinde. Kargo etiketi de aynı yoldan basılıyor.
+
+**Sonucu saklamıyoruz:** zamanlanmış gönderim CSV veya Excel ekleyebiliyor, PDF
+ekleyemiyor. Sabah 07:00'de yazıcının başında kimse beklemiyor zaten.
+
+### Doğrulama
+
+8 birim + 1 entegrasyon testi: ZIP'in beş parçası ve merkezi dizin kaydı,
+sayının tip niteliksiz yazılması, sıfırın boş sayılmaması, boş hücrenin hiç
+yazılmaması, XML kaçışı, Türkçe karakter, sütun genişliği, Excel'in
+reddedeceği sayfa adının temizlenmesi, aynı girdinin aynı baytı vermesi,
+Z'den sonraki sütun harfleri; gönderim biçiminin saklanması ve tanınmayan
+değerin CSV'ye düşmesi. Toplam **571 test**.
+
+## 54. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2534,6 +2593,7 @@ paylaşım/düzenleme yetkileri ve elle bozulmuş kartın atılması. Toplam
 | GET · POST | `/api/reports/dashboards` | süper admin, plasiyer, firma yöneticisi |
 | GET · PATCH · DELETE | `/api/reports/dashboards/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
 | GET | `/api/reports/dashboards/:id/run` | okuyabilen herkes (her kart çalıştıranın kapsamıyla) |
+| GET | `/api/reports/definitions/:id/export?format=CSV|XLSX` | okuyabilen herkes (kapsam çalıştırana göre) |
 | GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
 | POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
 | POST | `/api/admin/uploads` | süper admin (multipart görsel) |
@@ -2724,7 +2784,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Rapor tasarımcısı v3 (kalanı):** PDF/XLSX eki. Hesaplanmış sütun Adım 56'da, pano Adım 57'de, zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
 ### Uzun vadeli backlog

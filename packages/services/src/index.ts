@@ -30,6 +30,7 @@ export * from "./report-engine";
 export * from "./report-definition";
 export * from "./report-dashboard";
 export * from "./report-delivery";
+export * from "./xlsx";
 export * from "./company-admin";
 export * from "./user-admin";
 export * from "./audit";

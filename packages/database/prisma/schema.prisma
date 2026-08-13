@@ -1951,6 +1951,10 @@ model ReportDefinition {
   /// weekly sales sheet are usually people without an account (an accountant,
   /// an owner). What they receive is still bounded by the OWNER's row scope.
   scheduleRecipients      String[]  @default([])
+  /// "CSV" or "XLSX". Text rather than an enum: the set is owned by the Zod
+  /// schema next to the rest of the report vocabulary, and a value this column
+  /// does not recognise falls back to CSV instead of failing the delivery.
+  scheduleFormat          String    @default("CSV")
   scheduleNextRunAt       DateTime?
   scheduleLastRunAt       DateTime?
   /// "OK" / "ERROR" plus a one-line summary, so the operator sees the last

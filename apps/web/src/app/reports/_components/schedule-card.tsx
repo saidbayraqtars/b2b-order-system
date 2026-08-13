@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail, Plus, X } from "lucide-react";
+import {
+  REPORT_FILE_FORMAT_LABELS,
+  ReportFileFormatEnum,
+  type ReportFileFormat,
+} from "@repo/types";
 import { apiGet, apiPut } from "@/lib/fetcher";
 import { Badge, LoadingState } from "@/components/ui";
 import {
@@ -24,6 +29,7 @@ import {
 interface ScheduleView {
   intervalMinutes: number | null;
   recipients: string[];
+  format: ReportFileFormat;
   nextRunAt: string | null;
   lastRunAt: string | null;
   lastStatus: string | null;
@@ -66,6 +72,7 @@ export function ScheduleCard({
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [interval, setInterval] = useState<number | null>(null);
   const [recipients, setRecipients] = useState<string[] | null>(null);
+  const [format, setFormat] = useState<ReportFileFormat | null>(null);
   const [draft, setDraft] = useState("");
 
   // Sunucudan gelen değer başlangıç; kullanıcı dokunduğu andan itibaren yerel
@@ -73,6 +80,7 @@ export function ScheduleCard({
   const isOn = enabled ?? (schedule?.intervalMinutes ?? null) !== null;
   const currentInterval = interval ?? schedule?.intervalMinutes ?? 1440;
   const currentRecipients = recipients ?? schedule?.recipients ?? [];
+  const currentFormat = format ?? schedule?.format ?? "CSV";
 
   const save = useMutation({
     mutationFn: () =>
@@ -81,6 +89,7 @@ export function ScheduleCard({
         {
           intervalMinutes: isOn ? currentInterval : null,
           recipients: isOn ? currentRecipients : [],
+          format: currentFormat,
         },
       ),
     onSuccess: (data) => {
@@ -88,6 +97,7 @@ export function ScheduleCard({
       setEnabled(null);
       setInterval(null);
       setRecipients(null);
+      setFormat(null);
     },
   });
 
@@ -119,7 +129,7 @@ export function ScheduleCard({
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Rapor belirtilen sıklıkta çalıştırılıp CSV eki olarak gönderilir.
+            Rapor belirtilen sıklıkta çalıştırılıp dosya eki olarak gönderilir.
             Rapor <strong>sahibinin</strong> yetkisiyle çalışır — alıcılar
             sahibinin görebildiğinden fazlasını görmez.
           </p>
@@ -144,6 +154,29 @@ export function ScheduleCard({
                   {INTERVALS.map((i) => (
                     <option key={i.value} value={i.value}>
                       {i.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="max-w-xs">
+                <Label
+                  htmlFor="schedule-format"
+                  hint="Excel sayıları sayı olarak okur"
+                >
+                  Dosya biçimi
+                </Label>
+                <Select
+                  id="schedule-format"
+                  value={currentFormat}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    setFormat(e.target.value as ReportFileFormat)
+                  }
+                >
+                  {ReportFileFormatEnum.options.map((f) => (
+                    <option key={f} value={f}>
+                      {REPORT_FILE_FORMAT_LABELS[f]}
                     </option>
                   ))}
                 </Select>

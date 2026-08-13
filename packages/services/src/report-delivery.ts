@@ -2,12 +2,14 @@ import { prisma } from "@repo/database";
 import {
   reportConfigSchema,
   type ReportDataset,
+  type ReportFileFormat,
   type ReportScheduleInput,
 } from "@repo/types";
 import { BusinessError } from "./errors";
 import { sendMail, appUrl, type MailAttachment } from "./mail";
 import { normalizeConfig, runReport, type ReportRunResult } from "./report-engine";
 import type { ReportContext } from "./report-registry";
+import { XLSX_CONTENT_TYPE, buildXlsx } from "./xlsx";
 
 // Scheduled report delivery.
 //
@@ -55,7 +57,27 @@ export function reportToCsv(result: ReportRunResult): string {
   return `\uFEFF${[header, ...lines].join("\r\n")}\r\n`;
 }
 
-function fileName(name: string, at: Date): string {
+// ─────────────────────────────────────────────
+// XLSX
+// ─────────────────────────────────────────────
+
+/**
+ * The same result as a spreadsheet.
+ *
+ * Numbers go in as numbers, which is the whole reason this exists next to the
+ * CSV: a Turkish-locale Excel reads "1234.56" from a CSV as text and a total of
+ * a column of text is zero. The cell values are what the engine already
+ * produced, so a computed column travels with the rest.
+ */
+export function reportToXlsx(result: ReportRunResult, name: string): Buffer {
+  return buildXlsx(
+    name,
+    result.columns.map((c) => ({ label: c.label, width: c.width })),
+    result.rows.map((row) => result.columns.map((c) => row[c.key] ?? null)),
+  );
+}
+
+function fileName(name: string, at: Date, extension = "csv"): string {
   const slug = name
     .toLocaleLowerCase("tr")
     .replace(/[ıİ]/g, "i")
@@ -68,7 +90,16 @@ function fileName(name: string, at: Date): string {
     .replace(/^-|-$/g, "")
     .slice(0, 60);
   const stamp = at.toISOString().slice(0, 10);
-  return `${slug || "rapor"}-${stamp}.csv`;
+  return `${slug || "rapor"}-${stamp}.${extension}`;
+}
+
+/** Public name for a downloaded report file. */
+export function reportFileName(
+  name: string,
+  format: ReportFileFormat,
+  at: Date = new Date(),
+): string {
+  return fileName(name, at, format === "XLSX" ? "xlsx" : "csv");
 }
 
 // ─────────────────────────────────────────────
@@ -78,6 +109,7 @@ function fileName(name: string, at: Date): string {
 export interface ReportScheduleView {
   intervalMinutes: number | null;
   recipients: string[];
+  format: ReportFileFormat;
   nextRunAt: string | null;
   lastRunAt: string | null;
   lastStatus: string | null;
@@ -127,6 +159,7 @@ export async function setReportSchedule(
     data: {
       scheduleIntervalMinutes: input.intervalMinutes,
       scheduleRecipients: off ? [] : input.recipients,
+      scheduleFormat: input.format,
       // Turning it on schedules the first delivery one period out rather than
       // immediately: pressing "save" should not fire an e-mail at everyone.
       scheduleNextRunAt: off
@@ -141,6 +174,7 @@ export async function setReportSchedule(
 const SCHEDULE_SELECT = {
   scheduleIntervalMinutes: true,
   scheduleRecipients: true,
+  scheduleFormat: true,
   scheduleNextRunAt: true,
   scheduleLastRunAt: true,
   scheduleLastStatus: true,
@@ -150,6 +184,7 @@ const SCHEDULE_SELECT = {
 function toScheduleView(row: {
   scheduleIntervalMinutes: number | null;
   scheduleRecipients: string[];
+  scheduleFormat: string;
   scheduleNextRunAt: Date | null;
   scheduleLastRunAt: Date | null;
   scheduleLastStatus: string | null;
@@ -158,6 +193,9 @@ function toScheduleView(row: {
   return {
     intervalMinutes: row.scheduleIntervalMinutes,
     recipients: row.scheduleRecipients,
+    // Anything the column does not recognise reads as CSV rather than failing:
+    // the delivery must survive a value written by a newer version.
+    format: row.scheduleFormat === "XLSX" ? "XLSX" : "CSV",
     nextRunAt: row.scheduleNextRunAt?.toISOString() ?? null,
     lastRunAt: row.scheduleLastRunAt?.toISOString() ?? null,
     lastStatus: row.scheduleLastStatus,
@@ -187,6 +225,7 @@ interface DueReport {
   ownerId: string;
   scheduleIntervalMinutes: number | null;
   scheduleRecipients: string[];
+  scheduleFormat: string;
 }
 
 /**
@@ -264,11 +303,18 @@ async function deliver(report: DueReport): Promise<{ ok: boolean; summary: strin
     ctx,
   );
 
-  const attachment: MailAttachment = {
-    filename: fileName(report.name, new Date()),
-    content: reportToCsv(result),
-    contentType: "text/csv; charset=utf-8",
-  };
+  const xlsx = report.scheduleFormat === "XLSX";
+  const attachment: MailAttachment = xlsx
+    ? {
+        filename: fileName(report.name, new Date(), "xlsx"),
+        content: reportToXlsx(result, report.name),
+        contentType: XLSX_CONTENT_TYPE,
+      }
+    : {
+        filename: fileName(report.name, new Date()),
+        content: reportToCsv(result),
+        contentType: "text/csv; charset=utf-8",
+      };
 
   const mail = await sendMail({
     to: report.scheduleRecipients,
@@ -319,6 +365,7 @@ export async function deliverDueReports(now = new Date()): Promise<DeliveryOutco
       ownerId: true,
       scheduleIntervalMinutes: true,
       scheduleRecipients: true,
+      scheduleFormat: true,
       scheduleNextRunAt: true,
     },
     orderBy: { scheduleNextRunAt: "asc" },
