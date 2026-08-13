@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@repo/database";
 import { createOrder } from "../../src/order";
 import { buildQuote } from "../../src/order-quote";
+import { createPromotion } from "../../src/promotion-admin";
 
 // The half of promotion v2 the pure engine cannot test: gifts have to be priced
 // against the catalogue, and the arithmetic has to keep tying out once a free
@@ -105,7 +106,10 @@ suite("promotion v2: gifts and shipping", () => {
     const orders = await prisma.order.findMany({ where: { companyId }, select: { id: true } });
     await prisma.transaction.deleteMany({ where: { companyId } });
     await prisma.order.deleteMany({ where: { id: { in: orders.map((o) => o.id) } } });
+    // By name as well as by id: a validation test that unexpectedly passes
+    // would otherwise leave a campaign behind for every later run to trip over.
     await prisma.promotion.deleteMany({ where: { id: { in: promotionIds } } });
+    await prisma.promotion.deleteMany({ where: { name: { contains: TAG } } });
     await prisma.price.deleteMany({
       where: { variantId: { in: [paidVariant, giftVariant, scarceVariant, unpricedVariant] } },
     });
@@ -248,6 +252,97 @@ suite("promotion v2: gifts and shipping", () => {
         ],
       });
       expect(quote.lines.some((l) => l.isGift)).toBe(false);
+    });
+  });
+
+  describe("quantity ladders", () => {
+    const ladder = [
+      { minQuantity: 10, value: 1 },
+      { minQuantity: 50, value: 6 },
+    ];
+
+    it("prices the rung the cart actually reached", async () => {
+      await campaign({
+        actions: [
+          { type: "GIFT_TIER", params: { variantId: giftVariant, tiers: ladder } },
+        ],
+      });
+
+      const low = await buildQuote(prisma, cart(10));
+      expect(low.lines.find((l) => l.isGift)!.quantity).toBe(1);
+
+      const high = await buildQuote(prisma, cart(50));
+      const gift = high.lines.find((l) => l.isGift)!;
+      expect(gift.quantity).toBe(6);
+      expect(gift.lineGross.toFixed(2)).toBe("240.00"); // 6 × 40,00
+      expect(gift.lineNet.toFixed(2)).toBe("0.00");
+      expect(high.promotionTotal.toFixed(2)).toBe("240.00");
+    });
+
+    it("replaces the lower rung instead of adding to it", async () => {
+      // The same ladder as three separate campaigns used to stack; one campaign
+      // must give 6 at fifty, not 1 + 6, and not the 5 that "one per ten" gives.
+      await campaign({
+        actions: [
+          { type: "GIFT_TIER", params: { variantId: giftVariant, tiers: ladder } },
+        ],
+      });
+
+      const quote = await buildQuote(prisma, cart(50));
+      expect(quote.lines.filter((l) => l.isGift)).toHaveLength(1);
+      expect(quote.appliedPromotions).toHaveLength(1);
+    });
+
+    it("discounts by the rung the quantity reached", async () => {
+      await campaign({
+        actions: [
+          {
+            type: "PERCENT_OFF_TIER",
+            params: {
+              tiers: [
+                { minQuantity: 10, value: 5 },
+                { minQuantity: 50, value: 10 },
+              ],
+            },
+          },
+        ],
+      });
+
+      const quote = await buildQuote(prisma, cart(50)); // 50 × 100,00
+      expect(quote.promotionTotal.toFixed(2)).toBe("500.00");
+      expect(quote.grandTotal.toFixed(2)).toBe("5400.00"); // 4500 + %20
+    });
+
+    it("refuses a backwards ladder on the way in, and skips it on the way out", async () => {
+      const backwards = [
+        {
+          type: "GIFT_TIER",
+          params: {
+            variantId: giftVariant,
+            tiers: [
+              { minQuantity: 10, value: 6 },
+              { minQuantity: 50, value: 1 },
+            ],
+          },
+        },
+      ];
+
+      // The admin screen is where this is caught, and it is caught by the same
+      // code the engine runs.
+      await expect(
+        createPromotion({
+          name: `P2 Ters ${TAG}`,
+          conditions: [],
+          actions: backwards as never,
+        }),
+      ).rejects.toThrow(/az veriyor/i);
+
+      // Written straight into the table it must not stop the order: a campaign
+      // nobody can read is skipped, exactly like an unknown rule type.
+      await campaign({ actions: backwards });
+      const quote = await buildQuote(prisma, cart(50));
+      expect(quote.lines.some((l) => l.isGift)).toBe(false);
+      expect(quote.appliedPromotions).toHaveLength(0);
     });
   });
 

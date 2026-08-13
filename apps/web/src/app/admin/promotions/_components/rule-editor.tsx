@@ -183,6 +183,17 @@ function ParamField({
     );
   }
 
+  if (param.kind === "giftTiers" || param.kind === "percentTiers") {
+    return (
+      <TierField
+        param={param}
+        gift={param.kind === "giftTiers"}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
   if (param.kind === "paymentMethod") {
     return (
       <label className="block">
@@ -207,6 +218,7 @@ function ParamField({
   }
 
   // money / percent / quantity — all numeric, only the step differs.
+  // (Ladders are handled above; see TierField.)
   const step = param.kind === "quantity" ? 1 : 0.01;
   return (
     <label className="block">
@@ -224,4 +236,125 @@ function ParamField({
       />
     </label>
   );
+}
+
+/** A ladder row while it is being typed: either cell may still be empty. */
+interface TierRow {
+  minQuantity?: number;
+  value?: number;
+}
+
+/**
+ * The quantity ladder control ("10 adet → 1 hediye, 50 adet → 6 hediye").
+ *
+ * Rows keep the order they were added in and are not sorted while typing —
+ * re-ordering the list under the cursor is how you make someone edit the wrong
+ * row. The server sorts before it evaluates, so the stored order does not
+ * matter; what does matter is that the ladder never pays less higher up, and
+ * that rule is checked here as well as on the server so the mistake is visible
+ * before the campaign is saved rather than as a validation error afterwards.
+ */
+function TierField({
+  param,
+  gift,
+  value,
+  onChange,
+}: {
+  param: RuleParamMeta;
+  gift: boolean;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const rows: TierRow[] = Array.isArray(value) ? (value as TierRow[]) : [];
+
+  const update = (index: number, patch: TierRow) =>
+    onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  const remove = (index: number) =>
+    onChange(rows.filter((_, i) => i !== index));
+  const add = () => onChange([...rows, {}]);
+
+  const num = (raw: string) => (raw === "" ? undefined : Number(raw));
+  const warning = ladderWarning(rows);
+
+  return (
+    <div className="block w-full">
+      <Label hint={param.hint}>{param.label}</Label>
+      <ul className="space-y-2">
+        {rows.map((row, index) => (
+          // Rows have no identity of their own; position is what identifies them.
+          <li key={index} className="flex items-end gap-2">
+            <label className="block">
+              <span className="text-xs text-neutral-500">Adet en az</span>
+              <TextInput
+                type="number"
+                min={1}
+                step={1}
+                size="sm"
+                className="w-28"
+                value={row.minQuantity === undefined ? "" : String(row.minQuantity)}
+                onChange={(e) =>
+                  update(index, { minQuantity: num(e.target.value) })
+                }
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-neutral-500">
+                {gift ? "Hediye adedi" : "Oran (%)"}
+              </span>
+              <TextInput
+                type="number"
+                min={gift ? 1 : 0}
+                max={gift ? undefined : 100}
+                step={gift ? 1 : 0.01}
+                size="sm"
+                className="w-28"
+                value={row.value === undefined ? "" : String(row.value)}
+                onChange={(e) => update(index, { value: num(e.target.value) })}
+              />
+            </label>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => remove(index)}
+              aria-label={`${index + 1}. kademeyi kaldır`}
+            >
+              Kaldır
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-2 flex items-center gap-3">
+        <Button variant="secondary" size="sm" onClick={add}>
+          + Kademe
+        </Button>
+        {warning && (
+          <span className="text-xs text-amber-600 dark:text-amber-500">
+            {warning}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Mirrors the server's ladder rules; returns the first problem or null. */
+function ladderWarning(rows: TierRow[]): string | null {
+  if (rows.length === 0) return "En az bir kademe girin";
+  if (rows.some((r) => r.minQuantity === undefined || r.value === undefined)) {
+    return "Boş kademe var";
+  }
+
+  const sorted = [...rows].sort((a, b) => a.minQuantity! - b.minQuantity!);
+  for (let i = 1; i < sorted.length; i += 1) {
+    const prev = sorted[i - 1]!;
+    const cur = sorted[i]!;
+    if (cur.minQuantity === prev.minQuantity) {
+      return `Aynı adetten iki kademe var (${cur.minQuantity})`;
+    }
+    if (cur.value! < prev.value!) {
+      return `Üst kademe alt kademeden az veriyor (${cur.minQuantity} adet)`;
+    }
+  }
+  return null;
 }

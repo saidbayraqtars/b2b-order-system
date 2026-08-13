@@ -473,3 +473,126 @@ describe("gift items", () => {
     expect(result.gifts[0]!.quantity).toBe(2);
   });
 });
+
+describe("quantity ladders", () => {
+  const giftLadder = (tiers: unknown, extra: Record<string, unknown> = {}) => ({
+    type: "GIFT_TIER",
+    params: { variantId: "v-gift", tiers, ...extra },
+  });
+  const percentLadder = (tiers: unknown, extra: Record<string, unknown> = {}) => ({
+    type: "PERCENT_OFF_TIER",
+    params: { tiers, ...extra },
+  });
+  const LADDER = [
+    { minQuantity: 10, value: 1 },
+    { minQuantity: 50, value: 6 },
+  ];
+
+  it("gives the highest rung reached, not the sum of the rungs", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00", { quantity: 50 })],
+      context: CONTEXT,
+      promotions: [promo("p1", [], [giftLadder(LADDER)])],
+    });
+    // 1 + 6 would be stacking, 5 would be "one per ten": the point of the rung
+    // is that it pays better than the rate below it.
+    expect(result.gifts).toEqual([
+      { promotionId: "p1", variantId: "v-gift", quantity: 6 },
+    ]);
+  });
+
+  it("stays on the rung until the next one is reached", () => {
+    const at = (quantity: number) =>
+      applyPromotions({
+        lines: [line("a", "1000.00", { quantity })],
+        context: CONTEXT,
+        promotions: [promo("p1", [], [giftLadder(LADDER)])],
+      }).gifts[0]?.quantity ?? 0;
+
+    expect(at(9)).toBe(0);
+    expect(at(10)).toBe(1);
+    expect(at(49)).toBe(1);
+    expect(at(50)).toBe(6);
+    // Above the top rung the ladder stops; repeating is what perMatch is for.
+    expect(at(500)).toBe(6);
+  });
+
+  it("reads the rungs in whatever order they were stored", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00", { quantity: 50 })],
+      context: CONTEXT,
+      promotions: [
+        promo("p1", [], [giftLadder([...LADDER].reverse())]),
+      ],
+    });
+    expect(result.gifts[0]!.quantity).toBe(6);
+  });
+
+  it("counts only the targeted lines but discounts all of them", () => {
+    const result = applyPromotions({
+      lines: [
+        line("a", "1000.00", { quantity: 30, categoryId: "cat-promo" }),
+        line("b", "1000.00", { quantity: 40, categoryId: "cat-other" }),
+      ],
+      context: CONTEXT,
+      promotions: [
+        promo(
+          "p1",
+          [],
+          [
+            percentLadder(
+              [
+                { minQuantity: 10, value: 5 },
+                { minQuantity: 50, value: 10 },
+              ],
+              { categoryIds: ["cat-promo"] },
+            ),
+          ],
+        ),
+      ],
+    });
+    // 30 units in the targeted category: the 50 rung is not reached even though
+    // the cart holds 70 items in total.
+    expect(result.perLine.get("a")!.toFixed(2)).toBe("50.00");
+    expect(result.perLine.has("b")).toBe(false);
+  });
+
+  it("gives nothing at all below the first rung", () => {
+    const result = applyPromotions({
+      lines: [line("a", "1000.00", { quantity: 5 })],
+      context: CONTEXT,
+      promotions: [promo("p1", [], [percentLadder(LADDER)])],
+    });
+    expect(result.total.toFixed(2)).toBe("0.00");
+    expect(result.applied).toHaveLength(0);
+  });
+
+  it("refuses a ladder that pays less the higher you climb", () => {
+    expect(() =>
+      compileAction(
+        giftLadder([
+          { minQuantity: 10, value: 6 },
+          { minQuantity: 50, value: 1 },
+        ]),
+      ),
+    ).toThrowError(/az veriyor/i);
+  });
+
+  it("refuses two rungs starting at the same quantity", () => {
+    expect(() =>
+      compileAction(
+        giftLadder([
+          { minQuantity: 10, value: 1 },
+          { minQuantity: 10, value: 2 },
+        ]),
+      ),
+    ).toThrowError(/aynı adetten/i);
+  });
+
+  it("refuses an empty ladder and a fractional gift count", () => {
+    expect(() => compileAction(giftLadder([]))).toThrowError(BusinessError);
+    expect(() =>
+      compileAction(giftLadder([{ minQuantity: 10, value: 1.5 }])),
+    ).toThrowError(BusinessError);
+  });
+});

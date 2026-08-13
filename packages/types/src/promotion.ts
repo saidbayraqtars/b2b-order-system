@@ -114,6 +114,13 @@ export const RuleParamKindEnum = z.enum([
   "paymentMethod",
   /** A single product variant — the gift a campaign hands out. */
   "variantId",
+  /**
+   * A quantity ladder: rows of `{ minQuantity, value }`. The two kinds differ
+   * only in what `value` means and how it is typed, which is exactly what the
+   * builder needs to know to draw the row — the ladder itself is one control.
+   */
+  "giftTiers",
+  "percentTiers",
 ]);
 export type RuleParamKind = z.infer<typeof RuleParamKindEnum>;
 

@@ -106,6 +106,98 @@ function matchLines(lines: EngineLine[], target: TargetParams): EngineLine[] {
 }
 
 // ─────────────────────────────────────────────
+// QUANTITY LADDERS
+// ─────────────────────────────────────────────
+
+/**
+ * One rung: "from this many units, this much".
+ *
+ * `value` is deliberately not called `quantity` or `percent`. The ladder is one
+ * mechanism used by two actions, and giving the column two names would mean two
+ * schemas, two validators and two controls in the builder for the same table.
+ * What `value` means is carried by the parameter's kind (`giftTiers` /
+ * `percentTiers`), which is where the builder already looks.
+ */
+export interface Tier {
+  minQuantity: number;
+  value: number;
+}
+
+interface LadderParams extends TargetParams {
+  tiers: Tier[];
+}
+
+/**
+ * The ladder is a staircase, not a running total: reaching a higher rung
+ * *replaces* the lower one. "10 alana 1, 50 alana 6" means a cart of 50 gets 6,
+ * not 1 + 6, and not the 5 that repeating "one per ten" would have produced.
+ * That is the whole point of the rung — it pays better than the rate below it.
+ *
+ * A cart above the top rung stays on the top rung. Someone who wants the reward
+ * to keep repeating past it is describing GIFT_ITEM's `perMatch`, not a ladder.
+ */
+function pickTier(tiers: Tier[], matched: number): Tier | null {
+  let best: Tier | null = null;
+  for (const tier of tiers) {
+    if (matched < tier.minQuantity) continue;
+    if (best === null || tier.minQuantity > best.minQuantity) best = tier;
+  }
+  return best;
+}
+
+/**
+ * Ladder schema. Rows may arrive in any order — the builder lets them be typed
+ * in any order and sorting them for the user is friendlier than refusing to
+ * save — but two rungs may not start at the same quantity, and a rung may never
+ * pay *less* than the one below it. A ladder that goes backwards punishes the
+ * customer for buying more, which is never what was meant and would be found
+ * out by the customer rather than by the person who typed it.
+ */
+function ladderSchema(value: z.ZodNumber) {
+  return z
+    .array(
+      z.object({
+        minQuantity: z.number().int().positive().max(1_000_000),
+        value,
+      }),
+    )
+    .min(1, "En az bir kademe girin")
+    .max(10, "En fazla 10 kademe")
+    .superRefine((tiers, ctx) => {
+      const sorted = [...tiers].sort((a, b) => a.minQuantity - b.minQuantity);
+      for (let i = 1; i < sorted.length; i += 1) {
+        const prev = sorted[i - 1]!;
+        const cur = sorted[i]!;
+        if (cur.minQuantity === prev.minQuantity) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Aynı adetten iki kademe var (${cur.minQuantity})`,
+          });
+          return;
+        }
+        if (cur.value < prev.value) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Üst kademe alt kademeden az veriyor (${cur.minQuantity} adet)`,
+          });
+          return;
+        }
+      }
+    });
+}
+
+const LADDER_META = (kind: "giftTiers" | "percentTiers"): RuleParamMeta => ({
+  key: "tiers",
+  label: "Kademeler",
+  kind,
+  required: true,
+  hint:
+    kind === "giftTiers"
+      ? "Örn. 10 adet → 1 hediye, 50 adet → 6 hediye. Ulaşılan en üst kademe geçerlidir."
+      : "Örn. 10 adet → %5, 50 adet → %10. Ulaşılan en üst kademe geçerlidir.",
+});
+
+// ─────────────────────────────────────────────
 // RULE DEFINITION SHAPES
 // ─────────────────────────────────────────────
 
@@ -413,6 +505,74 @@ const GIFT_ITEM: ActionDef<{
 };
 
 /**
+ * Kademeli hediye — the ladder version of GIFT_ITEM.
+ *
+ * GIFT_ITEM's `perMatch` gives at a flat rate: one per ten, all the way up. A
+ * ladder gives *better* the higher you climb, which is how a seller pushes a
+ * customer from 40 units to 50 and is the reason this could not be expressed
+ * before. It was possible to fake with three campaigns and a min-quantity
+ * condition on each, but they stacked (a cart of 100 collected all three) and
+ * the only tool for stopping that — `stopFurther` — also killed every unrelated
+ * campaign behind it.
+ */
+const GIFT_TIER: ActionDef<{ variantId: string } & LadderParams> = {
+  type: "GIFT_TIER",
+  label: "Kademeli hediye",
+  description:
+    "Eşleşen ürünlerden alınan adede göre artan hediye verir. Ulaşılan en üst kademe geçerlidir, kademeler toplanmaz.",
+  schema: z.object({
+    variantId: z.string().min(1).max(60),
+    tiers: ladderSchema(z.number().int().positive().max(10_000)),
+    ...targetSchema,
+  }),
+  params: [
+    { key: "variantId", label: "Hediye varyant", kind: "variantId", required: true },
+    LADDER_META("giftTiers"),
+    ...TARGET_META,
+  ],
+  apply: (p, s) => {
+    const matched = matchLines(s.lines, p).reduce((n, l) => n + l.quantity, 0);
+    const tier = pickTier(p.tiers, matched);
+    if (!tier) return {};
+    return { gifts: [{ variantId: p.variantId, quantity: tier.value }] };
+  },
+};
+
+/**
+ * Kademeli yüzde indirim — the same ladder, paying in percent.
+ *
+ * Neither of the discounts that already exist covers this. `Price.minQuantity`
+ * is a break on one line's own quantity, and the volume discount (step 25)
+ * looks at what the company turned over across past orders. Neither can say
+ * "there are 50 units of this category in *this* cart, so the whole of it comes
+ * down by 10%".
+ */
+const PERCENT_OFF_TIER: ActionDef<LadderParams> = {
+  type: "PERCENT_OFF_TIER",
+  label: "Kademeli yüzde indirim",
+  description:
+    "Eşleşen ürünlerden alınan adede göre artan yüzde indirim yapar. Ulaşılan en üst kademe geçerlidir.",
+  schema: z.object({
+    tiers: ladderSchema(z.number().positive().max(100)),
+    ...targetSchema,
+  }),
+  params: [LADDER_META("percentTiers"), ...TARGET_META],
+  apply: (p, s) => {
+    const lines = matchLines(s.lines, p);
+    const matched = lines.reduce((n, l) => n + l.quantity, 0);
+    const tier = pickTier(p.tiers, matched);
+    if (!tier) return {};
+
+    const out: Allocation = new Map();
+    for (const line of lines) {
+      const amount = round2(line.net.mul(tier.value).div(100));
+      if (amount.gt(ZERO)) out.set(line.key, amount);
+    }
+    return { perLine: out };
+  },
+};
+
+/**
  * Split `budget` over `lines` in proportion to their net, then hand the rounding
  * remainder to the largest line. Without that last step a 10,00 ₺ discount split
  * over three lines would come to 9,99 ₺ and the order total would not tie out.
@@ -464,11 +624,13 @@ const CONDITIONS = new Map<string, ConditionDef<any>>(
 const ACTIONS = new Map<string, ActionDef<any>>(
   [
     PERCENT_OFF,
+    PERCENT_OFF_TIER,
     FIXED_OFF_UNIT,
     FIXED_OFF_ORDER,
     SHIPPING_PERCENT_OFF,
     FREE_SHIPPING,
     GIFT_ITEM,
+    GIFT_TIER,
   ].map((d) => [d.type, d]),
 );
 

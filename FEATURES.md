@@ -68,6 +68,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 52 | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı | ✅ |
 | 53 | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı | ✅ |
 | 54 | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni | ✅ |
+| 55 | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven | ✅ |
 
 ---
 
@@ -453,7 +454,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 
 ### Hediye ürün (X alana Y bedava)
 
-- Aksiyon `GIFT_ITEM`: hediye varyantı, adet, isteğe bağlı **"her N adette bir"** (`perMatch`) ve **üst sınır** (`maxQuantity`). Hedef ürün/kategori verilirse N sayımı yalnızca o satırlardan yapılır.
+- Aksiyon `GIFT_ITEM`: hediye varyantı, adet, isteğe bağlı **"her N adette bir"** (`perMatch`) ve **üst sınır** (`maxQuantity`). Hedef ürün/kategori verilirse N sayımı yalnızca o satırlardan yapılır. Düz oran verir; **artan** kademe için Adım 55'in `GIFT_TIER`ine bakın.
 - Motor hediyeyi **fiyatlamaz** — katalogdan haberi yok, sadece "şu varyanttan şu kadar" der. Fiyatlamayı teklif yapar: hediye, **kendi liste değeriyle** bir satır olarak eklenir ve **eşit tutarda kampanya indirimiyle** sıfırlanır. Böylece fatura hediyeyi bedelsiz gösterirken değerini de gösterir; "hiç değeri yokmuş" gibi davranmaz.
 - Hediye **stoktan düşer**, ücretli satırların ayırdığı stoğu yemez.
 - Verilemeyen hediye siparişi düşürmez, **atlanır**: stok bittiyse kalan kadarı verilir, firmaya uygulanabilir fiyatı yoksa hiç verilmez. Aylar önce yanlış kurulmuş bir kampanya bugünkü siparişi bloklamamalı.
@@ -2323,7 +2324,63 @@ Yeni blok eklemek için form yazmaya gerek yok: ayar formu kayıt defterindeki
 reddedilmesi, zorunlu bloğun korunması, ayar kırpma, sıranın geri okunması ve
 **elle bozulmuş kaydın** vitrini düşürmemesi. Toplam **523 test**.
 
-## 50. API Uçları
+## 50. Kampanya v3: Adet Kademesi (Adım 55)
+
+"10 alana 1 bedava, 50 alana 6 bedava" tek kampanyada kurulabiliyor. Öncesinde
+bunun karşılığı üç ayrı kampanya + üç ayrı "en az N adet" koşuluydu ve **üst
+üste biniyorlardı**: 100 adetlik sepet üçünü birden topluyordu. Bunu durduran
+tek araç `stopFurther` ise arkasındaki **ilgisiz** kampanyaları da kesiyordu.
+
+### Merdiven toplanmaz, basamak değiştirir
+
+Ulaşılan **en üst** kademe geçerli. 50 adette 6 hediye demek; 1 + 6 değil, "her
+10'da bir"in vereceği 5 de değil. Basamağın anlamı zaten altındaki orandan
+**daha iyi** ödemesi — satıcının müşteriyi 40'tan 50'ye çıkarma aracı bu.
+
+Sepet en üst kademenin üstüne çıkarsa kademe orada durur. "Tekrar etsin"
+isteyen kişi merdiveni değil, `GIFT_ITEM`in `perMatch`ini tarif ediyordur.
+
+### İki aksiyon, tek merdiven
+
+- **`GIFT_TIER`** — kademeli hediye. Hediye varyantı + kademeler + hedef
+  ürün/kategori. Hediyeyi motor yine **fiyatlamaz**; `GIFT_ITEM` ile aynı
+  yoldan geçer (kendi değeriyle satır + eşit indirim, stoktan düşer,
+  verilemiyorsa atlanır).
+- **`PERCENT_OFF_TIER`** — kademeli yüzde. Sepetteki **adet** kademeye karar
+  verir, indirim eşleşen satırların tamamına uygulanır. Bu boşluk gerçekti:
+  `Price.minQuantity` tek satırın kendi adedine bakar, hacim iskontosu (Adım 25)
+  firmanın **geçmiş cirosuna** bakar; "bu sepette bu kategoriden 50 adet var"
+  diyen bir araç yoktu.
+
+Adet sayımı hedeflenen satırlardan yapılır: sepette başka kategoriden 40 adet
+daha olması kademeyi yükseltmez.
+
+### Geri gitmeyen merdiven kuralı
+
+Kademe satırları herhangi bir sırada girilebilir (sunucu değerlendirirken
+sıralıyor), ama:
+
+- aynı adetten iki kademe olamaz,
+- üst kademe alt kademeden **az veremez**.
+
+Geriye giden merdiven müşteriyi çok almakla cezalandırır; bunu yazan kişi değil,
+müşteri fark eder. Kural hem kayıt defterinde hem de kampanya formunda —
+yönetici kaydetmeden önce uyarıyı görüyor.
+
+### Yazarken reddedilir, okurken atlanır
+
+Kampanya motorunun eskiden beri süren davranışı burada da geçerli: elle
+bozulmuş bir kademe kaydı siparişi **düşürmez**, o kampanya atlanır ve günlüğe
+yazılır. Doğrulama yeri kampanya formu.
+
+### Doğrulama
+
+8 birim + 4 entegrasyon testi: basamak eşiği (9/10/49/50/500), kademelerin
+toplanmaması, karışık sırada saklanmış kademe, hedeflenmemiş satırın sayıma
+girmemesi, geri giden merdivenin reddi ve bozuk kaydın atlanması. Toplam
+**535 test**.
+
+## 51. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2540,7 +2597,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada). Performans raporu Adım 44'te geldi.
 - **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
