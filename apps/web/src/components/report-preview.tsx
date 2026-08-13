@@ -48,30 +48,39 @@ export function formatCell(
 export function ReportPreview({
   result,
   title,
+  /**
+   * Dashboard tile: drop the scan line and the CSV button. On a board they are
+   * eight identical rows of chrome around the numbers people came to read, and
+   * the report is one click away with its own export.
+   */
+  compact = false,
 }: {
   result: ReportRunResult;
   title?: string;
+  compact?: boolean;
 }) {
   // The engine already dropped hidden columns; everything returned is shown.
   const visible = result.columns;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm text-neutral-500">
-          {result.rowCount} satır
-          {result.grouped ? " (gruplanmış)" : ""} · {result.scannedRows} kayıt
-          tarandı
-        </p>
-        <button
-          type="button"
-          onClick={() => downloadCsv(result, title)}
-          disabled={result.rows.length === 0}
-          className="h-8 rounded-md border border-neutral-300 px-3 text-xs disabled:opacity-50 dark:border-neutral-700"
-        >
-          CSV indir
-        </button>
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-sm text-neutral-500">
+            {result.rowCount} satır
+            {result.grouped ? " (gruplanmış)" : ""} · {result.scannedRows} kayıt
+            tarandı
+          </p>
+          <button
+            type="button"
+            onClick={() => downloadCsv(result, title)}
+            disabled={result.rows.length === 0}
+            className="h-8 rounded-md border border-neutral-300 px-3 text-xs disabled:opacity-50 dark:border-neutral-700"
+          >
+            CSV indir
+          </button>
+        </div>
+      )}
 
       {result.truncated && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">

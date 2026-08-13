@@ -346,6 +346,7 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   REPORT_NOT_FOUND: 404,
   INVALID_REPORT: 422,
   INVALID_SCHEDULE: 422,
+  DASHBOARD_NOT_FOUND: 404,
   // company / user administration
   USER_NOT_FOUND: 404,
   ADDRESS_NOT_FOUND: 404,

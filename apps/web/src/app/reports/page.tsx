@@ -16,12 +16,20 @@ export default async function ReportsPage() {
           </p>
         </div>
         {/* Gezinme ve çıkış artık kabuğun işi (bkz. layout.tsx). */}
-        <Link
-          href="/reports/new"
-          className="h-9 rounded-md bg-brand-600 px-3 text-sm font-medium leading-9 text-white hover:bg-brand-700"
-        >
-          Yeni rapor
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/reports/dashboards"
+            className="h-9 rounded-md border border-neutral-300 px-3 text-sm font-medium leading-9 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            Panolar
+          </Link>
+          <Link
+            href="/reports/new"
+            className="h-9 rounded-md bg-brand-600 px-3 text-sm font-medium leading-9 text-white hover:bg-brand-700"
+          >
+            Yeni rapor
+          </Link>
+        </div>
       </header>
 
       <ReportsList />

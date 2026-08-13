@@ -160,6 +160,7 @@ model User {
   paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
   reports        ReportDefinition[]   @relation("ReportOwner")
+  dashboards     ReportDashboard[]    @relation("DashboardOwner")
   auditLogs      AuditLog[]           @relation("AuditActor")
   passwordResets PasswordResetToken[]
   salesTargets   SalesTarget[]        @relation("SalesTargetRep")
@@ -1964,6 +1965,36 @@ model ReportDefinition {
   @@index([dataset])
   /// The delivery job's only query: which reports are due.
   @@index([scheduleNextRunAt])
+}
+
+/// A board of saved reports shown together.
+///
+/// The board stores nothing but an ordered list of tiles pointing at
+/// `ReportDefinition` rows — no copy of a report's config, so a report that is
+/// edited is edited everywhere it appears. A tile whose report was deleted, or
+/// which the viewer may not open, is reported as a broken tile rather than
+/// taking the board down with it.
+///
+/// Each tile is run under the VIEWER's row scope, exactly like opening the
+/// report itself, so sharing a board can never widen what someone sees.
+model ReportDashboard {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  ownerId String
+  owner   User   @relation("DashboardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /// Visible to every user who may build reports, not just the owner.
+  isShared Boolean @default(false)
+
+  /// `[{ definitionId, width, title? }]` — validated on write and on read.
+  tiles Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
 }
 
 // ─────────────────────────────────────────────

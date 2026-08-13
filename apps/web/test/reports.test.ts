@@ -7,6 +7,8 @@ import {
   POST as createDefinition,
 } from "@/app/api/reports/definitions/route";
 import { GET as runDefinition } from "@/app/api/reports/definitions/[id]/run/route";
+import { POST as createDashboard } from "@/app/api/reports/dashboards/route";
+import { GET as runDashboardRoute } from "@/app/api/reports/dashboards/[id]/run/route";
 import { bearer, callRoute, Fixtures, hasDb, type TestUser } from "./harness";
 
 // The report builder is the one place where a user composes a query and the
@@ -268,6 +270,78 @@ suite("rapor tasarımcısı (HTTP)", () => {
       });
       // Listede yok, kimliği tahmin edilse bile koşmuyor.
       expect(run.status).toBe(403);
+    });
+  });
+
+  describe("pano", () => {
+    let boardId: string;
+    let tileReport: string;
+
+    it("pano kaydedilir ve kartları koşar", async () => {
+      const report = await callRoute(createDefinition, {
+        url: "/api/reports/definitions",
+        method: "POST",
+        body: {
+          name: `Pano raporu ${fx.tag}`,
+          dataset: "ORDERS",
+          isShared: true,
+          config: {
+            ...ORDER_COLUMNS,
+            filters: [{ field: "orderNumber", operator: "contains", value: "RP-" }],
+          },
+        },
+        token: await bearer(admin),
+      });
+      tileReport = report.body.id;
+
+      const created = await callRoute(createDashboard, {
+        url: "/api/reports/dashboards",
+        method: "POST",
+        body: {
+          name: `Pano ${fx.tag}`,
+          isShared: true,
+          tiles: [{ definitionId: tileReport, width: "full" }],
+        },
+        token: await bearer(admin),
+      });
+      expect(created.status).toBe(201);
+      boardId = created.body.id;
+
+      const run = await callRoute(runDashboardRoute, {
+        url: `/api/reports/dashboards/${boardId}/run`,
+        params: { id: boardId },
+        token: await bearer(admin),
+      });
+      expect(run.status).toBe(200);
+      expect(run.body.tiles).toHaveLength(1);
+      expect(run.body.tiles[0].error).toBeNull();
+    });
+
+    it("paylaşılan pano da koşanın kapsamıyla çalışır", async () => {
+      const run = await callRoute(runDashboardRoute, {
+        url: `/api/reports/dashboards/${boardId}/run`,
+        params: { id: boardId },
+        token: await bearer(rep),
+      });
+      expect(run.status).toBe(200);
+      const numbers = run.body.tiles[0].result.rows.map(
+        (r: Record<string, unknown>) => r.orderNumber,
+      );
+      expect(numbers.some((n: string) => n?.startsWith("RP-THEIRS"))).toBe(false);
+      // Başkasının panosunda düzenleme düğmesi çıkmasın diye.
+      expect(run.body.canEdit).toBe(false);
+    });
+
+    it("kurye panoyu açamaz", async () => {
+      // Ayrı etiket: harness e-postayı etiketten üretiyor, "COURIER" adı
+      // aşağıdaki testte de kullanılıyor.
+      const courier = await fx.user("COURIER", { label: "kurye-pano" });
+      const res = await callRoute(runDashboardRoute, {
+        url: `/api/reports/dashboards/${boardId}/run`,
+        params: { id: boardId },
+        token: await bearer(courier),
+      });
+      expect(res.status).toBe(403);
     });
   });
 

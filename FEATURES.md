@@ -70,6 +70,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 54 | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni | ✅ |
 | 55 | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven | ✅ |
 | 56 | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili | ✅ |
+| 57 | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez | ✅ |
 
 ---
 
@@ -109,6 +110,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | `PaymentIntent` | Kart tahsilatı: sağlayıcı (düz metin — kayıt defteri anahtarı), durum, tutar, taksit, sağlayıcı referansı, 3-D Secure yönlendirmesi. `cashMovementId` **tekil**: tahsilat iki kez deftere yazılamaz |
 | `PaymentIntentEvent` | Bir ödemenin geçtiği her durum (ekle-only). Sağlayıcı yanıtı kart verisi ayıklanmış hâlde saklanır — PAN/CVV asla |
 | `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
+| `ReportDashboard` | Pano: kayıtlı raporlara işaretçi listesi (JSON), sahip, paylaşım — rapor yapılandırması kopyalanmaz |
 | `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
 | `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
 | `Cart` / `CartItem` | Sunucudaki sepet: **(firma, sahip)** başına tek satır, yalnızca varyant + adet tutar. Fiyat okurken çözülür |
@@ -2446,7 +2448,63 @@ aritmetik olmayan her şeyin reddi (`>`, `SUM(x)`, `;`, tırnak), uzunluk/derinl
 sınırı, kademeli sütun ve gruplanmış/düz raporda uçtan uca hesap. Toplam
 **551 test**.
 
-## 52. API Uçları
+## 52. Rapor Panosu (Adım 57)
+
+Kayıtlı raporlar tek tek açılıyordu; "sabah bakılan üç rakam" için üç sekme
+gerekiyordu. Pano, kayıtlı raporları tek ekranda toplayan sıralı bir kart
+listesi.
+
+### Pano kopya tutmuyor
+
+Kart yalnızca bir **işaretçi**: `ReportDefinition` kimliği + genişlik + isteğe
+bağlı başlık. Raporun yapılandırması kopyalanmıyor. Kopyalansaydı rapor
+düzeltildiğinde panodaki rakam eski kalırdı ve "panodaki sayı raporla
+uyuşmuyor" kaçınılmaz olurdu.
+
+### Her kart çalıştıranın kapsamıyla koşuyor
+
+Kartlar `runReportDefinition` üzerinden geçiyor; yani raporu tek başına açmakla
+**aynı** sahiplik kontrolü ve **aynı** satır kapsamı. Bunun sonucu: paylaşılan
+bir panoya süper adminin raporunu koymak o raporu kimseye açmıyor — plasiyer
+panoyu açtığında kendi portföyünü görüyor, açma hakkı olmayan bir rapor ise o
+kartta hata olarak dönüyor.
+
+Panoya **eklerken** de kontrol var: göremediğiniz bir rapora kart açmak
+reddediliyor. Sızıntı olduğu için değil (koşarken zaten reddedilir), yazan
+kişiye hiç çalışmayacak bir pano bırakmamak için.
+
+### Kırık kart panoyu düşürmez
+
+Silinmiş rapor, açma yetkisi olmayan rapor, artık doğrulanmayan tanım — üçü de
+**o kartta** hata olarak yazılıyor, diğer on bir kart rakamını veriyor. Okurken
+ayrıştırılamayan kart ise atılıyor: açılmayan bir pano tamir de edilemez.
+
+### Kartlar sırayla koşuyor
+
+Bir pano bir düzine sorgu demek. Hepsini birden ateşlemek, sipariş alan
+veritabanında sayfa açılışını yük dalgasına çevirirdi. Üst sınır 12 ve bu
+teknik bir sınır değil: daha fazlası kimsenin beklemediği bir sayfa.
+
+### Ekran
+
+`/reports/dashboards` liste, `/reports/dashboards/:id` pano. Düzenleme kartların
+üstünde bir panel: rapor seç, genişlik (yarım/tam), başlık, ↑/↓ sırala.
+Sürükle-bırak yok — pano tasarımcısından beklenen şey odur ve telefonda
+çalışmayan kısım da odur.
+
+Pano tek istekle açılıyor: koşu yanıtı panonun adını ve **düzenleyebilir mi**
+bilgisini de taşıyor. Aksi hâlde yalnızca rapor okuyabilen (kuramayan) bir
+kullanıcı, düğmelerin çıkıp çıkmayacağını öğrenmek için erişemediği bir uca
+sormak zorunda kalırdı.
+
+### Doğrulama
+
+8 entegrasyon + 3 rota testi: kart sırası, başlık devralma, plasiyerin kapsamı,
+erişilemeyen kart, silinmiş rapor, göremediği rapora kart açma reddi,
+paylaşım/düzenleme yetkileri ve elle bozulmuş kartın atılması. Toplam
+**562 test**.
+
+## 53. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2473,6 +2531,9 @@ sınırı, kademeli sütun ve gruplanmış/düz raporda uçtan uca hesap. Toplam
 | GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
 | GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
 | GET · PUT | `/api/reports/definitions/:id/schedule` | yazma: sahibi + süper admin (gönderim sahibin kapsamıyla çalışır) |
+| GET · POST | `/api/reports/dashboards` | süper admin, plasiyer, firma yöneticisi |
+| GET · PATCH · DELETE | `/api/reports/dashboards/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
+| GET | `/api/reports/dashboards/:id/run` | okuyabilen herkes (her kart çalıştıranın kapsamıyla) |
 | GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
 | POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
 | POST | `/api/admin/uploads` | süper admin (multipart görsel) |
@@ -2663,7 +2724,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Rapor tasarımcısı v3 (kalanı):** pano (birden çok raporu tek ekranda), PDF/XLSX eki. Hesaplanmış sütun Adım 56'da, zamanlanmış gönderim Adım 44'te geldi (CSV eki).
+- **Rapor tasarımcısı v3 (kalanı):** PDF/XLSX eki. Hesaplanmış sütun Adım 56'da, pano Adım 57'de, zamanlanmış gönderim Adım 44'te geldi (CSV eki).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
 ### Uzun vadeli backlog

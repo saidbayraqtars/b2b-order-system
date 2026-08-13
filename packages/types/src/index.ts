@@ -6,6 +6,7 @@ export * from "./order";
 export * from "./catalog";
 export * from "./report";
 export * from "./report-builder";
+export * from "./report-dashboard";
 export * from "./admin";
 export * from "./account";
 export * from "./promotion";

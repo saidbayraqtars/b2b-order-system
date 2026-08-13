@@ -28,6 +28,7 @@ export * from "./reports";
 export * from "./report-registry";
 export * from "./report-engine";
 export * from "./report-definition";
+export * from "./report-dashboard";
 export * from "./report-delivery";
 export * from "./company-admin";
 export * from "./user-admin";
