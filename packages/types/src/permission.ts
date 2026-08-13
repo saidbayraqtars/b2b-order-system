@@ -33,6 +33,8 @@ export const PermissionEnum = z.enum([
   "categories.manage",
   "pricing.manage",
   "promotions.manage",
+  "stock.view",
+  "stock.manage",
   // müşteriler
   "companies.view",
   "companies.manage",
@@ -80,6 +82,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "categories.manage": "Kategorileri yönet",
   "pricing.manage": "Fiyat ve iskontoları yönet",
   "promotions.manage": "Kampanyaları yönet",
+  "stock.view": "Stok defterini görüntüle",
+  "stock.manage": "Stok hareketi işle",
   "companies.view": "Firmaları görüntüle",
   "companies.manage": "Firmaları yönet",
   "users.manage": "Kullanıcıları yönet",
@@ -118,6 +122,9 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "orders.create": "Kendi adına ya da müşteri adına sipariş oluşturur",
   "cash.manage": "Tahsilat, ödeme ve virman kaydı açar — kasa bakiyesini değiştirir",
   "pricing.manage": "Liste fiyatı, grup fiyatı ve müşteriye özel iskonto",
+  "stock.view": "Hangi malın neden azaldığını gösteren hareket defteri ve depo kırılımı",
+  "stock.manage":
+    "Sayım, fire/numune girişi ve depolar arası aktarım kaydı açar — eldeki adedi değiştirir",
   "users.manage": "Hesap açar, yetki verir, şifre sıfırlar",
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
@@ -141,13 +148,15 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
   permissions: readonly Permission[];
 }> = [
   {
-    title: "Katalog",
+    title: "Katalog & Stok",
     permissions: [
       "products.view",
       "products.manage",
       "categories.manage",
       "pricing.manage",
       "promotions.manage",
+      "stock.view",
+      "stock.manage",
     ],
   },
   {
@@ -354,6 +363,11 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "categories.manage": ["SELLER"],
   "pricing.manage": ["SELLER"],
   "promotions.manage": ["SELLER"],
+  // Depo satıcının deposu. Bayiye verilmesi "kaç adet kalmış, ne zaman
+  // tükeniyor" bilgisini müşteriye açardı; katalogdaki "var/yok" zaten yeterli.
+  // Sahaya da verilmiyor: plasiyerin işi malı satmak, sayım tutmak değil.
+  "stock.view": ["SELLER"],
+  "stock.manage": ["SELLER"],
 
   // Bayi kendi cari/firma bilgisini görür (ekstre); firma kartını satıcı yönetir.
   "companies.view": ["SELLER", "DEALER", "FIELD"],

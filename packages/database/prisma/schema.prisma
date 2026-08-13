@@ -154,6 +154,7 @@ model User {
   exchangeRates  ExchangeRate[] @relation("ExchangeRateCreatedBy")
   jobRuns        JobRun[]       @relation("JobRunTriggeredBy")
   cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
+  stockMovements StockMovement[] @relation("StockMovementRecordedBy")
   paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
   paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
   statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
@@ -460,6 +461,7 @@ model ProductVariant {
   orderItems OrderItem[]
   cartItems  CartItem[]
   stocks     VariantStock[]
+  movements  StockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -478,7 +480,8 @@ model Warehouse {
   isDefault Boolean @default(false)
   isActive  Boolean @default(true)
 
-  stocks VariantStock[]
+  stocks    VariantStock[]
+  movements StockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -504,6 +507,91 @@ model VariantStock {
 
   @@unique([variantId, warehouseId])
   @@index([warehouseId])
+}
+
+// ─────────────────────────────────────────────
+// STOK HAREKET DEFTERİ
+// ─────────────────────────────────────────────
+//
+// `ProductVariant.stock` bir sayıdır: "şu an 12 adet". Nasıl 12 olduğunu
+// söylemez. Sipariş düşürdü mü, ERP senkronu mu ezdi, biri elle mi düzeltti —
+// hiçbiri kayıtlı değildi, dolayısıyla "stok neden düştü" sorusunun cevabı yoktu
+// ve fark bulunduğunda kimse geriye dönüp bakamıyordu.
+//
+// Bu defter kasanın (CashMovement) stok karşılığı ve aynı iki kuralı taşır:
+//  * Ekle-only. Yanlış kayıt UPDATE/DELETE ile değil, kendisine bağlı ters
+//    kayıtla düzeltilir; kapanan bir günün sayısı sonradan sessizce değişemez.
+//  * Bakiye ile hareket aynı veritabanı işleminde yazılır. `ProductVariant.stock`
+//    artık bu defterin bakiyesidir; başka bir yerden yazıldığı an yalan olur.
+
+enum StockDirection {
+  IN // depoya giren
+  OUT // depodan çıkan
+}
+
+/// Bir stok hareketinin sebebi. Ekrandaki "neden düştü" cevabı da, rapordaki
+/// gruplama da bu kolonu okur.
+enum StockMovementSource {
+  ORDER // sipariş malı tuttu (satır oluşturulurken düşer)
+  ORDER_CANCEL // iptal/ret malı geri verdi
+  MANUAL // elle giriş/çıkış: fire, numune, hurda
+  COUNT // sayım farkı — sayılan adet ile defterin farkı
+  ERP // ERP senkronu farkı; senkron ezmez, farkı kadar hareket yazar
+  TRANSFER // depolar arası aktarım (iki bacak)
+}
+
+model StockMovement {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  /// Hangi depo. Boş olabilir: tek depolu kurulumda depo kavramı hiç
+  /// kullanılmıyor ve sipariş satırı bir depo seçmiyor. Depo adı verilen
+  /// hareket ayrıca `VariantStock` kırılımını da oynatır.
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  direction StockDirection
+  /// Her zaman pozitif; işareti `direction` taşır.
+  quantity  Int
+  source    StockMovementSource
+
+  /// Bu hareketten *sonraki* toplam eldeki adet. Türetilebilir ama satırda
+  /// duruyor: defteri okuyan kişinin sorusu "o gün kaça düştü", ve o soruyu
+  /// her satır için baştan toplam alarak cevaplamak defteri kullanılmaz yapar.
+  balanceAfter Int
+
+  description String?
+
+  /// Malın gerçekten kımıldadığı an — satırın yazıldığı an değil. Dün yapılan
+  /// sayım bu sabah girildiğinde düne aittir.
+  occurredAt DateTime @default(now())
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  /// Ters kayıt bağı, kasadakiyle aynı biçim: benzersiz, yani aynı hareketin
+  /// iki kez iptal edilmesini veritabanı durdurur.
+  reversalOfId String?        @unique
+  reversalOf   StockMovement? @relation("StockMovementReversal", fields: [reversalOfId], references: [id])
+  reversedBy   StockMovement? @relation("StockMovementReversal")
+
+  /// Aktarımın öbür bacağı. Depodan depoya taşımak iki satırdır — biri OUT,
+  /// biri IN — ve yarısı tek başına anlamsızdır.
+  counterpartId String?        @unique
+  counterpart   StockMovement? @relation("StockTransfer", fields: [counterpartId], references: [id])
+  counterpartOf StockMovement? @relation("StockTransfer")
+
+  recordedById String?
+  recordedBy   User?   @relation("StockMovementRecordedBy", fields: [recordedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([variantId, occurredAt])
+  @@index([occurredAt])
+  @@index([warehouseId, occurredAt])
+  @@index([source, occurredAt])
+  @@index([orderId])
 }
 
 // ─────────────────────────────────────────────
@@ -954,6 +1042,7 @@ model Order {
   items          OrderItem[]
   transactions   Transaction[]
   cashMovements  CashMovement[]
+  stockMovements StockMovement[]
   paymentIntents PaymentIntent[]
   statusHistory  OrderStatusHistory[]
   promotions    PromotionRedemption[]
@@ -1819,6 +1908,7 @@ enum ReportDataset {
   CHECKINS
   CASH
   PROMOTIONS
+  STOCK
 }
 
 model ReportDefinition {

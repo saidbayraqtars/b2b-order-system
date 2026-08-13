@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   Activity,
   BarChart3,
+  Boxes,
   Building2,
   CalendarClock,
   FileText,
@@ -59,6 +60,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
       { href: "/admin/products", label: "Ürünler", icon: Package, permission: "products.view" },
       { href: "/admin/categories", label: "Kategoriler", icon: Tags, permission: "products.view" },
       { href: "/admin/promotions", label: "Kampanyalar", icon: Percent, permission: "promotions.manage" },
+      { href: "/admin/stok", label: "Stok defteri", icon: Boxes, permission: "stock.view" },
     ],
   },
   {

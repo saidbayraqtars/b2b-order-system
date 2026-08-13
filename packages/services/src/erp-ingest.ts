@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import type { ErpSyncKind } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
+import { applyErpStock } from "./stock-ledger";
 
 // ERP'den gelen veriyi karşılamak.
 //
@@ -199,6 +200,12 @@ export async function ingestCustomers(
  * comes through the B2B. A negative figure is clamped to zero rather than
  * refused — a customer-facing catalogue showing "-4 adet" helps nobody, and the
  * ERP's own reason for going negative is the ERP's business.
+ *
+ * Written as a *difference* through the stock ledger rather than as an
+ * overwrite. The number lands in the same place either way; what changes is
+ * that "gece ERP 40 adet düşürdü" becomes a row somebody can find. Rows the ERP
+ * agrees with write nothing at all, so an hourly sync of 2.600 products does not
+ * bury the ledger under 2.600 "değişmedi" entries.
  */
 export async function ingestStock(
   rows: ErpStockRow[],
@@ -212,14 +219,14 @@ export async function ingestStock(
     const codes = rows.map((r) => r.code.trim()).filter(Boolean);
     const known = await prisma.productVariant.findMany({
       where: { externalCode: { in: codes } },
-      select: { id: true, externalCode: true },
+      select: { id: true, externalCode: true, stock: true },
     });
-    const byCode = new Map(known.map((v) => [v.externalCode!, v.id]));
+    const byCode = new Map(known.map((v) => [v.externalCode!, v]));
 
     for (const row of rows) {
       const code = row.code.trim();
-      const id = code ? byCode.get(code) : undefined;
-      if (!id) {
+      const variant = code ? byCode.get(code) : undefined;
+      if (!variant) {
         skipped.push({
           externalCode: code || "(boş)",
           reason: "Bu stok koduna bağlı varyant yok — ürün kartında eşleyin",
@@ -227,12 +234,15 @@ export async function ingestStock(
         continue;
       }
 
+      await applyErpStock(
+        { variantId: variant.id, quantity: row.quantity, previous: variant.stock },
+        { occurredAt: now },
+      );
+      // `erpSyncedAt` her satırda tazeleniyor, fark olmasa bile: sorusu "bu
+      // sayı ne zaman doğrulandı", "ne zaman değişti" değil.
       await prisma.productVariant.update({
-        where: { id },
-        data: {
-          stock: Math.max(0, Math.trunc(row.quantity)),
-          erpSyncedAt: now,
-        },
+        where: { id: variant.id },
+        data: { erpSyncedAt: now },
       });
       applied++;
     }

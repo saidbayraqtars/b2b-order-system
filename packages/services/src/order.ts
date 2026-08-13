@@ -8,6 +8,7 @@ import { recordStatusChange } from "./order-lifecycle";
 import { openIntentForOrder } from "./payment-intent";
 import { requiresPaymentIntent } from "./payment-terms";
 import { recordRedemptions } from "./promotion";
+import { recordOrderStockOut } from "./stock-ledger";
 
 export interface CreateOrderContext {
   createdById: string;
@@ -125,9 +126,9 @@ async function buildOrder(
       listUnitPrice: l.listUnitPrice,
     }),
   );
-  const stockUpdates = quote.lines.map((l) => ({
-    id: l.variantId,
-    qty: l.quantity,
+  const stockLines = quote.lines.map((l) => ({
+    variantId: l.variantId,
+    quantity: l.quantity,
   }));
 
   // 4. Status decision
@@ -152,18 +153,10 @@ async function buildOrder(
     status = "CONFIRMED"; // paid at order time
   }
 
-  // 5. Reserve stock (all non-rejected orders hold stock)
-  for (const s of stockUpdates) {
-    await tx.productVariant.update({
-      where: { id: s.id },
-      data: { stock: { decrement: s.qty } },
-    });
-  }
-
-  // 6. Human-readable order number (unique per day)
+  // 5. Human-readable order number (unique per day)
   const orderNumber = await nextOrderNumber(tx);
 
-  // 7. Create order + item snapshots
+  // 6. Create order + item snapshots
   const order = await tx.order.create({
     data: {
       orderNumber,
@@ -194,6 +187,18 @@ async function buildOrder(
       items: { create: itemsData },
     },
     select: { id: true, orderNumber: true, status: true },
+  });
+
+  // 7. Reserve stock (all non-rejected orders hold stock).
+  //
+  //    After the order row rather than before it, so every movement can name the
+  //    order that caused it — a stock ledger whose biggest source is an unnamed
+  //    "ORDER" answers nothing. Same transaction, so the ordering costs nothing.
+  await recordOrderStockOut(tx, {
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    lines: stockLines,
+    actorId: ctx.createdById,
   });
 
   // 8. Open the status timeline with the status the order was born in.

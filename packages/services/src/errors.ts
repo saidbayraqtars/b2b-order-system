@@ -111,7 +111,9 @@ export type BusinessErrorCode =
   | "LABEL_TEMPLATE_NOT_FOUND"
   // ── depo & stok ──
   | "WAREHOUSE_NOT_FOUND"
+  | "WAREHOUSE_CODE_TAKEN"
   | "INVALID_STOCK"
+  | "STOCK_MOVEMENT_NOT_FOUND"
   // ── çek/senet portföyü ──
   | "CHEQUE_NOT_FOUND"
   | "INVALID_CHEQUE_TRANSITION"

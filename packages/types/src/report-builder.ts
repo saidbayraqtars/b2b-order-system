@@ -13,6 +13,7 @@ export const ReportDatasetEnum = z.enum([
   "CHECKINS",
   "CASH",
   "PROMOTIONS",
+  "STOCK",
 ]);
 export type ReportDataset = z.infer<typeof ReportDatasetEnum>;
 
@@ -24,6 +25,7 @@ export const REPORT_DATASET_LABELS: Record<ReportDataset, string> = {
   CHECKINS: "Ziyaretler",
   CASH: "Kasa defteri",
   PROMOTIONS: "Kampanya kullanımları",
+  STOCK: "Stok hareketleri",
 };
 
 export const AggregateEnum = z.enum([

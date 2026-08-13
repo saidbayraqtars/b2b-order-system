@@ -5,6 +5,8 @@ import {
   CashMovementSourceEnum,
   FieldEntrySourceEnum,
   PaymentMethodEnum,
+  StockDirectionEnum,
+  StockMovementSourceEnum,
 } from "@repo/types";
 import type {
   Aggregate,
@@ -105,6 +107,7 @@ export interface DatasetDef {
     | "company"
     | "checkIn"
     | "cashMovement"
+    | "stockMovement"
     | "promotionRedemption";
   sql: DatasetSql;
   fields: Record<string, ReportFieldDef>;
@@ -137,6 +140,8 @@ const CASH_DIRECTIONS = CashDirectionEnum.options;
 const CASH_SOURCES = CashMovementSourceEnum.options;
 const CASH_ACCOUNT_KINDS = CashAccountKindEnum.options;
 const FIELD_ENTRY_SOURCES = FieldEntrySourceEnum.options;
+const STOCK_DIRECTIONS = StockDirectionEnum.options;
+const STOCK_SOURCES = StockMovementSourceEnum.options;
 
 /** A company user with no company matches nothing rather than everything. */
 const ownCompany = (ctx: ReportContext) => ctx.companyId ?? "__none__";
@@ -670,6 +675,95 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
     // The till is the seller's own money. A customer has no business reading it
     // and a rep only ever adds to it, so there is no narrower scope to grant —
     // anyone but a super admin sees nothing.
+    scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
+  },
+
+  // Stok hareket defteri.
+  //
+  // Bir satır = malın kımıldadığı bir olay. Satış raporundan farkı, sattığımızı
+  // değil *stoktan çıkan her şeyi* göstermesi: fire, sayım farkı ve ERP'nin
+  // düzeltmesi burada, siparişin yanında duruyor. "Bu ay 400 adet eridi, 310'u
+  // satış" cevabını başka hiçbir veri kümesi veremiyor.
+  //
+  // `balanceAfter` toplanabilir bir sayı değil — bir andaki bakiye. Gruplanmış
+  // bir raporda toplamı anlamsızdır; MIN/MAX ile "dönem sonunda kaç kaldı"
+  // sorusu için duruyor.
+  STOCK: {
+    label: "Stok hareketleri",
+    model: "stockMovement",
+    sql: {
+      table: "StockMovement",
+      alias: "sm",
+      joins: [
+        {
+          prefix: "variant",
+          table: "ProductVariant",
+          alias: "sv",
+          on: 'sv."id" = sm."variantId"',
+        },
+        {
+          prefix: "variant.product",
+          table: "Product",
+          alias: "sp",
+          on: 'sp."id" = sv."productId"',
+        },
+        {
+          prefix: "warehouse",
+          table: "Warehouse",
+          alias: "sw",
+          on: 'sw."id" = sm."warehouseId"',
+        },
+        { prefix: "order", table: "Order", alias: "so", on: 'so."id" = sm."orderId"' },
+        {
+          prefix: "order.company",
+          table: "Company",
+          alias: "soc",
+          on: 'soc."id" = so."companyId"',
+        },
+        {
+          prefix: "recordedBy",
+          table: "User",
+          alias: "srb",
+          on: 'srb."id" = sm."recordedById"',
+        },
+      ],
+    },
+    defaultSort: { field: "occurredAt", direction: "desc" },
+    fields: {
+      ...dateParts("occurredAt", "Tarih"),
+      direction: {
+        label: "Yön",
+        type: "enum",
+        path: "direction",
+        groupable: true,
+        enumValues: STOCK_DIRECTIONS,
+      },
+      quantity: { label: "Adet", type: "number", path: "quantity", format: "number" },
+      balanceAfter: {
+        label: "Kalan",
+        type: "number",
+        path: "balanceAfter",
+        format: "number",
+      },
+      source: {
+        label: "Sebep",
+        type: "enum",
+        path: "source",
+        groupable: true,
+        enumValues: STOCK_SOURCES,
+      },
+      description: text("Açıklama", "description", false),
+      sku: text("SKU", "variant.sku", true, "Ürün"),
+      productName: text("Ürün", "variant.product.name", true, "Ürün"),
+      shelfCode: text("Raf", "variant.shelfCode", true, "Ürün"),
+      warehouseName: text("Depo", "warehouse.name", true, "Depo"),
+      orderNumber: text("Sipariş no", "order.orderNumber", false, "Sipariş"),
+      companyName: text("Firma", "order.company.name", true, "Sipariş"),
+      recordedByName: text("Kaydeden", "recordedBy.name", true, "Kullanıcı"),
+    },
+    // Depo satıcının deposu — kasayla aynı gerekçe. Bir müşterinin "hangi malda
+    // kaç adet kaldı, ne hızla eriyor" sorusuna erişmesi, satıcının pazarlık
+    // gücünü de görmesi demek.
     scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
   },
 

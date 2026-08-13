@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-10 · Adım 50 (merkezden güncelleme) sonu
+Son güncelleme: 2026-08-13 · Adım 51 (stok hareket defteri) sonu
 
 ---
 
@@ -64,6 +64,7 @@ Son güncelleme: 2026-08-10 · Adım 50 (merkezden güncelleme) sonu
 | 48 | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi | ✅ |
 | 49 | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma | ✅ |
 | 50 | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı | ✅ |
+| 51 | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır | ✅ |
 
 ---
 
@@ -1997,7 +1998,145 @@ yani merkezin bir sunucuya dönüşmesi ve her kurulumdan gelen isteği
 kimliklendirmesi. Akışın tek yönlü kalması bilinçli tercih; filo görünümü ayrı
 bir iş.
 
-## 46. API Uçları
+## 46. Stok Hareket Defteri (Adım 51)
+
+Adım 39 depoyu ve `VariantStock` kırılımını getirmişti, ama eldeki adet hâlâ tek
+bir sayıydı: `ProductVariant.stock`. O sayının **nasıl** o sayı olduğunu hiçbir
+yer söylemiyordu — sipariş düşürüyordu, ERP senkronu üstüne yazıyordu, elle
+düzeltme onu da eziyordu, üçü de iz bırakmıyordu. Sayım tutmadığında bakılacak
+bir yer yoktu.
+
+Bu adım kasa defterinin (Adım 27) stok karşılığını kuruyor: `StockMovement`.
+
+### Eldeki adet artık defterin bakiyesi
+
+Stoku değiştiren **tek kapı** `postStockMovement`. Buradan geçmeyen her yazma
+defteri yalancı yapar, bu yüzden siparişteki `stock: { decrement }` çağrıları da,
+iptaldeki `restock()` da, ERP senkronundaki üstüne yazma da kaldırıldı — hepsi
+artık defterden geçiyor.
+
+İki kural kasadan geliyor:
+
+- **Ekle-only.** Yanlış kayıt silinmez; kendisine bağlı ters kayıtla düzeltilir.
+  `reversalOfId` benzersiz, yani aynı hareketin iki kez iptal edilmesini
+  veritabanı durdurur.
+- **Bakiye ile hareket aynı işlemde yazılır.** `postStockMovement` kendi işlemini
+  açmaz, dışarıdan alır: geri alınan bir siparişten sağ çıkan stok hareketi hiç
+  hareket olmamasından kötüdür.
+
+Üçüncü kural bu deftere özel: **toplam da defterin bakiyesi.** Daha önce
+`ProductVariant.stock` depo kırılımının toplamı olarak yeniden hesaplanıyordu; bu,
+depo bilmeyen sipariş düşüşlerini ilk ERP senkronunda siliyordu. Artık her iki
+sayı da aynı hareketin farkı kadar oynuyor: depo adı verilmişse kırılım da, her
+hâlde toplam da.
+
+Yazma `increment`/`decrement` ile yapılıyor, oku-sonra-yaz ile değil: iki
+eşzamanlı siparişin aynı varyantı okuyup aynı sonucu yazması (lost update) böyle
+imkânsız. `balanceAfter` satırdan geri okunuyor, dolayısıyla gerçekten *o
+hareketten sonraki* bakiye.
+
+### Altı sebep
+
+| Kaynak | Ne zaman | Kim yazar |
+|--------|----------|-----------|
+| `ORDER` | Sipariş **oluşturulduğunda** — sevkte değil | `order.ts` |
+| `ORDER_CANCEL` | İptal ve ret malı geri verir | `order-lifecycle.ts`, `order-approval.ts` |
+| `MANUAL` | Fire, numune, hurda, bulunan fazla mal | `/admin/stok` |
+| `COUNT` | Sayım farkı | `/admin/stok` |
+| `TRANSFER` | Depolar arası aktarım (iki bacak) | `/admin/stok` |
+| `ERP` | Gecelik senkronun farkı | ERP ajanı |
+
+Sipariş **girildiği anda** düşüyor: satılabilir adet bu sistemde "sipariş
+edilmemiş olan"dır, yoksa aynı son kutu iki müşteriye satılırdı. Hareket sipariş
+satırından *sonra* yazılıyor ki `orderId`'yi taşıyabilsin — en büyük kaynağı
+isimsiz "ORDER" olan bir defter hiçbir soruyu cevaplamaz.
+
+İptal, siparişin satırlarından okuyor; defterdeki çıkış hareketlerinden değil.
+Sebebi: defter bu adımdan önce oluşmuş siparişler için boş ve o siparişlerin
+iptali de malı geri vermeye devam etmek zorunda.
+
+### ERP senkronu ezmiyor, fark yazıyor
+
+`ingestStock` artık ERP'nin bildirdiği adede **farkı kadar hareket yazarak**
+çekiyor. "Gece ERP 40 adet düşürdü" bilgisi olmadan, sabah stoku eksilmiş bulan
+kişi kimin düşürdüğünü hiçbir zaman öğrenemiyordu. Fark görünür olduğu an, ERP
+ile B2B'nin ayrıştığı ürünler de kendiliğinden ortaya çıkıyor.
+
+Farkın sıfır olduğu satır hiçbir şey yazmıyor: saatlik senkron 2.600 ürünü
+defterin altına gömmemeli. `erpSyncedAt` yine de her satırda tazeleniyor — onun
+sorusu "bu sayı ne zaman doğrulandı", "ne zaman değişti" değil.
+
+ERP hareketi eksi bakiyeye izin veriyor: ERP eksiye düşürüyorsa sebebi ERP'nin
+işi, ve senkronu reddetmek iki defteri kalıcı olarak ayrıştırırdı.
+
+### Eksi bakiye: kime açık, kime kapalı
+
+- **Sipariş** açık: satış zaten stoka bakılarak kabul edilmiştir ve iki
+  eşzamanlı siparişin son adedi paylaşması siparişi düşürmek için yeterli sebep
+  değil — mal borcu doğar, defter de bunu eksi bakiye olarak gösterir.
+- **Elle giriş ve sayım** kapalı: orada eksiye düşüren sayı bir hata, çoğu zaman
+  yanlış yazılmış bir adet.
+- **Aktarımın çıkış bacağı** toplam için açık, depo için kapalı. Aktarım toplamı
+  değiştirmez; toplam yalnızca iki satırın yazılması arasında düşer. O aradaki
+  değeri kısıt saymak, aktarımı toplamın tamamına bakan yanlış bir hatayla
+  reddederdi — asıl kısıt kaynak deponun adedi.
+
+Kırılım toplamdan **önce** kontrol ediliyor: ikisi birden yetersizse okunması
+gereken hata deponunki. "Depoda yeterli mal yok" nereye bakılacağını söyler,
+"stok eksiye düşerdi" söylemez.
+
+### Sayım sayılan adedi ister, farkı sistem hesaplar
+
+Sayım kâğıdında yazan sayı sayılan adettir. Farkı insana hesaplatmak, üstelik
+defterin sayısını görünce sayımı ona uydurma eğilimini de doğuruyor. Fark tek bir
+hareket olarak giriyor ("sıfırla + yeniden yükle" iki hareketi olarak değil):
+sayımın anlamı defterin kaç adet yanıldığıdır ve o sayı tek satırda okunmalı.
+Fark sıfırsa hiçbir şey yazılmıyor — defter "değişmedi" satırıyla şişmemeli.
+
+### Aktarım ve ters kayıt
+
+Aktarım iki hareket, `counterpartId` ile birbirine bağlı — kasadaki virmanla aynı
+gerekçe: tek bir "aktarım" satırı, her depo ekstresini "bu satır bana göre eksi
+mi artı mı" sorusunu çözmek zorunda bırakırdı. Bir bacağı iptal edildiğinde öbürü
+de iptal ediliyor; aktarım tek olaydır ve yarısını geri almak öbür depoda olmayan
+mal yaratırdı.
+
+**Sipariş kaynaklı hareketler defterden iptal edilemiyor.** Onların öbür yarısı
+bir sipariş satırı ve bir cari kayıt: yalnız stok bacağını geri almak siparişi
+"malı çıkmamış" gösterirdi. Siparişin kendisi iptal edilir, o yol iki tarafı
+birden çözer.
+
+### Ekran ve izinler
+
+`/admin/stok` dört panel: dönem özeti (ne girdi, ne çıktı, hangi sebeple),
+stok seviyeleri (kritik stok altındakileri süzen), hareket defteri
+(SKU/barkod/ürün adı arama + kaynak/yön/tarih süzgeci) ve depolar.
+
+İki yeni izin: **`stock.view`** (defteri ve kırılımı görür) ve **`stock.manage`**
+(sayım, fire girişi, aktarım, ters kayıt). İkisi de yalnız `SELLER` hesap
+ailesine açık — depo satıcının deposu. Bayiye vermek "kaç adet kalmış, ne zaman
+tükeniyor" bilgisini müşteriye açardı; katalogdaki "var/yok" zaten yeterli. Sahaya
+da verilmiyor: plasiyerin işi malı satmak, sayım tutmak değil.
+
+### Rapor veri kümesi: `STOCK`
+
+Rapor tasarımcısına yedinci veri kümesi. Satış raporundan farkı, sattığımızı
+değil **stoktan çıkan her şeyi** göstermesi: fire, sayım farkı ve ERP'nin
+düzeltmesi siparişin yanında duruyor. "Bu ay 400 adet eridi, 310'u satış"
+cevabını başka hiçbir veri kümesi veremiyor. Kapsam kasayla aynı: yalnız süper
+admin.
+
+`balanceAfter` toplanabilir bir sayı değil — bir andaki bakiye; gruplanmış bir
+raporda toplamı anlamsızdır, MIN/MAX ile "dönem sonunda kaç kaldı" için duruyor.
+
+### Doğrulama
+
+15 entegrasyon testi (`stock-ledger.test.ts`): sipariş düşürür/iptal geri verir,
+sayım farkı, aktarımın iki bacağı, ters kaydın çift iptali reddetmesi, ERP
+farkının sıfırken hiçbir şey yazmaması, eksi bakiye kuralları. Toplam **509 test**
+(394 servis + 115 rota).
+
+## 47. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2088,6 +2227,13 @@ bir iş.
 | POST | `/api/admin/cash-movements/:id/reverse` | süper admin (yalnız elle/aktarım kaydı) |
 | GET | `/api/admin/cash-movements/summary?from&to` | süper admin (gün sonu) |
 | GET | `/api/cash-accounts` | plasiyer, süper admin (tahsilat seçicisi — bakiye göstermez) |
+| GET · POST | `/api/admin/warehouses` | süper admin (`stock.view` / `stock.manage`) |
+| GET | `/api/admin/stock?q&warehouseId&lowOnly` | süper admin (`stock.view` — seviyeler + kırılım) |
+| GET · POST | `/api/admin/stock-movements?variantId&warehouseId&source&direction&q&from&to` | süper admin (defter / elle giriş-çıkış) |
+| POST | `/api/admin/stock-movements/count` | süper admin (sayılan adet; farkı sistem yazar) |
+| POST | `/api/admin/stock-movements/transfer` | süper admin (iki bacak tek işlemde) |
+| POST | `/api/admin/stock-movements/:id/reverse` | süper admin (sipariş kaynaklı hareket reddedilir) |
+| GET | `/api/admin/stock-movements/summary?from&to` | süper admin (dönem özeti, sebebe göre) |
 | GET | `/api/admin/payment-intents?status&companyId&orderId` | süper admin (kart tahsilatları + aktif sağlayıcı) |
 | POST | `/api/admin/payment-intents/:id/capture` | süper admin (kasaya yazan tek yol; çift tıklama ikinci kayıt yazmaz) |
 | POST | `/api/admin/payment-intents/:id/cancel` | süper admin (tahsil edilmiş ödeme reddedilir — iade gerekir) |
@@ -2164,6 +2310,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
 - ~~**Ziyaret raporu yok**~~ — Adım 44'te kapatıldı: `CHECKINS` veri kümesine `source` ve saklanan `durationMinutes` eklendi; "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" artık gruplanabiliyor.
+- ~~**"Stok neden düştü" cevapsız**~~ — Adım 51'de kapatıldı: `StockMovement` defteri, eldeki adet artık onun bakiyesi, ERP senkronu ezmek yerine fark yazıyor. **Kalan:** sipariş bir depo seçmiyor — sipariş ve iptal hareketleri toplamı oynatıyor, kırılımı değil. Carinin bağlı deposundan düşürmek, backlog'daki "depo/şube bazlı stok + fiyat" maddesinin işi.
 - ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı: 115 rota testi (Adım 49'da 8 push testi eklendi), ağırlığı yetki sınırında. **Ekranlar (41 sayfa) hâlâ testsiz** ve tarayıcı seviyesinde e2e (Playwright) yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
 
 ### Mobil
@@ -2208,7 +2355,6 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
 - **Kampanya v3:** artan hediye kademesi ("10 alana 1, 50 alana 6" tek kampanyada). Performans raporu Adım 44'te geldi.
 - **Rapor tasarımcısı v3:** pano (birden çok raporu tek ekranda), hesaplanmış sütun (formül), PDF/XLSX eki. Zamanlanmış gönderim Adım 44'te geldi (CSV eki).
-- **Stok hareket defteri:** çoklu depo + `StockMovement` defteri (ArcTeknik ERP şemasıyla hizalı).
 - **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
 
 ### Uzun vadeli backlog

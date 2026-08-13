@@ -155,6 +155,44 @@ export const CASH_MOVEMENT_SOURCE_LABELS: Record<CashMovementSource, string> = {
   CHEQUE: "Çek/senet tahsili",
 };
 
+// ─────────────────────────────────────────────
+// STOK DEFTERİ
+// ─────────────────────────────────────────────
+
+export const StockDirectionEnum = z.enum(["IN", "OUT"]);
+export type StockDirection = z.infer<typeof StockDirectionEnum>;
+
+export const STOCK_DIRECTION_LABELS: Record<StockDirection, string> = {
+  IN: "Giriş",
+  OUT: "Çıkış",
+};
+
+/**
+ * Bir stok hareketinin sebebi — "stok neden düştü" sorusunun cevabı bu kolon.
+ *
+ * `ERP` ile `COUNT` ayrı: ikisi de defterin sayısını sayılan/senkronlanan sayıya
+ * çeker ama biri makinenin, öbürü insanın iddiasıdır. Aynı satırda gösterilirse
+ * "ERP her gece sayımı eziyor" sorunu görünmez olur.
+ */
+export const StockMovementSourceEnum = z.enum([
+  "ORDER",
+  "ORDER_CANCEL",
+  "MANUAL",
+  "COUNT",
+  "ERP",
+  "TRANSFER",
+]);
+export type StockMovementSource = z.infer<typeof StockMovementSourceEnum>;
+
+export const STOCK_MOVEMENT_SOURCE_LABELS: Record<StockMovementSource, string> = {
+  ORDER: "Sipariş",
+  ORDER_CANCEL: "Sipariş iptali",
+  MANUAL: "Elle giriş",
+  COUNT: "Sayım farkı",
+  ERP: "ERP senkronu",
+  TRANSFER: "Depolar arası aktarım",
+};
+
 /**
  * Where a card payment is in its life.
  *

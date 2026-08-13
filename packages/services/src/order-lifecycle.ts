@@ -4,6 +4,7 @@ import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
 import { releaseIntentsForOrder } from "./payment-intent";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
+import { recordOrderStockReturn } from "./stock-ledger";
 
 // What happens to an order after it is confirmed. Approval (PENDING_* → CONFIRMED
 // / REJECTED) stays in order-approval.ts; this file owns the fulfilment path and
@@ -90,7 +91,12 @@ export async function changeOrderStatus(
     // record of what this order was granted survives the cancellation.
     if (input.status === "CANCELLED") {
       await assertNothingDespatched(tx, order.id);
-      await restock(tx, order.id);
+      await recordOrderStockReturn(tx, {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        reason: "CANCELLED",
+        actorId: ctx.userId,
+      });
       await reverseDebit(tx, order, ctx.userId);
       // The peşin counterpart: money that came in at confirmation goes back out
       // of the same account it landed in.
@@ -238,19 +244,6 @@ async function assertNothingDespatched(tx: Tx, orderId: string): Promise<void> {
       "İrsaliye kesilmiş sipariş iptal edilemez — önce irsaliyeleri iptal edin",
       { shipments: shipped },
     );
-  }
-}
-
-async function restock(tx: Tx, orderId: string): Promise<void> {
-  const items = await tx.orderItem.findMany({
-    where: { orderId },
-    select: { variantId: true, quantity: true },
-  });
-  for (const it of items) {
-    await tx.productVariant.update({
-      where: { id: it.variantId },
-      data: { stock: { increment: it.quantity } },
-    });
   }
 }
 

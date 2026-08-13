@@ -6,6 +6,7 @@ import { Dec } from "./money";
 import { recordStatusChange } from "./order-lifecycle";
 import { openIntentForOrder } from "./payment-intent";
 import { createsReceivable, requiresPaymentIntent } from "./payment-terms";
+import { recordOrderStockReturn } from "./stock-ledger";
 
 export interface ApprovalContext {
   approverId: string;
@@ -119,16 +120,12 @@ export async function rejectOrder(
       );
     }
 
-    const items = await tx.orderItem.findMany({
-      where: { orderId: order.id },
-      select: { variantId: true, quantity: true },
+    await recordOrderStockReturn(tx, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      reason: "REJECTED",
+      actorId: ctx.approverId,
     });
-    for (const it of items) {
-      await tx.productVariant.update({
-        where: { id: it.variantId },
-        data: { stock: { increment: it.quantity } },
-      });
-    }
 
     const updated = await tx.order.update({
       where: { id: order.id },

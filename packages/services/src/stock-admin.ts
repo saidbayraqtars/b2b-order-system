@@ -1,13 +1,17 @@
-import { Prisma, prisma } from "@repo/database";
+import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
+import { applyErpStock, recordStockCount } from "./stock-ledger";
 
 // Depo ve stok kırılımı.
 //
 // `ProductVariant.stock` toplam eldeki adet olarak kalıyor; buradaki satırlar
 // onun depo kırılımı. İkisi ayrı çünkü katalog listesi tek satırda "var mı"
 // sorusunu cevaplayabilmeli, sevkiyat ekranı ise "hangi depoda" bilmek zorunda.
-// Toplam, kırılım her değiştiğinde yeniden yazılıyor — iki sayının ayrışması
-// "stokta var" deyip sevk edememe demek.
+//
+// Toplamı burası artık *yeniden hesaplamıyor*: adedi değiştiren her şey
+// [stock-ledger] üzerinden geçiyor ve iki sayı da aynı farkla oynuyor. Eski
+// "kırılımın toplamını varyanta yaz" adımı, depo bilmeyen sipariş düşüşlerini
+// ilk senkronda siliyordu.
 
 export interface WarehouseRow {
   id: string;
@@ -93,11 +97,15 @@ export async function getVariantStock(
 }
 
 /**
- * Bir varyantın bir depodaki miktarını yaz ve toplamı tazele.
+ * Bir varyantın bir depodaki miktarını istenen sayıya çek.
  *
- * ERP köprüsü de, elle düzeltme de buradan geçer: toplamı güncelleme adımı tek
- * bir yerde kalsın diye. Çağıranın toplamı ayrıca yazmasına gerek yok — zaten
- * yazmamalı.
+ * "Şu an 40 adet" diyen her çağrı — ERP köprüsü de, elle düzeltme de — buradan
+ * geçer, ve **fark kadar bir defter hareketi** olarak uygulanır. Üstüne yazmak
+ * yerine fark yazmanın sebebi: 40'a çekilen bir sayının kaç adet oynadığı,
+ * "stok neden düştü" sorusunun tek cevabı.
+ *
+ * `reserved` defterin dışında kalıyor: rezerve edilen mal hâlâ depoda duruyor,
+ * eldeki adedi değiştirmiyor.
  */
 export async function setVariantStock(input: {
   variantId: string;
@@ -105,23 +113,25 @@ export async function setVariantStock(input: {
   onHand: number;
   reserved?: number;
   fromErp?: boolean;
+  /** Elle düzeltmeyi kimin yaptığı; ERP yolunda boş. */
+  actorId?: string;
 }): Promise<void> {
   if (input.onHand < 0) {
     throw new BusinessError("INVALID_STOCK", "Stok negatif olamaz");
   }
 
-  await prisma.$transaction(async (tx) => {
-    const warehouse = await tx.warehouse.findUnique({
-      where: { code: input.warehouseCode },
-      select: { id: true },
+  const warehouse = await prisma.warehouse.findUnique({
+    where: { code: input.warehouseCode },
+    select: { id: true },
+  });
+  if (!warehouse) {
+    throw new BusinessError("WAREHOUSE_NOT_FOUND", "Depo bulunamadı", {
+      code: input.warehouseCode,
     });
-    if (!warehouse) {
-      throw new BusinessError("WAREHOUSE_NOT_FOUND", "Depo bulunamadı", {
-        code: input.warehouseCode,
-      });
-    }
+  }
 
-    await tx.variantStock.upsert({
+  if (input.reserved !== undefined) {
+    await prisma.variantStock.upsert({
       where: {
         variantId_warehouseId: {
           variantId: input.variantId,
@@ -131,34 +141,125 @@ export async function setVariantStock(input: {
       create: {
         variantId: input.variantId,
         warehouseId: warehouse.id,
-        onHand: input.onHand,
-        reserved: input.reserved ?? 0,
-        erpSyncedAt: input.fromErp ? new Date() : null,
+        onHand: 0,
+        reserved: input.reserved,
       },
-      update: {
-        onHand: input.onHand,
-        ...(input.reserved !== undefined ? { reserved: input.reserved } : {}),
-        ...(input.fromErp ? { erpSyncedAt: new Date() } : {}),
-      },
+      update: { reserved: input.reserved },
     });
+  }
 
-    await refreshVariantTotal(tx, input.variantId);
-  });
+  if (input.fromErp) {
+    await applyErpStock({
+      variantId: input.variantId,
+      quantity: input.onHand,
+      warehouseId: warehouse.id,
+    });
+    return;
+  }
+
+  await recordStockCount(
+    {
+      variantId: input.variantId,
+      warehouseId: warehouse.id,
+      counted: input.onHand,
+      description: "Depo miktarı düzeltmesi",
+    },
+    input.actorId ?? "",
+  );
 }
 
-/** Kırılımın toplamını varyanta yazar. Tek yer: iki sayı ayrışmasın. */
-async function refreshVariantTotal(
-  tx: Prisma.TransactionClient,
-  variantId: string,
-): Promise<void> {
-  const agg = await tx.variantStock.aggregate({
-    _sum: { onHand: true },
-    where: { variantId },
+export interface StockLevelRow {
+  variantId: string;
+  sku: string;
+  barcode: string | null;
+  productName: string;
+  /** Toplam eldeki adet — defterin bakiyesi. */
+  stock: number;
+  minStock: number | null;
+  unit: string | null;
+  shelfCode: string | null;
+  /** Depo süzgeci verildiyse o deponun adedi; verilmediyse null. */
+  warehouseOnHand: number | null;
+  erpSyncedAt: string | null;
+}
+
+export interface StockLevelFilter {
+  /** SKU / barkod / ürün adı. */
+  q?: string;
+  warehouseId?: string;
+  /** Yalnızca kritik eşiğin altındakiler. */
+  lowOnly?: boolean;
+  limit?: number;
+}
+
+/**
+ * "Hangi üründe kaç adet var" — ekranın ana tablosu ve aynı zamanda hareket
+ * girerken kullanılan ürün seçicisi.
+ *
+ * İkisi tek uçtan geliyor çünkü sayım girerken sorulan soru zaten "defterde kaç
+ * yazıyor": ayrı bir seçici, o sayıyı görmeden ürün seçtirirdi.
+ */
+export async function listStockLevels(
+  filter: StockLevelFilter = {},
+): Promise<StockLevelRow[]> {
+  const search = filter.q?.trim();
+  const rows = await prisma.productVariant.findMany({
+    where: {
+      isActive: true,
+      ...(search
+        ? {
+            OR: [
+              { sku: { contains: search, mode: "insensitive" as const } },
+              { barcode: { contains: search, mode: "insensitive" as const } },
+              {
+                product: { name: { contains: search, mode: "insensitive" as const } },
+              },
+            ],
+          }
+        : {}),
+      ...(filter.lowOnly ? { minStock: { not: null } } : {}),
+    },
+    orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
+    take: Math.min(filter.limit ?? 100, 500),
+    select: {
+      id: true,
+      sku: true,
+      barcode: true,
+      stock: true,
+      minStock: true,
+      unit: true,
+      shelfCode: true,
+      erpSyncedAt: true,
+      product: { select: { name: true } },
+      ...(filter.warehouseId
+        ? {
+            stocks: {
+              where: { warehouseId: filter.warehouseId },
+              select: { onHand: true },
+            },
+          }
+        : {}),
+    },
   });
-  await tx.productVariant.update({
-    where: { id: variantId },
-    data: { stock: agg._sum.onHand ?? 0 },
-  });
+
+  return rows
+    .map((r) => ({
+      variantId: r.id,
+      sku: r.sku,
+      barcode: r.barcode,
+      productName: r.product.name,
+      stock: r.stock,
+      minStock: r.minStock,
+      unit: r.unit,
+      shelfCode: r.shelfCode,
+      warehouseOnHand: filter.warehouseId
+        ? ((r as { stocks?: Array<{ onHand: number }> }).stocks?.[0]?.onHand ?? 0)
+        : null,
+      erpSyncedAt: r.erpSyncedAt?.toISOString() ?? null,
+    }))
+    // Eşiğin altında olma koşulu SQL'de kolonlar arası karşılaştırma isterdi;
+    // liste zaten `minStock` olanlarla sınırlandığı için burada eleniyor.
+    .filter((r) => !filter.lowOnly || (r.minStock !== null && r.stock <= r.minStock));
 }
 
 /**
