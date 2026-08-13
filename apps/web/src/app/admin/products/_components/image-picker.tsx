@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { Button, ErrorLine, TextArea } from "@/components/form";
+import { mediaSrc } from "@/lib/media";
 
 interface Props {
   /** One URL per line — the shape the product form already stores. */
@@ -94,8 +95,9 @@ export function ImagePicker({ value, onChange }: Props) {
                   benefit here. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={url}
+                src={mediaSrc(url, 160)}
                 alt=""
+                loading="lazy"
                 className="h-20 w-20 rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
               />
               <button

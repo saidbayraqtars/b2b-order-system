@@ -20,7 +20,8 @@
     "@repo/database": "workspace:*",
     "@repo/types": "workspace:*",
     "bcryptjs": "^2.4.3",
-    "nodemailer": "^6.9.15"
+    "nodemailer": "^6.9.15",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:^",

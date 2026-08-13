@@ -3,6 +3,10 @@ import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promi
 import path from "node:path";
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
+import { deleteVariants } from "./image";
+import { uploadRoot } from "./upload-root";
+
+export { uploadRoot };
 
 // Uploaded files (product photos, for now).
 //
@@ -64,10 +68,6 @@ const MIME_BY_EXT: Record<string, string> = Object.fromEntries(
 
 /** Public URL prefix; the route handler at this path serves the bytes. */
 export const MEDIA_URL_PREFIX = "/api/media";
-
-export function uploadRoot(): string {
-  return process.env.UPLOAD_DIR ?? path.join(process.cwd(), "uploads");
-}
 
 /** Folders are part of the URL, so keep them boring. */
 function assertFolder(folder: string): string {
@@ -161,6 +161,10 @@ export async function deleteMedia(url: string): Promise<boolean> {
   const target = path.resolve(root, ...segments);
   if (!target.startsWith(root + path.sep)) return false;
 
+  // Variants first: an original that is gone with its thumbnails still cached
+  // would keep serving a picture of something that was deleted.
+  await deleteVariants(segments);
+
   try {
     await unlink(target);
     return true;
@@ -189,7 +193,11 @@ export async function listOrphanMedia(minAgeHours = 24): Promise<string[]> {
   try {
     folders = (await readdir(root, { withFileTypes: true }))
       .filter((e) => e.isDirectory())
-      .map((e) => e.name);
+      .map((e) => e.name)
+      // The variant cache is derived data, not an upload. It happens to hold
+      // only directories at this level, but relying on that would make a
+      // future flat cache delete itself.
+      .filter((name) => !name.startsWith("."));
   } catch {
     return []; // dizin hiç oluşmamış — yüklenen görsel yok
   }

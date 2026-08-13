@@ -43,6 +43,7 @@ export * from "./notification";
 export * from "./push";
 export * from "./cart";
 export * from "./media";
+export * from "./image";
 export * from "./rate-limit";
 export * from "./audit-retention";
 export * from "./activity";

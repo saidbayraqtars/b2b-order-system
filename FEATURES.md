@@ -72,6 +72,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 56 | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili | ✅ |
 | 57 | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez | ✅ |
 | 58 | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası | ✅ |
+| 59 | Görsel işleme: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi, sharp yoksa orijinale düşme | ✅ |
 
 ---
 
@@ -2563,7 +2564,62 @@ reddedeceği sayfa adının temizlenmesi, aynı girdinin aynı baytı vermesi,
 Z'den sonraki sütun harfleri; gönderim biçiminin saklanması ve tanınmayan
 değerin CSV'ye düşmesi. Toplam **571 test**.
 
-## 54. API Uçları
+## 54. Görsel İşleme (Adım 59)
+
+Katalogda telefondan çekilmiş 2-5 MB'lık fotoğraflar var ve ürün ızgarasında
+120 piksel genişliğinde çiziliyorlardı. Sahadaki bağlantıda bu, açılan liste ile
+açılmayan liste arasındaki fark; mobil uygulama her kaydırmada ödüyor.
+
+### Varyantlar istendiğinde üretiliyor
+
+`/api/media/<klasör>/<dosya>?w=320` → küçültülmüş **WebP** kopya, diske
+önbelleklenir. Yükleme anında değil, **istendiğinde**:
+
+- Zaten binlerce ürünün fotoğrafı var; istendiğinde üretmek, her kuruluma ayrı
+  ayrı koşturulacak bir dolgu betiği olmadan hepsinin küçüğünü verir.
+- Boy listesi tek seferlik karar olmaktan çıkar: yeni bir genişlik eklemek bir
+  önbellek ıskası, bir göç değil.
+
+Önbellek **bayatlamaz**: yüklenen dosyanın adı rastgele ve baytları hiç
+değişmiyor. Orijinal silinince varyantları da siliniyor — silinmiş ürünün
+küçük resmi hâlâ o ürünün resmidir.
+
+### `?w=` beyaz liste
+
+İzinli genişlikler: **160 / 320 / 640 / 960**. Aralık değil liste, çünkü değer
+istemciden geliyor: açık aralık, aynı fotoğrafı on bin ayrı boyda ürettirmeye
+davettir. Tanınmayan değer **reddedilmiyor**, orijinal sunuluyor — yanlış yazılmış
+bir sorgu dizesi sayfada delik bırakmamalı.
+
+**Büyütme yok** (`withoutEnlargement`): 800 piksellik fotoğraftan 960 istenirse
+800 döner. Bulanık 960, göndermesi daha pahalı olan aynı görüntüdür.
+
+Hepsi WebP: varyantı yalnızca kendi sayfalarımız istiyor ve b2b portalını
+açabilen her tarayıcı WebP'yi yıllardır destekliyor. Tek çıktı biçimi = boy
+başına tek önbellek dosyası. Orijinal kendi adresinde el değmeden duruyor.
+
+### sharp yoksa site çalışmaya devam eder
+
+`sharp` yerel (native) modül: kilit dosyasında olup konteynerde yüklenememesi
+mümkün olan tek bağımlılık. Bu yüzden **tembel yükleniyor** ve yokluğu
+ölümcül değil — varyant üretilemezse orijinal sunuluyor. Sonuç: görselleri ağır
+bir site, görselsiz bir site değil. Hata her istekte değil **bir kez** yazılıyor.
+
+### Ekranlarda
+
+Vitrin kartı 320 (srcset ile 2x 640), ürün detayı 640/1280, küçük resimler ve
+yönetimdeki görsel seçici 160. `mediaSrc()` yalnızca **kendi** yükleme
+adreslerimize dokunuyor: ürün görseli harici bir URL de olabiliyor ve başkasının
+adresine sorgu dizesi eklemek en iyi ihtimalle yoksayılır.
+
+### Doğrulama
+
+7 birim testi: genişlik beyaz listesi (metin de gelebiliyor), WebP'ye küçültme
+ve boyutun küçülmesi, büyütmeme, **ikinci istekte orijinale hiç dokunmama**
+(önbellek), olmayan dosya, çözülemeyen dosya, silinince varyantların gitmesi.
+Toplam **578 test**.
+
+## 55. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2601,7 +2657,7 @@ değerin CSV'ye düşmesi. Toplam **571 test**.
 | GET · POST | `/api/admin/audit/retention` | süper admin (durum / eski kayıtları sil) |
 | GET | `/api/admin/audit/export?from&to` | süper admin (CSV akışı) |
 | GET | `/api/admin/variants` | süper admin (hediye seçimi için varyant listesi) |
-| GET | `/api/media/<klasör>/<dosya>` | herkes (katalog görseli) |
+| GET | `/api/media/<klasör>/<dosya>[?w=160|320|640|960]` | herkes (katalog görseli; `w` küçültülmüş WebP) |
 | POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
 | POST | `/api/orders/quote` | 4 rol (sepeti fiyatlar, sipariş oluşturmaz) |
 | GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
@@ -2784,7 +2840,7 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 ### Yakın plan
 - **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
 - **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Görsel işleme:** küçük resim üretimi, yeniden boyutlandırma, WebP dönüşümü; yerel diskin yanına S3/MinIO sürücüsü.
+- **Nesne deposu sürücüsü:** yerel diskin yanına S3/MinIO. Küçük resim/WebP Adım 59'da geldi.
 
 ### Uzun vadeli backlog
 

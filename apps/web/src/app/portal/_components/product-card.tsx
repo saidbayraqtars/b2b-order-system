@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
+import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +52,10 @@ export function ProductCard({
             // ediliyor; next/image burada kazanç sağlamadan loader isterdi.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={product.images[0]}
+              src={mediaSrc(product.images[0], 320)}
+              srcSet={mediaSrcSet(product.images[0], 320)}
               alt={product.name}
+              loading="lazy"
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
           ) : (

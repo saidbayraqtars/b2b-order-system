@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Package, ShoppingCart } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart, normalizeQty } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
+import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +57,8 @@ export function ProductDetail({
             {product.images[activeImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={product.images[activeImage]}
+                src={mediaSrc(product.images[activeImage]!, 640)}
+                srcSet={mediaSrcSet(product.images[activeImage]!, 640)}
                 alt={product.name}
                 className="h-full w-full object-contain"
               />
@@ -83,8 +85,9 @@ export function ProductDetail({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={src}
+                    src={mediaSrc(src, 160)}
                     alt=""
+                    loading="lazy"
                     className="h-full w-full object-cover"
                   />
                 </button>
