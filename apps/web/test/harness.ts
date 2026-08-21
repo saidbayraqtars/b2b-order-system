@@ -181,6 +181,8 @@ export class Fixtures {
   private readonly groupIds: string[] = [];
   private readonly categoryIds: string[] = [];
   private readonly productIds: string[] = [];
+  /** Aynı dosyada birden çok katalog kurulabilsin diye: slug ve SKU tekil. */
+  private seq = 0;
 
   constructor(prefix: string) {
     this.tag = `${prefix}${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
@@ -268,25 +270,33 @@ export class Fixtures {
     stock?: number;
     moqUnits?: number;
     unitsPerCase?: number;
+    /** Gıda kurulumunun iki kalem ayarı; verilmezse kapalı/boş. */
+    tracksLots?: boolean;
+    pricingUnit?: string | null;
+    unitFactor?: number | null;
   } = {}): Promise<{ variantId: string; productId: string; categoryId: string }> {
+    const key = `${this.tag}-${++this.seq}`;
     const category = await prisma.category.create({
-      data: { name: `Kategori ${this.tag}`, slug: `kategori-${this.tag}` },
+      data: { name: `Kategori ${key}`, slug: `kategori-${key}` },
       select: { id: true },
     });
     this.categoryIds.push(category.id);
 
     const product = await prisma.product.create({
       data: {
-        name: `Ürün ${this.tag}`,
-        slug: `urun-${this.tag}`,
+        name: `Ürün ${key}`,
+        slug: `urun-${key}`,
         categoryId: category.id,
         vatRate: 20,
         variants: {
           create: {
-            sku: `SKU-${this.tag}`,
+            sku: `SKU-${key}`,
             stock: options.stock ?? 1_000,
             moqUnits: options.moqUnits ?? 1,
             unitsPerCase: options.unitsPerCase ?? 1,
+            tracksLots: options.tracksLots ?? false,
+            pricingUnit: options.pricingUnit ?? null,
+            unitFactor: options.unitFactor ?? null,
           },
         },
       },

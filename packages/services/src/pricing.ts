@@ -47,6 +47,19 @@ export interface ResolvePriceInput {
    * property of the customer, not of the line.
    */
   volumeDiscountPercent?: Decimal | null;
+  /**
+   * Çift birim çarpanı: 1 satış birimi kaç fiyat birimi eder.
+   *
+   * Gıda toptanında fiyat kg üzerinden konuşulur, satış kasa üzerinden yapılır.
+   * Çarpım **burada**, iskontodan önce yapılıyor: böylece firma iskontosu,
+   * hacim merdiveni ve KDV zaten satış birimi başına düşen fiyatla çalışır ve
+   * hiçbiri kg/kasa diye bir şey bilmek zorunda kalmaz. Sonradan çarpsaydık
+   * FIXED iskonto (kg başına 2 ₺) sessizce kasa başına 2 ₺ olurdu.
+   *
+   * Boş ya da 1 ise hiçbir şey değişmez — klasik adet/koli düzeni bu yoldan
+   * hiç geçmemiş gibi davranır.
+   */
+  unitFactor?: Decimal | null;
 }
 
 export interface ResolvedPrice {
@@ -136,7 +149,11 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
     });
   }
 
-  const base = chosen.price;
+  // Fiyat birimi → satış birimi. `listPrice` çarpılmıyor: belgede basılacak
+  // olan "84,50 ₺/kg" satırı, kg fiyatının kendisi.
+  const factor = input.unitFactor;
+  const base =
+    factor && factor.gt(ZERO) && !factor.eq(1) ? chosen.price.mul(factor) : chosen.price;
   const unitPrice = round2(base);
   const companyDiscountPerUnit = round2(
     computeDiscount(base, productId, categoryId, discounts),

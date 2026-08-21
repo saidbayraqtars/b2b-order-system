@@ -72,6 +72,13 @@ export interface QuotedLine {
   listUnitPrice: Money;
   /** Çevrimde kullanılan kur — siparişe donuyor. */
   exchangeRate: Money;
+  /**
+   * Çift birim künyesi: fiyatın konuşulduğu birim ve 1 satış biriminin kaç
+   * fiyat birimi ettiği. `unitPrice` zaten satış birimi başına — bu ikisi
+   * belgeye "12,5 kg × 84,50 ₺/kg" satırını bastırmak için taşınıyor.
+   */
+  pricingUnit: string | null;
+  unitFactor: Money | null;
 }
 
 export interface QuoteCompany {
@@ -199,6 +206,9 @@ export async function buildQuote(
       stock: true,
       unitsPerCase: true,
       moqUnits: true,
+      unit: true,
+      pricingUnit: true,
+      unitFactor: true,
       product: {
         select: { id: true, name: true, vatRate: true, categoryId: true },
       },
@@ -253,6 +263,7 @@ export async function buildQuote(
       categoryId: v.product.categoryId,
       discounts: company.discounts,
       volumeDiscountPercent: volumePercent,
+      unitFactor: v.unitFactor,
     });
 
     lines.push({
@@ -276,6 +287,8 @@ export async function buildQuote(
       lineNet: r.lineNet,
       lineTax: ZERO,
       isGift: false,
+      pricingUnit: v.pricingUnit,
+      unitFactor: v.unitFactor,
     });
   }
 
@@ -464,6 +477,8 @@ async function priceGifts(
       sku: true,
       stock: true,
       product: { select: { id: true, name: true, vatRate: true, categoryId: true } },
+      pricingUnit: true,
+      unitFactor: true,
       prices: {
         select: {
           customerGroupId: true,
@@ -499,6 +514,7 @@ async function priceGifts(
         categoryId: v.product.categoryId,
         discounts: params.discounts,
         volumeDiscountPercent: params.volumeDiscountPercent,
+        unitFactor: v.unitFactor,
       });
     } catch {
       continue; // no price for this company — nothing to put on the invoice
@@ -532,6 +548,8 @@ async function priceGifts(
         lineNet: ZERO,
         lineTax: ZERO,
         isGift: true,
+        pricingUnit: v.pricingUnit,
+        unitFactor: v.unitFactor,
       },
     });
   }

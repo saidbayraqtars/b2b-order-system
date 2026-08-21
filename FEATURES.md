@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
+Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
 
 ---
 
@@ -73,6 +73,7 @@ Son güncelleme: 2026-08-13 · Adım 54 (sayfa düzeni) sonu
 | 57 | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez | ✅ |
 | 58 | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası | ✅ |
 | 59 | Görsel işleme: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi, sharp yoksa orijinale düşme | ✅ |
+| 60 | Gıda paketi: parti (lot) + son kullanma takibi, FEFO sevkiyat, fire/bloke, kasa/kg çift birim | ✅ |
 
 ---
 
@@ -2619,7 +2620,63 @@ ve boyutun küçülmesi, büyütmeme, **ikinci istekte orijinale hiç dokunmama*
 (önbellek), olmayan dosya, çözülemeyen dosya, silinince varyantların gitmesi.
 Toplam **578 test**.
 
-## 55. API Uçları
+## 55. Gıda Paketi: Parti/SKT & Çift Birim (Adım 60)
+
+Gıda toptanında iki soru, diğer sektörlerde sorulmayan biçimde soruluyor:
+**hangi partiden, hangi son kullanma tarihiyle** ve **hangi birimden konuşuyoruz**.
+Adım 60 ikisini de kapatır.
+
+### Parti (lot) & son kullanma
+
+- **`StockLot`** — bir üretim partisinin bu kalemden elde kalan adedi: `code`, `expiryDate`, `producedAt`, `onHand`, `isBlocked`.
+- **Bakiye kuralı defterle aynı:** `onHand` yalnızca `postStockMovement` içinden oynar. `StockMovement.lotId` doldurulduğunda hareket hem toplamı, hem depo kırılımını, hem parti bakiyesini aynı işlemde oynatıyor. Ayrı bir "parti stoğu" yazma yolu **yok** — olsaydı iki sayı ilk hafta ayrışırdı.
+- **Depo kırılımı bilerek yok.** Sipariş bir depo seçmiyor, parti seçiyor. Partiyi ayrıca depoya bölmek, kullanılmayan bir kırılım uğruna eşsizliği (aynı parti kodu iki depoda iki satır) bozardı. Eşsizlik: `(variantId, code)`.
+- **Parti kodu zorunlu değil.** Dökme malın kutusunda kod yoktur, SKT'si vardır. Kod verilmezse `P-YYMMDD-XXXX` üretiliyor: uydurulan kod, üretilen koddan kötüdür — iki depocu aynı kodu farklı partiye verir.
+- **SKT boşsa raf ömründen türetiliyor** (`ProductVariant.shelfLifeDays`). Depocunun her kutuda iki tarih yazması beklenemez; biri diğerini veriyorsa ikincisini istemek gereksiz iştir.
+- **Aynı koda ikinci giriş yeni parti açmaz**, üstüne ekler — ve ilk girişteki SKT'yi **ezmez**. İkinci girişte yanlış yazılan bir tarih, doğru olanı silmemeli.
+
+### FEFO — önce son kullanma tarihi yakın olan
+
+`allocateFefo` bir çıkışı partilere bölüyor; sipariş her partiden düşen adet için
+**ayrı bir defter satırı** yazıyor.
+
+- **FIFO değil FEFO:** depoya önce giren, her zaman önce bozulan değildir.
+- **Partiyi insan seçmiyor.** Seçseydi SKT'si yakın mal depoda kalır ve bir gün fire olarak geri gelirdi.
+- **SKT'si geçmiş ve bloke partiler sıraya hiç girmez.** Onlar bir fire kararıdır — satış anında sessizce çözülecek bir şey değil.
+- **Partiler yetmezse kalan `lotId: null` düşer.** Parti takibi bugün açılmış bir kurulumda eldeki mal partisizdir; satışı reddetmek, defterin geçmişi yüzünden bugünkü işi durdurmak olurdu.
+- **İptal, malı çıktığı partiye geri verir.** Bunu sipariş satırından türetmek mümkün değil: satır kaç adet olduğunu bilir, hangi SKT'li kutunun ayrıldığını bilmez — defterin çıkış satırları bilir. Defterde satırı olmayan eski siparişlerin iptali partisiz geri veriyor, yani eskisi gibi çalışıyor.
+
+### Fire, bloke, uyarı
+
+- **Fire sayımdan ayrı** (`/write-off`): sayım "defter yanılmış", fire "mal gitti" demek. Gıdada yıl sonunda bu ikisi ayrı ayrı sorulan iki sayıdır.
+- **Bloke parti** — karantina, şüpheli soğuk zincir, numune: FEFO'ya girmez, elle de sevk edilemez, bloke edilmiş partiye giriş de yapılamaz.
+- **Uyarı eşiği kalem bazlı** (`expiryWarningDays`, varsayılan 30). Sütte 3 gün, konservede 90 gün aynı şey değil.
+- **Özet ayrı sorgu:** "kaç parti bozulmuş, kaç parti eşikte" listeden bağımsız — süzgeç uyarıyı gizleyemesin diye.
+- Ekran: **`/admin/stok` → Partiler & son kullanma**. Rapor tasarımcısında ayrı veri kümesi: **`STOCK_LOTS`**.
+
+### Çift birim: kasa satılır, kilo konuşulur
+
+- `ProductVariant.pricingUnit` (KG/LT) + `unitFactor` (1 kasa = 12,5 kg).
+- **Çarpım fiyatlamanın girişinde**, `resolvePrice` içinde yapılıyor. Böylece firma iskontosu, hacim merdiveni, kampanya ve KDV zaten satış birimi başına düşen fiyatla çalışıyor ve hiçbiri kg/kasa diye bir şey bilmiyor. Sonradan çarpılsaydı FIXED iskonto (kg başına 2 ₺) sessizce kasa başına 2 ₺ olurdu.
+- **`listUnitPrice` çarpılmıyor:** belgede basılacak olan "84,50 ₺/kg" satırı, kilo fiyatının kendisi. Sipariş satırında `pricingUnit` + `unitFactor` **donuyor** — çarpan yarın değişirse dünkü faturanın açıklaması değişmemeli.
+- `isVariableWeight` — tartılarak sevk edilen mal (peynir, et, zeytin) bugün yalnızca işaret: belgeye not düşer, otomatik yeniden fiyatlama yapmaz.
+
+### Doğrulama
+
+`apps/web/test/stock-lots.test.ts` — 13 rota testi: mal kabul, aynı koda ikinci
+giriş, raf ömründen SKT, yetki sınırı, FEFO sırası, geçmiş/bloke partinin
+atlanması, iptalin partiye dönmesi, **parti takibi kapalı kalemin eskisi gibi
+çalışması**, fire, liste sırası ve çift birim fiyatlaması.
+
+### Gösterim verisi
+
+`pnpm --filter @repo/database db:seed-gida` — 13 gıda ürünü, 23 parti; SKT'ler
+bilerek üç kümede (geçmiş, eşikte, uygun), bir parti bloke, bir kalem (streç
+film) parti takibi **kapalı**.
+
+---
+
+## 56. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2721,6 +2778,9 @@ Toplam **578 test**.
 | POST | `/api/admin/stock-movements/transfer` | süper admin (iki bacak tek işlemde) |
 | POST | `/api/admin/stock-movements/:id/reverse` | süper admin (sipariş kaynaklı hareket reddedilir) |
 | GET | `/api/admin/stock-movements/summary?from&to` | süper admin (dönem özeti, sebebe göre) |
+| GET · POST | `/api/admin/stock-lots?variantId&q&expiredOnly&withinDays&includeEmpty` | süper admin (parti listesi + SKT özeti / mal kabul) |
+| PATCH | `/api/admin/stock-lots/:id` | süper admin (künye düzeltme, bloke/blokeyi kaldır) |
+| POST | `/api/admin/stock-lots/:id/write-off` | süper admin (fire/imha, gerekçe zorunlu) |
 | GET | `/api/admin/payment-intents?status&companyId&orderId` | süper admin (kart tahsilatları + aktif sağlayıcı) |
 | POST | `/api/admin/payment-intents/:id/capture` | süper admin (kasaya yazan tek yol; çift tıklama ikinci kayıt yazmaz) |
 | POST | `/api/admin/payment-intents/:id/cancel` | süper admin (tahsil edilmiş ödeme reddedilir — iade gerekir) |
@@ -2815,6 +2875,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 
 ### Daha büyük
 
+- ~~**Gıda: parti/SKT takibi yok**~~ — Adım 60'ta kapatıldı: parti defteri, FEFO sevkiyat, fire/bloke, kalem bazlı uyarı eşiği, `STOCK_LOTS` veri kümesi. **Kalan:** parti irsaliyede otomatik basılmıyor (defterden okunuyor), ve tartılan malın faturada yeniden tartıya göre fiyatlanması yok.
 - **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
 - **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
 - **Bildirim tercihi yok** — Adım 49'da push eklendi (e-postanın yanına), ama kullanıcı hangi olay için bildirim alacağını seçemiyor: ya hepsi ya hiçbiri. SMS kanalı da yok; o, sağlayıcı seçimi gerektiriyor.

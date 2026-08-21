@@ -112,3 +112,63 @@ export const stockMovementFilterSchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 export type StockMovementFilter = z.infer<typeof stockMovementFilterSchema>;
+
+// ─────────────────────────────────────────────
+// PARTİ (LOT) & SON KULLANMA TARİHİ
+// ─────────────────────────────────────────────
+
+/**
+ * Parti girişi — mal kabulde yazılan satır.
+ *
+ * Adet ile parti aynı formda: gıdada mal partisiz girmez, iki ayrı adım olsaydı
+ * girişi yapan kişi ikincisini atlar ve defter "partisi girilmemiş" bakiyeyle
+ * dolardı.
+ */
+export const stockLotEntrySchema = z.object({
+  variantId: z.string().cuid(),
+  warehouseId: z.string().cuid().optional(),
+  /** Üreticinin parti/seri kodu. Yoksa mal kabul kendi kodunu üretir. */
+  code: z.string().trim().max(60).optional(),
+  /** Son kullanma tarihi. Kalemde raf ömrü tanımlıysa üretim tarihinden türetilebilir. */
+  expiryDate: dateString.optional(),
+  producedAt: dateString.optional(),
+  quantity,
+  note: optionalText(300),
+  occurredAt: dateString.optional(),
+});
+export type StockLotEntryInput = z.infer<typeof stockLotEntrySchema>;
+
+/** Partiyi bloke et / blokeyi kaldır, ya da künyesini düzelt. */
+export const stockLotUpdateSchema = z.object({
+  expiryDate: dateString.optional(),
+  producedAt: dateString.optional(),
+  isBlocked: z.boolean().optional(),
+  note: optionalText(300),
+});
+export type StockLotUpdateInput = z.infer<typeof stockLotUpdateSchema>;
+
+/** Fire/imha: SKT'si geçmiş partiyi defterden düş. */
+export const stockLotWriteOffSchema = z.object({
+  quantity,
+  reason: z.string().trim().min(1, "Gerekçe gerekli").max(300),
+  occurredAt: dateString.optional(),
+});
+export type StockLotWriteOffInput = z.infer<typeof stockLotWriteOffSchema>;
+
+export const stockLotFilterSchema = z.object({
+  variantId: z.string().cuid().optional(),
+  q: optionalText(120),
+  /** Yalnızca SKT'si geçmiş partiler. */
+  expiredOnly: z
+    .union([z.literal("1"), z.literal("true"), z.boolean()])
+    .optional()
+    .transform((v) => v === true || v === "1" || v === "true"),
+  /** SKT'sine bu kadar gün kalanlar (kalem eşiği yerine elle sorgu). */
+  withinDays: z.coerce.number().int().min(0).max(3650).optional(),
+  includeEmpty: z
+    .union([z.literal("1"), z.literal("true"), z.boolean()])
+    .optional()
+    .transform((v) => v === true || v === "1" || v === "true"),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+});
+export type StockLotFilter = z.infer<typeof stockLotFilterSchema>;

@@ -124,6 +124,10 @@ async function buildOrder(
       listCurrency: l.listCurrency,
       exchangeRate: l.exchangeRate,
       listUnitPrice: l.listUnitPrice,
+      // Çift birim de aynı sebeple donuyor: çarpan yarın değişirse dünkü
+      // faturanın "12,5 kg × 84,50 ₺/kg" açıklaması değişmemeli.
+      pricingUnit: l.pricingUnit,
+      unitFactor: l.unitFactor,
     }),
   );
   const stockLines = quote.lines.map((l) => ({

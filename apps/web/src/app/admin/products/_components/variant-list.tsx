@@ -331,6 +331,13 @@ function StockCard({
     minStock: variant.minStock != null ? String(variant.minStock) : "",
     shelfCode: variant.shelfCode ?? "",
     isActive: variant.isActive,
+    tracksLots: variant.tracksLots,
+    shelfLifeDays: variant.shelfLifeDays != null ? String(variant.shelfLifeDays) : "",
+    expiryWarningDays:
+      variant.expiryWarningDays != null ? String(variant.expiryWarningDays) : "",
+    pricingUnit: variant.pricingUnit ?? "",
+    unitFactor: variant.unitFactor ?? "",
+    isVariableWeight: variant.isVariableWeight,
   });
 
   return (
@@ -371,6 +378,69 @@ function StockCard({
         </div>
       </div>
 
+      {/*
+        Parti/SKT ve çift birim, stok kartının altında ayrı bir blokta duruyor:
+        ikisi de gıda kurulumunun ayarı ve her kalemde doldurulmaz. Aynı ızgaraya
+        karıştırılsalardı, ambalaj malzemesi giren kullanıcı da SKT sorusuyla
+        karşılaşırdı.
+      */}
+      <div className="mt-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
+          Parti / SKT &amp; çift birim
+        </p>
+        <div className="grid gap-2 sm:grid-cols-4">
+          <div>
+            <Label hint="Gün — SKT boşsa üretimden hesaplanır">Raf ömrü</Label>
+            <TextInput
+              value={form.shelfLifeDays}
+              inputMode="numeric"
+              onChange={(e) => setForm({ ...form, shelfLifeDays: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label hint="Kaç gün kala uyarılsın (boş = 30)">Uyarı eşiği</Label>
+            <TextInput
+              value={form.expiryWarningDays}
+              inputMode="numeric"
+              onChange={(e) =>
+                setForm({ ...form, expiryWarningDays: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <Label hint="Fiyat hangi birimde: KG, LT…">Fiyat birimi</Label>
+            <TextInput
+              value={form.pricingUnit}
+              onChange={(e) => setForm({ ...form, pricingUnit: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label hint="1 satış birimi kaç fiyat birimi (1 kasa = 12,5 kg)">
+              Çarpan
+            </Label>
+            <TextInput
+              value={form.unitFactor}
+              inputMode="decimal"
+              onChange={(e) => setForm({ ...form, unitFactor: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-4">
+          <Checkbox
+            checked={form.tracksLots}
+            onChange={(e) => setForm({ ...form, tracksLots: e.target.checked })}
+            label="Parti & SKT takibi"
+          />
+          <Checkbox
+            checked={form.isVariableWeight}
+            onChange={(e) =>
+              setForm({ ...form, isVariableWeight: e.target.checked })
+            }
+            label="Tartılarak sevk edilir"
+          />
+        </div>
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <Checkbox
           checked={form.isActive}
@@ -386,6 +456,14 @@ function StockCard({
               minStock: form.minStock ? Number(form.minStock) : null,
               shelfCode: form.shelfCode.trim() || null,
               isActive: form.isActive,
+              tracksLots: form.tracksLots,
+              shelfLifeDays: form.shelfLifeDays ? Number(form.shelfLifeDays) : null,
+              expiryWarningDays: form.expiryWarningDays
+                ? Number(form.expiryWarningDays)
+                : null,
+              pricingUnit: form.pricingUnit.trim() || null,
+              unitFactor: form.unitFactor ? Number(form.unitFactor) : null,
+              isVariableWeight: form.isVariableWeight,
             })
           }
         >

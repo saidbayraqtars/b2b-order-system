@@ -55,6 +55,8 @@ docker compose up -d
 pnpm db:generate        # prisma generate
 pnpm db:migrate         # migration'ları uygula
 pnpm db:seed            # admin + demo veri (idempotent, tekrar çalıştırılabilir)
+#   Gıda gösterimi için ek katalog (parti/SKT + kasa-kg çift birim):
+#   pnpm --filter @repo/database db:seed-gida
 
 # 6) Çalıştır
 pnpm --filter web dev       # web: http://localhost:3000

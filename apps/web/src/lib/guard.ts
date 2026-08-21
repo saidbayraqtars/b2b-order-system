@@ -443,6 +443,9 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   INVALID_BLOCK: 422,
   INVALID_STOCK: 422,
   STOCK_MOVEMENT_NOT_FOUND: 404,
+  LOT_NOT_FOUND: 404,
+  LOT_CODE_TAKEN: 409,
+  LOT_EXPIRED: 422,
   // çek/senet portföyü
   CHEQUE_NOT_FOUND: 404,
   // 422: istenen geçiş kâğıdın bulunduğu durumdan mümkün değil — girdi hatası.

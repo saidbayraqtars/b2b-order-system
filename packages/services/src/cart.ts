@@ -80,6 +80,9 @@ export async function getCart(
               unitsPerCase: true,
               moqUnits: true,
               stock: true,
+              unit: true,
+              pricingUnit: true,
+              unitFactor: true,
               prices: {
                 select: {
                   customerGroupId: true,
@@ -131,6 +134,7 @@ export async function getCart(
         categoryId: v.product.categoryId,
         discounts: ctx.discounts,
         volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
+        unitFactor: v.unitFactor,
       });
       netUnitPrice = priced.netUnitPrice.toFixed(2);
       listCurrency = priced.listCurrency;

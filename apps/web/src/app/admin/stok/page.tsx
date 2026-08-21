@@ -1,4 +1,5 @@
 import { requirePage } from "@/lib/guard";
+import { LotsPanel } from "./_components/lots-panel";
 import { MovementsPanel } from "./_components/movements-panel";
 import { StockLevelsPanel } from "./_components/stock-levels-panel";
 import { StockSummaryPanel } from "./_components/stock-summary-panel";
@@ -13,6 +14,7 @@ export default async function AdminStokPage() {
         <h1 className="text-xl font-bold">Stok defteri</h1>
         <StockSummaryPanel />
         <StockLevelsPanel />
+        <LotsPanel />
         <MovementsPanel />
         <WarehousesPanel />
         <p className="text-sm text-neutral-500">

@@ -313,6 +313,13 @@ export interface AdminVariantDetail {
   minStock: number | null;
   shelfCode: string | null;
   isActive: boolean;
+  /** Parti/SKT takibi ve çift birim — gıda kurulumunun kalem bazlı ayarları. */
+  tracksLots: boolean;
+  shelfLifeDays: number | null;
+  expiryWarningDays: number | null;
+  pricingUnit: string | null;
+  unitFactor: string | null;
+  isVariableWeight: boolean;
   /** How many order lines reference this variant — non-zero blocks deletion. */
   orderItemCount: number;
   prices: AdminPriceRow[];
@@ -360,6 +367,12 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
           minStock: true,
           shelfCode: true,
           isActive: true,
+          tracksLots: true,
+          shelfLifeDays: true,
+          expiryWarningDays: true,
+          pricingUnit: true,
+          unitFactor: true,
+          isVariableWeight: true,
           _count: { select: { orderItems: true } },
           prices: {
             select: {
@@ -404,6 +417,12 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
       minStock: v.minStock,
       shelfCode: v.shelfCode,
       isActive: v.isActive,
+      tracksLots: v.tracksLots,
+      shelfLifeDays: v.shelfLifeDays,
+      expiryWarningDays: v.expiryWarningDays,
+      pricingUnit: v.pricingUnit,
+      unitFactor: v.unitFactor ? v.unitFactor.toString() : null,
+      isVariableWeight: v.isVariableWeight,
       orderItemCount: v._count.orderItems,
       prices: v.prices.map((pr) => ({
         id: pr.id,
@@ -560,6 +579,12 @@ export async function createVariant(productId: string, input: CreateVariantInput
       minStock: input.minStock ?? null,
       shelfCode: input.shelfCode ?? null,
       isActive: input.isActive ?? true,
+      tracksLots: input.tracksLots ?? false,
+      shelfLifeDays: input.shelfLifeDays ?? null,
+      expiryWarningDays: input.expiryWarningDays ?? null,
+      pricingUnit: input.pricingUnit ?? null,
+      unitFactor: input.unitFactor ?? null,
+      isVariableWeight: input.isVariableWeight ?? false,
     },
     select: { id: true, sku: true },
   });
@@ -602,6 +627,22 @@ export async function updateVariant(id: string, input: UpdateVariantInput) {
         ? { shelfCode: input.shelfCode ?? null }
         : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.tracksLots !== undefined ? { tracksLots: input.tracksLots } : {}),
+      ...(input.shelfLifeDays !== undefined
+        ? { shelfLifeDays: input.shelfLifeDays ?? null }
+        : {}),
+      ...(input.expiryWarningDays !== undefined
+        ? { expiryWarningDays: input.expiryWarningDays ?? null }
+        : {}),
+      ...(input.pricingUnit !== undefined
+        ? { pricingUnit: input.pricingUnit ?? null }
+        : {}),
+      ...(input.unitFactor !== undefined
+        ? { unitFactor: input.unitFactor ?? null }
+        : {}),
+      ...(input.isVariableWeight !== undefined
+        ? { isVariableWeight: input.isVariableWeight }
+        : {}),
     },
     select: { id: true, sku: true, stock: true },
   });

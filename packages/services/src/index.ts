@@ -61,6 +61,7 @@ export * from "./label-render";
 export * from "./page-layout";
 export * from "./stock-admin";
 export * from "./stock-ledger";
+export * from "./stock-lot";
 export * from "./runtime-env";
 export * from "./update-channel";
 export * from "./cheque";

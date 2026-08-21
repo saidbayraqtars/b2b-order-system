@@ -59,6 +59,16 @@ export interface PostStockMovementInput {
    * izler; aktarım ikisini bilerek ayırır.
    */
   allowNegativeWarehouse?: boolean;
+  /**
+   * Hangi parti. Verilirse `StockLot.onHand` de aynı işlemde oynar.
+   *
+   * Satış yolunda bu alan çağıran tarafından **seçilmez**, `allocateFefo`
+   * tarafından hesaplanır: partiyi insana seçtirmek, SKT'si yakın malın
+   * depoda kalmasının en kısa yoludur.
+   */
+  lotId?: string | null;
+  /** Parti bakiyesinin eksiye düşmesine izin ver. Verilmezse `allowNegative`i izler. */
+  allowNegativeLot?: boolean;
 }
 
 export interface PostedStockMovement {
@@ -68,6 +78,7 @@ export interface PostedStockMovement {
   quantity: number;
   /** Bu hareketten sonraki toplam eldeki adet. */
   balance: number;
+  lotId: string | null;
 }
 
 /**
@@ -121,6 +132,15 @@ export async function postStockMovement(
     });
   }
 
+  if (input.lotId) {
+    await moveLotRow(tx, {
+      variantId: input.variantId,
+      lotId: input.lotId,
+      delta,
+      allowNegative: input.allowNegativeLot ?? input.allowNegative ?? false,
+    });
+  }
+
   if (updated.stock < 0 && !input.allowNegative) {
     // Fırlatmak işlemi geri alır: artırım da, varsa kırılım da geri sarılır.
     throw new BusinessError(
@@ -136,6 +156,7 @@ export async function postStockMovement(
       ...(input.warehouseId
         ? { warehouse: { connect: { id: input.warehouseId } } }
         : {}),
+      ...(input.lotId ? { lot: { connect: { id: input.lotId } } } : {}),
       direction: input.direction,
       quantity,
       source: input.source,
@@ -159,7 +180,123 @@ export async function postStockMovement(
     direction: input.direction,
     quantity,
     balance: updated.stock,
+    lotId: input.lotId ?? null,
   };
+}
+
+/**
+ * Parti bakiyesini oynat.
+ *
+ * Depo satırından farkı: parti kendiliğinden açılmaz. Var olmayan bir partiye
+ * hareket yazmak, mal kabulde girilmemiş bir partinin satış anında sessizce
+ * doğması demek olurdu — parti kimliğinin (SKT, üretim tarihi) hiç sorulmadığı
+ * tek an da odur.
+ */
+async function moveLotRow(
+  tx: Tx,
+  params: {
+    variantId: string;
+    lotId: string;
+    delta: number;
+    allowNegative: boolean;
+  },
+): Promise<void> {
+  const lot = await tx.stockLot.findUnique({
+    where: { id: params.lotId },
+    select: { id: true, variantId: true, code: true },
+  });
+  if (!lot) {
+    throw new BusinessError("LOT_NOT_FOUND", "Parti bulunamadı", {
+      lotId: params.lotId,
+    });
+  }
+  if (lot.variantId !== params.variantId) {
+    throw new BusinessError("LOT_NOT_FOUND", "Parti bu ürüne ait değil", {
+      lotId: params.lotId,
+    });
+  }
+
+  const row = await tx.stockLot.update({
+    where: { id: params.lotId },
+    data: { onHand: { increment: params.delta } },
+    select: { onHand: true },
+  });
+
+  if (row.onHand < 0 && !params.allowNegative) {
+    throw new BusinessError(
+      "INVALID_STOCK",
+      `${lot.code} partisinde yeterli mal yok (${row.onHand} adet)`,
+      { lotId: params.lotId, onHand: row.onHand },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// FEFO — ÖNCE SON KULLANMA TARİHİ YAKIN OLAN
+// ─────────────────────────────────────────────
+
+export interface LotAllocation {
+  /** `null` = partisi girilmemiş bakiyeden karşılanan kısım. */
+  lotId: string | null;
+  lotCode: string | null;
+  expiryDate: Date | null;
+  quantity: number;
+}
+
+/**
+ * Bir çıkışı partilere böl: SKT'si en yakın olan önce (FEFO).
+ *
+ * Gıdada FIFO değil FEFO doğrudur — depoya önce giren, her zaman önce bozulan
+ * değildir. SKT'si geçmiş ve bloke partiler sıraya hiç girmez: onlar bir fire
+ * kararıdır, satış anında sessizce çözülecek bir şey değil.
+ *
+ * Partilerin toplamı istenen adedi karşılamıyorsa kalan `lotId: null` olarak
+ * döner. Bu bilerek: parti takibi bugün açılmış bir kurulumda eldeki mal
+ * partisizdir ve satışı reddetmek, defterin geçmişi yüzünden bugünkü işi
+ * durdurmak olurdu.
+ */
+export async function allocateFefo(
+  tx: Tx,
+  variantId: string,
+  quantity: number,
+): Promise<LotAllocation[]> {
+  const today = startOfToday();
+  const lots = await tx.stockLot.findMany({
+    where: {
+      variantId,
+      onHand: { gt: 0 },
+      isBlocked: false,
+      OR: [{ expiryDate: null }, { expiryDate: { gte: today } }],
+    },
+    orderBy: [{ expiryDate: "asc" }, { createdAt: "asc" }],
+    select: { id: true, code: true, expiryDate: true, onHand: true },
+  });
+
+  const allocations: LotAllocation[] = [];
+  let remaining = quantity;
+
+  for (const lot of lots) {
+    if (remaining <= 0) break;
+    const take = Math.min(remaining, lot.onHand);
+    allocations.push({
+      lotId: lot.id,
+      lotCode: lot.code,
+      expiryDate: lot.expiryDate,
+      quantity: take,
+    });
+    remaining -= take;
+  }
+
+  if (remaining > 0) {
+    allocations.push({
+      lotId: null,
+      lotCode: null,
+      expiryDate: null,
+      quantity: remaining,
+    });
+  }
+
+  return allocations;
 }
 
 /** Depo kırılımını oynat. Satır yoksa açılır — ilk hareket depoyu da tanımlar. */
@@ -238,16 +375,25 @@ export async function recordOrderStockOut(
   },
 ): Promise<void> {
   for (const line of ctx.lines) {
-    await postStockMovement(tx, {
-      variantId: line.variantId,
-      direction: "OUT",
-      quantity: line.quantity,
-      source: "ORDER",
-      description: `Sipariş ${ctx.orderNumber}`,
-      orderId: ctx.orderId,
-      recordedById: ctx.actorId ?? null,
-      allowNegative: true,
-    });
+    // Parti takipli kalemde çıkış tek satır değil: her partiden düşen adet
+    // kendi satırını yazar, yoksa "hangi SKT'li mal kime gitti" sorusu bir
+    // geri çağırma anında cevapsız kalır.
+    const allocations = await allocateFefo(tx, line.variantId, line.quantity);
+    for (const allocation of allocations) {
+      await postStockMovement(tx, {
+        variantId: line.variantId,
+        direction: "OUT",
+        quantity: allocation.quantity,
+        source: "ORDER",
+        description: allocation.lotCode
+          ? `Sipariş ${ctx.orderNumber} · parti ${allocation.lotCode}`
+          : `Sipariş ${ctx.orderNumber}`,
+        orderId: ctx.orderId,
+        lotId: allocation.lotId,
+        recordedById: ctx.actorId ?? null,
+        allowNegative: true,
+      });
+    }
   }
 }
 
@@ -267,17 +413,61 @@ export async function recordOrderStockReturn(
     actorId?: string | null;
   },
 ): Promise<void> {
+  const label = ctx.reason === "CANCELLED" ? "iptali" : "reddi";
+
+  // Parti takipli mal, **çıktığı** partiye geri döner. Bunu sipariş satırından
+  // türetmek mümkün değil: satır kaç adet olduğunu bilir, hangi SKT'li kutunun
+  // ayrıldığını bilmez. Defterin çıkış satırları bilir.
+  const lotOuts = await tx.stockMovement.findMany({
+    where: {
+      orderId: ctx.orderId,
+      source: "ORDER",
+      direction: "OUT",
+      lotId: { not: null },
+      reversedBy: null,
+    },
+    select: { id: true, variantId: true, quantity: true, lotId: true },
+  });
+
+  const returnedByVariant = new Map<string, number>();
+  for (const out of lotOuts) {
+    await postStockMovement(tx, {
+      variantId: out.variantId,
+      direction: "IN",
+      quantity: out.quantity,
+      source: "ORDER_CANCEL",
+      description: `Sipariş ${ctx.orderNumber} ${label}`,
+      orderId: ctx.orderId,
+      lotId: out.lotId,
+      recordedById: ctx.actorId ?? null,
+    });
+    returnedByVariant.set(
+      out.variantId,
+      (returnedByVariant.get(out.variantId) ?? 0) + out.quantity,
+    );
+  }
+
+  // Kalanı partisiz geri ver. Bu yol, parti takibi hiç kullanılmayan kurulumun
+  // tamamı ve takipli kurulumda partisiz karşılanmış artık kısım — ve bu adım
+  // eklenmeden önce oluşmuş siparişlerin tamamı: onların defterde satırı yok,
+  // iptalleri yine de malı geri vermek zorunda.
   const items = await tx.orderItem.findMany({
     where: { orderId: ctx.orderId },
     select: { variantId: true, quantity: true },
   });
 
-  const label = ctx.reason === "CANCELLED" ? "iptali" : "reddi";
   for (const item of items) {
+    const alreadyReturned = returnedByVariant.get(item.variantId) ?? 0;
+    const remaining = item.quantity - alreadyReturned;
+    if (remaining <= 0) {
+      returnedByVariant.set(item.variantId, alreadyReturned - item.quantity);
+      continue;
+    }
+    returnedByVariant.set(item.variantId, 0);
     await postStockMovement(tx, {
       variantId: item.variantId,
       direction: "IN",
-      quantity: item.quantity,
+      quantity: remaining,
       source: "ORDER_CANCEL",
       description: `Sipariş ${ctx.orderNumber} ${label}`,
       orderId: ctx.orderId,

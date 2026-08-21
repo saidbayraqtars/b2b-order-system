@@ -126,6 +126,10 @@ const CATALOG_SELECT = {
       unitsPerCase: true,
       moqUnits: true,
       stock: true,
+      unit: true,
+      pricingUnit: true,
+      unitFactor: true,
+      tracksLots: true,
       prices: {
         select: {
           customerGroupId: true,
@@ -156,6 +160,10 @@ type CatalogRow = {
     unitsPerCase: number;
     moqUnits: number;
     stock: number;
+    unit: string | null;
+    pricingUnit: string | null;
+    unitFactor: unknown;
+    tracksLots: boolean;
     prices: Array<{
       customerGroupId: string | null;
       minQuantity: number;
@@ -187,6 +195,10 @@ function toCatalogProduct(
         unitsPerCase: v.unitsPerCase,
         moqUnits: v.moqUnits,
         stock: v.stock,
+        unit: v.unit,
+        pricingUnit: v.pricingUnit,
+        unitFactor: v.unitFactor ? String(v.unitFactor) : null,
+        tracksLots: v.tracksLots,
       };
       try {
         const r = resolvePrice({
@@ -202,6 +214,7 @@ function toCatalogProduct(
           categoryId: p.categoryId,
           discounts: ctx.discounts,
           volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
+          unitFactor: v.unitFactor as import("@prisma/client").Prisma.Decimal | null,
         });
         return {
           ...base,

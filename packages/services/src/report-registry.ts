@@ -109,6 +109,7 @@ export interface DatasetDef {
     | "checkIn"
     | "cashMovement"
     | "stockMovement"
+    | "stockLot"
     | "promotionRedemption";
   sql: DatasetSql;
   fields: Record<string, ReportFieldDef>;
@@ -783,6 +784,70 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
     // Depo satıcının deposu — kasayla aynı gerekçe. Bir müşterinin "hangi malda
     // kaç adet kaldı, ne hızla eriyor" sorusuna erişmesi, satıcının pazarlık
     // gücünü de görmesi demek.
+    scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
+  },
+
+  // Parti & son kullanma tarihi.
+  //
+  // Stok hareketlerinden ayrı bir veri kümesi: hareket defteri "ne oldu"yu,
+  // bu "elde ne duruyor"u anlatır. Aynı kümede olsalardı SKT raporu her
+  // sorguda hareketleri partiye indirgemek zorunda kalır, "30 gün içinde
+  // bozulacak mal" gibi tek satırlık bir soru gruplama gerektirirdi.
+  //
+  // `daysLeft` burada yok: türetilmiş bir sayı ve tasarımcının formül dili
+  // (Adım 56) çıktı sütunları üzerinde dört işlem yapabiliyor. SQL'e gitmeyen
+  // formül sınırının anlamı da bu — tarih aritmetiği veri kümesinin işi değil.
+  STOCK_LOTS: {
+    label: "Parti & son kullanma",
+    model: "stockLot",
+    sql: {
+      table: "StockLot",
+      alias: "sl",
+      joins: [
+        {
+          prefix: "variant",
+          table: "ProductVariant",
+          alias: "slv",
+          on: 'slv."id" = sl."variantId"',
+        },
+        {
+          prefix: "variant.product",
+          table: "Product",
+          alias: "slp",
+          on: 'slp."id" = slv."productId"',
+        },
+        {
+          prefix: "variant.product.category",
+          table: "Category",
+          alias: "slc",
+          on: 'slc."id" = slp."categoryId"',
+        },
+      ],
+    },
+    defaultSort: { field: "expiryDate", direction: "asc" },
+    fields: {
+      ...dateParts("expiryDate", "Son kullanma"),
+      ...dateParts("producedAt", "Üretim tarihi"),
+      ...dateParts("createdAt", "Giriş tarihi"),
+      code: text("Parti kodu", "code", true, "Parti"),
+      onHand: { label: "Eldeki adet", type: "number", path: "onHand", format: "number" },
+      isBlocked: {
+        label: "Bloke",
+        type: "boolean",
+        path: "isBlocked",
+        groupable: true,
+        source: "Parti",
+      },
+      note: text("Not", "note", false, "Parti"),
+      sku: text("SKU", "variant.sku", true, "Ürün"),
+      productName: text("Ürün", "variant.product.name", true, "Ürün"),
+      brand: text("Marka", "variant.product.brand", true, "Ürün"),
+      categoryName: text("Kategori", "variant.product.category.name", true, "Ürün"),
+      shelfCode: text("Raf", "variant.shelfCode", true, "Ürün"),
+      unit: text("Birim", "variant.unit", true, "Ürün"),
+    },
+    // Stok defteriyle aynı sınır: elde hangi malın ne kadar kaldığı satıcının
+    // bilgisi. Müşteri kendi siparişinin partisini irsaliyesinde görür.
     scope: (ctx) => (ctx.role === "SUPER_ADMIN" ? {} : { id: "__none__" }),
   },
 

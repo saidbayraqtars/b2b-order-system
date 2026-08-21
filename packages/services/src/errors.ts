@@ -115,6 +115,9 @@ export type BusinessErrorCode =
   | "WAREHOUSE_CODE_TAKEN"
   | "INVALID_STOCK"
   | "STOCK_MOVEMENT_NOT_FOUND"
+  | "LOT_NOT_FOUND"
+  | "LOT_CODE_TAKEN"
+  | "LOT_EXPIRED"
   // ── çek/senet portföyü ──
   | "CHEQUE_NOT_FOUND"
   | "INVALID_CHEQUE_TRANSITION"

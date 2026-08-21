@@ -76,6 +76,26 @@ export const createVariantSchema = z.object({
   shelfCode: z.string().max(40).nullish(),
   /** Pasif varyant katalogda görünmez, siparişe eklenemez; silinmez. */
   isActive: z.boolean().optional(),
+
+  /**
+   * Parti (lot) & son kullanma takibi — gıda kurulumunun kalem bazlı anahtarı.
+   * Kapalıyken hiçbir şey değişmez; açıkken mal kabul partiyi sorar, sipariş
+   * FEFO ile ayırır.
+   */
+  tracksLots: z.boolean().optional(),
+  /** Raf ömrü (gün): SKT girilmediğinde üretim tarihinden hesaplanır. */
+  shelfLifeDays: z.number().int().positive().max(3650).nullish(),
+  /** Kaç gün kala "yaklaşıyor" sayılsın. Boşsa kurulum varsayılanı (30). */
+  expiryWarningDays: z.number().int().min(0).max(3650).nullish(),
+
+  /**
+   * Çift birim: fiyat hangi birimde konuşuluyor ve 1 satış birimi kaç fiyat
+   * birimi ediyor. Gıdada satış "kasa", fiyat "kg" üzerindendir.
+   */
+  pricingUnit: z.string().max(16).nullish(),
+  unitFactor: z.number().positive().max(100_000).nullish(),
+  /** Sevkiyatta tartılan mal — belgeye "tartılacak" notu düşer. */
+  isVariableWeight: z.boolean().optional(),
 });
 export type CreateVariantInput = z.infer<typeof createVariantSchema>;
 
