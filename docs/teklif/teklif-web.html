@@ -4,65 +4,61 @@
 <meta charset="utf-8">
 <title>Teklif · Kurumsal Web Sitesi</title>
 <style>
-  @page { size: A4; margin: 16mm 14mm 14mm 14mm; }
+  @page { size: A4; margin: 15mm 14mm 12mm 14mm; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: "Segoe UI", "Calibri", Arial, sans-serif;
-    font-size: 10.2pt;
-    line-height: 1.5;
+    font-size: 10pt;
+    line-height: 1.45;
     color: #16181d;
   }
   h1, h2, h3 { margin: 0; font-weight: 650; }
+  p { margin: 0; }
 
   header {
     display: flex; justify-content: space-between; align-items: flex-start;
-    gap: 16mm; padding-bottom: 5mm; border-bottom: 2.4pt solid #1b3a5f;
+    gap: 14mm; padding-bottom: 3.5mm; border-bottom: 2.2pt solid #1b3a5f;
   }
-  .brand-name { font-size: 16pt; letter-spacing: .04em; color: #1b3a5f; }
-  .brand-line { font-size: 8.6pt; color: #5a6472; margin-top: 1mm; }
-  .doc-meta { text-align: right; font-size: 9pt; color: #33404f; }
-  .doc-title { font-size: 12.5pt; color: #1b3a5f; letter-spacing: .06em; }
-  .doc-meta table { border-collapse: collapse; margin-left: auto; margin-top: 2mm; }
-  .doc-meta td { padding: .4mm 0 .4mm 4mm; }
+  .brand-name { font-size: 15pt; letter-spacing: .04em; color: #1b3a5f; }
+  .brand-line { font-size: 8.4pt; color: #5a6472; margin-top: .8mm; }
+  .doc-meta { text-align: right; font-size: 8.8pt; color: #33404f; }
+  .doc-title { font-size: 12pt; color: #1b3a5f; letter-spacing: .06em; }
+  .doc-meta table { border-collapse: collapse; margin-left: auto; margin-top: 1.5mm; }
+  .doc-meta td { padding: .3mm 0 .3mm 4mm; }
   .doc-meta td:first-child { color: #6b7480; padding-left: 0; }
 
-  .parties { display: flex; gap: 6mm; margin: 6mm 0 5mm; }
-  .party { flex: 1; border: .6pt solid #ccd3db; border-radius: 2mm; padding: 3.5mm 4mm; }
-  .party h3 { font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: #6b7480; margin-bottom: 1.5mm; }
-  .party .who { font-size: 11pt; font-weight: 650; }
-  .party p { margin: 1mm 0 0; font-size: 9pt; color: #46505c; }
+  .parties { display: flex; gap: 5mm; margin: 4mm 0 1mm; }
+  .party { flex: 1; border: .6pt solid #ccd3db; border-radius: 1.5mm; padding: 2.5mm 3.5mm; }
+  .party h3 { font-size: 7.6pt; letter-spacing: .08em; text-transform: uppercase; color: #6b7480; margin-bottom: 1mm; }
+  .party .who { font-size: 10.5pt; font-weight: 650; }
+  .party p { font-size: 8.8pt; color: #46505c; margin-top: .5mm; }
 
-  section { margin-top: 5mm; break-inside: avoid; }
+  section { margin-top: 4mm; break-inside: avoid; }
   section > h2 {
-    font-size: 10.5pt; color: #1b3a5f;
-    padding-bottom: 1.2mm; margin-bottom: 2.5mm;
+    font-size: 10pt; color: #1b3a5f;
+    padding-bottom: 1mm; margin-bottom: 2mm;
     border-bottom: .8pt solid #dde3ea;
   }
-  .num { display: inline-block; min-width: 6mm; color: #8a94a1; }
+  .num { display: inline-block; min-width: 5.5mm; color: #8a94a1; }
 
-  ul { margin: 0; padding-left: 5mm; }
-  li { margin-bottom: 1mm; }
-  .cols { column-count: 2; column-gap: 8mm; }
+  ul { margin: 0; padding-left: 4.5mm; }
+  li { margin-bottom: .8mm; }
+  .cols { column-count: 2; column-gap: 7mm; }
 
-  table.price { width: 100%; border-collapse: collapse; margin-top: 1mm; }
-  table.price th {
-    text-align: left; font-size: 8pt; letter-spacing: .06em; text-transform: uppercase;
-    color: #6b7480; border-bottom: .8pt solid #ccd3db; padding: 0 2mm 1.5mm 0;
-  }
-  table.price th.r, table.price td.r { text-align: right; padding-right: 0; }
-  table.price td { padding: 2mm 2mm 2mm 0; border-bottom: .5pt solid #e6eaef; vertical-align: top; }
-  table.price td small { display: block; color: #6b7480; font-size: 8.4pt; margin-top: .6mm; }
-  td.amount { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
-  tr.total td { border-bottom: none; border-top: 1.4pt solid #1b3a5f; padding-top: 2.5mm; font-size: 11pt; }
+  table.price { width: 100%; border-collapse: collapse; }
+  table.price td { padding: 1.8mm 2mm 1.8mm 0; border-bottom: .5pt solid #e6eaef; vertical-align: top; }
+  table.price td small { display: block; color: #6b7480; font-size: 8.2pt; margin-top: .4mm; }
+  td.amount { text-align: right; padding-right: 0; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  tr.total td { border-bottom: none; border-top: 1.4pt solid #1b3a5f; padding-top: 2mm; font-size: 11pt; }
 
-  .note { font-size: 8.8pt; color: #5a6472; }
+  .note { font-size: 8.6pt; color: #5a6472; }
 
-  .signatures { display: flex; gap: 12mm; margin-top: 12mm; break-inside: avoid; }
+  .signatures { display: flex; gap: 12mm; margin-top: 9mm; break-inside: avoid; }
   .sign { flex: 1; }
-  .sign .rule { border-top: .8pt solid #98a2ae; margin-top: 16mm; padding-top: 1.5mm; font-size: 9pt; color: #46505c; }
+  .sign .rule { border-top: .8pt solid #98a2ae; margin-top: 15mm; padding-top: 1.2mm; font-size: 8.8pt; color: #46505c; }
 
-  footer { margin-top: 8mm; padding-top: 2.5mm; border-top: .5pt solid #dde3ea; font-size: 8pt; color: #7a838f; display: flex; justify-content: space-between; }
+  footer { margin-top: 6mm; padding-top: 2mm; border-top: .5pt solid #dde3ea; font-size: 7.8pt; color: #7a838f; display: flex; justify-content: space-between; }
 </style>
 </head>
 <body>
@@ -79,7 +75,6 @@
         <tr><td>Teklif no</td><td><strong>BY-2026-002</strong></td></tr>
         <tr><td>Tarih</td><td>21.08.2026</td></tr>
         <tr><td>Geçerlilik</td><td>15 gün</td></tr>
-        <tr><td>Konu</td><td>Kurumsal web sitesi</td></tr>
       </table>
     </div>
   </header>
@@ -88,100 +83,79 @@
     <div class="party">
       <h3>Teklifi veren</h3>
       <div class="who">BAYRAKTAR YAZILIM</div>
-      <p>Said Bayraktar</p>
-      <p>saidbayraktar9@gmail.com</p>
+      <p>Said Bayraktar · saidbayraktar9@gmail.com</p>
     </div>
     <div class="party">
       <h3>Teklif verilen</h3>
       <div class="who">KAANLAR GIDA</div>
-      <p>Samsun Bölge Müdürlüğü</p>
-      <p>Yetkili: ...............................................</p>
+      <p>Samsun Bölge Müdürlüğü · Yetkili: ..............................</p>
     </div>
   </div>
 
   <section>
-    <h2><span class="num">1.</span>Teklifin konusu</h2>
-    <p style="margin:0">
-      Kurumsal tanıtım web sitesi: firmayı, ürün gruplarını ve bayilik/iletişim yollarını
-      anlatan, telefonda ve bilgisayarda düzgün görünen, içeriği kendi panelinden
-      güncellenebilen bir site. <strong>B2B sisteminden bağımsız</strong> olarak ayrıca
-      fiyatlandırılmıştır; istenirse siteye "Bayi girişi" düğmesiyle B2B portalı bağlanır.
+    <h2><span class="num">1.</span>Konu</h2>
+    <p>
+      Firmayı, ürün gruplarını ve bayilik/iletişim yollarını anlatan <strong>kurumsal tanıtım web
+      sitesi</strong>: telefonda ve bilgisayarda düzgün görünen, içeriği kendi panelinden
+      güncellenebilen bir site. B2B sisteminden bağımsız fiyatlandırılmıştır; istenirse siteye
+      "Bayi girişi" düğmesiyle B2B portalı bağlanır.
     </p>
   </section>
 
   <section>
     <h2><span class="num">2.</span>Kapsam</h2>
     <ul class="cols">
-      <li>Tasarım ve kurulum (kurumsal kimliğe uygun, özel tasarım)</li>
-      <li>Ana sayfa, Hakkımızda, Ürünler/Markalar, Bayilik, İletişim — 6–8 sayfa</li>
+      <li>Kurumsal kimliğe uygun özel tasarım</li>
+      <li>6–8 sayfa: ana sayfa, hakkımızda, ürünler, bayilik, iletişim</li>
       <li>Ürün grupları için kategori ve detay sayfaları</li>
       <li>Mobil uyumlu (telefon, tablet, masaüstü)</li>
-      <li>İletişim ve bayilik başvuru formu (e-posta bildirimi)</li>
-      <li>Google Haritalar üzerinde konum, tıklanabilir telefon</li>
-      <li>Temel SEO: başlıklar, açıklamalar, site haritası, hız optimizasyonu</li>
-      <li>Yönetim paneli: metin, görsel ve haber/duyuru güncelleme</li>
-      <li>Google Analytics / Search Console kurulumu</li>
-      <li>"Bayi girişi" bağlantısı ile B2B portalına yönlendirme</li>
-      <li>Yayına alma ve teslim sonrası eğitim</li>
-      <li>Teslimden sonra <strong>1 yıl</strong> boyunca küçük içerik düzeltmeleri</li>
+      <li>İletişim ve bayilik başvuru formu, e-posta bildirimi</li>
+      <li>Harita, tıklanabilir telefon, sosyal medya bağlantıları</li>
+      <li>Temel SEO + Google Analytics / Search Console kurulumu</li>
+      <li>İçerik yönetim paneli (metin, görsel, duyuru)</li>
+      <li>Yayına alma ve kısa kullanım eğitimi</li>
+      <li>Teslimden sonra <strong>1 yıl</strong> küçük içerik düzeltmeleri</li>
     </ul>
   </section>
 
   <section>
     <h2><span class="num">3.</span>Bedel</h2>
     <table class="price">
-      <thead>
-        <tr><th>Kalem</th><th class="r">Tutar</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <strong>Kurumsal web sitesi — tasarım, geliştirme, yayına alma</strong>
-            <small>Tek seferlik. Yukarıdaki kapsam, eğitim ve ilk yıl küçük içerik düzeltmeleri dahil.</small>
-          </td>
-          <td class="r amount">20.000,00 ₺</td>
-        </tr>
-        <tr class="total">
-          <td><strong>Toplam</strong></td>
-          <td class="r amount">20.000,00 ₺</td>
-        </tr>
-      </tbody>
+      <tr>
+        <td>
+          <strong>Kurumsal web sitesi — tasarım, geliştirme, yayına alma</strong>
+          <small>Tek seferlik. Yukarıdaki kapsam, eğitim ve ilk yıl içerik düzeltmeleri dahil.</small>
+        </td>
+        <td class="amount">20.000,00 ₺</td>
+      </tr>
+      <tr class="total">
+        <td><strong>Toplam</strong></td>
+        <td class="amount">20.000,00 ₺</td>
+      </tr>
     </table>
-    <p class="note" style="margin-top:2.5mm">
+    <p class="note" style="margin-top:2mm">
       Fiyata <strong>KDV dahil değildir</strong>. Ödeme: %50 başlangıçta, %50 yayına alındığında.
       Teslim süresi, içerik ve görseller sağlandıktan sonra <strong>15 iş günü</strong>.
     </p>
   </section>
 
   <section>
-    <h2><span class="num">4.</span>Bedele dahil olmayanlar</h2>
-    <ul class="cols">
-      <li>Alan adı ve hosting bedeli (yıllık, müşteriye ait)</li>
-      <li>Profesyonel fotoğraf çekimi ve stok görsel telifi</li>
-      <li>Metin yazarlığı ve çeviri (istenirse ayrıca fiyatlanır)</li>
-      <li>E-ticaret altyapısı ve ödeme entegrasyonu</li>
-      <li>Reklam yönetimi ve bütçesi (Google/Meta)</li>
-      <li>Birinci yıldan sonraki içerik güncelleme desteği</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2><span class="num">5.</span>Diğer koşullar</h2>
+    <h2><span class="num">4.</span>Kapsam dışı ve koşullar</h2>
+    <p class="note" style="margin-bottom:1.5mm">
+      <strong>Bedele dahil değildir:</strong> alan adı ve hosting bedeli, profesyonel fotoğraf çekimi
+      ve stok görsel telifi, metin yazarlığı ve çeviri, e-ticaret altyapısı ve ödeme entegrasyonu,
+      reklam yönetimi ve bütçesi.
+    </p>
     <ul>
       <li>Site içeriği ve verileri müşteriye aittir; talep hâlinde tüm dosyalar teslim edilir.</li>
-      <li>Alan adı ve hosting müşteri adına açılır; yönetim bilgileri müşteriye teslim edilir.</li>
-      <li>Sitenin güvenlik güncellemeleri için birinci yıldan sonra bakım anlaşması önerilir.</li>
+      <li>Alan adı ve hosting müşteri adına açılır, yönetim bilgileri müşteriye teslim edilir.</li>
       <li>Bu teklif <strong>15 gün</strong> geçerlidir.</li>
     </ul>
   </section>
 
   <div class="signatures">
-    <div class="sign">
-      <div class="rule">BAYRAKTAR YAZILIM · Said Bayraktar</div>
-    </div>
-    <div class="sign">
-      <div class="rule">KAANLAR GIDA · Samsun Bölge Müdürlüğü</div>
-    </div>
+    <div class="sign"><div class="rule">BAYRAKTAR YAZILIM · Said Bayraktar</div></div>
+    <div class="sign"><div class="rule">KAANLAR GIDA · Samsun Bölge Müdürlüğü</div></div>
   </div>
 
   <footer>

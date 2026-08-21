@@ -4,78 +4,70 @@
 <meta charset="utf-8">
 <title>Teklif · B2B Sipariş ve Saha Satış Sistemi</title>
 <style>
-  @page { size: A4; margin: 16mm 14mm 14mm 14mm; }
+  @page { size: A4; margin: 15mm 14mm 12mm 14mm; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: "Segoe UI", "Calibri", Arial, sans-serif;
-    font-size: 10.2pt;
-    line-height: 1.5;
+    font-size: 10pt;
+    line-height: 1.45;
     color: #16181d;
   }
   h1, h2, h3 { margin: 0; font-weight: 650; }
-  .sheet { padding: 0; }
+  p { margin: 0; }
 
   header {
     display: flex; justify-content: space-between; align-items: flex-start;
-    gap: 16mm; padding-bottom: 5mm; border-bottom: 2.4pt solid #1b3a5f;
+    gap: 14mm; padding-bottom: 3.5mm; border-bottom: 2.2pt solid #1b3a5f;
   }
-  .brand-name { font-size: 16pt; letter-spacing: .04em; color: #1b3a5f; }
-  .brand-line { font-size: 8.6pt; color: #5a6472; margin-top: 1mm; }
-  .doc-meta { text-align: right; font-size: 9pt; color: #33404f; }
-  .doc-title { font-size: 12.5pt; color: #1b3a5f; letter-spacing: .06em; }
-  .doc-meta table { border-collapse: collapse; margin-left: auto; margin-top: 2mm; }
-  .doc-meta td { padding: .4mm 0 .4mm 4mm; }
+  .brand-name { font-size: 15pt; letter-spacing: .04em; color: #1b3a5f; }
+  .brand-line { font-size: 8.4pt; color: #5a6472; margin-top: .8mm; }
+  .doc-meta { text-align: right; font-size: 8.8pt; color: #33404f; }
+  .doc-title { font-size: 12pt; color: #1b3a5f; letter-spacing: .06em; }
+  .doc-meta table { border-collapse: collapse; margin-left: auto; margin-top: 1.5mm; }
+  .doc-meta td { padding: .3mm 0 .3mm 4mm; }
   .doc-meta td:first-child { color: #6b7480; padding-left: 0; }
 
-  .parties { display: flex; gap: 6mm; margin: 6mm 0 5mm; }
-  .party { flex: 1; border: .6pt solid #ccd3db; border-radius: 2mm; padding: 3.5mm 4mm; }
-  .party h3 { font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: #6b7480; margin-bottom: 1.5mm; }
-  .party .who { font-size: 11pt; font-weight: 650; }
-  .party p { margin: 1mm 0 0; font-size: 9pt; color: #46505c; }
+  .parties { display: flex; gap: 5mm; margin: 4mm 0 1mm; }
+  .party { flex: 1; border: .6pt solid #ccd3db; border-radius: 1.5mm; padding: 2.5mm 3.5mm; }
+  .party h3 { font-size: 7.6pt; letter-spacing: .08em; text-transform: uppercase; color: #6b7480; margin-bottom: 1mm; }
+  .party .who { font-size: 10.5pt; font-weight: 650; }
+  .party p { font-size: 8.8pt; color: #46505c; margin-top: .5mm; }
 
-  section { margin-top: 5mm; break-inside: avoid; }
+  section { margin-top: 4mm; break-inside: avoid; }
   section > h2 {
-    font-size: 10.5pt; color: #1b3a5f;
-    padding-bottom: 1.2mm; margin-bottom: 2.5mm;
+    font-size: 10pt; color: #1b3a5f;
+    padding-bottom: 1mm; margin-bottom: 2mm;
     border-bottom: .8pt solid #dde3ea;
   }
-  .num { display: inline-block; min-width: 6mm; color: #8a94a1; }
+  .num { display: inline-block; min-width: 5.5mm; color: #8a94a1; }
 
-  ul { margin: 0; padding-left: 5mm; }
-  li { margin-bottom: 1mm; }
-  .cols { column-count: 2; column-gap: 8mm; }
+  ul { margin: 0; padding-left: 4.5mm; }
+  li { margin-bottom: .8mm; }
+  .cols { column-count: 2; column-gap: 7mm; }
 
-  table.price { width: 100%; border-collapse: collapse; margin-top: 1mm; }
-  table.price th {
-    text-align: left; font-size: 8pt; letter-spacing: .06em; text-transform: uppercase;
-    color: #6b7480; border-bottom: .8pt solid #ccd3db; padding: 0 2mm 1.5mm 0;
-  }
-  table.price th.r, table.price td.r { text-align: right; padding-right: 0; }
-  table.price td { padding: 2mm 2mm 2mm 0; border-bottom: .5pt solid #e6eaef; vertical-align: top; }
-  table.price td small { display: block; color: #6b7480; font-size: 8.4pt; margin-top: .6mm; }
-  td.amount { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
-  tr.total td { border-bottom: none; border-top: 1.4pt solid #1b3a5f; padding-top: 2.5mm; font-size: 11pt; }
+  table.price { width: 100%; border-collapse: collapse; }
+  table.price td { padding: 1.8mm 2mm 1.8mm 0; border-bottom: .5pt solid #e6eaef; vertical-align: top; }
+  table.price td small { display: block; color: #6b7480; font-size: 8.2pt; margin-top: .4mm; }
+  td.amount { text-align: right; padding-right: 0; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  tr.total td { border-bottom: none; border-top: 1.4pt solid #1b3a5f; padding-top: 2mm; font-size: 11pt; }
 
   .callout {
     border-left: 2.4pt solid #b4560f; background: #fdf5ee;
-    padding: 3mm 4mm; border-radius: 0 2mm 2mm 0;
+    padding: 2.5mm 3.5mm; border-radius: 0 1.5mm 1.5mm 0; font-size: 9.2pt;
   }
-  .callout h3 { font-size: 9.6pt; color: #8f4409; margin-bottom: 1.5mm; }
-  .callout p { margin: 0 0 1.5mm; font-size: 9.2pt; }
-  .callout p:last-child { margin-bottom: 0; }
+  .callout strong.h { display: block; color: #8f4409; margin-bottom: 1mm; font-size: 9.6pt; }
 
-  .note { font-size: 8.8pt; color: #5a6472; }
+  .note { font-size: 8.6pt; color: #5a6472; }
 
-  .signatures { display: flex; gap: 12mm; margin-top: 10mm; break-inside: avoid; }
+  .signatures { display: flex; gap: 12mm; margin-top: 9mm; break-inside: avoid; }
   .sign { flex: 1; }
-  .sign .rule { border-top: .8pt solid #98a2ae; margin-top: 16mm; padding-top: 1.5mm; font-size: 9pt; color: #46505c; }
+  .sign .rule { border-top: .8pt solid #98a2ae; margin-top: 15mm; padding-top: 1.2mm; font-size: 8.8pt; color: #46505c; }
 
-  footer { margin-top: 8mm; padding-top: 2.5mm; border-top: .5pt solid #dde3ea; font-size: 8pt; color: #7a838f; display: flex; justify-content: space-between; }
+  footer { margin-top: 6mm; padding-top: 2mm; border-top: .5pt solid #dde3ea; font-size: 7.8pt; color: #7a838f; display: flex; justify-content: space-between; }
 </style>
 </head>
 <body>
-<div class="sheet">
 
   <header>
     <div>
@@ -89,7 +81,6 @@
         <tr><td>Teklif no</td><td><strong>BY-2026-001</strong></td></tr>
         <tr><td>Tarih</td><td>21.08.2026</td></tr>
         <tr><td>Geçerlilik</td><td>15 gün</td></tr>
-        <tr><td>Konu</td><td>B2B &amp; saha satış sistemi</td></tr>
       </table>
     </div>
   </header>
@@ -98,165 +89,108 @@
     <div class="party">
       <h3>Teklifi veren</h3>
       <div class="who">BAYRAKTAR YAZILIM</div>
-      <p>Said Bayraktar</p>
-      <p>saidbayraktar9@gmail.com</p>
+      <p>Said Bayraktar · saidbayraktar9@gmail.com</p>
     </div>
     <div class="party">
       <h3>Teklif verilen</h3>
       <div class="who">KAANLAR GIDA</div>
-      <p>Samsun Bölge Müdürlüğü</p>
-      <p>Yetkili: ...............................................</p>
+      <p>Samsun Bölge Müdürlüğü · Yetkili: ..............................</p>
     </div>
   </div>
 
   <section>
-    <h2><span class="num">1.</span>Teklifin konusu</h2>
-    <p style="margin:0 0 2mm">
-      Bayilerin siparişi kendi ekranından geçtiği, plasiyerlerin sahada sipariş ve
-      tahsilat yaptığı, kuryenin teslimatı telefondan kapattığı <strong>uçtan uca
-      B2B sipariş ve saha satış sistemi</strong>. Sistem web ve Android
-      uygulaması olarak birlikte teslim edilir; kurulum, veri aktarımı, eğitim ve
-      ilk altı ayın desteği bedele dahildir.
+    <h2><span class="num">1.</span>Konu</h2>
+    <p>
+      Bayilerin siparişini kendi ekranından geçtiği, plasiyerlerin sahada sipariş ve tahsilat
+      yaptığı, kuryenin teslimatı telefondan kapattığı <strong>uçtan uca B2B sipariş ve saha
+      satış sistemi</strong>. Web ve Android uygulaması birlikte teslim edilir; kurulum, veri
+      aktarımı, eğitim ve ilk altı ayın desteği bedele dahildir.
     </p>
   </section>
 
   <section>
-    <h2><span class="num">2.</span>Kapsam — teslim edilen modüller</h2>
+    <h2><span class="num">2.</span>Kapsam</h2>
     <ul class="cols">
-      <li><strong>Bayi portalı:</strong> katalog, sepet, kampanyalı fiyat, sipariş geçmişi, cari ekstre, onay akışı</li>
-      <li><strong>Yönetim paneli:</strong> ürün, fiyat listesi, müşteri grubu, firma, kullanıcı ve yetki yönetimi</li>
-      <li><strong>Saha satış:</strong> plasiyer sipariş girişi, tahsilat, ziyaret (check-in), konum, hedef takibi</li>
-      <li><strong>Dağıtım &amp; kurye:</strong> irsaliye, sevkiyat, kurye ataması, teslim kaydı ve teslim kanıtı</li>
-      <li><strong>Stok defteri:</strong> depo bazlı stok, parti/SKT takibi, FEFO sevkiyat, fire ve sayım</li>
-      <li><strong>Çift birim:</strong> kasa ile satış, kilo üzerinden fiyat (gıda toptanına özel)</li>
-      <li><strong>Finans:</strong> cari hesap, kasa &amp; banka defteri, çek/senet portföyü, vade ve limit kontrolü</li>
-      <li><strong>Kampanya motoru:</strong> hacim iskontosu, adet kademesi, hediye ürün, kupon</li>
-      <li><strong>Raporlama:</strong> hazır raporlar + kullanıcının kendi tanımladığı rapor tasarımcısı, Excel/PDF çıktı</li>
-      <li><strong>Mobil uygulama:</strong> Android (plasiyer, kurye, bayi), barkod okuma, çevrimdışı çalışma, bildirim</li>
-      <li><strong>ERP köprüsü:</strong> Vega (VegaWin A5) cari ve stok eşitlemesi — salt okuma, ERP'ye yazmaz</li>
-      <li><strong>Merkezden güncelleme:</strong> yeni sürümün uzaktan yüklenmesi, sürüm takibi</li>
+      <li><strong>Bayi portalı:</strong> katalog, sepet, kampanyalı fiyat, cari ekstre, sipariş onayı</li>
+      <li><strong>Yönetim paneli:</strong> ürün, fiyat listesi, müşteri grubu, firma, kullanıcı ve yetki</li>
+      <li><strong>Saha satış:</strong> plasiyer siparişi, tahsilat, konumlu ziyaret, hedef takibi</li>
+      <li><strong>Dağıtım:</strong> irsaliye, sevkiyat, kurye ataması, teslim kaydı</li>
+      <li><strong>Stok:</strong> depo, parti/SKT takibi, FEFO sevkiyat, fire, sayım, çift birim (kasa/kg)</li>
+      <li><strong>Finans:</strong> cari, kasa &amp; banka, çek/senet, vade ve risk limiti</li>
+      <li><strong>Kampanya ve raporlama:</strong> hacim iskontosu, kademe, hediye ürün; kendi raporunu tasarlama, Excel/PDF</li>
+      <li><strong>Mobil (Android):</strong> plasiyer, kurye ve bayi ekranları, barkod, çevrimdışı, bildirim</li>
+      <li><strong>ERP köprüsü:</strong> Vega cari ve stok eşitlemesi — salt okuma, ERP'ye yazmaz</li>
+      <li><strong>Merkezden güncelleme:</strong> yeni sürümün uzaktan yüklenmesi</li>
     </ul>
   </section>
 
   <section>
     <h2><span class="num">3.</span>Bedel</h2>
     <table class="price">
-      <thead>
-        <tr><th>Kalem</th><th class="r">Tutar</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <strong>B2B sipariş ve saha satış sistemi — süresiz kullanım lisansı</strong>
-            <small>Tek seferlik. Kullanıcı ve bayi sayısı sınırsız; sonraki yıllar için lisans bedeli yoktur.
-            Kurulum, mevcut veri aktarımı, yerinde/uzaktan eğitim dahil.</small>
-          </td>
-          <td class="r amount">180.000,00 ₺</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>İlk 6 ay — geliştirme, uzak destek ve bakım</strong>
-            <small>Devreye alma sonrası altı ay boyunca istenen düzeltmeler, işleyişe göre yapılacak
-            geliştirmeler, uzak destek ve sürüm güncellemeleri.</small>
-          </td>
-          <td class="r amount">Dahil</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>7. aydan itibaren bakım ve güncelleme desteği</strong>
-            <small>Aylık abonelik. Yıllık karşılığı 150.000,00 ₺. Kapsamı 5. maddede.</small>
-          </td>
-          <td class="r amount">12.500,00 ₺ / ay</td>
-        </tr>
-        <tr class="total">
-          <td><strong>Kuruluma kadar ödenecek toplam</strong></td>
-          <td class="r amount">180.000,00 ₺</td>
-        </tr>
-      </tbody>
+      <tr>
+        <td>
+          <strong>B2B sipariş ve saha satış sistemi — süresiz kullanım lisansı</strong>
+          <small>Tek seferlik. Kullanıcı ve bayi sayısı sınırsız, sonraki yıllar için lisans bedeli yok.
+          Kurulum, veri aktarımı ve eğitim dahil.</small>
+        </td>
+        <td class="amount">180.000,00 ₺</td>
+      </tr>
+      <tr>
+        <td>
+          <strong>İlk 6 ay — geliştirme, uzak destek ve bakım</strong>
+          <small>Devreye almadan sonraki altı ay: düzeltmeler, işleyişe göre geliştirmeler,
+          uzak destek ve sürüm güncellemeleri.</small>
+        </td>
+        <td class="amount">Dahil</td>
+      </tr>
+      <tr class="total">
+        <td><strong>Toplam</strong></td>
+        <td class="amount">180.000,00 ₺</td>
+      </tr>
     </table>
-    <p class="note" style="margin-top:2.5mm">
-      Fiyatlara <strong>KDV dahil değildir</strong>. Bakım bedeli ilk 12 ayın sonunda ÜFE oranında güncellenir.
-    </p>
-  </section>
-
-  <section>
-    <h2><span class="num">4.</span>Ödeme planı ve süre</h2>
-    <ul>
-      <li><strong>%50</strong> sözleşme imzasında · <strong>%30</strong> kurulum ve devreye almada · <strong>%20</strong> kabulde</li>
-      <li>Kurulum ve devreye alma: sözleşmeden itibaren <strong>10 iş günü</strong> (veri aktarımı ve eğitim dahil)</li>
-      <li>Bakım bedeli 7. aydan itibaren aylık faturalanır; yıllık peşin ödeme tercih edilebilir</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2><span class="num">5.</span>Bakım ve güncelleme kapsamı</h2>
-    <ul>
-      <li>Yeni sürümlerin kurulumu ve sistemin güncel tutulması</li>
-      <li>Hata giderme ve mesai saatleri içinde uzak destek (telefon, uzak bağlantı)</li>
-      <li>Ayda <strong>4 saate kadar</strong> küçük geliştirme ve düzenleme</li>
-      <li>Yedekleme kontrolü ve sürüm sonrası doğrulama</li>
-      <li>Android uygulamanın güncel işletim sistemi ve mağaza kurallarına uyumlu tutulması</li>
-    </ul>
     <p class="note" style="margin-top:2mm">
-      Yeni modül geliştirme, başka bir ERP'ye entegrasyon ve 4 saati aşan geliştirme talepleri
-      ayrıca fiyatlandırılır.
+      Fiyata <strong>KDV dahil değildir</strong>. Altı ayın sonrası için bakım ve güncelleme desteği
+      ayrıca görüşülüp anlaşmaya bağlanacaktır.
     </p>
   </section>
 
   <section>
-    <h2><span class="num">6.</span>Mobil uygulama hakkında önemli uyarı</h2>
+    <h2><span class="num">4.</span>Ödeme ve süre</h2>
+    <ul>
+      <li><strong>%50</strong> sözleşme imzasında · <strong>%30</strong> devreye almada · <strong>%20</strong> kabulde</li>
+      <li>Kurulum ve devreye alma: sözleşmeden itibaren <strong>10 iş günü</strong> (veri aktarımı ve eğitim dahil)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">5.</span>Mobil uygulama hakkında</h2>
     <div class="callout">
-      <h3>Bakım alınmazsa mobil uygulama zamanla çalışmayabilir</h3>
-      <p>
-        Android uygulamaları, kurulduğu gün çalıştığı gibi kalmıyor. Uygulamanın çalışmaya devam
-        etmesi için üç şeyin sürdürülmesi gerekiyor: <strong>işletim sistemi güncellemelerine uyum</strong>
-        (Google her yıl asgari hedef sürümü yükseltiyor), <strong>imza sertifikasının ve dağıtım
-        kanalının geçerliliği</strong>, ve <strong>sunucu tarafıyla sürüm uyumu</strong>.
-      </p>
-      <p>
-        Bakım ve güncelleme desteğinin bulunmadığı dönemde bu üçü sürdürülemez. Böyle bir durumda
-        uygulama telefonlarda açılmayabilir, giriş yapılamayabilir ya da mağazadan/kurulum
-        bağlantısından kaldırılabilir. <strong>Bu durum garanti ve sorumluluk kapsamı dışındadır.</strong>
-      </p>
-      <p>
-        Web tarafı (bayi portalı ve yönetim paneli) bakımsız dönemde de çalışmaya devam eder;
-        güncelleme almadığı için yeni özellik ve güvenlik yamaları uygulanmaz.
-      </p>
+      <strong class="h">Güncelleme alınmayan mobil uygulama zamanla çalışmaz hâle gelebilir</strong>
+      Android uygulamaları kurulduğu gibi kalmıyor: Google her yıl asgari hedef sürümü yükseltiyor,
+      imza sertifikası ve dağıtım kanalının geçerliliği sürdürülmek zorunda, sunucu tarafıyla sürüm
+      uyumu korunmalı. Güncelleme desteğinin bulunmadığı dönemde uygulama telefonlarda açılmayabilir
+      ya da kurulumdan kaldırılabilir; bu durum garanti kapsamı dışındadır. Web tarafı (bayi portalı
+      ve yönetim paneli) o dönemde de çalışır, yalnızca yeni özellik ve güvenlik yamalarını almaz.
     </div>
   </section>
 
   <section>
-    <h2><span class="num">7.</span>Bedele dahil olmayanlar</h2>
-    <ul class="cols">
-      <li>Sunucu / hosting bedeli ve işletimi (müşteriye ait)</li>
-      <li>Alan adı ve SSL sertifikası</li>
-      <li>E-fatura / e-irsaliye entegratör bedeli</li>
-      <li>Vega ERP lisans ve bakım bedelleri</li>
-      <li>El terminali, barkod ve etiket yazıcısı gibi donanım</li>
-      <li>SMS ve toplu e-posta gönderim paketleri</li>
-      <li>Sanal POS üyelik ve komisyon bedelleri</li>
-      <li>Müşteri tarafından sağlanacak içerik, görsel ve veri</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2><span class="num">8.</span>Diğer koşullar</h2>
+    <h2><span class="num">6.</span>Kapsam dışı ve koşullar</h2>
+    <p class="note" style="margin-bottom:1.5mm">
+      <strong>Bedele dahil değildir:</strong> sunucu/hosting ve işletimi, alan adı ve SSL, e-fatura
+      entegratör bedeli, Vega ERP lisansı, el terminali ve etiket yazıcısı gibi donanım, SMS ve
+      e-posta gönderim paketleri, sanal POS üyelik ve komisyonları.
+    </p>
     <ul>
-      <li>Yazılımın mülkiyeti Bayraktar Yazılım'a aittir; müşteriye <strong>süresiz kullanım hakkı</strong> verilir.</li>
-      <li>Sistemde oluşan <strong>veri müşteriye aittir</strong>; talep hâlinde standart biçimde teslim edilir.</li>
-      <li>Lisans bu kurulum içindir; ikinci bir şirket/şube kurulumu ayrıca fiyatlandırılır.</li>
-      <li>Bakım bedelinin ödenmediği dönemde destek ve güncelleme askıya alınır.</li>
+      <li>Yazılımın mülkiyeti Bayraktar Yazılım'a aittir; müşteriye <strong>süresiz kullanım hakkı</strong> verilir. Sistemdeki <strong>veri müşteriye</strong> aittir.</li>
+      <li>Lisans bu kurulum içindir; ikinci bir şirket ya da şube kurulumu ayrıca fiyatlandırılır.</li>
       <li>Bu teklif <strong>15 gün</strong> geçerlidir.</li>
     </ul>
   </section>
 
   <div class="signatures">
-    <div class="sign">
-      <div class="rule">BAYRAKTAR YAZILIM · Said Bayraktar</div>
-    </div>
-    <div class="sign">
-      <div class="rule">KAANLAR GIDA · Samsun Bölge Müdürlüğü</div>
-    </div>
+    <div class="sign"><div class="rule">BAYRAKTAR YAZILIM · Said Bayraktar</div></div>
+    <div class="sign"><div class="rule">KAANLAR GIDA · Samsun Bölge Müdürlüğü</div></div>
   </div>
 
   <footer>
@@ -264,6 +198,5 @@
     <span>21.08.2026</span>
   </footer>
 
-</div>
 </body>
 </html>
