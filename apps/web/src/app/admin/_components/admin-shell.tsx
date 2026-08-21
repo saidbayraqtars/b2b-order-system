@@ -12,6 +12,7 @@ import {
   Landmark,
   LayoutDashboard,
   Layers,
+  ListChecks,
   Megaphone,
   Package,
   Percent,
@@ -102,6 +103,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
   {
     title: "Sistem",
     links: [
+      { href: "/admin/kurulum", label: "Kurulum", icon: ListChecks, permission: "organization.manage" },
       { href: "/admin/organization", label: "Kuruluş", icon: Landmark, permission: "organization.manage" },
       { href: "/admin/erp", label: "ERP köprüsü", icon: Plug, permission: "erp.manage" },
       { href: "/admin/announcements", label: "Duyurular", icon: Megaphone, permission: "announcements.manage" },

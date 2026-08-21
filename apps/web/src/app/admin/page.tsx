@@ -1,7 +1,9 @@
+import { getSetupStatus } from "@repo/services";
 import { hasPermission } from "@repo/types";
 import { requirePage } from "@/lib/guard";
 import { OrdersBoard } from "@/components/orders-board";
 import { CompaniesTable } from "./_components/companies-table";
+import { SetupHint } from "./kurulum/_components/setup-wizard";
 
 // Server-gated too (defense in depth beyond middleware).
 //
@@ -13,8 +15,20 @@ export default async function AdminDashboard() {
   const canSeeCompanies = hasPermission(user.permissions, "companies.view");
   const canSeeOrders = hasPermission(user.permissions, "orders.view");
 
+  // Kurulum bitmemişse pano bunu söyler. Yarım kurulumda cari ve sipariş
+  // listeleri boş görünüyor ve bu, "sistem çalışmıyor" gibi okunuyordu.
+  const setup = hasPermission(user.permissions, "organization.manage")
+    ? await getSetupStatus()
+    : null;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
+      {setup && !setup.ready && (
+        <div className="mb-6">
+          <SetupHint done={setup.progress.done} total={setup.progress.total} />
+        </div>
+      )}
+
       {canSeeCompanies && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-neutral-800 dark:text-neutral-100">

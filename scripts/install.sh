@@ -3,6 +3,7 @@
 #
 #   cp .env.production.example .env.production   # doldur
 #   ./scripts/install.sh
+#   SETUP_PACK=gida-toptan ./scripts/install.sh   # sektör iskeletiyle birlikte
 #
 # Yaptığı sıra bilerek böyle: önce yapılandırma doğrulanır (yanlışsa hiçbir şey
 # ayağa kalkmaz), sonra şema, sonra yönetici hesabı, en son web. Web'in en sonda
@@ -78,6 +79,16 @@ compose run --rm \
   -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
   -e ADMIN_NAME="${ADMIN_NAME:-Yönetici}" \
   migrate pnpm exec tsx prisma/bootstrap.ts
+
+# Sektör iskeleti — grup, kategori, vade, depo, kasa. İsteğe bağlı: verilmezse
+# atlanır ve aynı işi yönetici panelindeki kurulum sihirbazı düğmeyle yapar.
+# Ürün ve müşteri taşımaz, o yüzden yanlış paketi uygulamak da geri alınabilir
+# bir hata: fazlalık satırlar ekrandan silinir.
+if [ -n "${SETUP_PACK:-}" ]; then
+  echo "→ Sektör paketi: $SETUP_PACK"
+  compose run --rm --workdir /app/packages/services migrate \
+    pnpm exec tsx src/setup-cli.ts "$SETUP_PACK"
+fi
 
 echo "→ Web"
 compose up -d web

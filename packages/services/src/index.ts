@@ -69,3 +69,4 @@ export * from "./exchange-rate";
 export * from "./exchange-rate-tcmb";
 export * from "./job-registry";
 export * from "./scheduler";
+export * from "./setup";

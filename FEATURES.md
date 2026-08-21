@@ -2676,7 +2676,64 @@ film) parti takibi **kapalı**.
 
 ---
 
-## 56. API Uçları
+## 56. Kurulum Sihirbazı & Sektör Paketi (Adım 61)
+
+Boş bir veritabanına bakan kişi ne yapacağını ekrandan çıkaramıyordu: ürün için
+kategori, fiyat için müşteri grubu, mal kabul için depo gerekiyor ve bunların
+hiçbiri hata mesajında yazmıyor — sıra yanlış olunca ekran boş bir liste
+gösteriyor, sebebini söylemiyor. Adım 61 iki parçayla bunu kapatıyor.
+
+### Sihirbaz — `/admin/kurulum`
+
+- **Durum canlı okunuyor.** Hiçbir yerde "kurulum tamamlandı" bayrağı
+  tutulmuyor; tutulsaydı son firmasını silen kişiye sistem hâlâ "hazır" derdi.
+  Her adımın durumu tablo sayısı: `getSetupStatus` on iki sayımı tek turda alır.
+- **Sıra bağımlılık sırası:** kuruluş → grup → kategori → depo → ürün → fiyat →
+  vade → kasa → firma → kullanıcı. Her satır üç şey söyler: ne yapılacak, neden
+  gerekli, atlanırsa ne bozulur.
+- **İsteğe bağlı adımlar paydaya girmez** (açılış stoğu, ERP köprüsü). İkisi de
+  listede durur ama "kurulum bitti" hesabını bloke etmez — yoksa kurulum hiç
+  bitmiyormuş gibi görünürdü.
+- **Yönetim panosu yarım kurulumu söyler:** cari ve sipariş listeleri boş
+  görünüyor ve bu, "sistem çalışmıyor" diye okunuyordu.
+- Kapı `organization.manage`: firma yöneticisinin ya da muhasebenin bir düğmeyle
+  kategori ağacı açması istenmez.
+
+### Sektör paketi
+
+`gida-toptan` ve `genel-toptan` — grup, kategori ağacı, vade, depo, kasa ve
+hacim merdiveni. Panelden tek düğme, kurulumdan tek komut:
+
+```bash
+SETUP_PACK=gida-toptan ./scripts/install.sh
+pnpm --filter @repo/services setup:pack gida-toptan
+```
+
+- **Ürün, fiyat ve müşteri taşımaz.** Onlar her firmada başka; hazır liste
+  koymak, kurulumu yapan kişiye silmesi gereken bir yığın bırakmak olurdu.
+- **Tekrar çalıştırılabilir olması gereklilik, kolaylık değil.** Kurulumu yapan
+  kişi paketi uygulayıp iki kategori adını değiştirdikten sonra düğmeye ikinci
+  kez basabilir; var olanı yeniden yazmak o düzenlemeyi sessizce geri alırdı.
+  Eşleşme her tür için o türün eşsiz anahtarı: grup/vade/kasa adı, kategori
+  slug değeri, depo kodu.
+- **İkinci varsayılan depo/kasa işaretlenmez** — stok ve paranın nereye düşeceği
+  belirsizleşirdi.
+- **Neden kod, neden yedek dosyası değil:** yedek alındığı günün şemasına
+  aittir, bir sonraki sürümün göçünden sonra yüklenmez ve içinde gösterim
+  kullanıcıları da taşınır. Paket göçlerle birlikte yaşayan sıradan kod.
+
+### Doğrulama
+
+`apps/web/test/setup.test.ts` — 7 rota testi: durum/ilerleme şekli, yetki ve
+oturum sınırı, bilinmeyen paketin **hiçbir şey yazmadan** reddi, iskeletin
+kurulması, ikinci uygulamanın elle değiştirilmiş vadeyi ezmemesi, ikinci
+varsayılan deponun açılmaması.
+
+Kurulum kılavuzu: `docs/KURULUM.md`.
+
+---
+
+## 57. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2791,6 +2848,7 @@ film) parti takibi **kapalı**.
 | POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
 | GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
 | GET · PUT · DELETE | `/api/admin/page-layout/:key` | süper admin (`design.manage`; GET katalogla birlikte döner, DELETE varsayılana döndürür) |
+| GET · POST | `/api/admin/setup` | süper admin (`organization.manage`; GET kurulum durumu + paketler, POST paketi uygular) |
 | GET | `/api/admin/audit` | süper admin (yalnız GET — POST/PATCH/DELETE 405) |
 
 ---
