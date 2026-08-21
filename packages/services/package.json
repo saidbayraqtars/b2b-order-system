@@ -10,6 +10,7 @@
     "./scheduler": "./src/scheduler.ts"
   },
   "scripts": {
+    "demo:seed": "tsx src/demo-seed.ts",
     "setup:pack": "tsx src/setup-cli.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts --max-warnings 0",

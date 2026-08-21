@@ -2729,6 +2729,24 @@ oturum sınırı, bilinmeyen paketin **hiçbir şey yazmadan** reddi, iskeletin
 kurulması, ikinci uygulamanın elle değiştirilmiş vadeyi ezmemesi, ikinci
 varsayılan deponun açılmaması.
 
+### Gösterim veritabanı (Adım 61)
+
+`pnpm --filter @repo/services demo:seed` — sunumda anlatılacak hikâyenin verisi:
+Samsun ilçelerine dağılmış 24 müşteri noktası (koordinatlı), plasiyer başına
+~20 tamamlanmış sipariş, irsaliye + kurye teslimi + fatura zinciri, tahsilat ve
+çek portföyü, sekiz haftaya yayılmış ~440 ziyaret kaydı, ziyaret çağrıları ve
+aylık saha hedefleri.
+
+Üç kuralı var, üçü de gösterimin gerçeğe benzemesi için: **sipariş, tahsilat ve
+stok servis katmanından geçer** (elle yazılan satırlarda cari bakiye defterle,
+stok hareketle tutmazdı), **tarihler yazıldıktan sonra geriye çekilir** (belge
+numarası da o günün sayacından yeniden verilir, yoksa eşsizlik kısıtına
+takılıyordu), **rastgelelik tohumludur** (prova ile sunum aynı ekranı gösterir).
+Betik üretimde çalışmaz ve tekrar çalıştırıldığında `DMO-` kodlu firmaların
+hareketlerini silip yeniden üretir — silinen stok hareketlerinin malını
+defterlere geri koyarak, kasa bakiyesini hareketlerden yeniden hesaplayarak.
+Aynı koşu, testlerden kalan artık hesapları (`@test.local`) da siler.
+
 Kurulum kılavuzu: `docs/KURULUM.md`.
 
 ---
