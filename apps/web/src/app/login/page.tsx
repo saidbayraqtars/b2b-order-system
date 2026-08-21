@@ -30,16 +30,19 @@ export default function LoginPage() {
       </div>
 
       {/*
-        Gösterim girişi yalnızca geliştirme ortamında. Koşul **sunucuda**
-        değerlendiği için üretim derlemesinde bileşen paketin içine hiç girmiyor
-        — istemciye taşınan bir bayrak olsaydı, kapalıyken bile kodu (ve hesap
-        listesini) yayınlamış olurduk.
+        Gösterim girişi iki kapıdan geçiyor: geliştirme derlemesi **ve**
+        `DEMO_LOGIN=1`. Koşul sunucuda değerlendiği için üretim derlemesinde
+        bileşen paketin içine hiç girmiyor — istemciye taşınan bir bayrak olsaydı,
+        kapalıyken bile kodu (ve hesap listesini) yayınlamış olurduk. İkinci
+        kapı, gösterim verisi silinmiş temiz bir kurulumda çalışmayan düğmelerin
+        ekranda durmaması için.
       */}
-      {process.env.NODE_ENV === "development" && (
-        <Suspense fallback={null}>
-          <DemoLogin />
-        </Suspense>
-      )}
+      {process.env.NODE_ENV === "development" &&
+        process.env.DEMO_LOGIN === "1" && (
+          <Suspense fallback={null}>
+            <DemoLogin />
+          </Suspense>
+        )}
     </main>
   );
 }
