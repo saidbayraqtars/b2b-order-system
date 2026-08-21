@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaanlar Sunum Kılavuzu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+</head>
+<body>
+<style>
+  :root {
+    --ground: #f2f5f6;
+    --surface: #ffffff;
+    --surface-sunk: #e7edee;
+    --ink: #12191c;
+    --ink-soft: #47585d;
+    --ink-faint: #7d9096;
+    --line: #d3dee0;
+    --line-strong: #b3c4c7;
+    --accent: #0d6a6c;
+    --accent-soft: #dcecec;
+    --expired: #a92617;
+    --warning: #9a5b06;
+    --ok: #1c6b3a;
+    --shadow: 0 1px 2px rgba(18, 25, 28, .06), 0 8px 24px -16px rgba(18, 25, 28, .28);
+
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1416;
+      --surface: #141d20;
+      --surface-sunk: #101819;
+      --ink: #e8eff0;
+      --ink-soft: #a3b6ba;
+      --ink-faint: #708488;
+      --line: #243236;
+      --line-strong: #35474c;
+      --accent: #4fb3b0;
+      --accent-soft: #10312f;
+      --expired: #f0776a;
+      --warning: #e0a34a;
+      --ok: #6cc48c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px -18px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0d1416;
+    --surface: #141d20;
+    --surface-sunk: #101819;
+    --ink: #e8eff0;
+    --ink-soft: #a3b6ba;
+    --ink-faint: #708488;
+    --line: #243236;
+    --line-strong: #35474c;
+    --accent: #4fb3b0;
+    --accent-soft: #10312f;
+    --expired: #f0776a;
+    --warning: #e0a34a;
+    --ok: #6cc48c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px -18px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 0 1.1rem 5rem;
+  }
+
+  /* ── üst şerit ───────────────────────────── */
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--ground) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .topbar-inner {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: .5rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topbar-inner::-webkit-scrollbar { display: none; }
+
+  .jump {
+    flex: none;
+    font: 500 .78rem/1 var(--mono);
+    letter-spacing: .02em;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: .42rem .6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .jump:hover, .jump:focus-visible { color: var(--accent); border-color: var(--accent); }
+
+  /* ── başlık ──────────────────────────────── */
+
+  header.hero {
+    padding: 2.6rem 0 1.6rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font: 600 .72rem/1 var(--mono);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 .8rem;
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(1.9rem, 7vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    margin: 0 0 .7rem;
+    text-wrap: balance;
+  }
+
+  .lede {
+    font-family: var(--serif);
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 34rem;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: 1.1rem;
+  }
+
+  .chip {
+    font: 500 .74rem/1 var(--mono);
+    padding: .38rem .55rem;
+    border-radius: 4px;
+    background: var(--surface-sunk);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+  .chip.hot { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+  /* ── bölümler ────────────────────────────── */
+
+  section { padding-top: 2.4rem; }
+
+  h2 {
+    font-size: 1.32rem;
+    font-weight: 700;
+    letter-spacing: -.012em;
+    margin: 0 0 .2rem;
+    display: flex;
+    align-items: baseline;
+    gap: .55rem;
+    text-wrap: balance;
+  }
+
+  .scene-no {
+    font: 600 .82rem/1 var(--mono);
+    color: var(--accent);
+    flex: none;
+  }
+
+  .dur {
+    font: 500 .72rem/1 var(--mono);
+    color: var(--ink-faint);
+    margin-left: auto;
+    flex: none;
+    white-space: nowrap;
+  }
+
+  h3 {
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 1.4rem 0 .5rem;
+  }
+
+  p { margin: 0 0 .8rem; }
+
+  /* ── ekran künyesi ───────────────────────── */
+
+  .where {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem .8rem;
+    padding: .6rem .75rem;
+    margin: .7rem 0 0;
+    background: var(--surface-sunk);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 5px 5px 0;
+    font: 500 .82rem/1.5 var(--mono);
+  }
+  .where span { color: var(--ink-soft); }
+  .where b { color: var(--ink); font-weight: 600; }
+
+  /* ── yapılacaklar ────────────────────────── */
+
+  ol.steps { margin: 0; padding-left: 1.3rem; }
+  ol.steps li { margin-bottom: .3rem; }
+
+  ul.plain { margin: 0; padding-left: 1.15rem; }
+  ul.plain li { margin-bottom: .35rem; }
+
+  /* ── konuşma metni ───────────────────────── */
+
+  .say {
+    margin: 1rem 0 0;
+    padding: 1.15rem 1.15rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  .say::before {
+    content: "SÖYLENECEK";
+    display: block;
+    font: 600 .68rem/1 var(--mono);
+    letter-spacing: .14em;
+    color: var(--accent);
+    margin-bottom: .75rem;
+  }
+
+  .say p {
+    font-family: var(--serif);
+    font-size: 1.16rem;
+    line-height: 1.72;
+    margin: 0 0 .95rem;
+  }
+  .say p:last-child { margin-bottom: 0; }
+  .say strong { font-weight: 600; background: var(--accent-soft); padding: 0 .18em; border-radius: 2px; }
+
+  .punch {
+    margin: .9rem 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.02rem;
+    color: var(--accent);
+    padding-left: .8rem;
+    border-left: 2px solid var(--accent);
+  }
+
+  /* ── uyarı kutusu ────────────────────────── */
+
+  .note {
+    margin: 1rem 0 0;
+    padding: .85rem 1rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: 6px;
+    font-size: .93rem;
+    color: var(--ink-soft);
+    background: var(--surface);
+  }
+  .note b { color: var(--ink); }
+
+  /* ── kod ─────────────────────────────────── */
+
+  pre {
+    margin: .7rem 0 0;
+    padding: .9rem 1rem;
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow-x: auto;
+    font: 400 .84rem/1.65 var(--mono);
+    color: var(--ink);
+  }
+  pre .c { color: var(--ink-faint); }
+
+  code { font: 500 .88em/1 var(--mono); }
+
+  /* ── kontrol listesi ─────────────────────── */
+
+  .check { list-style: none; margin: .6rem 0 0; padding: 0; }
+  .check li { margin-bottom: .1rem; }
+
+  .check label {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .55rem .65rem;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .check label:hover { background: var(--surface); border-color: var(--line); }
+  .check input { margin: .32rem 0 0; width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex: none; }
+  .check input:checked + span { color: var(--ink-faint); text-decoration: line-through; }
+
+  /* ── tablolar ────────────────────────────── */
+
+  .scroller { overflow-x: auto; margin-top: .7rem; border: 1px solid var(--line); border-radius: 6px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font: 600 .7rem/1.3 var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-sunk);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.path, td.acct { font-family: var(--mono); font-size: .84rem; white-space: nowrap; color: var(--accent); }
+
+  .qa td:first-child { font-weight: 600; width: 38%; }
+
+  /* ── durum rozetleri ─────────────────────── */
+
+  .tag {
+    display: inline-block;
+    font: 600 .68rem/1 var(--mono);
+    letter-spacing: .06em;
+    padding: .28rem .45rem;
+    border-radius: 3px;
+  }
+  .tag.exp { background: color-mix(in srgb, var(--expired) 14%, transparent); color: var(--expired); }
+  .tag.warn { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+  .tag.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line);
+    font-size: .86rem;
+    color: var(--ink-faint);
+  }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  @media (max-width: 480px) {
+    body { font-size: 16px; }
+    .say p { font-size: 1.1rem; }
+  }
+</style>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="jump" href="#hazirlik">Hazırlık</a>
+    <a class="jump" href="#s1">1 Açılış</a>
+    <a class="jump" href="#s2">2 Vitrin</a>
+    <a class="jump" href="#s3">3 Çift birim</a>
+    <a class="jump" href="#s4">4 Onay</a>
+    <a class="jump" href="#s5">5 SKT ★</a>
+    <a class="jump" href="#s6">6 Saha</a>
+    <a class="jump" href="#s7">7 Mobil</a>
+    <a class="jump" href="#s8">8 Rapor</a>
+    <a class="jump" href="#s9">9 ERP</a>
+    <a class="jump" href="#s10">10 Kapanış</a>
+    <a class="jump" href="#sorular">Zor sorular</a>
+    <a class="jump" href="#harita">Adresler</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Tanıtım videosu · konuşma metni</p>
+    <h1>Kaanlar Samsun Sunum Kılavuzu</h1>
+    <p class="lede">
+      Şarküteri dağıtımı yapan bir bölge müdürlüğüne, sahada plasiyeri olan ve
+      bugün Vega ERP kullanan bir işletmeye anlatım. Her sahnede bir problem,
+      bir hareket, bir sonuç.
+    </p>
+    <div class="meta-row">
+      <span class="chip hot">18–22 dk demo</span>
+      <span class="chip">+10 dk soru</span>
+      <span class="chip">10 sahne</span>
+      <span class="chip">Şifre: 143688</span>
+    </div>
+  </header>
+
+  <section id="hazirlik">
+    <h2><span class="scene-no">00</span> Sunumdan önce <span class="dur">30 dk</span></h2>
+
+    <h3>Sistemi ayağa kaldır</h3>
+<pre><span class="c"># 1) Veritabanı</span>
+docker compose up -d
+
+<span class="c"># 2) Gösterim verisi (tekrar çalıştırılabilir)</span>
+pnpm --filter @repo/database db:migrate
+pnpm --filter @repo/database db:seed
+pnpm --filter @repo/database db:seed-demo
+pnpm --filter @repo/database db:seed-gida   <span class="c"># parti/SKT kataloğu</span>
+
+<span class="c"># 3) Uygulama</span>
+pnpm --filter web dev        <span class="c"># localhost:3000</span>
+
+<span class="c"># 4) Sağlık — hepsi true ise başla</span>
+curl -s http://localhost:3000/api/health</pre>
+
+    <h3>Açılacak sekmeler</h3>
+    <div class="scroller">
+      <table>
+        <thead><tr><th>#</th><th>Sekme</th><th>Adres</th><th>Hesap</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Bayi vitrini</td><td class="path">/portal</td><td class="acct">yonetici@akbayi.local</td></tr>
+          <tr><td>2</td><td>Plasiyer</td><td class="path">/rep</td><td class="acct">temsilci1@bayraktar.local</td></tr>
+          <tr><td>3</td><td>Yönetim</td><td class="path">/admin</td><td class="acct">patron@bayraktar.local</td></tr>
+          <tr><td>4</td><td>Stok &amp; parti</td><td class="path">/admin/stok</td><td class="acct">patron</td></tr>
+          <tr><td>5</td><td>Raporlar</td><td class="path">/reports</td><td class="acct">patron</td></tr>
+          <tr><td>6</td><td>Telefon</td><td class="path">mobil APK</td><td class="acct">temsilci1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Kayıttan önce son kontrol</h3>
+    <ul class="check" id="preflight">
+      <li><label><input type="checkbox" data-k="p1"><span><code>/admin/stok</code> → Partiler panelinde <span class="tag exp">GEÇMİŞ</span> ve <span class="tag warn">YAKLAŞIYOR</span> satırları görünüyor</span></label></li>
+      <li><label><input type="checkbox" data-k="p2"><span>Her sekme bir kez gezildi (ilk açılışta derleme gecikmesi olur)</span></label></li>
+      <li><label><input type="checkbox" data-k="p3"><span>Tarayıcı yakınlaştırma %125 — kayıtta yazılar okunsun</span></label></li>
+      <li><label><input type="checkbox" data-k="p4"><span>Bildirimler kapalı, gereksiz sekmeler kapalı</span></label></li>
+      <li><label><input type="checkbox" data-k="p5"><span>Tema seçili ve sabit (ortada değiştirme)</span></label></li>
+      <li><label><input type="checkbox" data-k="p6"><span>Telefon ekranı yansıtma açık</span></label></li>
+      <li><label><input type="checkbox" data-k="p7"><span>Belge başlığı kararı verildi (aşağıdaki not)</span></label></li>
+    </ul>
+
+    <div class="note">
+      <b>Belge başlığı.</b> Fatura ve irsaliyenin üstündeki satıcı bilgisi
+      <code>tenants/demo/tenant.json</code> dosyasından geliyor ve şu an
+      “Demo Toptan Ticaret A.Ş.” yazıyor. Nötr bırakabilirsin — “bu alan sizin
+      unvanınızla doldurulur” demek yeterli. Doldurmak istersen
+      <code>legalName</code>, <code>tradeName</code>, <code>address</code>
+      alanlarını değiştirip uygulamayı yeniden başlat.
+      <b>Vergi no ve Mersis gibi alanları uydurma</b> — bilmiyorsan boş kalsın.
+    </div>
+
+    <h3>Bu müşteride öne çıkacak üç şey</h3>
+    <ul class="plain">
+      <li><b>Soğuk zincir + kısa raf ömrü.</b> Şarküteride SKT’si yaklaşan mal, bekleyen mal değil eriyen para. 5. sahnede acele etme.</li>
+      <li><b>Parti izlenebilirliği.</b> Geri çağırmada “bu parti kime gitti” sorusu risk yönetimidir, konfor değil.</li>
+      <li><b>Bölge müdürlüğü olması.</b> Kurulum bölgeye yapılıyor, fiyat Vega’dan geliyor, merkezin sistemine dokunulmuyor. Engel değil, avantaj olarak anlat.</li>
+    </ul>
+    <div class="note">
+      Bilmediğini uydurma. <b>“Bölgede kaç bayi var, kaç plasiyer çalışıyor,
+      hangi Vega sürümü?”</b> — bunları sen sor; cevaplar teklifin son hâline girecek.
+    </div>
+  </section>
+
+  <section id="s1">
+    <h2><span class="scene-no">01</span> Açılış <span class="dur">60 sn</span></h2>
+    <div class="say">
+      <p>“Bugün üç şey göstereceğim. Birincisi: bayiniz siparişi kendisi, kendi fiyatıyla, gece yarısı bile verebiliyor.</p>
+      <p>İkincisi: plasiyeriniz sahada telefondan sipariş, tahsilat ve ziyaret giriyor — akşam büroya dönüp defter geçirmesine gerek kalmıyor.</p>
+      <p>Üçüncüsü, ve gıdada en önemlisi: mal, <strong>son kullanma tarihi en yakın partiden</strong> çıkıyor. Sistem bunu kendisi yapıyor, kimsenin hatırlamasına bağlı değil.</p>
+      <p>Vega’ya dokunmuyoruz. Vega yerinde kalıyor, sistem onu okuyor.”</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2><span class="scene-no">02</span> Bayi vitrini <span class="dur">3 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/portal</b> <span>Hesap</span> <b>yonetici@akbayi.local</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps">
+      <li>Katalogda <b>barkod</b> ile ara: <code>8690001000011</code></li>
+      <li>Ürüne tıkla → varyant tablosunu göster</li>
+      <li>Sepete ekle</li>
+      <li><b>Hesap değiştir:</b> <code>yonetici@zincirmarket.local</code> → aynı ürün, <b>farklı fiyat</b></li>
+    </ol>
+
+    <div class="say">
+      <p>“Bayi kendi kataloğuna bakıyor. Aradığı kutunun barkodunu yazıyor — ürün adını bilmesine gerek yok.</p>
+      <p>Fiyat burada önemli: bu ekranda gördüğü fiyat <strong>onun</strong> fiyatı. Grup fiyatı, firmaya özel iskontosu, hacim indirimi — hepsi sunucuda hesaplanıyor. Tarayıcıya ham fiyat listesi hiç gitmiyor; yani müşteri başkasının fiyatını göremiyor. Şimdi aynı ürüne zincir market hesabıyla bakıyorum — gördüğünüz gibi fiyat farklı.</p>
+      <p>Koli katı, minimum sipariş, stok — hepsi sipariş anında kontrol ediliyor. Yarım koli sipariş geçmiyor.”</p>
+    </div>
+    <p class="punch">Müşterinin gördüğü fiyat, faturada çıkan fiyattır.</p>
+  </section>
+
+  <section id="s3">
+    <h2><span class="scene-no">03</span> Kasa satılır, kilo konuşulur <span class="dur">2 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/portal</b> <span>Ürün</span> <b>Tam Yağlı Beyaz Peynir · 17 kg kasa</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps"><li>1 kasa sepete ekle</li><li>Sepette birim fiyatı göster</li></ol>
+
+    <div class="say">
+      <p>“Gıdada fiyat kilodan konuşulur, satış kasadan yapılır. Burada ikisi ayrı tanımlı: peynirin kilosu 214,50 lira, kasası 17 kilo. Müşteri kasa sipariş ediyor, sistem kilo fiyatını çarpıp kasa fiyatını buluyor.</p>
+      <p>Neden önemli: iskonto da, hacim indirimi de, kampanya da doğru sayı üzerinden işliyor. <strong>‘Kiloda 2 lira indirim’ dediğinizde sistem bunu kasada 2 lira sanmıyor.</strong> Faturada da iki satır birden yazıyor: 17 kg × 214,50 ₺/kg.”</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="scene-no">04</span> Sipariş &amp; onay akışı <span class="dur">2 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/portal → /portal/approvals</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps">
+      <li><code>personel@sahintoptan.local</code> ile sipariş ver → onaya düşer</li>
+      <li><code>yonetici@sahintoptan.local</code> ile onayla</li>
+    </ol>
+
+    <div class="say">
+      <p>“Büyük bayilerde satın almacı sipariş girer, müdür onaylar. Bu firmada onay açık: personelin siparişi doğrudan geçmiyor, kendi müdürünün ekranına düşüyor. Onay <strong>müşterinin kendi içinde</strong> — size iş çıkmıyor.</p>
+      <p>Kredi limiti de burada devrede: limit dolmuşsa sipariş reddedilmiyor, onaya düşüyor. Kararı siz veriyorsunuz; sistem sizin yerinize müşteri kaybetmiyor.”</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2><span class="scene-no">05</span> Parti &amp; son kullanma ★ <span class="dur">4 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/admin/stok → Partiler &amp; son kullanma</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps">
+      <li>Üstteki özeti göster: kaç parti bozulmuş, kaç parti 30 gün içinde</li>
+      <li>Listenin sırasına dikkat çek — SKT’si en yakın üstte</li>
+      <li>“Mal kabul” ile parti gir, <b>kodu boş bırak</b> → sistem üretsin</li>
+      <li><b>Bayi hesabıyla o üründen sipariş ver, geri dön</b> → hangi partinin düştüğünü göster</li>
+      <li>SKT’si geçmiş partiye “Fire” bas, gerekçe yaz</li>
+    </ol>
+
+    <div class="say">
+      <p>“Şimdi gıdanın asıl meselesi. Depoda aynı üründen üç parti var: biri dokuz gün sonra bozuluyor, biri kırk yedi gün sonra, biri altı gün önce bozulmuş.</p>
+      <p>Mal kabulde partiyi ve son kullanma tarihini giriyoruz. Parti kodunu yazmayabilirsiniz de — sistem üretiyor. Üretim tarihini yazarsanız raf ömründen son kullanma tarihini kendisi hesaplıyor.</p>
+      <p>Asıl olan şu: <strong>partiyi kimse seçmiyor.</strong> Müşteri sipariş verdiğinde sistem malı, son kullanma tarihi en yakın partiden ayırıyor. Buna FEFO deniyor. Bakın — yirmi adet istendi; on iki adet dokuz gün kalan partiden, sekiz adet uzun ömürlü partiden çıktı. Depocuya ‘önce şunu ver’ demek zorunda değilsiniz.</p>
+      <p>Bozulmuş parti bu sıraya <strong>hiç girmiyor.</strong> Bloke ettiğiniz parti de girmiyor — soğuk zinciri şüpheli mal, karantina, numune. Onlar satılmıyor; fire kararı sizin.</p>
+      <p>Şu ayrım da önemli: fire, sayımdan ayrı yazılıyor. Sayım ‘defter yanılmış’ demek, fire ‘mal gitti’ demek. Yıl sonunda bu ikisi ayrı ayrı sorulur.</p>
+      <p>Bir de şu var: hangi siparişe hangi parti gitti, kaydı duruyor. Bir gün üretici geri çağırma yaparsa, <strong>o partinin hangi bayilere gittiğini tek sorguda</strong> çıkarıyorsunuz.”</p>
+    </div>
+    <p class="punch">Sistemin unutmadığı şeyi, insanın hatırlaması gerekmiyor.</p>
+  </section>
+
+  <section id="s6">
+    <h2><span class="scene-no">06</span> Plasiyer / saha <span class="dur">3 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/rep · /rep/tahsilat · /rep/ziyaret</b> <span>Hesap</span> <b>temsilci1@bayraktar.local</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps">
+      <li>Portföy tablosunda “Sipariş gir” → katalog o firmanın fiyatıyla açılır</li>
+      <li>Üstteki uyarı şeridini göster</li>
+      <li>Nakit tahsilat gir → kasaya işlediğini göster</li>
+      <li>Ziyaret ekranında harita ve sıralı rotayı göster</li>
+    </ol>
+
+    <div class="say">
+      <p>“Plasiyer kendi portföyünü görüyor — başka temsilcinin müşterisini göremiyor, sipariş de giremiyor. Bu kısıt sunucuda; ekranı gizlemekle değil.</p>
+      <p>Müşteri adına sipariş girerken üstte kalıcı bir uyarı duruyor: kimin adına giriyor, limiti ne kadar. <strong>Yanlış cariye sipariş girmek pahalı bir hatadır</strong>; ekran bunu gizli bir bilgi olarak tutmuyor.</p>
+      <p>Tahsilat: nakit, havale, çek, senet, kart. Aldığı para kasaya giriyor, müşterinin bakiyesinden düşüyor. Çek aldıysa çek portföyüne kaydoluyor, vadesi takip ediliyor — karşılıksız çıkarsa borç geri açılıyor.</p>
+      <p>Yanlış tutar girdiyse kayıt <strong>silinmiyor</strong>, ters kayıt yazılıyor. Kim, ne zaman, ne kadar — hepsi duruyor.</p>
+      <p>Ziyaret girişi ve çıkışı GPS’le. Bayi ‘gel’ dediğinde plasiyerin gününe düşüyor, harita sıralı rota veriyor.”</p>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2><span class="scene-no">07</span> Mobil uygulama <span class="dur">2 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>telefon / emülatör</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps"><li>Giriş → müşteri listesi</li><li>Sipariş → barkod okut</li><li>Tahsilat gir</li></ol>
+
+    <div class="say">
+      <p>“Aynı işler telefonda. Bu bir web sayfası değil, kurulan bir uygulama — plasiyerin telefonuna APK olarak iniyor.</p>
+      <p>Üç şeye dikkat: barkod okuyucu ile kamerayla sepete ekliyor. <strong>İnternet giderse çalışmaya devam ediyor</strong> — okuduğu veriler cihazda duruyor, girdiği tahsilat kuyruğa giriyor, bağlantı gelince yükleniyor. Ve düzeltmeler uygulama mağazasından geçmeden iniyor.</p>
+      <p>Sunucu adresi de cihaz ayarı: aynı uygulama ile hem test hem canlı sisteme bağlanabiliyor.”</p>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2><span class="scene-no">08</span> Yönetim &amp; raporlar <span class="dur">3 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/admin · /admin/kasa · /reports/new · /admin/users</b></div>
+
+    <h3>Yapılacak</h3>
+    <ol class="steps">
+      <li>Pano: bekleyen sipariş, günün tahsilatı</li>
+      <li>Kasa: gün sonu</li>
+      <li><b>Canlı rapor kur:</b> veri kümesi “Parti &amp; son kullanma”, sütunlar ürün + SKT + adet, süzgeç 30 gün içinde</li>
+      <li>Excel’e aktar</li>
+      <li>Kullanıcılar: bir kişiye tek tek yetki ver</li>
+    </ol>
+
+    <div class="say">
+      <p>“Rapor kısmında bir şey göstermek istiyorum, çünkü çoğu sistemde olmayan şey bu: <strong>raporu ben yazmıyorum, siz kuruyorsunuz.</strong></p>
+      <p>Veri kümesini seçiyorsunuz, sütunları seçiyorsunuz, süzgeci koyuyorsunuz. Şimdi canlı kuruyorum: otuz gün içinde son kullanma tarihi dolacak mallar, ürün ve adet olarak… ve rapor hazır. Kaydediyorum, panoya koyuyorum, isterseniz her pazartesi sabahı e-postanıza düşmesini söylüyorum. Excel’e ya da PDF’e alıyorsunuz.</p>
+      <p>Yetkiler de aynı mantıkta: rol değil, tek tek izin. Muhasebeci kasayı görsün ama fiyat değiştiremesin — bu bir tik. Ve her değişikliğin kaydı var: kim, ne zaman, neyi değiştirdi.”</p>
+    </div>
+  </section>
+
+  <section id="s9">
+    <h2><span class="scene-no">09</span> ERP köprüsü <span class="dur">2 dk</span></h2>
+    <div class="where"><span>Ekran</span> <b>/admin/erp</b></div>
+
+    <div class="say">
+      <p>“Vega’ya dokunmuyoruz. Sizin makinenize küçük bir köprü programı kuruluyor; o Vega’yı okuyup buraya taşıyor. Cari, stok, fiyat.</p>
+      <p>İki kural var. Birincisi: köprü <strong>eşler, oluşturmaz.</strong> Vega’da olmayan bir müşteri burada kendiliğinden doğmaz — iki sistemin müşteri listesi ayrışmaz.</p>
+      <p>İkincisi: senkron stoğu <strong>ezmiyor</strong>, farkı kadar hareket yazıyor. Sabah gelip ‘bu malın stoğu neden düşmüş’ dediğinizde cevabı defterde duruyor: ‘gece ERP senkronu kırk düşürdü’ ya da ‘şu sipariş çıktı’.</p>
+      <p>Yarın Vega’dan başka bir ERP’ye geçerseniz köprü değişir, sistem değişmez.”</p>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2><span class="scene-no">10</span> Kapanış <span class="dur">90 sn</span></h2>
+    <div class="say">
+      <p>“Toparlayayım. Bu sistem <strong>sizin sunucunuzda</strong> çalışıyor. Veri sizde, ortak bir bulutta değil. Kullanıcı başına ücret yok — on bayi de bağlasanız üç yüz bayi de bağlasanız aynı.</p>
+      <p>Bugün göstermediğim ama sistemde olan şeyler de var: kampanya motoru, kargo etiketi ve fiş basımı, kurye teslim ekranı, hedef takibi, döviz fiyatlama, çek-senet portföyü.</p>
+      <p>Açıkça söyleyeyim: e-fatura GİB’e gönderim bugün yok — belge basılıyor ama entegratör bağlantısı ayrı bir iş, çünkü o sözleşme sizin adınıza yapılıyor. Aynı şekilde kart ile tahsilat için banka sözleşmesi gerekiyor. İkisi de teklifte ayrı kalem olarak duruyor.</p>
+      <p>Teklifi bırakıyorum. İsterseniz önümüzdeki hafta iki bayi ve bir plasiyerle pilot kuralım — kendi ürünlerinizle, kendi fiyatlarınızla. Kurulum bölgeye yapılıyor: merkezin sistemine dokunmuyoruz, fiyat ve ürün Vega’dan geliyor. Yani <strong>merkezden izin beklemeden başlayabileceğiniz bir iş.</strong>”</p>
+    </div>
+  </section>
+
+  <section id="sorular">
+    <h2>Zor sorular — hazır cevaplar</h2>
+    <div class="scroller">
+      <table class="qa">
+        <thead><tr><th>Soru</th><th>Cevap</th></tr></thead>
+        <tbody>
+          <tr><td>Verilerimiz nerede duruyor?</td><td>Sizin sunucunuzda, sizin veritabanınızda. Ortak bir bulut örneği yok. İsterseniz ofisinizdeki makineye kurarız.</td></tr>
+          <tr><td>Sistem çökerse?</td><td>Günlük yedek betiği kurulumla geliyor, geri yükleme tek komut. Yedeği dışarı kopyalamak sizin kontrolünüzde.</td></tr>
+          <tr><td>Vega’yı bozar mı?</td><td>Köprü Vega’ya yazmıyor, okuyor. Vega’nın kendi çalışması etkilenmiyor.</td></tr>
+          <tr><td>e-Fatura yok mu?</td><td>Belgeler üretiliyor ve basılıyor. GİB’e gönderim entegratör üzerinden olur; o sözleşme sizin adınıza yapılır. Teklifte ayrı kalem.</td></tr>
+          <tr><td>iPhone’da çalışıyor mu?</td><td>Web tarafı her telefonda çalışıyor. Kurulan uygulama şu an Android; iOS ek kalem.</td></tr>
+          <tr><td>Bayilerim kullanmayı bilir mi?</td><td>Vitrin alışveriş sitesi gibi. Ayrıca plasiyer müşteri adına sipariş girebiliyor — bayi hazır olana kadar akış durmuyor.</td></tr>
+          <tr><td>Bu fiyat neden bu kadar?</td><td>Bu bir abonelik değil, sistemin kendisi sizin oluyor. Aylık on beş binlik bir abonelik üç yılda beş yüz kırk bin eder ve sonunda elinizde bir şey kalmaz.</td></tr>
+          <tr><td>Kaynak kodu veriyor musunuz?</td><td>İsterseniz, ek bedelle. Vermesek de sistem sizin sunucunuzda çalışmaya devam eder — bize bağımlı değilsiniz.</td></tr>
+          <tr><td>Kaç kişi kullanabilir?</td><td>Sınırsız. Lisans kullanıcıya değil, kuruluma.</td></tr>
+          <tr><td>Ne kadar sürede kurulur?</td><td>Pilot üç hafta, tam yaygınlaştırma altı hafta.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="harita">
+    <h2>Ekran → adres haritası</h2>
+
+    <h3>Bayi tarafı</h3>
+    <div class="scroller">
+      <table>
+        <tbody>
+          <tr><td>Vitrin / katalog</td><td class="path">/portal</td></tr>
+          <tr><td>Ürün detayı</td><td class="path">/portal/urun/[id]</td></tr>
+          <tr><td>Siparişlerim</td><td class="path">/portal/orders</td></tr>
+          <tr><td>Onay bekleyenler</td><td class="path">/portal/approvals</td></tr>
+          <tr><td>Cari ekstre</td><td class="path">/portal/statement</td></tr>
+          <tr><td>Firma kullanıcıları</td><td class="path">/portal/users</td></tr>
+          <tr><td>Ziyaret çağrısı</td><td class="path">/portal/ziyaret</td></tr>
+          <tr><td>Hesabım / şifre</td><td class="path">/hesabim</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Saha</h3>
+    <div class="scroller">
+      <table>
+        <tbody>
+          <tr><td>Plasiyer panosu</td><td class="path">/rep</td></tr>
+          <tr><td>Tahsilat</td><td class="path">/rep/tahsilat</td></tr>
+          <tr><td>Ziyaret &amp; rota</td><td class="path">/rep/ziyaret</td></tr>
+          <tr><td>Kurye teslim listesi</td><td class="path">/kurye</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Yönetim</h3>
+    <div class="scroller">
+      <table>
+        <tbody>
+          <tr><td>Pano</td><td class="path">/admin</td></tr>
+          <tr><td>Ürünler / fiyat</td><td class="path">/admin/products</td></tr>
+          <tr><td>Kategoriler</td><td class="path">/admin/categories</td></tr>
+          <tr><td><b>Stok defteri + partiler</b></td><td class="path">/admin/stok</td></tr>
+          <tr><td>Firmalar</td><td class="path">/admin/companies</td></tr>
+          <tr><td>Kullanıcılar &amp; yetkiler</td><td class="path">/admin/users</td></tr>
+          <tr><td>Müşteri grupları</td><td class="path">/admin/customer-groups</td></tr>
+          <tr><td>Kampanyalar</td><td class="path">/admin/promotions</td></tr>
+          <tr><td>Hacim iskontosu</td><td class="path">/admin/volume-tiers</td></tr>
+          <tr><td>Ödeme / vade</td><td class="path">/admin/payment-terms</td></tr>
+          <tr><td>Kasa &amp; banka</td><td class="path">/admin/kasa</td></tr>
+          <tr><td>Çek &amp; senet</td><td class="path">/admin/cekler</td></tr>
+          <tr><td>Belge serileri</td><td class="path">/admin/documents</td></tr>
+          <tr><td>Etiket &amp; fiş</td><td class="path">/admin/labels</td></tr>
+          <tr><td>Dağıtım / kurye</td><td class="path">/admin/deliveries</td></tr>
+          <tr><td>Hedefler</td><td class="path">/admin/targets</td></tr>
+          <tr><td>Duyurular</td><td class="path">/admin/announcements</td></tr>
+          <tr><td>Sayfa düzeni</td><td class="path">/admin/sayfa-duzeni</td></tr>
+          <tr><td>ERP köprüsü</td><td class="path">/admin/erp</td></tr>
+          <tr><td>Döviz kurları</td><td class="path">/admin/kurlar</td></tr>
+          <tr><td>Zamanlanmış işler</td><td class="path">/admin/jobs</td></tr>
+          <tr><td>Denetim kaydı</td><td class="path">/admin/audit</td></tr>
+          <tr><td>Hareket akışı</td><td class="path">/admin/activity</td></tr>
+          <tr><td>Sürüm / güncelleme</td><td class="path">/admin/surum</td></tr>
+          <tr><td>Kuruluş bilgileri</td><td class="path">/admin/organization</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Raporlar &amp; belgeler</h3>
+    <div class="scroller">
+      <table>
+        <tbody>
+          <tr><td>Rapor listesi</td><td class="path">/reports</td></tr>
+          <tr><td>Yeni rapor (tasarımcı)</td><td class="path">/reports/new</td></tr>
+          <tr><td>Panolar</td><td class="path">/reports/dashboards</td></tr>
+          <tr><td>Sipariş detayı</td><td class="path">/orders/[id]</td></tr>
+          <tr><td>İrsaliye</td><td class="path">/documents/shipments/[id]</td></tr>
+          <tr><td>Fatura</td><td class="path">/documents/invoices/[id]</td></tr>
+          <tr><td>Ekstre yazdırma</td><td class="path">/documents/statement/[companyId]</td></tr>
+          <tr><td>Etiket basımı</td><td class="path">/documents/labels</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="kayit">
+    <h2>Kayıt sırasında</h2>
+    <ul class="plain">
+      <li><b>Fiyat farkını iki hesapla göster.</b> Tek hesapla anlatılan fiyat kuralı inandırıcı olmuyor.</li>
+      <li><b>Parti bölümünde sipariş verip geri dön.</b> FEFO’yu anlatmak yetmez, düşen partiyi göstermek gerekir.</li>
+      <li><b>Hata gösterme.</b> Yetersiz stok, limit aşımı gibi ret ekranlarını yalnızca “sistem buna izin vermiyor” demek için kullan, üstünde durma.</li>
+      <li><b>Rakam söyleme.</b> Fiyat konuşması demodan sonra, teklif üzerinden.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Kaynak dosyalar: <code>docs/SUNUM.md</code> · <code>docs/TEKLIF-SABLONU.md</code> ·
+    <code>DEMO-KULLANICILAR.md</code> · <code>FEATURES.md</code>
+  </footer>
+</div>
+
+<script>
+  // Kontrol listesi işaretleri tarayıcıda kalıyor: kayıt gününde sayfa
+  // birkaç kez açılacak ve her açılışta baştan işaretlemek gereksiz iş.
+  (function () {
+    var boxes = document.querySelectorAll("#preflight input[type=checkbox]");
+    var KEY = "sunum-preflight";
+    var state = {};
+    try {
+      state = JSON.parse(localStorage.getItem(KEY) || "{}") || {};
+    } catch (e) {
+      state = {};
+    }
+    boxes.forEach(function (box) {
+      var k = box.getAttribute("data-k");
+      if (state[k]) box.checked = true;
+      box.addEventListener("change", function () {
+        state[k] = box.checked;
+        try {
+          localStorage.setItem(KEY, JSON.stringify(state));
+        } catch (e) {
+          /* özel sekmede saklama kapalı olabilir — işaretleme yine çalışır */
+        }
+      });
+    });
+  })();
+</script>
+</body>
+</html>

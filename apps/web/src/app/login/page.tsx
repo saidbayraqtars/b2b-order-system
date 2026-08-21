@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { LoadingState } from "@/components/ui";
+import { DemoLogin } from "./_components/demo-login";
 import { LoginForm } from "./_components/login-form";
 
 // The form reads ?callbackUrl via useSearchParams, which App Router requires to
@@ -27,6 +28,18 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
       </div>
+
+      {/*
+        Gösterim girişi yalnızca geliştirme ortamında. Koşul **sunucuda**
+        değerlendiği için üretim derlemesinde bileşen paketin içine hiç girmiyor
+        — istemciye taşınan bir bayrak olsaydı, kapalıyken bile kodu (ve hesap
+        listesini) yayınlamış olurduk.
+      */}
+      {process.env.NODE_ENV === "development" && (
+        <Suspense fallback={null}>
+          <DemoLogin />
+        </Suspense>
+      )}
     </main>
   );
 }

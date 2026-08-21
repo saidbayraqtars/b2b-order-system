@@ -8,11 +8,12 @@ import { parseBody } from "@/lib/validate";
 // Parti silinmiyor: sıfıra düşen parti de geçmiş sevkiyatların işaret ettiği
 // satırdır. Elde duran malı yok etmenin yolu fire (`/write-off`), künyeyi
 // yok etmenin yolu yok.
-export function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+type Params = { params: { id: string } };
+
+export function PATCH(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
     await requireUser(["SUPER_ADMIN"], "stock.manage");
-    const { id } = await ctx.params;
     const input = await parseBody(req, stockLotUpdateSchema);
-    return Response.json(await updateLot(id, input));
+    return Response.json(await updateLot(params.id, input));
   });
 }

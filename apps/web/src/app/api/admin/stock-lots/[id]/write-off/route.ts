@@ -7,11 +7,14 @@ import { parseBody } from "@/lib/validate";
 //
 // Sayımdan ayrı uç: sayım "defter yanılmış", fire "mal gitti" demek ve gıdada
 // yıl sonunda bu ikisinin toplamı ayrı ayrı sorulan iki sayıdır.
-export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+type Params = { params: { id: string } };
+
+export function POST(req: Request, { params }: Params) {
   return withAuthErrors(async () => {
     const user = await requireUser(["SUPER_ADMIN"], "stock.manage");
-    const { id } = await ctx.params;
     const input = await parseBody(req, stockLotWriteOffSchema);
-    return Response.json(await writeOffLot(id, input, user.id), { status: 201 });
+    return Response.json(await writeOffLot(params.id, input, user.id), {
+      status: 201,
+    });
   });
 }
