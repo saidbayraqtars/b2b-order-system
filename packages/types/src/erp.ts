@@ -11,7 +11,14 @@ import { z } from "zod";
 // trusted client with a bug can still send a 400 MB body, and an ingest that
 // falls over on one is an ingest that stops the customer's stock updating.
 
-export const ErpSyncKindEnum = z.enum(["CUSTOMERS", "STOCK", "PRICES", "BALANCES"]);
+export const ErpSyncKindEnum = z.enum([
+  "CUSTOMERS",
+  "STOCK",
+  "PRICES",
+  "BALANCES",
+  /** Tek yön dışarı: bir siparişin ERP'ye belge olarak yazılması. */
+  "ORDER_WRITE",
+]);
 export type ErpSyncKind = z.infer<typeof ErpSyncKindEnum>;
 
 export const ERP_SYNC_KIND_LABELS: Record<ErpSyncKind, string> = {
@@ -19,6 +26,7 @@ export const ERP_SYNC_KIND_LABELS: Record<ErpSyncKind, string> = {
   STOCK: "Stok",
   PRICES: "Fiyat listesi",
   BALANCES: "Cari bakiyeleri",
+  ORDER_WRITE: "Sipariş aktarımı",
 };
 
 export const ERP_SYNC_STATUS_LABELS: Record<string, string> = {

@@ -420,6 +420,13 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   ERP_AGENT_NOT_FOUND: 404,
   ERP_AGENT_NAME_TAKEN: 409,
   ERP_RUN_NOT_FOUND: 404,
+  // ERP'ye yazma: yapılandırılmamış (501), sipariş uygun değil / zaten yazılmış
+  // (409), eşleşmeyen kod (422), ajan/ERP reddetti (502).
+  ERP_WRITE_DISABLED: 501,
+  ERP_WRITE_NOT_ALLOWED: 409,
+  ERP_ALREADY_PUSHED: 409,
+  ERP_MAPPING_MISSING: 422,
+  ERP_WRITE_FAILED: 502,
   // saha hedefleri
   TARGET_NOT_FOUND: 404,
   INVALID_TARGET: 422,

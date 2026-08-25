@@ -146,6 +146,7 @@ model User {
 
   ordersCreated  Order[]       @relation("OrderCreatedBy")
   ordersApproved Order[]       @relation("OrderApprovedBy")
+  ordersPushedToErp Order[]    @relation("OrderErpPushedBy")
   shipments      Shipment[]    @relation("ShipmentShippedBy")
   invoicesIssued Invoice[]     @relation("InvoiceCreatedBy")
   checkIns       CheckIn[]
@@ -1144,6 +1145,21 @@ model Order {
   shipments     Shipment[]
   invoices      Invoice[]
 
+  /// ERP'ye aktarım — belge ERP'de hangi numarayla durduğu.
+  ///
+  /// Doldurulduğu an sipariş bir daha aktarılmaz: mükerrer kayıt, müşterinin
+  /// muhasebesinde iki kez sayılan bir sipariş demek. Aktarımı ajan yapıyor,
+  /// numarayı da o üretiyor — burası yalnızca kaydın nerede olduğunu tutuyor.
+  erpDocumentNo  String?
+  /// ERP başlık tablosundaki IND. Elle geri alma bu ikisiyle yapılır.
+  erpDocumentInd Int?
+  erpPushedAt    DateTime?
+  erpPushedById  String?
+  erpPushedBy    User?     @relation("OrderErpPushedBy", fields: [erpPushedById], references: [id])
+  /// Son denemenin hatası. Başarılı aktarımda temizlenir — ekranda duran hata
+  /// mesajı, çözülmüş bir sorunu çözülmemiş gösterir.
+  erpPushError   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1711,6 +1727,9 @@ enum ErpSyncKind {
   PRICES
   /// Cari bakiyeleri — informational, never overwrites our own ledger.
   BALANCES
+  /// Bir siparişin ERP'ye yazılması. Diğerlerinin tersine bu yön **dışarı**:
+  /// sayaçlar bir belgeyi sayar (received=1), applied=1 yazıldı demektir.
+  ORDER_WRITE
 }
 
 enum ErpSyncStatus {

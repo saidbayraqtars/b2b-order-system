@@ -1,0 +1,7 @@
+{
+  // Derleme testleri dışarıda bırakır: `dist/` müşterinin makinesine giden
+  // klasör, orada sahte işlemlerin ve test yardımcılarının işi yok. Tip
+  // denetimi (`typecheck`) testleri de kapsamayı sürdürüyor.
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+}

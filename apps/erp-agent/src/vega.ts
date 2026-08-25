@@ -20,12 +20,12 @@ import type { AgentConfig } from "./config";
 // period could quietly read last year's numbers and look like it worked.
 
 /** Firm-level table (no period), e.g. F0101TBLCARI. */
-function firmTable(cfg: AgentConfig, name: string): string {
+export function firmTable(cfg: AgentConfig, name: string): string {
   return `F${cfg.vega.firma}TBL${name}`;
 }
 
 /** Period table, e.g. F0101D0017TBLCARIHAREKETLERI. */
-function periodTable(cfg: AgentConfig, name: string): string {
+export function periodTable(cfg: AgentConfig, name: string): string {
   return `F${cfg.vega.firma}D${cfg.vega.donem}TBL${name}`;
 }
 

@@ -24,6 +24,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
+import { ErpPanel } from "./erp-panel";
 import { FulfilmentPanel } from "./fulfilment-panel";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -249,6 +250,11 @@ export function OrderDetailView({
         role={role}
         canShip={o.status === "CONFIRMED" || o.status === "PROCESSING"}
       />
+
+      {/* Aktarım satıcının işi; alıcı firma kendi siparişinin ERP'ye ne zaman
+          yazıldığını görmez. Yetkiyi asıl uç kontrol ediyor, buradaki rol
+          kontrolü yalnızca boşuna istek atmamak için. */}
+      {role === "SUPER_ADMIN" && <ErpPanel orderId={orderId} />}
 
       {o.availableTransitions.length > 0 && (
         <Panel title="Durum güncelle">

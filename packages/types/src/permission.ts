@@ -64,6 +64,7 @@ export const PermissionEnum = z.enum([
   // sistem
   "organization.manage",
   "erp.manage",
+  "erp.push",
   "announcements.manage",
   "design.manage",
   "activity.view",
@@ -109,6 +110,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "reports.build": "Rapor tasarla",
   "organization.manage": "Kuruluş ayarlarını yönet",
   "erp.manage": "ERP köprüsünü yönet",
+  "erp.push": "Siparişi ERP'ye aktar",
   "announcements.manage": "Duyuruları yönet",
   "design.manage": "Sayfa düzenini yönet",
   "activity.view": "Hareket kayıtlarını gör",
@@ -205,6 +207,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
     permissions: [
       "organization.manage",
       "erp.manage",
+      "erp.push",
       "announcements.manage",
       "design.manage",
       "activity.view",
@@ -421,6 +424,8 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
 
   "organization.manage": ["SELLER"],
   "erp.manage": ["SELLER"],
+  // Aktarım muhasebenin işi: satıcı tarafında kalır, alıcıya verilmez.
+  "erp.push": ["SELLER"],
   "announcements.manage": ["SELLER"],
   // Vitrinin düzeni satıcının vitrini. Bayiye vermek, müşterinin kendi gördüğü
   // sayfayı yeniden dizmesi demek olurdu.

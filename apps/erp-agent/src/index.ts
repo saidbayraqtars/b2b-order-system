@@ -1,19 +1,28 @@
 import sql from "mssql";
 import { loadConfig, type AgentConfig } from "./config";
 import { connect, readCustomers, readStock } from "./vega";
+import { startCommandServer } from "./server";
 
 // ERP ajanı — müşterinin makinesinde çalışır.
 //
 //   ERP (VegaDB)  ──oku──▶  ajan  ──HTTPS──▶  B2B
 //
-// It only ever reads the ERP and only ever posts normalised rows. It never
-// writes to the ERP, and it never receives instructions from the B2B: the sync
-// it runs is decided by the config file on this machine, so compromising the
-// B2B server does not turn into code execution against the customer's
-// accounting database.
+// The sync above is push-only: it reads the ERP and posts normalised rows, and
+// what it reads is decided by the config file on this machine.
 //
-//   erp-agent --once     bir kez çalış, çık (zamanlanmış görev için)
-//   erp-agent            sürekli çalış, intervalMinutes'ta bir tekrarla
+// Sipariş yazma yönü açıldığında ikinci bir yol daha var:
+//
+//   B2B  ──HTTPS──▶  Cloudflare Tunnel  ──▶  cloudflared  ──▶  bu süreç  ──▶  VegaDB
+//
+// The B2B never sends SQL down it. It names one of the commands in
+// `commands.ts` and the agent runs its own code — so compromising the B2B
+// server still does not turn into arbitrary SQL against a customer's accounting
+// database. The channel is off until `command.enabled`, and writing is off
+// again separately until `write.enabled`.
+//
+//   erp-agent --once     bir kez eşitle, çık (zamanlanmış görev için)
+//   erp-agent            sürekli çalış: eşitleme döngüsü + komut kanalı
+//   erp-agent --serve    yalnızca komut kanalı (eşitleme zamanlanmış görevdeyse)
 //   erp-agent --config X başka bir yapılandırma dosyası
 
 interface IngestResponse {
@@ -106,6 +115,7 @@ async function runOnce(cfg: AgentConfig): Promise<void> {
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const once = argv.includes("--once");
+  const serveOnly = argv.includes("--serve");
   const configIndex = argv.indexOf("--config");
   const configPath = configIndex >= 0 ? argv[configIndex + 1] : undefined;
 
@@ -113,6 +123,17 @@ async function main(): Promise<void> {
 
   if (once) {
     await runOnce(cfg);
+    return;
+  }
+
+  const server = startCommandServer({ cfg, log });
+  if (serveOnly) {
+    if (!server) {
+      throw new Error(
+        "--serve verildi ama command.enabled kapalı. agent.config.json içinde komut kanalını açın.",
+      );
+    }
+    // Nothing else to do: the listener holds the process open.
     return;
   }
 

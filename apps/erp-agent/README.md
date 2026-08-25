@@ -19,8 +19,14 @@ ele geçiren birinin müşterinin muhasebe veritabanında keyfi SQL çalıştır
 demekti. Ajan yalnızca `src/vega.ts` içinde yazılı olan sorguları çalıştırır,
 başka hiçbir şeyi.
 
-**Ajan ERP'ye yazmaz.** Bu klasörde tek bir INSERT/UPDATE/DELETE yoktur.
-Veritabanı kullanıcısına `db_datareader` dışında yetki vermeyin.
+**Eşitleme yönü ERP'ye yazmaz.** `src/vega.ts` içinde tek bir
+INSERT/UPDATE/DELETE yoktur; cari ve stok okuması için veritabanı kullanıcısına
+`db_datareader` dışında yetki vermeyin.
+
+Sipariş aktarımı ayrı bir yol ve **varsayılan olarak kapalı** — aşağıdaki
+"Yazma yönü" bölümüne bakın. Açıldığında bile ajan gönderilen SQL'i çalıştırmaz:
+B2B yalnızca `src/commands.ts` içinde yazılı komutlardan birinin **adını**
+gönderebilir.
 
 ## Kurulum
 
@@ -81,3 +87,178 @@ Vega'nın bildirdiği bakiye `Company.erpBalance` alanına yazılır, **`current
 üzerine değil**. İkincisi B2B'nin kendi defterinden türer ve her ekran ona göre
 toplam alır; başka bir defterden gelen bir sayıyla üzerine yazmak, bakiyeyi
 yanında basılan ekstreyle çelişir hâle getirirdi. İki defter yan yana gösterilir.
+
+---
+
+# Yazma yönü — siparişi ERP'ye aktarma
+
+Eşitleme tek yönlüdür (ajan → B2B) ve tünel istemez. Sipariş aktarımı ters yön:
+B2B ajana bir **komut** gönderir.
+
+```
+B2B  ──HTTPS──▶  Cloudflare Tunnel  ──▶  cloudflared (bu makinede)  ──▶  127.0.0.1:8787
+```
+
+Dışarıya port açılmaz, sabit IP gerekmez, müşterinin modemine dokunulmaz.
+
+**Giden şey SQL değil.** B2B `writeOrder` gibi bir komut adı ve siparişin
+normalize satırlarını gönderir; hangi tabloya nasıl yazılacağını bilen taraf bu
+makinedeki ajandır. Okuma tarafındaki güvenlik sınırının aynısı.
+
+## Tanımlı komutlar
+
+| Komut | Yazar mı | Ne yapar |
+|---|---|---|
+| `ping` | hayır | Ajan ayakta mı, yazma açık mı, komut listesi. Veritabanına bağlanmaz — tünel testi budur. |
+| `describeOrderTables` | hayır | Sipariş tablolarının **gerçek** sütunları, yürüyen belge serileri ve Vega'nın kendi yazdığı son siparişin dolu alanları. |
+| `writeOrder` | **evet** | Siparişi `TBLALSIPBASLIK` + `TBLALSIPHAREKET` içine alınan sipariş (BELGETIPI 60) olarak yazar. |
+
+Listede olmayan bir ad, gövde okunmadan reddedilir.
+
+## Neden sipariş, neden fatura değil
+
+Alınan sipariş **yasal belge değil** ve Vega'da başka hiçbir şeye dokunmaz:
+stok hareketi yazmaz, cari defterine yazmaz, envanter oynatmaz. İki tablo, tek
+transaction, geri alması iki `DELETE`. Fatura beş tablo, müşterinin bakiyesi ve
+KDV beyanı demekti.
+
+Müşteri siparişi Vega'da kontrol eder ve **kendi ekranından** faturaya çevirir;
+e-fatura da Vega'nın kendi modülünden gider. B2B GİB ile hiç konuşmaz.
+
+## Üç katmanlı kilit
+
+Vega Veritabanı Kılavuzu §43.1'in deseni:
+
+| Katman | Nerede | Varsayılan |
+|---|---|---|
+| 1. Uygulama bayrağı | `agent.config.json` → `write.enabled` | **kapalı** |
+| 2. SQL yetkisi | VEGADB kullanıcısı `db_datareader` | **yazma yok** |
+| 3. İnsan onayı | B2B'de `erp.push` yetkisi + onaylanmış siparişte düğme | — |
+
+Üçü de açılmadan tek satır yazılmaz. Otomatik aktarım **yok**: belge, kimsenin
+görmediği bir zamanlayıcıdan değil, birinin bastığı düğmeden gider.
+
+## Kurulum — komut kanalı
+
+1. `agent.config.json` içinde:
+
+```json
+"command": { "enabled": true, "host": "127.0.0.1", "port": 8787, "token": "…" }
+```
+
+Token'ı üretin (`openssl rand -base64 33`) ve **aynı değeri** B2B sunucusunda
+`ERP_AGENT_TOKEN` olarak tanımlayın. En az 32 karakter olmalı, yoksa ajan
+açılışta durur.
+
+2. `cloudflared` kurun ve tüneli açın:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create b2b-erp
+cloudflared tunnel route dns b2b-erp erp-ajan.musteri.com
+```
+
+`config.yml` (Windows'ta `%USERPROFILE%/.cloudflared/config.yml`):
+
+```yaml
+tunnel: b2b-erp
+credentials-file: C:/Users/<kullanici>/.cloudflared/<tunnel-id>.json
+ingress:
+  - hostname: erp-ajan.musteri.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404
+```
+
+```bash
+cloudflared service install     # Windows servisi olarak: makine açılınca kalksın
+```
+
+3. B2B sunucusunda:
+
+```
+ERP_AGENT_URL=https://erp-ajan.musteri.com
+ERP_AGENT_TOKEN=<ajandaki command.token ile aynı>
+# Cloudflare Access hizmet token'ı kullanılıyorsa (önerilir):
+ERP_AGENT_ACCESS_CLIENT_ID=...
+ERP_AGENT_ACCESS_CLIENT_SECRET=...
+```
+
+4. Ajanı komut kanalıyla çalıştırın:
+
+```bash
+pnpm dev                       # eşitleme döngüsü + komut kanalı
+node dist/index.js --serve     # yalnızca komut kanalı (eşitleme zamanlanmış görevdeyse)
+```
+
+Tünelin ayakta olduğunu doğrulamak için: `GET https://erp-ajan.musteri.com/health`
+→ `{"ok":true}`. Bu uç kimlik istemez ve **başka hiçbir şey söylemez**; ERP'nin
+durumunu öğrenmek için token gerekir.
+
+> **Cloudflare Access'i açın.** Tünel adresi tahmin edilebilir bir alan adıdır;
+> Access, ajanın kendi token'ının **önüne** ikinci bir kapı koyar. Hizmet
+> token'ını yalnızca B2B sunucusuna verin.
+
+## Yazmayı açmadan önce — sıra bu
+
+Kılavuz §43.2'nin kontrol listesi, bu kuruluma uyarlanmış hâli:
+
+1. **`describeOrderTables` çalıştırın** (yazma kapalıyken de çalışır). Bakılacaklar:
+   - `configured.referenceColumnExists` — `write.referenceColumn` bu kurulumda
+     var mı. Yoksa yazma reddedilir: b2b sipariş numarası belgeye yazılamazsa
+     mükerrer kayıt engellenemez.
+   - `configured.referenceColumnInUse` — Vega o sütunu kendisi kullanıyor mu.
+     Doluysa başka bir sütun seçin.
+   - `series` — hangi önekler yürüyor. `write.orderPrefix` bunlardan **biri
+     olmamalı** (kılavuz §46.3): kendi serimiz ayrı yürür, Vega'nın numarasıyla
+     çakışmaz. Varsayılan `B`.
+   - `sampleHeader` — Vega'nın kendi yazdığı son siparişin dolu alanları.
+     Ajanın yazdığıyla karşılaştırın.
+2. VEGADB'nin **yedeğini alın**.
+3. Mümkünse önce DEMO firmasında ya da kopyalanmış boş bir veritabanında deneyin.
+4. `write.enabled` değerini açın ve SQL kullanıcısına yazma yetkisi verin:
+
+```sql
+USE [VEGADB];
+ALTER ROLE db_datawriter ADD MEMBER [b2b_agent];
+```
+
+5. Canlıda **tek bir siparişle** deneyin ve Vega'nın kendi ekranında açıp doğru
+   göründüğünü gözle doğrulayın. Bu adımın otomatiği yok.
+
+## Ayarlar
+
+| Alan | Ne işe yarar |
+|---|---|
+| `write.orderPrefix` | Kendi belge serimizin öneki (`B0000001`). Vega'nın serisini **sürdürmeyin**. |
+| `write.referenceColumn` | b2b sipariş numarasının yazılacağı başlık sütunu. Mükerrer kaydı bu engelliyor. |
+| `write.depo` | Satırların deposu (`HAREKETDEPOSU` / `DEPO`). |
+| `write.userNo` | Başlıktaki `USERNO`. Gerçek kayıtlarda 100. |
+| `write.branch` / `write.till` | `OZELKOD1` = şube, `OZELKOD2` = kasa. |
+
+## Bir belgeyi geri alma
+
+Sipariş iki tabloya yazılır ve başka hiçbir yere dokunmaz — geri alma da iki
+ifadedir. B2B'deki sipariş ekranında yazan **belge numarası** ve **IND** ile:
+
+```sql
+BEGIN TRAN;
+DELETE FROM [F0101D0017TBLALSIPHAREKET] WHERE EVRAKNO = @ind;
+DELETE FROM [F0101D0017TBLALSIPBASLIK]  WHERE IND     = @ind;
+COMMIT;
+```
+
+Silindikten sonra B2B'deki `erpDocumentNo` alanı da temizlenmelidir, yoksa
+sipariş "aktarılmış" görünmeye devam eder.
+
+## Yazılan belge neye benzer
+
+- `BELGETIPI = 60`, `BELGENO = B0000001` (kendi serimiz)
+- `FIRMANO` = cari kartın `IND`'i — kod eşleşmezse **hiçbir şey yazılmaz**
+- Satırlar `EVRAKNO = başlık IND` ile bağlanır (kılavuz §19.1; yanlış bağlanan
+  satır hatasız yazılır ve Vega'nın hiçbir ekranında görünmez)
+- Fiyatlar **KDV hariç ve iskontolar düşülmüş**; başlıktaki `KDV` bir tutar
+  değil, "fiyatlar KDV dahil mi" bayrağıdır (§22.5) ve `0` yazılır
+- **Kargo bedeli satır olarak yazılmaz** — karşılığı bir stok kartı yok. Belgenin
+  notuna yazılır, faturayı kesen kişi görsün diye
+- Bu kurulumun tablosunda olmayan alanlar sessizce atlanır (§44.2) ama hangileri
+  atlandığı B2B ekranına döner

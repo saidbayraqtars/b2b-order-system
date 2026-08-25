@@ -23,5 +23,22 @@
     "customers": true,
     "stock": true,
     "prices": false
+  },
+
+  "command": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 8787,
+    "token": "B2B tarafındaki ERP_AGENT_TOKEN ile aynı değer — openssl rand -base64 33"
+  },
+
+  "write": {
+    "enabled": false,
+    "orderPrefix": "B",
+    "referenceColumn": "OZELKOD3",
+    "depo": 1,
+    "userNo": 100,
+    "branch": "MERKEZ",
+    "till": "MERKEZ"
   }
 }

@@ -99,6 +99,12 @@ export type BusinessErrorCode =
   | "ERP_AGENT_NOT_FOUND"
   | "ERP_AGENT_NAME_TAKEN"
   | "ERP_RUN_NOT_FOUND"
+  // ── ERP'ye yazma (sipariş aktarımı) ──
+  | "ERP_WRITE_DISABLED"
+  | "ERP_WRITE_NOT_ALLOWED"
+  | "ERP_ALREADY_PUSHED"
+  | "ERP_MAPPING_MISSING"
+  | "ERP_WRITE_FAILED"
   // ── saha hedefleri ──
   | "TARGET_NOT_FOUND"
   | "INVALID_TARGET"

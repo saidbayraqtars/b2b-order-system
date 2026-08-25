@@ -74,6 +74,7 @@ Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
 | 58 | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası | ✅ |
 | 59 | Görsel işleme: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi, sharp yoksa orijinale düşme | ✅ |
 | 60 | Gıda paketi: parti (lot) + son kullanma takibi, FEFO sevkiyat, fire/bloke, kasa/kg çift birim | ✅ |
+| 62 | ERP'ye sipariş aktarımı: ajanda adlı komut çalıştırıcı (SQL gitmez), Cloudflare Tunnel, siparişte "ERP'ye aktar" onayı — alınan sipariş (BELGETIPI 60), üç katmanlı kilit | ✅ |
 
 ---
 
