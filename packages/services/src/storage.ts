@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { access, constants, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { type S3Config, readS3Config, storageKind } from "./storage-config";
 import { uploadRoot } from "./upload-root";
 
 /**
@@ -165,63 +166,6 @@ const localDriver: StorageDriver = {
 };
 
 /* ---------------------------------------------------------------- S3 sürücü */
-
-export interface S3Config {
-  bucket: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  /** `https://minio.ornek.com` — AWS'te boş bırakılabilir, bölgeden türetilir. */
-  endpoint: string;
-  /** MinIO yol biçimini ister (`/kova/anahtar`), AWS alan adı biçimini. */
-  pathStyle: boolean;
-  /** Kovayı başkasıyla paylaşan kurulumlar için isteğe bağlı ön ek. */
-  prefix: string;
-}
-
-function env(name: string): string {
-  return (process.env[name] ?? "").trim();
-}
-
-/**
- * S3 yapılandırmasını okur. `S3_BUCKET` boşsa null — yerel diske düşülür.
- *
- * Kova verilip anahtar verilmemesi hata: bkz. dosya başındaki "yarım
- * yapılandırma" notu.
- */
-export function readS3Config(): S3Config | null {
-  const bucket = env("S3_BUCKET");
-  if (bucket === "") return null;
-
-  const missing = ["S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"].filter(
-    (name) => env(name) === "",
-  );
-  if (missing.length > 0) {
-    throw new Error(
-      `S3_BUCKET tanımlı ama ${missing.join(" ve ")} boş. ` +
-        `Eksik anahtarla diske yazmak, kapsayıcı yenilendiğinde bütün ` +
-        `görselleri kaybetmek demek — yapılandırmayı tamamlayın ya da ` +
-        `S3_BUCKET değerini kaldırın.`,
-    );
-  }
-
-  const region = env("S3_REGION") || "us-east-1";
-  const endpoint = env("S3_ENDPOINT") || `https://s3.${region}.amazonaws.com`;
-  // MinIO ve çoğu S3 uyumlusu alan adı biçimini desteklemiyor; kendi uç
-  // noktasını veren zaten AWS'te değildir, bu yüzden varsayılan ona göre.
-  const pathStyleDefault = env("S3_ENDPOINT") !== "";
-  const forced = env("S3_FORCE_PATH_STYLE").toLowerCase();
-
-  return {
-    bucket,
-    region,
-    accessKeyId: env("S3_ACCESS_KEY_ID"),
-    secretAccessKey: env("S3_SECRET_ACCESS_KEY"),
-    endpoint: endpoint.replace(/\/+$/, ""),
-    pathStyle: forced === "" ? pathStyleDefault : forced !== "false" && forced !== "0",
-    prefix: env("S3_PREFIX").replace(/^\/+|\/+$/g, ""),
-  };
-}
 
 const EMPTY_SHA256 =
   "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -538,7 +482,7 @@ export function storage(): StorageDriver {
   return config ? s3Driver(config) : localDriver;
 }
 
-/** Sağlık ucu ve kurulum ekranı için: hangi sürücü açık. */
-export function storageKind(): "local" | "s3" {
-  return readS3Config() ? "s3" : "local";
-}
+// Yapılandırma okuması `storage-config.ts`'de duruyor (edge derlemesi düğüm
+// modüllerini çözemiyor, oradaki nota bakın); çağıranlar için buradan da
+// görünüyor.
+export { type S3Config, readS3Config, storageKind };

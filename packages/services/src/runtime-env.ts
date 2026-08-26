@@ -1,4 +1,4 @@
-import { storageKind } from "./storage";
+import { storageKind } from "./storage-config";
 
 /**
  * Açılışta ortam değişkeni denetimi.
