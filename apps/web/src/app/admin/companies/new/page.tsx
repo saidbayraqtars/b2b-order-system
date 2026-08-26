@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { requirePage } from "@/lib/guard";
+import { PageHeader } from "@/components/ui";
 import { CompanyForm } from "../_components/company-form";
 
 export default async function NewCompanyPage() {
@@ -7,17 +7,12 @@ export default async function NewCompanyPage() {
 
   return (
     <main className="mx-auto max-w-4xl">
-      <Link
-        href="/admin/companies"
-        className="mb-3 inline-block text-sm text-neutral-500 hover:underline"
-      >
-        ← Firmalar
-      </Link>
-      <h1 className="mb-5 text-xl font-bold">Yeni Firma</h1>
+      <PageHeader
+        title="Yeni Firma"
+        subtitle="Firma oluşturulduktan sonra adres ve kullanıcı ekleyebilirsiniz."
+        back={{ href: "/admin/companies", label: "Firmalar" }}
+      />
       <CompanyForm />
-      <p className="mt-4 text-sm text-neutral-500">
-        Firma oluşturulduktan sonra adres ve kullanıcı ekleyebilirsiniz.
-      </p>
     </main>
   );
 }

@@ -65,14 +65,14 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
         {shipments.isLoading && <LoadingState />}
 
         {shipments.data && shipments.data.shipments.length === 0 && (
-          <p className="text-sm text-neutral-500">Henüz sevkiyat yapılmadı.</p>
+          <p className="text-body-sm text-ink-faint">Henüz sevkiyat yapılmadı.</p>
         )}
 
         <ul className="space-y-2">
           {(shipments.data?.shipments ?? []).map((s) => (
             <li
               key={s.id}
-              className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+              className="rounded border border-line p-3 text-body-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -82,7 +82,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                   >
                     {s.documentNumber}
                   </Link>
-                  <p className="text-neutral-500">
+                  <p className="text-ink-muted">
                     {new Date(s.shippedAt).toLocaleDateString("tr-TR")} ·{" "}
                     {s.items.reduce((n, i) => n + i.quantity, 0)} adet
                     {s.carrier ? ` · ${s.carrier}` : ""}
@@ -112,7 +112,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                   )}
                 </div>
               </div>
-              <ul className="mt-2 space-y-0.5 text-xs text-neutral-500">
+              <ul className="mt-2 space-y-0.5 text-xs text-ink-faint">
                 {s.items.map((i) => (
                   <li key={i.orderItemId}>
                     {i.productName} — {i.quantity} adet
@@ -137,14 +137,14 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
         {invoices.isLoading && <LoadingState />}
 
         {invoices.data && invoices.data.invoices.length === 0 && (
-          <p className="text-sm text-neutral-500">Henüz fatura kesilmedi.</p>
+          <p className="text-body-sm text-ink-faint">Henüz fatura kesilmedi.</p>
         )}
 
         <ul className="space-y-2">
           {(invoices.data?.invoices ?? []).map((inv) => (
             <li
               key={inv.id}
-              className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
+              className="rounded border border-line p-3 text-body-sm"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -159,7 +159,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                       <Badge tone="danger">iptal</Badge>
                     </span>
                   )}
-                  <p className="text-neutral-500">
+                  <p className="text-ink-muted">
                     {new Date(inv.issuedAt).toLocaleDateString("tr-TR")} · vade{" "}
                     {new Date(inv.dueDate).toLocaleDateString("tr-TR")} ·{" "}
                     {formatTRY(inv.grandTotal)}
@@ -229,17 +229,17 @@ function ShipmentForm({
   );
 
   return (
-    <div className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-sm font-semibold">Yeni irsaliye</h3>
+    <div className="mt-4 border-t border-line pt-3">
+      <h3 className="mb-2 text-body-sm font-semibold text-ink">Yeni irsaliye</h3>
       <ul className="space-y-2">
         {lines.map((l) => (
           <li
             key={l.orderItemId}
             className="flex items-center justify-between gap-3"
           >
-            <span className="min-w-0 truncate text-sm">
+            <span className="min-w-0 truncate text-body-sm">
               {l.productName}
-              <span className="ml-1 text-xs text-neutral-500">
+              <span className="ml-1 text-xs text-ink-faint">
                 (kalan {l.remainingToShip})
               </span>
             </span>
@@ -324,16 +324,16 @@ function InvoiceForm({
   });
 
   return (
-    <div className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-sm font-semibold">Yeni fatura</h3>
+    <div className="mt-4 border-t border-line pt-3">
+      <h3 className="mb-2 text-body-sm font-semibold text-ink">Yeni fatura</h3>
 
       {uninvoicedShipments.length > 0 ? (
         <>
-          <p className="mb-1 text-xs text-neutral-500">
+          <p className="mb-1 text-xs text-ink-faint">
             İrsaliye seçin — hiçbiri seçilmezse siparişin faturalanmamış tüm
             kalemleri faturalanır.
           </p>
-          <ul className="mb-2 space-y-1 text-sm">
+          <ul className="mb-2 space-y-1 text-body-sm">
             {uninvoicedShipments.map((s) => (
               <li key={s.id}>
                 <Checkbox
@@ -352,7 +352,7 @@ function InvoiceForm({
           </ul>
         </>
       ) : (
-        <p className="mb-2 text-xs text-neutral-500">
+        <p className="mb-2 text-xs text-ink-faint">
           Faturalanmamış irsaliye yok — siparişin kalan kalemleri faturalanacak.
         </p>
       )}

@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import type { AddressRow } from "@repo/services";
 import { apiDelete, apiPatch, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
+import { Badge } from "@/components/ui";
 
 // Addresses of one company. Exactly one is the default — promoting one demotes
 // the rest, and the server enforces that, so the UI just reflects it.
@@ -77,13 +78,13 @@ export function CompanyAddresses({
     <Panel
       title="Adresler"
       action={
-        <Button onClick={() => setAdding((v) => !v)}>
+        <Button size="sm" onClick={() => setAdding((v) => !v)}>
           {adding ? "Vazgeç" : "Yeni adres"}
         </Button>
       }
     >
       {adding && (
-        <div className="mb-4 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <div className="mb-4 rounded border border-line bg-sunken p-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label>
               <Label hint="Merkez, Depo…">Etiket</Label>
@@ -148,6 +149,7 @@ export function CompanyAddresses({
           </div>
           <div className="mt-3">
             <Button
+              size="sm"
               disabled={
                 create.isPending ||
                 !form.label.trim() ||
@@ -164,7 +166,7 @@ export function CompanyAddresses({
       )}
 
       {addresses.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-body-sm text-ink-faint">
           Adres yok. Sipariş sevkiyatı için en az bir adres tanımlayın.
         </p>
       ) : (
@@ -172,18 +174,14 @@ export function CompanyAddresses({
           {addresses.map((a) => (
             <li
               key={a.id}
-              className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800"
+              className="flex flex-wrap items-start justify-between gap-3 rounded border border-line p-3"
             >
-              <div className="text-sm">
-                <p className="font-medium">
+              <div className="text-body-sm">
+                <p className="flex items-center gap-2 font-medium text-ink">
                   {a.label}
-                  {a.isDefault && (
-                    <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
-                      varsayılan
-                    </span>
-                  )}
+                  {a.isDefault && <Badge tone="brand">Varsayılan</Badge>}
                 </p>
-                <p className="text-neutral-500">
+                <p className="text-ink-muted">
                   {a.line1}
                   {a.line2 ? `, ${a.line2}` : ""}
                   <br />
@@ -194,7 +192,7 @@ export function CompanyAddresses({
                 {/* Koordinat, ziyaret haritasının tek girdisi. Eksikse
                     plasiyer haritada pin göremez — bunu burada söylemek,
                     sahada fark edilmesinden iyidir. */}
-                <p className="mt-1 text-xs text-neutral-400">
+                <p className="mt-1 text-xs text-ink-faint">
                   {a.latitude != null && a.longitude != null
                     ? `Konum: ${a.latitude}, ${a.longitude}`
                     : "Konum girilmedi — haritada görünmez"}
@@ -204,6 +202,7 @@ export function CompanyAddresses({
                 {!a.isDefault && (
                   <Button
                     variant="secondary"
+                    size="sm"
                     disabled={makeDefault.isPending}
                     onClick={() => makeDefault.mutate(a.id)}
                   >
@@ -212,6 +211,7 @@ export function CompanyAddresses({
                 )}
                 <Button
                   variant="danger"
+                  size="sm"
                   disabled={remove.isPending}
                   onClick={() => {
                     if (confirm(`"${a.label}" adresi silinsin mi?`))

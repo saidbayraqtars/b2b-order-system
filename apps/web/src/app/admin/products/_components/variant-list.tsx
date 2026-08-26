@@ -79,7 +79,7 @@ export function VariantList({
   return (
     <Panel title={`Varyantlar (${variants.length})`}>
       {variants.length === 0 && (
-        <p className="mb-3 text-sm text-neutral-500">
+        <p className="mb-3 text-body-sm text-ink-faint">
           Henüz varyant yok. Ürünün sipariş edilebilmesi için en az bir varyant
           ve bir fiyat kademesi gerekir.
         </p>
@@ -91,27 +91,27 @@ export function VariantList({
           return (
             <div
               key={v.id}
-              className="rounded-md border border-neutral-200 dark:border-neutral-800"
+              className="rounded border border-line"
             >
               <div className="flex flex-wrap items-center gap-3 px-3 py-2">
                 <button
                   type="button"
                   onClick={() => setOpen(expanded ? null : v.id)}
-                  className="text-sm font-medium hover:underline"
+                  className="text-body-sm font-medium text-ink hover:underline"
                 >
                   {v.sku}
                 </button>
-                <span className="text-sm text-neutral-500">
+                <span className="text-body-sm text-ink-muted">
                   {[v.color, v.size].filter(Boolean).join(" / ") || "—"}
                 </span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-ink-faint">
                   koli {v.unitsPerCase} · min {v.moqUnits}
                 </span>
                 <span
                   className={`text-xs ${
                     v.prices.length === 0
-                      ? "text-amber-600"
-                      : "text-neutral-400"
+                      ? "text-caution"
+                      : "text-ink-faint"
                   }`}
                 >
                   {v.prices.length === 0
@@ -130,6 +130,7 @@ export function VariantList({
                   />
                   <Button
                     variant="danger"
+                    size="sm"
                     disabled={remove.isPending}
                     title={
                       v.orderItemCount > 0
@@ -147,7 +148,7 @@ export function VariantList({
               </div>
 
               {expanded && (
-                <div className="space-y-4 border-t border-neutral-200 p-3 dark:border-neutral-800">
+                <div className="space-y-4 border-t border-line p-3">
                   <StockCard
                     variant={v}
                     pending={update.isPending}
@@ -164,10 +165,8 @@ export function VariantList({
       <ErrorLine error={update.error} />
       <ErrorLine error={remove.error} />
 
-      <div className="mt-4 rounded-md border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
-        <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
-          Yeni varyant
-        </p>
+      <div className="mt-4 rounded border border-dashed border-line-strong p-3">
+        <p className="tech-label mb-2">Yeni varyant</p>
         <div className="grid gap-2 sm:grid-cols-4">
           <div>
             <Label>SKU</Label>
@@ -344,10 +343,8 @@ function StockCard({
   });
 
   return (
-    <div className="rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
-      <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
-        Stok kartı
-      </p>
+    <div className="rounded border border-line p-3">
+      <p className="tech-label mb-2">Stok kartı</p>
       <div className="grid gap-2 sm:grid-cols-4">
         <div>
           <Label hint="ADET, KG, KOLİ…">Birim</Label>
@@ -387,10 +384,8 @@ function StockCard({
         karıştırılsalardı, ambalaj malzemesi giren kullanıcı da SKT sorusuyla
         karşılaşırdı.
       */}
-      <div className="mt-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
-        <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
-          Parti / SKT &amp; çift birim
-        </p>
+      <div className="mt-3 rounded border border-line p-3">
+        <p className="tech-label mb-2">Parti / SKT &amp; çift birim</p>
         <div className="grid gap-2 sm:grid-cols-4">
           <div>
             <Label hint="Gün — SKT boşsa üretimden hesaplanır">Raf ömrü</Label>

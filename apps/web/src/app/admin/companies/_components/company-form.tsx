@@ -257,12 +257,12 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         </label>
       </div>
 
-      <fieldset className="mt-5 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-        <legend className="px-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+      <fieldset className="mt-5 rounded border border-line p-3">
+        <legend className="tech-label px-1">
           Ödemede sunulacaklar
         </legend>
 
-        <p className="mb-2 text-xs text-neutral-500">
+        <p className="mb-2 text-xs text-ink-faint">
           Ödeme yöntemi — <strong>hiçbiri seçilmezse hepsi sunulur.</strong>{" "}
           Kısıtlamak istemiyorsanız boş bırakın.
         </p>
@@ -277,7 +277,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           ))}
         </div>
 
-        <p className="mb-2 text-xs text-neutral-500">
+        <p className="mb-2 text-xs text-ink-faint">
           Vade seçenekleri — boş bırakılırsa müşteriye menü çıkmaz, sipariş
           yukarıdaki varsayılan vadeyi alır. Tanımlar <strong>Vadeler</strong>{" "}
           sayfasında yapılır.
@@ -293,7 +293,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
                 label={
                   <>
                     {t.name}
-                    <span className="text-neutral-400">
+                    <span className="ml-1 text-ink-faint">
                       ({t.days === 0 ? "peşin" : `${t.days}g`})
                     </span>
                   </>
@@ -301,18 +301,18 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
               />
             ))}
           {terms.data?.terms.length === 0 && (
-            <span className="text-sm text-neutral-500">
+            <span className="text-body-sm text-ink-faint">
               Henüz vade tanımı yok.
             </span>
           )}
         </div>
       </fieldset>
 
-      <fieldset className="mt-5 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-        <legend className="px-1 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+      <fieldset className="mt-5 rounded border border-line p-3">
+        <legend className="tech-label px-1">
           Hacim iskontosu
         </legend>
-        <p className="mb-3 text-xs text-neutral-500">
+        <p className="mb-3 text-xs text-ink-faint">
           Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı
           kendiliğinden alır. Elle atadığınızda ciroya hiç bakılmaz —
           sözleşmeyle söz verilmiş bir oran, düşük geçen bir çeyrekte

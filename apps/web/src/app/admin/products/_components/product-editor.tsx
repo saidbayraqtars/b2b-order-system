@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { AdminProductDetail } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { LoadingState } from "@/components/ui";
+import { ErrorLine } from "@/components/form";
 import { ProductForm } from "./product-form";
 import { VariantList } from "./variant-list";
 
@@ -20,11 +21,7 @@ export function ProductEditor({ productId }: { productId: string }) {
   if (query.isLoading) {
     return <LoadingState />;
   }
-  if (query.isError) {
-    return (
-      <p className="text-sm text-red-600">{(query.error as Error).message}</p>
-    );
-  }
+  if (query.isError) return <ErrorLine error={query.error} />;
 
   const product = query.data!.product;
 

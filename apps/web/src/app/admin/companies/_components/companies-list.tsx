@@ -5,9 +5,18 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { CompanyRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  Badge,
+  LoadingState,
+  TBody,
+  THead,
+  Table,
+  TableEmpty,
+  Td,
+  Th,
+} from "@/components/ui";
 import { formatTRY } from "@/lib/format";
-import { Select, TextInput } from "@/components/form";
+import { ErrorLine, Select, TextInput } from "@/components/form";
 
 export function CompaniesList() {
   const [search, setSearch] = useState("");
@@ -24,7 +33,7 @@ export function CompaniesList() {
   });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <TextInput
           value={search}
@@ -43,91 +52,78 @@ export function CompaniesList() {
       </div>
 
       {query.isLoading && <LoadingState />}
-      {query.isError && (
-        <p className="text-sm text-red-600">{(query.error as Error).message}</p>
-      )}
+      <ErrorLine error={query.error} />
 
       {query.data && (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+        <div className="overflow-hidden rounded-lg border border-line bg-panel">
+          <Table>
+            <THead>
               <tr>
-                <th className="px-3 py-2">Firma</th>
-                <th className="px-3 py-2">Grup</th>
-                <th className="px-3 py-2">Plasiyer</th>
-                <th className="px-3 py-2 text-right">Bakiye</th>
-                <th className="px-3 py-2 text-right">Limit</th>
-                <th className="px-3 py-2 text-right">Kullanılabilir</th>
-                <th className="px-3 py-2 text-right">Vade</th>
-                <th className="px-3 py-2 text-right">Ekstre</th>
+                <Th>Firma</Th>
+                <Th>Grup</Th>
+                <Th>Plasiyer</Th>
+                <Th align="right">Bakiye</Th>
+                <Th align="right">Limit</Th>
+                <Th align="right">Kullanılabilir</Th>
+                <Th align="right">Vade</Th>
+                <Th align="right">Ekstre</Th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            </THead>
+            <TBody>
               {query.data.companies.map((c) => (
                 <tr key={c.id} className={c.isActive ? "" : "opacity-60"}>
-                  <td className="px-3 py-2 font-medium">
-                    <Link
-                      href={`/admin/companies/${c.id}`}
-                      className="hover:underline"
-                    >
-                      {c.name}
-                    </Link>
-                    {!c.isActive && (
-                      <span className="ml-2 text-xs text-neutral-500">
-                        (pasif)
-                      </span>
-                    )}
-                    <p className="text-xs text-neutral-500">
+                  <Td className="font-medium">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/admin/companies/${c.id}`}
+                        className="hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                      {!c.isActive && <Badge>Pasif</Badge>}
+                    </span>
+                    <p className="mt-0.5 text-xs text-ink-faint">
                       {c.counts.orders} sipariş · {c.counts.users} kullanıcı ·{" "}
                       {c.counts.addresses} adres
                     </p>
-                  </td>
-                  <td className="px-3 py-2 text-neutral-500">
-                    {c.customerGroup?.name ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-neutral-500">
-                    {c.salesRep?.name ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  </Td>
+                  <Td muted>{c.customerGroup?.name ?? "—"}</Td>
+                  <Td muted>{c.salesRep?.name ?? "—"}</Td>
+                  <Td align="right" numeric>
                     {formatTRY(c.currentBalance)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  </Td>
+                  <Td align="right" numeric>
                     {formatTRY(c.creditLimit)}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right tabular-nums ${
+                  </Td>
+                  <Td
+                    align="right"
+                    numeric
+                    className={
                       Number(c.availableCredit) < 0
-                        ? "text-red-600"
-                        : "text-emerald-600"
-                    }`}
+                        ? "text-critical"
+                        : "text-positive"
+                    }
                   >
                     {formatTRY(c.availableCredit)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-neutral-500">
+                  </Td>
+                  <Td align="right" numeric muted>
                     {c.paymentTermDays} gün
-                  </td>
-                  <td className="px-3 py-2 text-right">
+                  </Td>
+                  <Td align="right">
                     <Link
                       href={`/admin/companies/${c.id}/statement`}
-                      className="text-indigo-600 hover:underline"
+                      className="font-medium text-ink-muted transition-colors hover:text-ink"
                     >
                       Ekstre
                     </Link>
-                  </td>
+                  </Td>
                 </tr>
               ))}
               {query.data.companies.length === 0 && (
-                <tr>
-                  <td
-                    className="px-3 py-6 text-center text-neutral-500"
-                    colSpan={8}
-                  >
-                    Firma bulunamadı.
-                  </td>
-                </tr>
+                <TableEmpty colSpan={8} label="Firma bulunamadı." />
               )}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       )}
     </div>

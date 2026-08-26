@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { requirePage } from "@/lib/guard";
+import { PageHeader } from "@/components/ui";
+import { LinkButton } from "@/components/form";
 import { CompaniesList } from "./_components/companies-list";
 
 export default async function AdminCompaniesPage() {
@@ -7,15 +8,15 @@ export default async function AdminCompaniesPage() {
 
   return (
     <main className="mx-auto max-w-6xl">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Firmalar</h1>
-        <Link
-          href="/admin/companies/new"
-          className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium leading-9 text-white"
-        >
-          Yeni firma
-        </Link>
-      </div>
+      <PageHeader
+        title="Firmalar"
+        subtitle="Cari hesaplar, limitleri ve vadeleri."
+        actions={
+          <LinkButton href="/admin/companies/new" variant="primary" size="md">
+            Yeni firma
+          </LinkButton>
+        }
+      />
       <CompaniesList />
     </main>
   );

@@ -9,7 +9,7 @@ import type {
 } from "@repo/services";
 import type { DiscountType } from "@repo/types";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import { Badge, LoadingState } from "@/components/ui";
 import {
   Button,
   ErrorLine,
@@ -144,6 +144,7 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
           </div>
 
           <Button
+            size="sm"
             disabled={!canSave || create.isPending}
             onClick={() => create.mutate()}
           >
@@ -156,18 +157,16 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
       <Panel title={`Tanımlı iskontolar (${rows.length})`}>
         {discounts.isLoading && <LoadingState />}
         {rows.length === 0 && discounts.isSuccess && (
-          <p className="text-sm text-neutral-500">
+          <p className="text-body-sm text-ink-faint">
             Bu firmaya özel iskonto tanımlı değil.
           </p>
         )}
 
-        <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        <ul className="divide-y divide-line">
           {rows.map((d) => (
-            <li key={d.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                {d.productId ? "Ürün" : "Kategori"}
-              </span>
-              <span className="font-medium">
+            <li key={d.id} className="flex items-center gap-3 py-2 text-body-sm">
+              <Badge>{d.productId ? "Ürün" : "Kategori"}</Badge>
+              <span className="font-medium text-ink">
                 {d.productName ?? d.categoryName ?? "—"}
               </span>
               <span className="tabular-nums">
@@ -177,6 +176,7 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
               </span>
               <Button
                 variant="danger"
+                size="sm"
                 className="ml-auto"
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(d.id)}

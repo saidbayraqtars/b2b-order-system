@@ -61,6 +61,7 @@ export function OrdersBoard({
   canAct = true,
   companyId,
   canPrint = false,
+  framed = true,
 }: {
   /** SUPER_ADMIN may confirm PENDING_CREDIT orders; company admins may not. */
   canApproveCredit: boolean;
@@ -74,6 +75,11 @@ export function OrdersBoard({
   companyId?: string;
   /** Fiş/etiket basımı sütunu çıksın mı (`documents.view`). */
   canPrint?: boolean;
+  /**
+   * Kendi çerçevesini çizsin mi. Panoda tablo bir `Panel`in içine giriyor ve
+   * iki kenar çizgisi üst üste biniyordu — orada çerçeveyi dıştaki panel tutar.
+   */
+  framed?: boolean;
 }) {
   const qc = useQueryClient();
   // Toplu basım seçimi. Ekranda tutuluyor, sunucuya yalnızca basım anında
@@ -110,7 +116,11 @@ export function OrdersBoard({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-panel">
+    <div
+      className={
+        framed ? "overflow-hidden rounded-lg border border-line bg-panel" : ""
+      }
+    >
       <ErrorLine error={action.error} />
       {canPrint && (
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">

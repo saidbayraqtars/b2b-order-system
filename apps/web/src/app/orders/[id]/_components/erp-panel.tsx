@@ -66,19 +66,19 @@ export function ErpPanel({ orderId }: Props) {
       }
     >
       {s.documentNo ? (
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-body-sm">
           <p>
             ERP belge numarası:{" "}
             <span className="font-medium tabular-nums">{s.documentNo}</span>
             {s.documentInd != null && (
-              <span className="text-neutral-500"> (IND {s.documentInd})</span>
+              <span className="text-ink-faint"> (IND {s.documentInd})</span>
             )}
           </p>
-          <p className="text-neutral-500">
+          <p className="text-ink-muted">
             {s.pushedAt ? dateTime(s.pushedAt) : "—"}
             {s.pushedByName ? ` · ${s.pushedByName}` : ""}
           </p>
-          <p className="text-neutral-500">
+          <p className="text-ink-muted">
             Belge ERP&apos;de <strong>alınan sipariş</strong> olarak duruyor.
             Faturaya çevirme ve e-fatura gönderimi ERP&apos;nin kendi ekranından
             yapılır.
@@ -86,7 +86,7 @@ export function ErpPanel({ orderId }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-neutral-500">
+          <p className="text-body-sm text-ink-muted">
             Sipariş, ERP&apos;ye <strong>alınan sipariş</strong> olarak yazılır
             — yasal belge değil. Cari ve stok kodları ERP&apos;de eşleşmiyorsa
             hiçbir şey yazılmaz. Kargo bedeli satır olarak girmez, belgenin
@@ -94,7 +94,7 @@ export function ErpPanel({ orderId }: Props) {
           </p>
 
           {s.reason ? (
-            <p className="text-sm text-amber-700 dark:text-amber-500">
+            <p className="text-body-sm text-caution">
               {s.reason}
             </p>
           ) : (
@@ -108,7 +108,7 @@ export function ErpPanel({ orderId }: Props) {
           )}
 
           {s.error && !push.isPending && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-body-sm text-critical">
               Son deneme başarısız: {s.error}
             </p>
           )}
@@ -117,16 +117,16 @@ export function ErpPanel({ orderId }: Props) {
       )}
 
       {written && (
-        <div className="mt-3 space-y-1 text-sm">
+        <div className="mt-3 space-y-1 text-body-sm">
           {written.duplicate && (
-            <p className="text-neutral-500">
+            <p className="text-ink-muted">
               Belge ERP&apos;de zaten vardı; yeniden yazılmadı.
             </p>
           )}
           {written.omittedColumns.length > 0 && (
             // Eksik sütun belgeyi düşürmüyor (şemaya uyumlu INSERT), ama neyin
             // yazılamadığını operatörün görmesi gerekiyor.
-            <p className="text-neutral-500">
+            <p className="text-ink-muted">
               Bu ERP kurulumunda bulunmayan alanlar yazılamadı:{" "}
               {written.omittedColumns.join(", ")}
             </p>

@@ -159,10 +159,40 @@ Doğrulama: `tsc --noEmit` temiz, `vitest run` 218/218 geçti, `next build` baş
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 218/218 geçti,
 `next build` başarılı.
 
-### ▢ Adım 3 — Yönetim çekirdeği
+### ✔ Adım 3 — Yönetim çekirdeği (bitti)
 
-`admin/page.tsx` (pano → `StatTile` satırı + iki tablo), `admin/companies/**`,
-`admin/products/**`, `orders/[id]/**`.
+- **Pano yeniden kuruldu.** Üstte dört `StatTile` (ciro, sipariş, onay
+  bekleyen, iptal/red), altında iki `Panel`. Sayılar `getSalesSummary()`den
+  geliyor — panonun kendi sorgusu yok, rapor ekranıyla aynı pencereyi (son 30
+  gün) ve aynı "ciro nedir" tanımını okuyor.
+  - Kutular **`reports.view`**e bağlı, sipariş iznine değil: ciro, sipariş
+    listesinden ayrı bir bilgi ve listeyi görebilen herkesin görmesi
+    gerekmiyor.
+  - `OrdersBoard` bir `framed` bayrağı aldı. Panonun `Panel`i zaten çerçeve
+    çiziyor ve tablo da kendininkini çizince iki kenar çizgisi üst üste
+    biniyordu; portal ve onay ekranlarındaki çağrılar varsayılan `true` ile
+    olduğu gibi kaldı.
+- **Firmalar**: liste `Table`/`Badge`e geçti (pasif künyesi artık parantez içi
+  metin değil), sayfa başlığı `PageHeader` + `LinkButton` oldu. Firma detayının
+  üç satırlık künye paragrafı dört `StatTile`a bölündü — bakiye, limit,
+  kullanılabilir, hacim iskontosu. Kalan `px-4 py-6` gutter'ı da kaldırıldı
+  (Adım 1'de kabuğa taşınmıştı, bu dosya atlanmış).
+- **Ürünler**: "Yeni ürün" düğmesi tablodan sayfa başlığına çıktı — üç ekranda
+  (firmalar, ürünler, yeni kayıt) birincil eylem artık aynı yerde. Fiyatsız
+  varyant uyarısı `⚠` karakterinden `AlertTriangle` ikonuna geçti; künye değil
+  ikon, çünkü bu bir durum değil bir uyarı. Ürün detayının başlığı sunucuda
+  okunuyor (`prisma.product.findUnique`, yalnızca ad/marka/aktiflik) — düzenleyici
+  ürünün tamamını kendi çekiyor ama başlık ilk boyamada doğru yazsın diye.
+- **Sipariş detayı**: sayfadaki ham "← Geri" bağlantısı kalktı; rota
+  `defaultRouteForRole` ile sunucudan `PageHeader`ın `back` yuvasına geçiyor
+  (o modülü istemciye taşımanın karşılığı yok). Kalem tablosu, özet kartları,
+  durum geçmişi ve üç panel (sevkiyat/fatura, ERP, iade) anlamsal tokenlara
+  taşındı.
+
+Sayaçlar: `dark:` 348 → **237**, `neutral-` 792 → **434**, `brand-` 46 → **20**.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 218/218 geçti,
+`next build` başarılı.
 
 ### ▢ Adım 4 — Finans
 
@@ -198,8 +228,8 @@ tema ve renk kuralları burada geçerli değil).
 ### ▢ Adım 10 — Temizlik
 
 - Kalan ham sınıfları anlamsala çevir. Sayaç: Adım 1 sonrası `dark:` 506,
-  `neutral-` 1033, `brand-` 90 → Adım 2 sonrası **348 / 792 / 46**. Hedef:
-  üçü de sıfır.
+  `neutral-` 1033, `brand-` 90 → Adım 2 sonrası 348 / 792 / 46 → Adım 3 sonrası
+  **237 / 434 / 20**. Hedef: üçü de sıfır.
 - Kiracı marka adını kabuğa bağla: `loadTenant()` →
   `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
   Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için

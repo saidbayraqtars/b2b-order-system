@@ -69,9 +69,12 @@ function dateTime(iso: string) {
 export function OrderDetailView({
   orderId,
   role,
+  backHref,
 }: {
   orderId: string;
   role: Role;
+  /** Rolün varsayılan rotası — başlıktaki "Geri" bağlantısı buraya döner. */
+  backHref: string;
 }) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
@@ -115,6 +118,7 @@ export function OrderDetailView({
       <PageHeader
         title={o.orderNumber}
         subtitle={`${o.company.name} · ${dateTime(o.createdAt)} · ${o.createdByName}`}
+        back={{ href: backHref, label: "Geri" }}
         actions={
           <Badge tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Badge>
         }
@@ -157,17 +161,13 @@ export function OrderDetailView({
                     currency={i.listCurrency}
                     amount={i.listUnitPrice}
                     rate={i.exchangeRate}
-                    className="block text-[11px] font-normal text-neutral-500"
+                    className="block text-[11px] font-normal text-ink-faint"
                   />
                 </Td>
                 <Td align="right" numeric>
                   {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}
                 </Td>
-                <Td
-                  align="right"
-                  numeric
-                  className="text-emerald-700 dark:text-emerald-400"
-                >
+                <Td align="right" numeric className="text-positive">
                   {Number(i.promotionDiscount) > 0
                     ? `− ${formatTRY(i.promotionDiscount)}`
                     : "—"}
@@ -182,7 +182,7 @@ export function OrderDetailView({
       </Card>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <Card className="space-y-1 text-sm">
+        <Card className="space-y-1 text-body-sm">
           <Row label="Ara toplam" value={formatTRY(o.subtotal)} />
           <Row label="İskonto" value={formatTRY(o.discountTotal)} />
           {o.volumeTier && (
@@ -218,11 +218,11 @@ export function OrderDetailView({
           <Row label="Ödeme" value={PAYMENT_METHOD_LABELS[o.paymentMethod]} />
         </Card>
 
-        <Card className="space-y-1 text-sm">
+        <Card className="space-y-1 text-body-sm">
           {o.shippingAddress ? (
             <>
-              <p className="font-medium">{o.shippingAddress.label}</p>
-              <p className="text-neutral-500">
+              <p className="font-medium text-ink">{o.shippingAddress.label}</p>
+              <p className="text-ink-muted">
                 {o.shippingAddress.line1}
                 <br />
                 {o.shippingAddress.district
@@ -232,15 +232,15 @@ export function OrderDetailView({
               </p>
             </>
           ) : (
-            <p className="text-neutral-500">Sevkiyat adresi seçilmemiş.</p>
+            <p className="text-ink-muted">Sevkiyat adresi seçilmemiş.</p>
           )}
           {o.carrier && <Row label="Kargo" value={o.carrier} />}
           {o.trackingNumber && (
             <Row label="Takip no" value={o.trackingNumber} />
           )}
           {o.note && (
-            <p className="pt-2 text-neutral-500">
-              <span className="font-medium">Not:</span> {o.note}
+            <p className="pt-2 text-ink-muted">
+              <span className="font-medium text-ink">Not:</span> {o.note}
             </p>
           )}
         </Card>
@@ -323,17 +323,17 @@ export function OrderDetailView({
       )}
 
       <Panel title="Durum geçmişi">
-        <ol className="space-y-2 border-l border-neutral-200 pl-4 dark:border-neutral-800">
+        <ol className="space-y-2 border-l border-line pl-4">
           {o.history.map((h) => (
-            <li key={h.id} className="text-sm">
-              <span className="text-neutral-500">{dateTime(h.createdAt)}</span>{" "}
-              <span className="font-medium">
+            <li key={h.id} className="text-body-sm">
+              <span className="text-ink-faint">{dateTime(h.createdAt)}</span>{" "}
+              <span className="font-medium text-ink">
                 {h.fromStatus
                   ? `${STATUS_LABEL[h.fromStatus]} → ${STATUS_LABEL[h.toStatus]}`
                   : `Oluşturuldu (${STATUS_LABEL[h.toStatus]})`}
               </span>{" "}
-              <span className="text-neutral-500">· {h.changedByName}</span>
-              {h.note && <p className="text-neutral-500">{h.note}</p>}
+              <span className="text-ink-faint">· {h.changedByName}</span>
+              {h.note && <p className="text-ink-muted">{h.note}</p>}
             </li>
           ))}
         </ol>
@@ -353,8 +353,14 @@ function Row({
 }) {
   return (
     <div className="flex justify-between">
-      <span className="text-neutral-500">{label}</span>
-      <span className={strong ? "font-bold tabular-nums" : "tabular-nums"}>
+      <span className="text-ink-muted">{label}</span>
+      <span
+        className={
+          strong
+            ? "font-bold tabular-nums text-ink"
+            : "tabular-nums text-ink"
+        }
+      >
         {value}
       </span>
     </div>

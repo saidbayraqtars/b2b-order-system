@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requirePage } from "@/lib/guard";
 import { defaultRouteForRole } from "@repo/auth/rbac";
 import { OrderDetailView } from "./_components/order-detail-view";
@@ -15,13 +14,13 @@ export default async function OrderDetailPage({
 
   return (
     <main className="mx-auto max-w-4xl">
-      <Link
-        href={defaultRouteForRole(user.role)}
-        className="mb-3 inline-block text-sm text-neutral-500 hover:underline"
-      >
-        ← Geri
-      </Link>
-      <OrderDetailView orderId={params.id} role={user.role} />
+      {/* Geri bağlantısı sunucudan geçiyor: rolün varsayılan rotasını `rbac`
+          biliyor ve o modülü istemciye taşımanın karşılığı yok. */}
+      <OrderDetailView
+        orderId={params.id}
+        role={user.role}
+        backHref={defaultRouteForRole(user.role)}
+      />
     </main>
   );
 }

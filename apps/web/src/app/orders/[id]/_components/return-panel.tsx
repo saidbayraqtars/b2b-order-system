@@ -90,7 +90,7 @@ export function ReturnPanel({ orderId }: { orderId: string }) {
       {existing.isLoading ? (
         <LoadingState />
       ) : (existing.data?.returns.length ?? 0) > 0 ? (
-        <ul className="space-y-2 text-sm">
+        <ul className="space-y-2 text-body-sm">
           {existing.data!.returns.map((row) => (
             <li key={row.id} className="flex items-center gap-2">
               <span className="font-medium tabular-nums">{row.rmaNumber}</span>
@@ -98,11 +98,11 @@ export function ReturnPanel({ orderId }: { orderId: string }) {
                 {RETURN_STATUS_LABELS[row.status]}
               </Badge>
               {row.status === "RECEIVED" ? (
-                <span className="tabular-nums text-neutral-500">
+                <span className="tabular-nums text-ink-muted">
                   {formatTRY(row.refundTotal)}
                 </span>
               ) : null}
-              <span className="truncate text-neutral-500" title={row.reason}>
+              <span className="truncate text-ink-muted" title={row.reason}>
                 {row.reason}
               </span>
             </li>
@@ -139,10 +139,10 @@ export function ReturnPanel({ orderId }: { orderId: string }) {
                 className="grid grid-cols-[1fr_6rem] items-end gap-2"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">
+                  <div className="truncate text-body-sm font-medium text-ink">
                     {line.productName}
                   </div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-ink-faint">
                     {line.sku} · iade edilebilir {line.returnableQuantity}
                   </div>
                 </div>

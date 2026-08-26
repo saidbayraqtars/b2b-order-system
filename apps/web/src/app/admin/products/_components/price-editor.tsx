@@ -77,21 +77,19 @@ export function PriceEditor({
   const rows = prices.data?.prices ?? [];
 
   return (
-    <div className="rounded-md bg-neutral-50 p-3 dark:bg-neutral-900/60">
-      <p className="mb-2 text-xs font-medium uppercase text-neutral-500">
-        Fiyat kademeleri
-      </p>
+    <div className="rounded border border-line bg-sunken p-3">
+      <p className="tech-label mb-2">Fiyat kademeleri</p>
 
       {prices.isLoading && <LoadingState />}
       {rows.length === 0 && prices.isSuccess && (
-        <p className="mb-2 text-sm text-amber-600">
+        <p className="mb-2 text-body-sm text-caution">
           Fiyat tanımlı değil — bu varyant sipariş edilemez.
         </p>
       )}
 
       {rows.length > 0 && (
-        <table className="mb-3 w-full text-left text-sm">
-          <thead className="text-xs uppercase text-neutral-400">
+        <table className="mb-3 w-full text-left text-body-sm">
+          <thead className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
             <tr>
               <th className="py-1">Grup</th>
               <th className="py-1 text-right">Min. adet</th>
@@ -103,11 +101,11 @@ export function PriceEditor({
             {rows.map((p) => (
               <tr
                 key={p.id}
-                className="border-t border-neutral-200 dark:border-neutral-800"
+                className="border-t border-line"
               >
                 <td className="py-1">
                   {p.customerGroupName ?? (
-                    <span className="text-neutral-500">Varsayılan (liste)</span>
+                    <span className="text-ink-faint">Varsayılan (liste)</span>
                   )}
                 </td>
                 <td className="py-1 text-right tabular-nums">
@@ -123,7 +121,7 @@ export function PriceEditor({
                     type="button"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate(p.id)}
-                    className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                    className="text-xs font-medium text-critical hover:underline disabled:opacity-50"
                   >
                     Sil
                   </button>
@@ -178,6 +176,7 @@ export function PriceEditor({
         </Select>
         <Button
           variant="secondary"
+          size="sm"
           disabled={!canSave || save.isPending}
           onClick={() => save.mutate()}
         >

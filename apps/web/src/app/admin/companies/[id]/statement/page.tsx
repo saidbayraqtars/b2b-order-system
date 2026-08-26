@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
+import { PageHeader } from "@/components/ui";
 import { StatementView } from "@/components/statement-view";
 
 export default async function AdminCompanyStatementPage({
@@ -19,15 +19,11 @@ export default async function AdminCompanyStatementPage({
 
   return (
     <main className="mx-auto max-w-5xl">
-      <Link
-        href={`/admin/companies/${company.id}`}
-        className="mb-3 inline-block text-sm text-neutral-500 hover:underline"
-      >
-        ← {company.name}
-      </Link>
-
-      <h1 className="mb-6 text-xl font-bold">Cari Ekstre · {company.name}</h1>
-
+      <PageHeader
+        title="Cari Ekstre"
+        subtitle={company.name}
+        back={{ href: `/admin/companies/${company.id}`, label: company.name }}
+      />
       <StatementView companyId={company.id} />
     </main>
   );

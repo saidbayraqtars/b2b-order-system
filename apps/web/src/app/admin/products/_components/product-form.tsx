@@ -127,7 +127,7 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
             ))}
           </Select>
           {categoryOptions.length === 0 && categories.isSuccess && (
-            <p className="mt-1 text-xs text-amber-600">
+            <p className="mt-1 text-xs text-caution">
               Önce en az bir kategori tanımlayın.
             </p>
           )}

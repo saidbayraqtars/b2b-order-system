@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompany, getVolumeStatus } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { formatTRY } from "@/lib/format";
+import { Badge, PageHeader, StatTile } from "@/components/ui";
+import { LinkButton } from "@/components/form";
 import { CompanyForm } from "../_components/company-form";
 import { CompanyAddresses } from "./_components/company-addresses";
 import { CompanyDiscounts } from "./_components/company-discounts";
@@ -22,56 +23,70 @@ export default async function AdminCompanyPage({
   // whatever turnover earns right now, and a form field cannot show that.
   const volume = await getVolumeStatus(company.id);
 
-  return (
-    <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
-      <Link
-        href="/admin/companies"
-        className="inline-block text-sm text-neutral-500 hover:underline"
-      >
-        ← Firmalar
-      </Link>
+  // Hacim satırı üç ayrı cümleden kuruluyordu ve hepsi tek paragrafta üst üste
+  // biniyordu. Kutunun altına tek bir açıklama satırı düşüyor: hangi basamak,
+  // neden o basamak, bir sonrakine ne kaldı.
+  const volumeHint = volume.current
+    ? `%${volume.current.percent} · ${volume.current.name}`
+    : "yok";
+  const volumeWhy =
+    volume.mode === "MANUAL"
+      ? "elle atanmış"
+      : volume.turnover !== null
+        ? `son ${volume.windowMonths} ay cirosu ${formatTRY(volume.turnover)}`
+        : null;
+  const volumeNext = volume.next
+    ? `${volume.next.name} (%${volume.next.percent}) için ${formatTRY(volume.next.remaining)} kaldı`
+    : null;
 
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-bold">
-            {company.name}
-            {!company.isActive && (
-              <span className="ml-2 text-sm font-normal text-neutral-500">
-                (pasif)
-              </span>
+  const available = Number(company.availableCredit);
+
+  return (
+    <main className="mx-auto max-w-5xl space-y-6">
+      <PageHeader
+        title={company.name}
+        back={{ href: "/admin/companies", label: "Firmalar" }}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {!company.isActive && <Badge>Pasif</Badge>}
+            <span>{company.counts.orders} sipariş</span>
+            <span aria-hidden>·</span>
+            <span>{company.counts.users} kullanıcı</span>
+            <span aria-hidden>·</span>
+            <span>vade {company.paymentTermDays} gün</span>
+            {company.salesRep && (
+              <>
+                <span aria-hidden>·</span>
+                <span>plasiyer {company.salesRep.name}</span>
+              </>
             )}
-          </h1>
-          <p className="text-sm text-neutral-500">
-            Bakiye {formatTRY(company.currentBalance)} / limit{" "}
-            {formatTRY(company.creditLimit)} · vade {company.paymentTermDays}{" "}
-            gün · {company.counts.orders} sipariş
-          </p>
-          <p className="text-sm text-neutral-500">
-            Hacim iskontosu:{" "}
-            {volume.current ? (
-              <strong>
-                %{volume.current.percent} · {volume.current.name}
-              </strong>
-            ) : (
-              "yok"
-            )}
-            {volume.mode === "MANUAL"
-              ? " (elle atanmış)"
-              : volume.turnover !== null
-                ? ` · son ${volume.windowMonths} ay cirosu ${formatTRY(volume.turnover)}`
-                : ""}
-            {volume.next
-              ? ` · ${volume.next.name} (%${volume.next.percent}) için ${formatTRY(volume.next.remaining)} kaldı`
-              : ""}
-          </p>
-        </div>
-        <Link
-          href={`/admin/companies/${company.id}/statement`}
-          className="text-sm text-indigo-600 hover:underline"
-        >
-          Cari ekstre →
-        </Link>
-      </header>
+          </span>
+        }
+        actions={
+          <LinkButton
+            href={`/admin/companies/${company.id}/statement`}
+            size="md"
+          >
+            Cari ekstre
+          </LinkButton>
+        }
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="Bakiye" value={formatTRY(company.currentBalance)} />
+        <StatTile label="Kredi limiti" value={formatTRY(company.creditLimit)} />
+        <StatTile
+          label="Kullanılabilir"
+          value={formatTRY(company.availableCredit)}
+          tone={available < 0 ? "critical" : "positive"}
+          hint={available < 0 ? "limit aşıldı" : "limit içinde"}
+        />
+        <StatTile
+          label="Hacim iskontosu"
+          value={volumeHint}
+          hint={[volumeWhy, volumeNext].filter(Boolean).join(" · ") || undefined}
+        />
+      </div>
 
       <CompanyForm
         company={{

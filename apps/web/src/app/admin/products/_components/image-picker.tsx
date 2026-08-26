@@ -83,7 +83,7 @@ export function ImagePicker({ value, onChange }: Props) {
           <Upload className="h-3.5 w-3.5" />
           Görsel yükle
         </Button>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-ink-faint">
           JPEG, PNG, WebP, AVIF, GIF · en fazla 5 MB
         </span>
       </div>
@@ -101,19 +101,19 @@ export function ImagePicker({ value, onChange }: Props) {
                 src={mediaSrc(url, 160)}
                 alt=""
                 loading="lazy"
-                className="h-20 w-20 rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
+                className="h-20 w-20 rounded border border-line bg-sunken object-cover"
               />
               <button
                 type="button"
                 title="Kaldır"
                 aria-label="Görseli kaldır"
                 onClick={() => setUrls(urls.filter((_, i) => i !== index))}
-                className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm hover:bg-red-600 dark:bg-white dark:text-neutral-900 dark:hover:bg-red-500 dark:hover:text-white"
+                className="absolute -right-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent text-on-accent shadow-pop transition-colors hover:bg-critical hover:text-white"
               >
                 <X className="h-3 w-3" />
               </button>
               {index === 0 && (
-                <span className="absolute bottom-0 left-0 rounded-br-md rounded-tr-md bg-neutral-900/80 px-1 text-[10px] text-white">
+                <span className="absolute bottom-0 left-0 rounded-tr bg-accent px-1 text-[10px] font-semibold uppercase tracking-wider text-on-accent">
                   kapak
                 </span>
               )}

@@ -1,21 +1,17 @@
-import Link from "next/link";
 import { requirePage } from "@/lib/guard";
+import { PageHeader } from "@/components/ui";
 import { ProductForm } from "../_components/product-form";
 
 export default async function NewProductPage() {
   await requirePage(["SUPER_ADMIN"], "products.manage");
   return (
     <main className="mx-auto max-w-4xl">
-      <Link
-        href="/admin/products"
-        className="mb-3 inline-block text-sm text-neutral-500 hover:underline"
-      >
-        ← Ürünler
-      </Link>
+      <PageHeader
+        title="Yeni Ürün"
+        subtitle="Ürünü kaydettikten sonra varyant ve fiyat kademelerini ekleyebilirsiniz."
+        back={{ href: "/admin/products", label: "Ürünler" }}
+      />
       <ProductForm />
-      <p className="mt-3 text-sm text-neutral-500">
-        Ürünü kaydettikten sonra varyant ve fiyat kademelerini ekleyebilirsiniz.
-      </p>
     </main>
   );
 }
