@@ -8,6 +8,7 @@ import {
   getCachedPrincipal,
   setCachedPrincipal,
 } from "./principal-cache";
+import { verifySecondFactor } from "./two-factor";
 
 // Login attempt handling and live principal lookup.
 //
@@ -28,6 +29,18 @@ export const LOCKOUT_MINUTES = 15;
 export interface Principal extends SessionUser {
   tokenVersion: number;
   isActive: boolean;
+  /**
+   * İkinci adım kurulu mu.
+   *
+   * Oturum jetonunda **taşınmaz**, satırdan okunur — rolün ve izinlerin
+   * taşınmadığı gerekçenin aynısı: jeton bir kez giriş yapıldığının kanıtıdır,
+   * hesabın şu anki hâlinin değil. Yönetici az önce sıfırladıysa açık sekme
+   * bunu bir sonraki istekte hissetmeli.
+   *
+   * Burada okunuyor çünkü zorunluluk kapısı her istekte çalışıyor; ayrı bir
+   * sorgu, önbelleğe alınmış tek okumayı ikiye çıkarırdı.
+   */
+  twoFactorEnabled: boolean;
 }
 
 /**
@@ -56,12 +69,26 @@ export async function loadPrincipal(userId: string): Promise<Principal | null> {
       isActive: true,
       tokenVersion: true,
       permissions: true,
+      totpEnabledAt: true,
     },
   });
   // Kolon String[]; bilinmeyen anahtarlar burada, tek girişte atılır. Böylece
   // kaldırılmış bir izin adı veritabanında kalsa bile hiçbir kontrole yem olmaz.
+  // `totpEnabledAt` bilerek dışarı alınmıyor: Principal bazı uçlarda olduğu
+  // gibi serileştiriliyor ve ham sütunların oraya sızması, tipin söylediğiyle
+  // taşınanın ayrışması demek. Kapının ihtiyacı olan tek şey bayrak.
   const principal: Principal | null = row
-    ? { ...row, permissions: sanitizePermissions(row.permissions) }
+    ? {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        role: row.role,
+        companyId: row.companyId,
+        isActive: row.isActive,
+        tokenVersion: row.tokenVersion,
+        permissions: sanitizePermissions(row.permissions),
+        twoFactorEnabled: Boolean(row.totpEnabledAt),
+      }
     : null;
   setCachedPrincipal(userId, principal);
   return principal;
@@ -111,7 +138,15 @@ export async function revokeSessions(userId: string): Promise<number> {
 // login
 // ─────────────────────────────────────────────
 
-export type LoginFailure = "INVALID" | "DISABLED" | "LOCKED" | "IP_BLOCKED";
+export type LoginFailure =
+  | "INVALID"
+  | "DISABLED"
+  | "LOCKED"
+  | "IP_BLOCKED"
+  /** Şifre doğru, ama hesapta ikinci adım açık ve kod gelmedi. */
+  | "TOTP_REQUIRED"
+  /** Şifre doğru, kod geldi ama tutmadı. */
+  | "TOTP_INVALID";
 
 export type LoginResult =
   | { ok: true; user: SessionUser; tokenVersion: number }
@@ -131,6 +166,7 @@ export async function attemptLogin(
   email: string,
   password: string,
   meta: RequestMeta = {},
+  totp?: string,
 ): Promise<LoginResult> {
   // Before anything else, and before touching a password: account lockout counts
   // per e-mail, so one common password sprayed across a hundred addresses never
@@ -234,6 +270,123 @@ export async function attemptLogin(
       meta: { channel: meta.channel ?? "web", reason: "DISABLED" },
     });
     return { ok: false, reason: "DISABLED" };
+  }
+
+  // ─── ikinci adım ───────────────────────────
+  //
+  // Şifreden *sonra* çalışır, bilerek: kod istemek "bu e-posta + şifre doğru"
+  // demektir. Şifre yanlışken kod sormak, saldırgana parola denemesinin sonucunu
+  // ikinci adıma hiç girmeden söylerdi.
+  //
+  // Buradaki sızıntı (TOTP_REQUIRED = şifre doğru) her iki adımlı sistemde
+  // vardır ve kaçınılmazdır: kullanıcıya kodu ne zaman soracağınızı bir yerde
+  // söylemek zorundasınız. Kabul edilen bedel, ikinci adımın kendisidir.
+  if (user.totpEnabledAt && user.totpSecret) {
+    if (!totp || !totp.trim()) {
+      return { ok: false, reason: "TOTP_REQUIRED" };
+    }
+
+    const second = await verifySecondFactor(
+      {
+        totpSecret: user.totpSecret,
+        totpLastStep: user.totpLastStep,
+        totpBackupCodes: user.totpBackupCodes,
+      },
+      totp,
+      user.id,
+    );
+
+    if (!second.ok) {
+      // Hatalı kod da sayaca yazılır. Yazılmasaydı, şifreyi ele geçirmiş biri
+      // altı haneyi sınırsızca deneyebilirdi — kilit yalnızca şifreyi korur,
+      // asıl korunması gereken artık ikinci adımdır.
+      const failed = user.failedLoginCount + 1;
+      const lock = failed >= MAX_FAILED_LOGINS;
+      const lockedUntil = lock
+        ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000)
+        : null;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginCount: lock ? 0 : failed,
+          ...(lockedUntil ? { lockedUntil } : {}),
+        },
+      });
+
+      await recordAudit({
+        actor,
+        action: lock ? "LOGIN_LOCKED" : "TWO_FACTOR_FAILED",
+        summary: lock
+          ? `${MAX_FAILED_LOGINS} başarısız doğrulama kodundan sonra hesap ${LOCKOUT_MINUTES} dakika kilitlendi`
+          : `Hatalı doğrulama kodu (${failed}/${MAX_FAILED_LOGINS})`,
+        entity: "User",
+        entityId: user.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+        meta: { channel: meta.channel ?? "web", attempt: failed, stage: "login" },
+      });
+
+      return lockedUntil
+        ? { ok: false, reason: "LOCKED", lockedUntil }
+        : { ok: false, reason: "TOTP_INVALID" };
+    }
+
+    if (second.via === "backup") {
+      await recordAudit({
+        actor,
+        action: "TWO_FACTOR_BACKUP_USED",
+        summary: `Yedek kod ile giriş — ${second.remainingBackupCodes} kod kaldı`,
+        entity: "User",
+        entityId: user.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+        meta: {
+          channel: meta.channel ?? "web",
+          remaining: second.remainingBackupCodes,
+        },
+      });
+    }
+
+    // Kabul edilen adım aynı `update` içinde saklanır: aynı kod ikinci kez
+    // geçmesin. Ayrı bir yazma olsaydı, ikisinin arasına sıkışan eşzamanlı
+    // bir istek aynı kodla ikinci oturumu açabilirdi.
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginCount: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+        lastLoginIp: meta.ip ?? null,
+        ...(second.via === "totp" ? { totpLastStep: second.step } : {}),
+      },
+    });
+
+    await recordAudit({
+      actor,
+      action: "LOGIN_SUCCESS",
+      summary: `Giriş yapıldı (${meta.channel ?? "web"}, ikinci adım: ${
+        second.via === "backup" ? "yedek kod" : "authenticator"
+      })`,
+      entity: "User",
+      entityId: user.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      meta: { channel: meta.channel ?? "web", secondFactor: second.via },
+    });
+
+    return {
+      ok: true,
+      tokenVersion: user.tokenVersion,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        companyId: user.companyId,
+        permissions: sanitizePermissions(user.permissions),
+      },
+    };
   }
 
   await prisma.user.update({

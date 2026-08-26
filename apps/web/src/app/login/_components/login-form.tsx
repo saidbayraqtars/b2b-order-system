@@ -27,6 +27,14 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  /**
+   * Kod alanı baştan görünmez. Hesapların çoğunda ikinci adım yok; herkese
+   * boş bir kod kutusu göstermek "acaba bende de mi olmalı" sorusu doğurur.
+   * Sunucu `TOTP_REQUIRED` dediğinde açılır — o an şifrenin doğru olduğu da
+   * bilinir, yani kutu tam gerektiği anda çıkar.
+   */
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +42,11 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
 
-    const parsed = loginSchema.safeParse({ email, password });
+    const parsed = loginSchema.safeParse({
+      email,
+      password,
+      ...(totp.trim() ? { totp: totp.trim() } : {}),
+    });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Geçersiz giriş");
       return;
@@ -44,11 +56,26 @@ export function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
+      totp: totp.trim(),
       redirect: false,
     });
     setLoading(false);
 
     if (res?.error) {
+      if (res.code === "TOTP_REQUIRED") {
+        setNeedsTotp(true);
+        setError(null);
+        return;
+      }
+      if (res.code === "TOTP_INVALID") {
+        setNeedsTotp(true);
+        setTotp("");
+        setError("Doğrulama kodu hatalı veya süresi geçmiş");
+        return;
+      }
+      // Şifre değişmiş olabilir; kod alanı açıksa kapatıp baştan başlat.
+      setNeedsTotp(false);
+      setTotp("");
       setError("E-posta veya şifre hatalı");
       return;
     }
@@ -87,9 +114,33 @@ export function LoginForm() {
           autoComplete="current-password"
         />
       </div>
+      {needsTotp && (
+        <div>
+          <Label htmlFor="totp">Doğrulama kodu</Label>
+          <TextInput
+            id="totp"
+            /* inputMode=numeric telefonda tuş takımını açar; type=text kalıyor
+               çünkü yedek kod harf içerir ve type=number onu reddederdi. */
+            inputMode="numeric"
+            placeholder="123456"
+            value={totp}
+            onChange={(e) => setTotp(e.target.value)}
+            autoComplete="one-time-code"
+            autoFocus
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            Authenticator uygulamanızdaki altı haneli kodu girin. Telefonunuza
+            erişemiyorsanız yedek kodlarınızdan birini yazabilirsiniz.
+          </p>
+        </div>
+      )}
       <ErrorLine error={error ? new Error(error) : null} />
       <Button type="submit" loading={loading} className="mt-1 w-full">
-        {loading ? "Giriş yapılıyor…" : "Giriş yap"}
+        {loading
+          ? "Giriş yapılıyor…"
+          : needsTotp
+            ? "Doğrula ve giriş yap"
+            : "Giriş yap"}
       </Button>
       <Link
         href="/sifremi-unuttum"

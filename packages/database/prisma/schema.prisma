@@ -137,6 +137,37 @@ model User {
   lockedUntil       DateTime?
   passwordChangedAt DateTime?
 
+  /// İki adımlı doğrulama (TOTP / authenticator uygulaması).
+  ///
+  /// `totpSecret` **şifreli** saklanır (AES-256-GCM, `TOTP_ENCRYPTION_KEY`).
+  /// Düz metin tutulsaydı veritabanı sızıntısı ikinci adımı da beraberinde
+  /// götürürdü — o zaman 2FA'nın koruduğu tek şey, zaten sızmış olan şifre
+  /// olurdu. Bkz. `packages/services/src/secret-box.ts`.
+  ///
+  /// Durum tek kolondan okunur:
+  ///   secret NULL                        → 2FA yok
+  ///   secret dolu, enabledAt NULL        → kurulum başladı, henüz doğrulanmadı
+  ///   secret dolu, enabledAt dolu        → 2FA açık
+  /// Girişte **yalnızca `totpEnabledAt` dolu olanlar** ikinci adıma tabidir;
+  /// yarım kalmış bir kurulum kimseyi dışarıda bırakmaz.
+  totpSecret    String?
+  totpEnabledAt DateTime?
+
+  /// Kabul edilen son zaman adımı. Aynı kod ikinci kez kullanılamaz: kodu
+  /// omuz üstünden okuyan ya da araya giren biri, 30 saniyelik pencere
+  /// dolmadan aynı kodla ikinci bir oturum açamaz.
+  totpLastStep Int?
+
+  /// Tek kullanımlık yedek kodların SHA-256 özetleri. Telefon kaybında
+  /// kullanıcının kendi kendine girmesini sağlar; kullanılan kod diziden
+  /// çıkarılır, "kullanıldı" durumu yokluğuyla temsil edilir.
+  ///
+  /// bcrypt değil SHA-256: bu kodlar rastgele üretilir ve yüksek entropilidir
+  /// (kaba kuvvete karşı yavaşlatmaya ihtiyaç duymazlar). Ayrıca her denemede
+  /// listedeki tüm kodlara bakmak gerekir — 10 bcrypt karşılaştırması girişi
+  /// saniyelerce bekletirdi.
+  totpBackupCodes String[] @default([])
+
   // Company staff/admin belong to a company. Super admin & sales rep are null.
   companyId String?
   company   Company? @relation("CompanyMembers", fields: [companyId], references: [id])
@@ -2183,6 +2214,16 @@ enum AuditAction {
   /// Bakım işi açıldı/kapatıldı ya da periyodu değişti. Kapatılmış bir temizlik
   /// işi haftalar sonra fark edildiğinde, kimin kapattığını gösteren tek kayıt.
   JOB_SCHEDULE_CHANGED
+
+  /// İki adımlı doğrulama olayları. Açılma/kapanma bir hesabın savunmasını
+  /// değiştirir; sıfırlama bir yöneticinin başkasının hesabına müdahalesidir.
+  /// Hatalı kod ayrı tutulur: hatalı *şifre* ile hatalı *kod* farklı şeyler
+  /// söyler — ikincisi, şifrenin zaten bilindiği anlamına gelir.
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  TWO_FACTOR_RESET
+  TWO_FACTOR_FAILED
+  TWO_FACTOR_BACKUP_USED
 }
 
 /// Append-only record of security-relevant events. Nothing in the application

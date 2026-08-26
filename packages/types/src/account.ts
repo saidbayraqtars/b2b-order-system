@@ -42,6 +42,26 @@ export const changePasswordSchema = z
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 // ─────────────────────────────────────────────
+// TWO-FACTOR (TOTP)
+// ─────────────────────────────────────────────
+
+/**
+ * Doğrulama kodu: authenticator'ın altı hanesi **ya da** bir yedek kod.
+ *
+ * Biçim burada zorlanmıyor. İki geçerli biçim var (6 rakam; 10 harf/rakam,
+ * tireli ya da tiresiz) ve kullanıcı boşluk da bırakabiliyor — şemayı buna
+ * göre daraltmak, doğrulayanla iki ayrı yerde anlaşmak demek olurdu. Tek
+ * kural: boş olmasın ve saçma uzunlukta olmasın.
+ *
+ * `loginSchema.totp` ile bilerek aynı sınırlar (bkz. ./auth.ts): giriş ile
+ * hesap ekranı aynı kodu kabul etmezse kullanıcı sebebini asla anlayamaz.
+ */
+export const twoFactorCodeSchema = z.object({
+  code: z.string().trim().min(1, "Doğrulama kodu gerekli").max(32),
+});
+export type TwoFactorCodeInput = z.infer<typeof twoFactorCodeSchema>;
+
+// ─────────────────────────────────────────────
 // AUDIT TRAIL
 // ─────────────────────────────────────────────
 
@@ -74,6 +94,11 @@ export const AuditActionEnum = z.enum([
   "AUDIT_PURGED",
   "AUDIT_EXPORTED",
   "JOB_SCHEDULE_CHANGED",
+  "TWO_FACTOR_ENABLED",
+  "TWO_FACTOR_DISABLED",
+  "TWO_FACTOR_RESET",
+  "TWO_FACTOR_FAILED",
+  "TWO_FACTOR_BACKUP_USED",
 ]);
 export type AuditAction = z.infer<typeof AuditActionEnum>;
 
@@ -105,6 +130,11 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   AUDIT_PURGED: "Denetim kaydı temizlendi",
   AUDIT_EXPORTED: "Denetim kaydı dışa aktarıldı",
   JOB_SCHEDULE_CHANGED: "Bakım işi ayarı değişti",
+  TWO_FACTOR_ENABLED: "İki adımlı doğrulama açıldı",
+  TWO_FACTOR_DISABLED: "İki adımlı doğrulama kapatıldı",
+  TWO_FACTOR_RESET: "İki adımlı doğrulama sıfırlandı (yönetici)",
+  TWO_FACTOR_FAILED: "Hatalı doğrulama kodu",
+  TWO_FACTOR_BACKUP_USED: "Yedek kod kullanıldı",
 };
 
 /** Actions worth surfacing as "security events" by default in the viewer. */
@@ -122,6 +152,14 @@ export const SECURITY_ACTIONS: readonly AuditAction[] = [
   "USER_DELETED",
   "AUDIT_PURGED",
   "AUDIT_EXPORTED",
+  // İkinci adımın açılması/kapanması bir hesabın savunmasını değiştirir; rol
+  // değişikliğiyle aynı ağırlıkta. Sıfırlama ayrıca bir yöneticinin başkasının
+  // hesabına müdahalesidir — görünmemesi kör nokta olurdu.
+  "TWO_FACTOR_ENABLED",
+  "TWO_FACTOR_DISABLED",
+  "TWO_FACTOR_RESET",
+  "TWO_FACTOR_FAILED",
+  "TWO_FACTOR_BACKUP_USED",
 ];
 
 const isoDate = z

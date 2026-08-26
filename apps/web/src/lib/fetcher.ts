@@ -50,6 +50,11 @@ export function apiPut<T>(url: string, body: unknown): Promise<T> {
   return request<T>(url, "PUT", body);
 }
 
-export function apiDelete(url: string): Promise<void> {
-  return request<void>(url, "DELETE");
+/**
+ * Gövde isteğe bağlı: çoğu silme için gereksiz, ama bazı silmeler kanıt ister
+ * (ikinci adımı kapatmak için doğrulama kodu gibi). Kanıtı sorgu dizesine
+ * koymak, kodu tarayıcı geçmişine ve sunucu erişim kaydına yazardı.
+ */
+export function apiDelete(url: string, body?: unknown): Promise<void> {
+  return request<void>(url, "DELETE", body);
 }

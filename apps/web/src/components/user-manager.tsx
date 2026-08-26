@@ -428,7 +428,19 @@ function UserRowView({
     onSuccess: onChanged,
   });
 
-  const error = patch.error ?? setPass.error ?? remove.error;
+  /**
+   * Telefonunu ve yedek kodlarını birden kaybeden kullanıcının tek çıkışı.
+   * Hesabı 2FA'sız bırakmaz: zorunlu kapsamdaysa bir sonraki girişinde
+   * kurulum ekranına düşer — yani bu bir kaçış kapısı değil, yeni cihaz
+   * kaydetme izni.
+   */
+  const resetTwoFactor = useMutation({
+    mutationFn: () => apiDelete(`/api/admin/users/${user.id}/two-factor`),
+    onSuccess: onChanged,
+  });
+
+  const error =
+    patch.error ?? setPass.error ?? remove.error ?? resetTwoFactor.error;
 
   if (editing) {
     return (
@@ -588,6 +600,25 @@ function UserRowView({
           >
             {user.isActive ? "Pasife al" : "Aktifleştir"}
           </Button>
+          {user.twoFactorEnabled && (
+            <Button
+              variant="secondary"
+              disabled={resetTwoFactor.isPending}
+              title="Kullanıcı telefonunu ve yedek kodlarını kaybettiyse"
+              onClick={() => {
+                if (
+                  confirm(
+                    `${user.name} hesabının iki adımlı doğrulaması sıfırlansın mı? ` +
+                      `Açık oturumları kapanır ve yeniden kurmak zorunda kalır.`,
+                  )
+                ) {
+                  resetTwoFactor.mutate();
+                }
+              }}
+            >
+              2FA sıfırla
+            </Button>
+          )}
           <Button
             variant="danger"
             disabled={isSelf || remove.isPending}

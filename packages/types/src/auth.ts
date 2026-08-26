@@ -16,6 +16,17 @@ export const loginSchema = z.object({
    * aniden "giriş yapılamaz" hâle gelmemeli.
    */
   password: z.string().min(1, "Şifre gerekli").max(128),
+  /**
+   * İki adımlı doğrulama kodu — authenticator'ın altı hanesi ya da yedek kod.
+   *
+   * Şemada opsiyonel, çünkü hesapların çoğunda ikinci adım yok. Gerekip
+   * gerekmediğine `attemptLogin` **şifreyi doğruladıktan sonra** karar verir;
+   * form önce kodsuz gönderir, `TOTP_REQUIRED` yanıtını alınca alanı açar.
+   *
+   * Uzunluk sınırı biçimi zorlamaz: yedek kod tireli 11 karakter, TOTP 6 hane,
+   * kullanıcı boşluk da bırakabilir. Biçim denetimi doğrulayan tarafta.
+   */
+  totp: z.string().trim().max(32).optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 

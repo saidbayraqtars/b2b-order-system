@@ -7,6 +7,8 @@ import {
   BusinessError,
   checkPrincipal,
   recordAudit,
+  requiresTwoFactor,
+  secretBoxReady,
   type BusinessErrorCode,
   type PrincipalRejection,
 } from "@repo/services";
@@ -26,7 +28,21 @@ export type AuthErrorCode =
   | "SESSION_REVOKED"
   | "ACCOUNT_DISABLED"
   | "ACCOUNT_MISSING"
-  | "FORBIDDEN";
+  | "FORBIDDEN"
+  /**
+   * Giriş sırasında: şifre doğru, ikinci adım bekleniyor / kod tutmadı.
+   *
+   * Bunlar **oturum ölmedi** demektir — henüz oturum yoktur. Mobil istemcinin
+   * "oturum düştü" işleyicisi bu ikisini görmezden gelmeli, yoksa kod ekranını
+   * açacağı yerde kullanıcıyı giriş ekranına geri atar.
+   */
+  | "TOTP_REQUIRED"
+  | "TOTP_INVALID"
+  /**
+   * Oturum geçerli ama hesap ikinci adımı **kurmak zorunda** ve kurmamış.
+   * Jeton atılmaz; kullanıcı kurulum ekranına yönlendirilir.
+   */
+  | "TOTP_SETUP_REQUIRED";
 
 export class AuthError extends Error {
   constructor(
@@ -110,7 +126,12 @@ const REJECTION_CODE: Record<PrincipalRejection, AuthErrorCode> = {
  * a single query.
  */
 const resolvePrincipal = cache(async (): Promise<
-  | { ok: true; user: SessionUser; channel: "web" | "mobile" }
+  | {
+      ok: true;
+      user: SessionUser;
+      channel: "web" | "mobile";
+      twoFactorEnabled: boolean;
+    }
   | { ok: false; rejection: PrincipalRejection | "NONE"; claim: SessionClaim | null }
 > => {
   const claim = await readClaim();
@@ -122,6 +143,7 @@ const resolvePrincipal = cache(async (): Promise<
   return {
     ok: true,
     channel: claim.channel,
+    twoFactorEnabled: user!.twoFactorEnabled,
     user: {
       id: user!.id,
       email: user!.email,
@@ -161,6 +183,44 @@ async function rejectPrincipal(
 
 /** Bir uç/ekranın istediği izin: tek anahtar ya da "hepsi gerekli" listesi. */
 export type PermissionRequirement = Permission | readonly Permission[];
+
+export interface GuardOptions {
+  /**
+   * İkinci adım kapısı bu uçta çalışsın mı (varsayılan: evet).
+   *
+   * `false` yalnızca **kurulumun kendisi** için: hesap ekranı ve
+   * `/api/account/two-factor/*`. Zorunlu kapsamdaki kullanıcı 2FA'sını
+   * oralardan kuracak; kapı orada da çalışsaydı kurulum kendi ön koşulunu
+   * bekler ve hesap kalıcı kilitlenirdi.
+   *
+   * Yedek kod yenileme bilerek muaf **değil**: o, 2FA'sı zaten açık bir
+   * hesabın işi.
+   */
+  twoFactorGate?: boolean;
+}
+
+/**
+ * İkinci adımı kurmak zorunda olup kurmamış hesabı durdur.
+ *
+ * Politika (kimin zorunlu olduğu) servis katmanında tek bir yerde
+ * (`requiresTwoFactor`); burası yalnızca kapıyı işletiyor. Oturum
+ * düşürülmüyor — jeton geçerli, eksik olan hesabın kendi savunması.
+ */
+function twoFactorGateBlocks(
+  user: SessionUser,
+  twoFactorEnabled: boolean,
+  options: GuardOptions | undefined,
+): boolean {
+  if (options?.twoFactorGate === false) return false;
+  if (twoFactorEnabled) return false;
+  // Kurulum yapılamıyorsa kapı da kapanmaz. Anahtar yokken engellemek,
+  // yöneticiyi çıkışı olmayan bir odaya kilitler: ne içeri girebilir, ne
+  // ikinci adımı kurabilir (kurmak da anahtarı gerektiriyor), ne de anahtarı
+  // koyacağı ekrana ulaşabilir. Anahtarı ortama yazmak operatörün "bu kurulumda
+  // 2FA açık" demesi; zorunluluk o andan itibaren işliyor.
+  if (!secretBoxReady()) return false;
+  return requiresTwoFactor({ role: user.role, permissions: user.permissions });
+}
 
 function missingPermissions(
   user: SessionUser,
@@ -202,6 +262,7 @@ async function recordDenial(
 export async function requireUser(
   allowed?: readonly Role[],
   needed?: PermissionRequirement,
+  options?: GuardOptions,
 ): Promise<SessionUser> {
   const result = await resolvePrincipal();
 
@@ -210,6 +271,17 @@ export async function requireUser(
       throw new AuthError(401, "Giriş gerekli", "NO_SESSION");
     }
     return rejectPrincipal(result.rejection, result.claim);
+  }
+
+  // Rol ve izin kontrollerinden **önce**: kurulumu eksik bir yönetici hesabının
+  // yapabildiği tek şey kurulumu tamamlamak olmalı, yetkisi neye yetiyorsa
+  // yetsin.
+  if (twoFactorGateBlocks(result.user, result.twoFactorEnabled, options)) {
+    throw new AuthError(
+      403,
+      "Bu hesap için iki adımlı doğrulama zorunlu. Hesabım ekranından kurun.",
+      "TOTP_SETUP_REQUIRED",
+    );
   }
 
   if (allowed && !hasRole(result.user.role, allowed)) {
@@ -286,6 +358,7 @@ export async function requestChannel(): Promise<"web" | "mobile"> {
 export async function requirePage(
   allowed: readonly Role[],
   needed?: PermissionRequirement,
+  options?: GuardOptions,
 ): Promise<SessionUser> {
   const result = await resolvePrincipal();
 
@@ -294,6 +367,13 @@ export async function requirePage(
     // A stale cookie would otherwise bounce between /login and the page it
     // guards, because middleware still sees a syntactically valid session.
     redirect(`/login?reason=${REJECTION_CODE[result.rejection]}`);
+  }
+
+  // Kurulum eksikse ekranların hiçbiri açılmaz; kullanıcı hesap ekranına
+  // gider. Hesap ekranı bu kapıdan muaf (bkz. GuardOptions) — muaf olmasaydı
+  // yönlendirme kendi üstüne kapanırdı.
+  if (twoFactorGateBlocks(result.user, result.twoFactorEnabled, options)) {
+    redirect("/hesabim?kurulum=iki-adimli");
   }
 
   if (!hasRole(result.user.role, allowed)) {

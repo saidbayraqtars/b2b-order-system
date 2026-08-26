@@ -103,6 +103,16 @@ export function envWarnings(): string[] {
         "bağlantısı şifresiz taşınır. Üretimde https kullanın.",
     );
   }
+  // Uyarı, hata değil: anahtar yoksa iki adımlı doğrulama kurulamaz ama
+  // kurulumun geri kalanı çalışır. Süreci durdurmak, 2FA'yı hiç kullanmayacak
+  // bir kurulumu açılıştan alıkoyardı — buna karşılık sessiz kalmak, zorunlu
+  // kapsamdaki yöneticinin kurulum ekranında duvara toslamasıyla sonuçlanır.
+  if (value("TOTP_ENCRYPTION_KEY") === "") {
+    warnings.push(
+      "TOTP_ENCRYPTION_KEY boş: iki adımlı doğrulama kurulamaz. " +
+        'Üret: openssl rand -base64 32',
+    );
+  }
   return warnings;
 }
 

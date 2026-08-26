@@ -93,6 +93,15 @@ export interface UserRow {
   /** Portfolio size, for sales reps. */
   managedCompanyCount: number;
   createdAt: string;
+  /**
+   * İkinci adım kurulu mu.
+   *
+   * Anahtarın kendisi değil, yalnızca bayrak — `totpSecret` bu seçime hiç
+   * girmiyor (passwordHash ile aynı gerekçe: bir kez seçilirse er ya da geç
+   * bir yanıtta görünür). Yönetici için gereken tek bilgi "sıfırlanacak bir
+   * şey var mı".
+   */
+  twoFactorEnabled: boolean;
 }
 
 // passwordHash is absent from this select on purpose — it must not be able to
@@ -106,6 +115,7 @@ const userSelect = {
   isActive: true,
   permissions: true,
   createdAt: true,
+  totpEnabledAt: true,
   company: { select: { id: true, name: true } },
   _count: { select: { managedCompanies: true } },
 } as const;
@@ -119,6 +129,7 @@ function toRow(u: {
   isActive: boolean;
   permissions: string[];
   createdAt: Date;
+  totpEnabledAt: Date | null;
   company: { id: string; name: string } | null;
   _count: { managedCompanies: number };
 }): UserRow {
@@ -133,6 +144,7 @@ function toRow(u: {
     company: u.company,
     managedCompanyCount: u._count.managedCompanies,
     createdAt: u.createdAt.toISOString(),
+    twoFactorEnabled: Boolean(u.totpEnabledAt),
   };
 }
 
