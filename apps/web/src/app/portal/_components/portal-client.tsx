@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ScanLine,
+  Search,
+  ShoppingCart,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { CatalogProduct, CategoryNode, PageBlock } from "@repo/services";
 import type { Permission, Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
+import { findScannedVariant, isScanOrderable } from "@/lib/barcode";
 import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
 import { Announcements } from "@/components/storefront/announcements";
@@ -65,6 +71,32 @@ function totalStock(p: CatalogProduct): number {
   return p.variants.reduce((s, v) => s + v.stock, 0);
 }
 
+/**
+ * Katalog isteği tek yerde: hem ekrandaki liste hem de barkod okutması aynı
+ * anahtarı kullansın. Ayrı yazılsalardı okutma, listenin az önce çektiği aynı
+ * cevabı ikinci kez indirirdi.
+ */
+function catalogQueryOptions(
+  companyId: string,
+  categoryId: string | null,
+  search: string,
+) {
+  const params = new URLSearchParams({ companyId });
+  if (categoryId) params.set("categoryId", categoryId);
+  if (search.trim()) params.set("search", search.trim());
+  return {
+    queryKey: ["catalog", companyId, categoryId, search] as const,
+    queryFn: () =>
+      apiGet<{ products: CatalogProduct[] }>(`/api/catalog?${params}`),
+  };
+}
+
+/** Okutma sonucu: kutunun altında tek satır. */
+interface ScanNotice {
+  kind: "ok" | "warn";
+  text: string;
+}
+
 export function PortalClient({
   companyId,
   companyName,
@@ -109,28 +141,88 @@ export function PortalClient({
     ] ?? "xl:grid-cols-3";
 
   const [search, setSearch] = useState("");
+  // Okuyucu 13 haneyi tek seferde yazar. Kutu her tuşta sunucuya gitseydi bir
+  // okutma bir istek değil on üç istek olurdu; liste gecikmeli terimi izliyor,
+  // Enter ise beklemeden kendi sorgusunu yapıyor.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
   const [inStockOnly, setInStockOnly] = useState(false);
-  const { itemCount } = useCart(companyId);
+  const [scanNotice, setScanNotice] = useState<ScanNotice | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const { itemCount, add } = useCart(companyId);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiGet<{ categories: CategoryNode[] }>("/api/categories"),
   });
 
-  const catalogQuery = useQuery({
-    queryKey: ["catalog", companyId, categoryId, search],
-    queryFn: () => {
-      // companyId her zaman gönderilir. Vekil kullanıcı için zorunlu (fiyat
-      // firmaya göre çözülür); alıcı için zararsız — sunucu kendi firmasıyla
-      // eşleşmezse zaten 403 verir.
-      const p = new URLSearchParams({ companyId });
-      if (categoryId) p.set("categoryId", categoryId);
-      if (search.trim()) p.set("search", search.trim());
-      return apiGet<{ products: CatalogProduct[] }>(`/api/catalog?${p}`);
-    },
-  });
+  // companyId her zaman gönderilir. Vekil kullanıcı için zorunlu (fiyat
+  // firmaya göre çözülür); alıcı için zararsız — sunucu kendi firmasıyla
+  // eşleşmezse zaten 403 verir.
+  const catalogQuery = useQuery(
+    catalogQueryOptions(companyId, categoryId, debouncedSearch),
+  );
+
+  /**
+   * Arama kutusunda Enter: önce tam eşleşme aranır, bulunursa doğrudan sepete.
+   *
+   * Kategori bilerek `null` gönderiliyor — okutulan ürün seçili kategorinin
+   * dışındaysa da bulunmalı; okuyucuyu tutan kişi ekranda hangi kategorinin
+   * seçili olduğunu düşünmek zorunda kalmasın.
+   */
+  const handleScan = useCallback(async () => {
+    const term = search.trim();
+    if (!term || scanning) return;
+    setScanning(true);
+    try {
+      const data = await queryClient.fetchQuery(
+        catalogQueryOptions(companyId, null, term),
+      );
+      const hit = findScannedVariant(data.products, term);
+      if (!hit) {
+        setScanNotice({ kind: "warn", text: `${term}: tam eşleşme yok` });
+        return;
+      }
+      const label = `${hit.product.name} · ${hit.variant.sku}`;
+      if (!isScanOrderable(hit.variant)) {
+        setScanNotice({
+          kind: "warn",
+          text:
+            hit.variant.netUnitPrice === null
+              ? `${label}: fiyat tanımsız, sepete eklenmedi`
+              : `${label}: yeterli stok yok, sepete eklenmedi`,
+        });
+        return;
+      }
+      add({
+        variantId: hit.variant.id,
+        unitsPerCase: hit.variant.unitsPerCase,
+        moqUnits: hit.variant.moqUnits,
+        stock: hit.variant.stock,
+      });
+      // Kutu temizleniyor ki sıradaki kod üstüne yazılmadan okutulabilsin.
+      setSearch("");
+      setScanNotice({ kind: "ok", text: `${label} sepete eklendi` });
+    } catch (err) {
+      setScanNotice({ kind: "warn", text: (err as Error).message });
+    } finally {
+      setScanning(false);
+    }
+  }, [add, companyId, queryClient, scanning, search]);
+
+  // Bildirim kendiliğinden söner; art arda okutmada ekranda birikmesin.
+  useEffect(() => {
+    if (!scanNotice) return;
+    const timer = setTimeout(() => setScanNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [scanNotice]);
 
   const categories = useMemo(
     () => flatten(categoriesQuery.data?.categories ?? []),
@@ -208,7 +300,24 @@ export function PortalClient({
                 placeholder="Ürün adı, marka, SKU veya barkod…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+                onKeyDown={(e) => {
+                  // Barkod okuyucu kodun sonuna Enter basar. Kutu bir formun
+                  // içinde değil, yine de varsayılan engelleniyor: tarayıcı
+                  // type="search" alanında Enter'ı kendi arama davranışına
+                  // bağlayabiliyor.
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  void handleScan();
+                }}
+                aria-describedby={scanNotice ? "scan-notice" : undefined}
+                className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+              />
+              <ScanLine
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors",
+                  scanning ? "text-brand-600" : "text-neutral-300",
+                )}
               />
             </div>
 
@@ -235,6 +344,21 @@ export function PortalClient({
                 ))}
               </select>
             </div>
+
+            {scanNotice && (
+              <p
+                id="scan-notice"
+                role="status"
+                className={cn(
+                  "w-full px-1 font-mono text-[11px] uppercase tracking-wider",
+                  scanNotice.kind === "ok"
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-amber-700 dark:text-amber-400",
+                )}
+              >
+                {scanNotice.text}
+              </p>
+            )}
           </div>
         )}
 
