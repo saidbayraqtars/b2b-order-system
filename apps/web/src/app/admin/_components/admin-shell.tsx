@@ -23,6 +23,7 @@ import {
   Target,
   TrendingUp,
   Truck,
+  Undo2,
   Users,
   Wallet,
   ScrollText,
@@ -79,6 +80,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
     links: [
       { href: "/admin/targets", label: "Hedefler", icon: Target, permission: "targets.manage" },
       { href: "/admin/deliveries", label: "Dağıtım", icon: Truck, permission: "orders.fulfil" },
+      { href: "/admin/iadeler", label: "İadeler", icon: Undo2, permission: "returns.manage" },
     ],
   },
   {

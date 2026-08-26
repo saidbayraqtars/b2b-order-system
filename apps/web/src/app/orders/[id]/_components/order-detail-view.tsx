@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { ErpPanel } from "./erp-panel";
 import { FulfilmentPanel } from "./fulfilment-panel";
+import { ReturnPanel } from "./return-panel";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   DRAFT: "Taslak",
@@ -250,6 +251,13 @@ export function OrderDetailView({
         role={role}
         canShip={o.status === "CONFIRMED" || o.status === "PROCESSING"}
       />
+
+      {/* Mal çıkmadan iade olmaz: çıkmamış mal için doğru işlem iptal ve o
+          aşağıdaki "Durum güncelle" panelinde. İki işi yan yana koymak,
+          defterde farklı iki sonucu aynı düğme gibi gösterirdi. */}
+      {(o.status === "SHIPPED" || o.status === "DELIVERED") && (
+        <ReturnPanel orderId={orderId} />
+      )}
 
       {/* Aktarım satıcının işi; alıcı firma kendi siparişinin ERP'ye ne zaman
           yazıldığını görmez. Yetkiyi asıl uç kontrol ediyor, buradaki rol
