@@ -1,3 +1,11 @@
+"use client";
+
+// İkonlar istemci tarafında kalmalı: `SidebarShell` bir istemci bileşeni ve
+// lucide ikonları `"use client"` taşımıyor. Bu dosya sunucuda kalsaydı, link
+// listesindeki ikon bileşenleri sınırdan geçmeye çalışır ve React "Functions
+// cannot be passed directly to Client Components" diye düşerdi — bazı
+// rotalarda düşüyordu da. Bileşenin aldığı her prop zaten serileştirilebilir.
+
 import type { ReactNode } from "react";
 import {
   BarChart3,

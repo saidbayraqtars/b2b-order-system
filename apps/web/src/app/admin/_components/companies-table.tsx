@@ -24,6 +24,15 @@ interface CompanyRow {
 }
 
 /**
+ * Panoda kaç cari gösterilecek.
+ *
+ * Panel başlığı "Tüm firmalar →" diyor; altında bütün portföyü listelemek o
+ * bağlantıyı anlamsız kılıyor ve panoyu altı bin piksel uzunluğa çıkarıyordu.
+ * Panonun işi özet vermek, liste ekranının işini yapmak değil.
+ */
+const PREVIEW_ROWS = 8;
+
+/**
  * Panonun cari özeti. Çerçevesizdir — panoda bir `Panel`in gövdesine oturuyor
  * ve kendi kenar çizgisini de çizseydi iki çizgi üst üste binerdi.
  */
@@ -36,8 +45,9 @@ export function CompaniesTable() {
   if (query.isLoading) return <LoadingState />;
   if (query.isError) return <ErrorLine error={query.error} />;
 
-  const companies = query.data?.companies ?? [];
-  if (companies.length === 0) return <EmptyState label="Firma yok." />;
+  const all = query.data?.companies ?? [];
+  if (all.length === 0) return <EmptyState label="Firma yok." />;
+  const companies = all.slice(0, PREVIEW_ROWS);
 
   return (
     <Table>
@@ -88,6 +98,13 @@ export function CompaniesTable() {
             </tr>
           );
         })}
+        {all.length > companies.length && (
+          <tr>
+            <Td colSpan={5} muted className="text-center">
+              {all.length} firmanın ilk {companies.length} tanesi gösteriliyor.
+            </Td>
+          </tr>
+        )}
       </TBody>
     </Table>
   );

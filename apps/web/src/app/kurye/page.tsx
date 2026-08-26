@@ -1,9 +1,8 @@
 import { hasPermission } from "@repo/types";
 import { requirePage } from "@/lib/guard";
-import { Truck } from "lucide-react";
-import { SidebarShell } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/ui";
 import { DeliveryBoard } from "@/components/delivery-board";
+import { CourierShell } from "./_components/courier-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +20,7 @@ export default async function CourierPage() {
   );
 
   return (
-    <SidebarShell
-      context="Kurye"
-      groups={[
-        {
-          title: "",
-          links: [{ href: "/kurye", label: "Teslimatlarım", icon: Truck }],
-        },
-      ]}
-      userLabel={user.name}
-    >
+    <CourierShell userName={user.name}>
       <main className="mx-auto max-w-3xl">
         <PageHeader
           title="Teslimatlarım"
@@ -40,6 +30,6 @@ export default async function CourierPage() {
           canDispatch={hasPermission(user.permissions, "orders.fulfil")}
         />
       </main>
-    </SidebarShell>
+    </CourierShell>
   );
 }

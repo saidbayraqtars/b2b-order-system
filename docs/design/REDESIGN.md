@@ -95,6 +95,19 @@ kendi `px-4 py-6`sını yazmaz; yalnızca `mx-auto max-w-*` ile genişlik seçer
 
 ---
 
+## Ekran görüntüsü kuralı
+
+Bir adım bittiğinde o adımın ekranları `docs/design/screens/adim-<n>/` altına
+çekilir. Elle değil: ekranı `scripts/screens.mjs` kayıt defterine bir satır
+olarak ekleyip `pnpm shots -- --step <n>` çalıştırın. Ayrıntı ve kararlar
+`docs/design/screens/README.md`de.
+
+Neden: "tokenlara taşındı" cümlesi bir ekranın doğru göründüğünü söylemiyor.
+İlk çekimde çıkan iki hata bunu kanıtladı — siyah düğmenin üstüne siyah yazı
+(`tailwind-merge` `text-body-sm`i punto değil renk sanıyordu) ve bazı
+rotalarda kabuğun düşmesi (sunucu bileşeni lucide ikonlarını istemci
+bileşenine geçiriyordu). İkisi de derlemeden, testlerden ve `tsc`den geçmişti.
+
 ## İlerleme
 
 ### ✔ Adım 1 — Temel katman ve kabuk (bitti)
@@ -189,10 +202,37 @@ Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 218/218 geçti
   durum geçmişi ve üç panel (sevkiyat/fatura, ERP, iade) anlamsal tokenlara
   taşındı.
 
+Ekran görüntüsü çekerken çıkan, üç doğrulamanın da yakalamadığı iki hata:
+
+- **Siyah düğmenin üstünde siyah yazı.** `cn()` içindeki `tailwind-merge`,
+  tanımadığı her `text-*` sınıfını renk sayıyor; `text-body-sm` bizde punto ama
+  merge onu renk sanıp aynı gruptaki `text-on-accent`i eziyordu. `Button`ın
+  `md` boyu etiketini kaybetti, `sm` boyu (`text-xs`, tanınan bir punto)
+  kaybetmedi — hata bu yüzden aylarca gözden kaçtı. Çözüm: `utils.ts` içinde
+  `extendTailwindMerge` ile ölçeğin adlarını `font-size` grubuna tanıtmak.
+  **`tailwind.config.ts`teki `fontSize`a yeni bir punto eklerseniz oraya da
+  ekleyin.**
+- **Bazı rotalarda kabuk düşüyordu.** `portal-nav`, `rep-nav` ve `kurye`
+  sunucu bileşeniydi ve link listesindeki lucide ikonlarını istemci olan
+  `SidebarShell`e geçiriyordu; lucide `"use client"` taşımıyor, React de
+  bileşeni serileştiremiyor ("Functions cannot be passed directly to Client
+  Components"). Adım 1'de `admin-shell` istemciye alınmış, diğer üçü atlanmıştı.
+  İkisine direktif eklendi, kurye için `CourierShell` ayrıldı.
+
+Pano panelinin başlığı "Tüm firmalar →" derken altında 31 firmanın hepsini
+listeliyordu; cari önizlemesi 8 satıra indi (sipariş tablosu sınırsız kaldı —
+yönetimde ayrı bir sipariş listesi ekranı yok, pano o listenin kendisi).
+
 Sayaçlar: `dark:` 348 → **237**, `neutral-` 792 → **434**, `brand-` 46 → **20**.
 
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 218/218 geçti,
-`next build` başarılı.
+`next build` başarılı, 12 ekran görüntüsü `docs/design/screens/` altında.
+
+**Açık kalan:** `orders/[id]` hiçbir kabuğun içinde değil — sayfa kenar
+çubuksuz açılıyor ve bu, tasarım dilinin 5. kuralını ("tek kabuk") çiğneyen tek
+ekran. Adım 3'ten önce de böyleydi. Düzeltmek rolü kabukla eşlemeyi gerektiriyor
+(süper admin → `AdminShell`, plasiyer → `RepNav`, alıcı → `PortalNav` + firma
+bağlamı); ayrı bir karar olduğu için buraya not düşüldü.
 
 ### ▢ Adım 4 — Finans
 
