@@ -2779,7 +2779,74 @@ Kurulum kılavuzu: `docs/KURULUM.md`.
 
 ---
 
-## 57. API Uçları
+## 57. İade (RMA) (Adım 64)
+
+İptal ile iade **ayrı iki iş**: iptal, mal çıkmadan siparişin hiç olmamış
+sayılmasıdır; iade, satış gerçekleştikten sonra malın geri gelmesidir. Bu
+yüzden iade siparişin üstüne yazan bir düzeltme değil, kendi numarası
+(`rmaNumber`) ve kendi onayı olan ayrı bir belge — dünkü faturayı bugünkü iade
+değiştirmiyor.
+
+### Tek kural: mal gelmeden defter oynamaz
+
+Talep açmak ve kabul etmek kayıt işi. **Stok girişi ile cari alacak yalnızca
+`RECEIVED` adımında**, tek işlemin içinde yazılıyor. Kabul anında stok
+artırılsaydı, yola çıkmamış — belki hiç çıkmayacak — mal satılabilir görünürdü.
+
+| Durum | Anlamı | Defter etkisi |
+|---|---|---|
+| `REQUESTED` | Talep açıldı | yok |
+| `APPROVED` | Kabul edildi, mal bekleniyor | yok |
+| `RECEIVED` | Teslim alındı | stok girişi + cari alacak |
+| `REJECTED` | Reddedildi | yok (hak geri döner) |
+| `CANCELLED` | Vazgeçildi | yok (hak geri döner) |
+
+`REQUESTED → RECEIVED` geçişi **yok**: mal kabul edilmeden teslim alınamaz.
+Kabul ile teslim aynı dakikada olsa bile iki ayrı kayıt — "kim kabul etti" ile
+"kim teslim aldı" çoğu kurulumda iki farklı kişi ve iade tartışması tam da bu
+ikisinin arasında çıkıyor.
+
+### Karar satıcının, talep alıcının
+
+- Alıcı kendi siparişi için talep açar ve **yalnızca iptal edebilir**.
+- Kabul, ret ve teslim alma `returns.manage` istiyor; izin kapsamı `SELLER`.
+  Bayiye verilseydi müşteri kendi iadesini onaylayıp kendine alacak yazdırırdı.
+- Kısıt ekranda değil serviste: `ReturnActor.canManage` false ise `CANCELLED`
+  dışındaki her geçiş reddediliyor.
+
+### Sayılar ve hâller
+
+- **İade edilebilir adet** = sevk edilen − hâlâ hak tüketen taleplerdekiler.
+  Reddedilen ve iptal edilen talep hakkı geri veriyor, teslim alınan vermiyor.
+- İrsaliye kesmeyen kurulumda `quantityShipped` boş kalıyor; sıfırı üst sınır
+  saymak iadeyi imkânsız kılardı, siparişin kendi adedi devreye giriyor.
+- Teslim alırken satır satır düzeltme yapılabiliyor: üç koli istenmiş ikisi
+  gelmişse yazılan **gelen**. Talepte olmayan satır buradan eklenemiyor.
+- **Hasarlı mal stoka girmiyor ama bedeli yine alacak yazılıyor** — müşteri
+  malı iade etti, kırık olması bizimle kargonun arasındaki mesele.
+- Geri gelen sağlam mal stok defterine kendi sebebiyle (`RETURN`) giriyor,
+  "sipariş iptali" diye değil. Parti (`lotId`) bilerek boş: geri gelen kutunun
+  hangi partiden çıktığını kimse bilmiyor ve tahmin etmek SKT takibini sessizce
+  yalan yapardı.
+- Cari alacak yalnızca **sipariş gerçekten borç doğurduysa** yazılıyor. Kartla
+  ya da peşin ödenmiş siparişte cari borç hiç doğmamıştır; iadesine alacak
+  yazmak müşteriyi iki kez alacaklı gösterirdi. Belgedeki `refundTotal` ne kadar
+  ödeneceğini söylüyor, para geldiği kanaldan geri veriliyor.
+
+### Ekranlar
+
+- **Alıcı tarafı**: sipariş detayında "İade" paneli, yalnızca sevk edilmiş
+  siparişte görünüyor. Sevk edilmemişte doğru işlem iptal ve o ayrı panelde —
+  iki işi yan yana koymak, defterde farklı iki sonucu aynı düğme gibi
+  gösterirdi.
+- **Satıcı tarafı**: `/admin/iadeler`. Varsayılan görünüm "açık": karar
+  bekleyenler ve mal bekleyenler. Teslim alma penceresi satırları getirip
+  adet/hâl düzeltmesine izin veriyor.
+
+21 rota testi (`apps/web/test/returns.test.ts`) bu kuralların defter tarafını
+sınıyor.
+
+## 58. API Uçları
 
 | Method | Yol | Roller |
 |--------|-----|--------|
@@ -2795,6 +2862,9 @@ Kurulum kılavuzu: `docs/KURULUM.md`.
 | GET | `/api/companies` | kimliği doğrulanmış (role göre kapsam) |
 | GET | `/api/companies/:id/statement?from&to` | kendi firması / portföy / hepsi |
 | GET | `/api/companies/:id/aging` | kendi firması / portföy / hepsi |
+| GET | `/api/orders/:id/returnable` | 4 rol (kapsam hesaptan; sevk edilmemişte 409) |
+| GET/POST | `/api/returns` | 4 rol (`orders.view`; POST talep açar) |
+| GET/POST | `/api/returns/:id` | 4 rol (karar `returns.manage` ister, serviste) |
 | GET | `/api/reports/sales?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
 | GET | `/api/reports/products?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
 | GET | `/api/reports/collections?from&to&companyId&limit` | süper admin, plasiyer (kendi kaydettikleri) |
