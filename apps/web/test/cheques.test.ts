@@ -188,14 +188,14 @@ suite("çek/senet portföyü (HTTP)", () => {
 
     it("portföye girişin kendisi geçmişe yazılıyor", async () => {
       const { chequeId } = await collectByCheque(300);
-      const res = await callRoute<{ cheque: { events: Array<{ toStatus: string }> } }>(
-        getCheque,
-        {
-          url: `/api/cheques/${chequeId}`,
-          params: { id: chequeId },
-          token: await bearer(admin),
-        },
-      );
+      const res = await callRoute<
+        { cheque: { events: Array<{ toStatus: string }> } },
+        { id: string }
+      >(getCheque, {
+        url: `/api/cheques/${chequeId}`,
+        params: { id: chequeId },
+        token: await bearer(admin),
+      });
       expect(res.status).toBe(200);
       expect(res.body.cheque.events.map((e) => e.toStatus)).toEqual(["PORTFOLIO"]);
     });
@@ -496,16 +496,19 @@ suite("çek/senet portföyü (HTTP)", () => {
       await advance(chequeId, { status: "DEPOSITED", note: "bankaya verildi" });
       await advance(chequeId, { status: "CLEARED" });
 
-      const res = await callRoute<{
-        cheque: {
-          events: Array<{
-            fromStatus: string | null;
-            toStatus: string;
-            note: string | null;
-            actorName: string | null;
-          }>;
-        };
-      }>(getCheque, {
+      const res = await callRoute<
+        {
+          cheque: {
+            events: Array<{
+              fromStatus: string | null;
+              toStatus: string;
+              note: string | null;
+              actorName: string | null;
+            }>;
+          };
+        },
+        { id: string }
+      >(getCheque, {
         url: `/api/cheques/${chequeId}`,
         params: { id: chequeId },
         token: await bearer(admin),
