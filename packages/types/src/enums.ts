@@ -181,6 +181,7 @@ export const StockMovementSourceEnum = z.enum([
   "COUNT",
   "ERP",
   "TRANSFER",
+  "RETURN",
 ]);
 export type StockMovementSource = z.infer<typeof StockMovementSourceEnum>;
 
@@ -191,6 +192,7 @@ export const STOCK_MOVEMENT_SOURCE_LABELS: Record<StockMovementSource, string> =
   COUNT: "Sayım farkı",
   ERP: "ERP senkronu",
   TRANSFER: "Depolar arası aktarım",
+  RETURN: "Müşteri iadesi",
 };
 
 /**

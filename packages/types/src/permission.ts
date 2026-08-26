@@ -45,6 +45,7 @@ export const PermissionEnum = z.enum([
   "orders.create",
   "orders.approve",
   "orders.fulfil",
+  "returns.manage",
   "visits.manage",
   "targets.manage",
   "delivery.confirm",
@@ -94,6 +95,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "orders.create": "Sipariş gir",
   "orders.approve": "Sipariş ve kredi onayı",
   "orders.fulfil": "Sevkiyat ve faturalama",
+  "returns.manage": "İade taleplerini karara bağla",
   "visits.manage": "Saha ziyareti aç/kapat",
   "targets.manage": "Temsilci hedeflerini belirle",
   "delivery.confirm": "Teslimatı onayla",
@@ -146,6 +148,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "labels.manage": "Kargo etiketi ve 80 mm fiş tasarımlarını düzenler",
   "cheques.manage":
     "Kâğıdı tahsile verir, tahsil/karşılıksız/ciro işaretler. Karşılıksızda kapanan borç geri açılır",
+  "returns.manage":
+    "İadeyi kabul/ret eder ve teslim alır. Stok ve cari alacak yalnızca teslim alma adımında yazılır",
 };
 
 /** Onay kutularının gruplandığı başlıklar — sıralama ekranda korunur. */
@@ -176,6 +180,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "orders.create",
       "orders.approve",
       "orders.fulfil",
+      "returns.manage",
       "visits.manage",
       "targets.manage",
       "delivery.confirm",
@@ -396,6 +401,12 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // Sevkiyat ve faturalama satıcının işi — bayiye verilirse müşteri kendi
   // siparişini sevk edilmiş/faturalanmış gösterebilir.
   "orders.fulfil": ["SELLER"],
+  // İadeyi **karara bağlama** izni, iade talebi açma izni değil: bayi kendi
+  // siparişi için talep açar ve kendi talebini iptal eder, bunun için ayrı bir
+  // izne ihtiyacı yok (servis `canManage: false` ile o yolu açık tutuyor).
+  // Kabul/ret ve teslim alma satıcının işi — bayiye verilseydi müşteri kendi
+  // iadesini onaylayıp stok girişi ve cari alacak yazdırabilirdi.
+  "returns.manage": ["SELLER"],
   "visits.manage": ["SELLER", "FIELD"],
   // Hedefi *koymak* satıcının işi. Temsilci kendi hedefini bu izin olmadan da
   // görür — görmek yetki değil, panelinin parçası.

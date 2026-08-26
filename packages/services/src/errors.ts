@@ -133,6 +133,12 @@ export type BusinessErrorCode =
   // ── zamanlanmış işler ──
   | "JOB_NOT_FOUND"
   | "INVALID_JOB_INTERVAL"
+  // ── iade (RMA) ──
+  | "RETURN_NOT_FOUND"
+  | "RETURN_ITEM_NOT_FOUND"
+  | "INVALID_RETURN_TRANSITION"
+  | "NOTHING_TO_RETURN"
+  | "OVER_RETURN"
   // ── sayfa düzeni ──
   | "PAGE_NOT_FOUND"
   | "INVALID_BLOCK";

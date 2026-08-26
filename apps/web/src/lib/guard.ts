@@ -529,6 +529,13 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   WAREHOUSE_CODE_TAKEN: 409,
   // sayfa düzeni
   PAGE_NOT_FOUND: 404,
+  // iade (RMA): OVER_RETURN 409 çünkü istek geçerli, defterdeki durum uygun
+  // değil — sevk edilenden fazlası geri gelemez.
+  RETURN_NOT_FOUND: 404,
+  RETURN_ITEM_NOT_FOUND: 404,
+  INVALID_RETURN_TRANSITION: 409,
+  NOTHING_TO_RETURN: 422,
+  OVER_RETURN: 409,
   INVALID_BLOCK: 422,
   INVALID_STOCK: 422,
   STOCK_MOVEMENT_NOT_FOUND: 404,

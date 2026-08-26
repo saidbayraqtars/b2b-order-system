@@ -94,6 +94,30 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+/// Bir iade talebinin nerede olduğu.
+///
+/// Ayrı bir "kısmen alındı" durumu yok: mal ya geldi ya gelmedi. Yarısı gelen
+/// bir iade, gelen kısım kadar ikinci bir talep açılarak yürür — tek satırın
+/// içinde "ne kadarı geldi" saymak, stok ve cari kayıtlarının hangi anda
+/// yazıldığını belirsiz hale getirirdi.
+enum ReturnStatus {
+  REQUESTED // açıldı, satıcı kararı bekleniyor
+  APPROVED // kabul edildi, mal bekleniyor — stok/cari HENÜZ oynamadı
+  RECEIVED // mal geldi: stok girdi, cari alacak yazıldı (terminal)
+  REJECTED // satıcı kabul etmedi (terminal)
+  CANCELLED // açan taraf vazgeçti (terminal)
+}
+
+/// Geri gelen malın hangi hâlde geldiği — stoka girip girmeyeceğini bu belirler.
+///
+/// Para tarafı ikisinde de aynı: müşteri malı iade ettiyse bedeli alacak
+/// yazılır. Değişen tek şey elimizde satılabilir bir mal olup olmadığı, ve o
+/// karar depoya bakan kişinin, muhasebenin değil.
+enum ReturnCondition {
+  RESELLABLE // sağlam: stoka geri girer
+  DAMAGED // hasarlı/kullanılamaz: stoka girmez
+}
+
 /// How a promotion joins its conditions.
 enum ConditionMode {
   ALL // every condition must hold (AND)
@@ -175,32 +199,34 @@ model User {
   // Sales rep portfolio (reverse of Company.salesRep)
   managedCompanies Company[] @relation("SalesRepPortfolio")
 
-  ordersCreated  Order[]       @relation("OrderCreatedBy")
-  ordersApproved Order[]       @relation("OrderApprovedBy")
-  ordersPushedToErp Order[]    @relation("OrderErpPushedBy")
-  shipments      Shipment[]    @relation("ShipmentShippedBy")
-  invoicesIssued Invoice[]     @relation("InvoiceCreatedBy")
-  checkIns       CheckIn[]
-  transactions   Transaction[] @relation("TransactionRecordedBy")
-  chequeEvents   ChequeEvent[] @relation("ChequeEventActor")
-  exchangeRates  ExchangeRate[] @relation("ExchangeRateCreatedBy")
-  jobRuns        JobRun[]       @relation("JobRunTriggeredBy")
-  cashMovements  CashMovement[] @relation("CashMovementRecordedBy")
-  stockMovements StockMovement[] @relation("StockMovementRecordedBy")
-  pageLayouts    PageLayout[]    @relation("PageLayoutUpdatedBy")
-  paymentIntents PaymentIntent[]      @relation("PaymentIntentCreatedBy")
-  paymentEvents  PaymentIntentEvent[] @relation("PaymentIntentActor")
-  statusChanges  OrderStatusHistory[] @relation("OrderStatusChangedBy")
-  reports        ReportDefinition[]   @relation("ReportOwner")
-  dashboards     ReportDashboard[]    @relation("DashboardOwner")
-  auditLogs      AuditLog[]           @relation("AuditActor")
-  passwordResets PasswordResetToken[]
-  salesTargets   SalesTarget[]        @relation("SalesTargetRep")
-  targetsAuthored SalesTarget[]       @relation("SalesTargetAuthor")
-  pushDevices     PushDevice[]        @relation("PushDeviceOwner")
-  visitRequests   VisitRequest[]      @relation("VisitRequestRep")
-  visitRequestsAuthored VisitRequest[] @relation("VisitRequestAuthor")
-  deliveries     Shipment[]           @relation("ShipmentCourier")
+  ordersCreated         Order[]              @relation("OrderCreatedBy")
+  ordersApproved        Order[]              @relation("OrderApprovedBy")
+  ordersPushedToErp     Order[]              @relation("OrderErpPushedBy")
+  shipments             Shipment[]           @relation("ShipmentShippedBy")
+  invoicesIssued        Invoice[]            @relation("InvoiceCreatedBy")
+  checkIns              CheckIn[]
+  transactions          Transaction[]        @relation("TransactionRecordedBy")
+  chequeEvents          ChequeEvent[]        @relation("ChequeEventActor")
+  exchangeRates         ExchangeRate[]       @relation("ExchangeRateCreatedBy")
+  jobRuns               JobRun[]             @relation("JobRunTriggeredBy")
+  cashMovements         CashMovement[]       @relation("CashMovementRecordedBy")
+  stockMovements        StockMovement[]      @relation("StockMovementRecordedBy")
+  pageLayouts           PageLayout[]         @relation("PageLayoutUpdatedBy")
+  paymentIntents        PaymentIntent[]      @relation("PaymentIntentCreatedBy")
+  paymentEvents         PaymentIntentEvent[] @relation("PaymentIntentActor")
+  statusChanges         OrderStatusHistory[] @relation("OrderStatusChangedBy")
+  reports               ReportDefinition[]   @relation("ReportOwner")
+  dashboards            ReportDashboard[]    @relation("DashboardOwner")
+  auditLogs             AuditLog[]           @relation("AuditActor")
+  passwordResets        PasswordResetToken[]
+  salesTargets          SalesTarget[]        @relation("SalesTargetRep")
+  targetsAuthored       SalesTarget[]        @relation("SalesTargetAuthor")
+  pushDevices           PushDevice[]         @relation("PushDeviceOwner")
+  visitRequests         VisitRequest[]       @relation("VisitRequestRep")
+  visitRequestsAuthored VisitRequest[]       @relation("VisitRequestAuthor")
+  deliveries            Shipment[]           @relation("ShipmentCourier")
+  returnsRequested      ReturnRequest[]      @relation("ReturnRequestedBy")
+  returnsDecided        ReturnRequest[]      @relation("ReturnDecidedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -233,8 +259,8 @@ model Company {
   /// would leave the balance disagreeing with the ekstre printed beside it.
   /// This is shown next to ours so a human can see the two and investigate,
   /// which is the only honest thing to do with two sets of books.
-  erpBalance   Decimal?  @db.Decimal(14, 2)
-  erpSyncedAt  DateTime?
+  erpBalance  Decimal?  @db.Decimal(14, 2)
+  erpSyncedAt DateTime?
 
   // Cari / limit
   creditLimit    Decimal @default(0) @db.Decimal(14, 2)
@@ -285,18 +311,19 @@ model Company {
   salesRepId String?
   salesRep   User?   @relation("SalesRepPortfolio", fields: [salesRepId], references: [id])
 
-  members      User[]            @relation("CompanyMembers")
-  addresses    Address[]
-  orders       Order[]
-  transactions Transaction[]
-  cheques      Cheque[]
-  discounts    CompanyDiscount[]
-  checkIns     CheckIn[]
-  carts        Cart[]
+  members              User[]                @relation("CompanyMembers")
+  addresses            Address[]
+  orders               Order[]
+  transactions         Transaction[]
+  cheques              Cheque[]
+  discounts            CompanyDiscount[]
+  checkIns             CheckIn[]
+  carts                Cart[]
   promotionRedemptions PromotionRedemption[]
-  invoices     Invoice[]
-  paymentIntents PaymentIntent[]
-  visitRequests  VisitRequest[]
+  invoices             Invoice[]
+  paymentIntents       PaymentIntent[]
+  visitRequests        VisitRequest[]
+  returnRequests       ReturnRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -340,12 +367,12 @@ model Address {
 /// renaming or deleting "60 gün" next year cannot rewrite what a past order
 /// was sold on. This row only decides what may be *chosen*.
 model PaymentTerm {
-  id String @id @default(cuid())
+  id        String  @id @default(cuid())
   /// Shown at checkout. Unique so the same vade cannot be defined twice under
   /// two names and drift apart.
-  name String @unique
+  name      String  @unique
   /// Days added to the invoice date. 0 = peşin.
-  days Int    @default(0)
+  days      Int     @default(0)
   /// Kept out of the checkout menu without deleting it — orders sold on this
   /// term stay explainable.
   isActive  Boolean @default(true)
@@ -532,12 +559,13 @@ model ProductVariant {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  prices     Price[]
-  orderItems OrderItem[]
-  cartItems  CartItem[]
-  stocks     VariantStock[]
-  movements  StockMovement[]
-  lots       StockLot[]
+  prices      Price[]
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  stocks      VariantStock[]
+  movements   StockMovement[]
+  lots        StockLot[]
+  returnItems ReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -549,10 +577,10 @@ model ProductVariant {
 /// Depo. ERP'de birden çok ambar var ve "stok var" cevabı hangi ambarda
 /// olduğuna göre değişiyor — merkez deponun malı şubeden satılamıyor.
 model Warehouse {
-  id       String  @id @default(cuid())
+  id        String  @id @default(cuid())
   /// ERP'deki ambar kodu; köprünün eşleştirme anahtarı.
-  code     String  @unique
-  name     String
+  code      String  @unique
+  name      String
   isDefault Boolean @default(false)
   isActive  Boolean @default(true)
 
@@ -579,7 +607,7 @@ model VariantStock {
   reserved Int @default(0)
 
   erpSyncedAt DateTime?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
 
   @@unique([variantId, warehouseId])
   @@index([warehouseId])
@@ -657,6 +685,7 @@ enum StockMovementSource {
   COUNT // sayım farkı — sayılan adet ile defterin farkı
   ERP // ERP senkronu farkı; senkron ezmez, farkı kadar hareket yazar
   TRANSFER // depolar arası aktarım (iki bacak)
+  RETURN // müşteri iadesi teslim alındı (yalnızca sağlam gelen kısım)
 }
 
 model StockMovement {
@@ -815,14 +844,14 @@ model DocumentSeries {
   type DocumentType
 
   /// Printed in front of the number, e.g. "IRS" → IRS000042.
-  prefix String
+  prefix     String
   /// Zero-padded width of the numeric part.
-  padding Int @default(6)
+  padding    Int    @default(6)
   /// Last number handed out. Never decreases; a cancelled document burns its number.
-  lastNumber Int @default(0)
+  lastNumber Int    @default(0)
 
   /// The serial new documents of this type are drawn from. One per type.
-  isDefault Boolean @default(false)
+  isDefault    Boolean @default(false)
   /// Numbers come from the ERP — the app will not allocate, it demands one.
   externalOnly Boolean @default(false)
 
@@ -893,7 +922,7 @@ model Shipment {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   /// İrsaliye numarası, from a DocumentSeries. Unique for the life of the system.
-  documentNumber String @unique
+  documentNumber String  @unique
   /// The ERP's own number when it owns the serial.
   externalNumber String?
 
@@ -915,13 +944,13 @@ model Shipment {
   courier   User?   @relation("ShipmentCourier", fields: [courierId], references: [id])
 
   /// Teslim anı. Dolduğu an sevkiyat kapanmış sayılır.
-  deliveredAt DateTime?
+  deliveredAt    DateTime?
   /// Teslim alanın adı — kaşe/imza kimin attığı, hesap değil, kâğıttaki isim.
   receivedByName String?
   /// İmzalı belgenin fotoğrafı (yüklenen medyanın yolu). Kanıt bu; teslim
   /// kaydının kendisi tek başına imza yerine geçmez.
-  proofPhotoUrl String?
-  deliveryNote  String?
+  proofPhotoUrl  String?
+  deliveryNote   String?
 
   items ShipmentItem[]
 
@@ -966,16 +995,16 @@ model Invoice {
   issuedAt DateTime @default(now())
   /// Vade. Defaults to issue date + the order's own term, falling back to the
   /// company's. This is the date aging buckets by — not the order date.
-  dueDate DateTime
+  dueDate  DateTime
 
   subtotal       Decimal @default(0) @db.Decimal(14, 2)
   discountTotal  Decimal @default(0) @db.Decimal(14, 2)
   promotionTotal Decimal @default(0) @db.Decimal(14, 2)
   /// Charged once per order, on its first invoice.
-  shippingFee Decimal @default(0) @db.Decimal(14, 2)
-  taxTotal    Decimal @default(0) @db.Decimal(14, 2)
-  grandTotal  Decimal @default(0) @db.Decimal(14, 2)
-  currency    String  @default("TRY")
+  shippingFee    Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal       Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal     Decimal @default(0) @db.Decimal(14, 2)
+  currency       String  @default("TRY")
 
   note String?
 
@@ -1002,11 +1031,11 @@ model InvoiceItem {
   orderItemId String?
   orderItem   OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
 
-  productName String
-  sku         String
-  quantity    Int
-  unitPrice   Decimal @db.Decimal(12, 2)
-  discount    Decimal @default(0) @db.Decimal(12, 2)
+  productName       String
+  sku               String
+  quantity          Int
+  unitPrice         Decimal @db.Decimal(12, 2)
+  discount          Decimal @default(0) @db.Decimal(12, 2)
   /// This invoice's share of the line's campaign discount, allocated by quantity.
   promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
   vatRate           Int     @default(20)
@@ -1014,6 +1043,120 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@index([orderItemId])
+}
+
+// ─────────────────────────────────────────────
+// İADE (RMA)
+// ─────────────────────────────────────────────
+//
+// Sipariş iptali ile iade aynı şey değil ve karıştırılmaları pahalıya patlar.
+// İptal, **mal daha çıkmadan** siparişin hiç olmamış sayılmasıdır: stok geri
+// verilir, borç ters kayıtla kapanır (bkz. order-lifecycle.ts). İade ise satış
+// gerçekleştikten, mal müşteriye ulaştıktan sonra geri gelmesidir — satış
+// olmuş kalır, üstüne bir alacak doğar.
+//
+// Bu yüzden iade **ayrı bir belge**: kendi numarası, kendi onayı ve kendi
+// hareketleri var. Siparişin satırlarını geri düzeltmek (quantity'yi düşürmek)
+// bilinçli olarak yapılmıyor — dünkü faturayı bugünkü iade değiştiremez, aksi
+// halde kesilmiş fatura ile sipariş birbirini tutmaz.
+//
+// Zamanlama tek kuralla özetleniyor: **mal gelmeden hiçbir şey oynamaz.**
+// Talep açılması ve kabul edilmesi kayıt işidir; stok ve cari yalnızca
+// `RECEIVED` anında, tek işlemde yazılır.
+
+model ReturnRequest {
+  id        String @id @default(cuid())
+  /// IAD-20260826-0001 — sipariş numarasıyla aynı desen, aynı sebeple: telefonda
+  /// okunabilir olmalı ve hangi gün açıldığını söylemeli.
+  rmaNumber String @unique
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  /// Siparişin firması. Order üzerinden okunabilir ama burada duruyor: iade
+  /// listeleri firmaya göre süzülüyor ve her satır için siparişe uğramak,
+  /// ekranı tek sorgudan iki sorguya çıkarır.
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  status ReturnStatus @default(REQUESTED)
+
+  /// Müşterinin/temsilcinin yazdığı gerekçe. Zorunlu: gerekçesiz iade talebi,
+  /// karar verecek kişiye hiçbir şey söylemez.
+  reason       String
+  /// Satıcının kararına düştüğü not — özellikle ret gerekçesi.
+  decisionNote String?
+
+  /// İade edilen malın bedeli, KDV dahil ve satır anlık görüntülerinden
+  /// hesaplanmış. Nakliye bedeli **dahil değil**: mal geri geldi diye taşıma
+  /// yapılmamış olmuyor.
+  refundTotal Decimal @default(0) @db.Decimal(14, 2)
+  currency    String  @default("TRY")
+
+  requestedById String
+  requestedBy   User   @relation("ReturnRequestedBy", fields: [requestedById], references: [id])
+
+  decidedById String?
+  decidedBy   User?     @relation("ReturnDecidedBy", fields: [decidedById], references: [id])
+  decidedAt   DateTime?
+  receivedAt  DateTime?
+
+  /// Mal teslim alındığında yazılan cari alacak satırı.
+  ///
+  /// Tekil: aynı iade için ikinci bir alacak yazılmasını uygulama kodu değil
+  /// veritabanı engelliyor. Boş kalması normal — peşin ödenmiş bir siparişin
+  /// cari borcu hiç doğmamıştır, iadesi de cariye alacak yazmaz (bedeli
+  /// ödendiği kanaldan geri verilir).
+  creditTransactionId String?      @unique
+  creditTransaction   Transaction? @relation("ReturnCreditTransaction", fields: [creditTransactionId], references: [id])
+
+  items ReturnItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, createdAt])
+  @@index([orderId])
+  @@index([status, createdAt])
+}
+
+model ReturnItem {
+  id              String        @id @default(cuid())
+  returnRequestId String
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+
+  /// Hangi sipariş satırının iadesi. İadenin üst sınırı buradan okunuyor:
+  /// sevk edilmiş adetten fazlası geri gelemez.
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  /// Sipariş satırından türetilebilir ama ayrıca duruyor: stok hareketi
+  /// varyantla yazılıyor ve defteri okuyan sorgunun sipariş satırına
+  /// uğramaması gerekiyor.
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+
+  quantity  Int
+  condition ReturnCondition @default(RESELLABLE)
+
+  /// Sipariş satırının anlık görüntüsü. Fiyat bugünkü fiyat listesinden değil,
+  /// **satıldığı gün** ne yazdıysa oradan geliyor: aksi halde arada zamlanan
+  /// bir malın iadesi müşteriye fazla, ucuzlayanınki eksik alacak yazardı.
+  productName       String
+  sku               String
+  unitPrice         Decimal @db.Decimal(12, 2)
+  discount          Decimal @default(0) @db.Decimal(12, 2)
+  /// Satırın kampanya iskontosundan bu iadeye düşen pay, adete göre bölünmüş —
+  /// faturalamadaki dağıtımın aynısı. Bedava verilmiş bir malın iadesi bu
+  /// sayede sıfır alacak yazar.
+  promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
+  vatRate           Int     @default(20)
+  /// İki iskonto da düşülmüş, KDV hariç satır tutarı.
+  lineTotal         Decimal @db.Decimal(14, 2)
+
+  @@index([returnRequestId])
+  @@index([orderItemId])
+  @@index([variantId])
 }
 
 // ─────────────────────────────────────────────
@@ -1125,22 +1268,22 @@ model Order {
   // and the tax is charged on the net *after* promotions (goods VAT + shipping VAT).
   // shippingFee is already net of any freight campaign, so shippingDiscount
   // does not appear in that sum — it would be subtracted twice.
-  subtotal      Decimal @default(0) @db.Decimal(14, 2)
-  discountTotal Decimal @default(0) @db.Decimal(14, 2)
+  subtotal         Decimal @default(0) @db.Decimal(14, 2)
+  discountTotal    Decimal @default(0) @db.Decimal(14, 2)
   /// Campaign discount on the *goods*, excl. VAT. Always equal to the sum of
   /// OrderItem.promotionDiscount — invoicing splits this figure across the
   /// lines, so a freight discount must not be hiding in it.
-  promotionTotal Decimal @default(0) @db.Decimal(14, 2)
+  promotionTotal   Decimal @default(0) @db.Decimal(14, 2)
   /// Freight actually charged, excl. VAT — already net of any campaign on it.
   /// Only the seller side may set it.
-  shippingFee    Decimal @default(0) @db.Decimal(14, 2)
+  shippingFee      Decimal @default(0) @db.Decimal(14, 2)
   /// What a campaign took off the freight. Kept for reporting; it is already
   /// gone from shippingFee, so it is NOT part of the grand-total arithmetic.
   shippingDiscount Decimal @default(0) @db.Decimal(14, 2)
-  shippingVatRate Int    @default(20)
-  taxTotal      Decimal @default(0) @db.Decimal(14, 2)
-  grandTotal    Decimal @default(0) @db.Decimal(14, 2)
-  currency      String  @default("TRY")
+  shippingVatRate  Int     @default(20)
+  taxTotal         Decimal @default(0) @db.Decimal(14, 2)
+  grandTotal       Decimal @default(0) @db.Decimal(14, 2)
+  currency         String  @default("TRY")
 
   /// Vade agreed for this order, as a snapshot in days — either the option the
   /// buyer picked from Company.paymentTerms or a seller's free-form override.
@@ -1172,9 +1315,10 @@ model Order {
   stockMovements StockMovement[]
   paymentIntents PaymentIntent[]
   statusHistory  OrderStatusHistory[]
-  promotions    PromotionRedemption[]
-  shipments     Shipment[]
-  invoices      Invoice[]
+  promotions     PromotionRedemption[]
+  shipments      Shipment[]
+  invoices       Invoice[]
+  returnRequests ReturnRequest[]
 
   /// ERP'ye aktarım — belge ERP'de hangi numarayla durduğu.
   ///
@@ -1229,32 +1373,32 @@ model OrderItem {
   variant   ProductVariant @relation(fields: [variantId], references: [id])
 
   // Order-time snapshot (stable even if product/price changes later)
-  productName String
-  sku         String
-  quantity    Int // total units
-  caseCount   Int? // number of cases (if case-based)
-  unitPrice   Decimal @db.Decimal(12, 2)
+  productName       String
+  sku               String
+  quantity          Int // total units
+  caseCount         Int? // number of cases (if case-based)
+  unitPrice         Decimal @db.Decimal(12, 2)
   /// **Total** discount per unit off `unitPrice`: the company's own discount
   /// plus whatever the hacim tier added. Invoicing and reporting multiply this
   /// by the quantity, so it must stay the whole figure.
-  discount    Decimal @default(0) @db.Decimal(12, 2)
+  discount          Decimal @default(0) @db.Decimal(12, 2)
   /// The part of `discount` that came from the hacim tier — carried separately
   /// so a report can answer "what did the turnover ladder cost us" without
   /// re-deriving it from a percentage that may since have changed.
-  volumeDiscount Decimal @default(0) @db.Decimal(12, 2)
+  volumeDiscount    Decimal @default(0) @db.Decimal(12, 2)
   /// Promotion discount for the whole line (not per unit) — promotions are
   /// allocated to lines, so this is what the campaign took off this line.
   promotionDiscount Decimal @default(0) @db.Decimal(14, 2)
-  vatRate     Int     @default(20) // snapshot of Product.vatRate
-  lineTotal   Decimal @db.Decimal(14, 2) // net of both discounts, excl. VAT
+  vatRate           Int     @default(20) // snapshot of Product.vatRate
+  lineTotal         Decimal @db.Decimal(14, 2) // net of both discounts, excl. VAT
 
   /// Fiyatın listelendiği para birimi ve o gün kullanılan kur.
   ///
   /// Defter TL: `unitPrice` ve `lineTotal` **her zaman** TL'dir. Bu iki kolon
   /// yalnızca "100 USD × 34,2150" satırını basabilmek için var. Kur siparişte
   /// donuyor — yarın kur değiştiğinde dünkü siparişin tutarı değişmemeli.
-  listCurrency  String  @default("TRY")
-  exchangeRate  Decimal @default(1) @db.Decimal(18, 6)
+  listCurrency  String   @default("TRY")
+  exchangeRate  Decimal  @default(1) @db.Decimal(18, 6)
   /// Orijinal para birimindeki birim fiyat. Kurdan geri hesaplanabilir ama
   /// yuvarlama yüzünden kuruş oynar; belgede basılan sayı burada duruyor.
   listUnitPrice Decimal? @db.Decimal(12, 2)
@@ -1276,11 +1420,12 @@ model OrderItem {
 
   /// Running totals for partial fulfilment. Both are <= quantity, and invoiced
   /// never exceeds shipped when the invoice was raised from a despatch.
-  quantityShipped   Int @default(0)
-  quantityInvoiced  Int @default(0)
+  quantityShipped  Int @default(0)
+  quantityInvoiced Int @default(0)
 
   shipmentItems ShipmentItem[]
   invoiceItems  InvoiceItem[]
+  returnItems   ReturnItem[]
 
   @@index([orderId])
   @@index([variantId])
@@ -1347,6 +1492,10 @@ model Transaction {
   /// Bu tahsilatın doğurduğu kâğıt. Çek/senet tahsilatı kasaya girmiyor ama
   /// portföyde bir satır açıyor; ikisi tek işlemde yazılır.
   cheque Cheque?
+
+  /// Bu satırı yazan iade talebi, varsa. Alacak kaydı iadeden doğduğunda
+  /// ekstredeki satırın hangi belgeden geldiği başka türlü okunamazdı.
+  returnRequest ReturnRequest? @relation("ReturnCreditTransaction")
 
   createdAt DateTime @default(now())
 
@@ -1515,15 +1664,15 @@ model JobRun {
   id   String @id @default(cuid())
   name String
 
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
   /// RUNNING | OK | ERROR
-  status  String  @default("RUNNING")
-  summary String?
-  error   String?
+  status        String    @default("RUNNING")
+  summary       String?
+  error         String?
   /// Elle tetiklendiyse tetikleyen.
   triggeredById String?
-  triggeredBy   User?   @relation("JobRunTriggeredBy", fields: [triggeredById], references: [id])
+  triggeredBy   User?     @relation("JobRunTriggeredBy", fields: [triggeredById], references: [id])
 
   @@index([name, startedAt])
   @@index([startedAt])
@@ -1554,8 +1703,8 @@ enum ChequeStatus {
 }
 
 model Cheque {
-  id   String       @id @default(cuid())
-  kind ChequeKind   @default(CHEQUE)
+  id     String       @id @default(cuid())
+  kind   ChequeKind   @default(CHEQUE)
   status ChequeStatus @default(PORTFOLIO)
 
   companyId String
@@ -1578,7 +1727,7 @@ model Cheque {
   notes        String?
 
   /// Tahsil edildiğinde parayı alan hesap ve yazılan kasa hareketi.
-  cashAccountId String?
+  cashAccountId  String?
   cashMovementId String? @unique
 
   /// Ciro edilen taraf. Serbest metin: çoğu zaman bizim sistemimizde kayıtlı
@@ -1717,7 +1866,7 @@ model PaymentIntentEvent {
 
   status PaymentIntentStatus
   /// Short human line: what happened, in Turkish, for the operator reading it.
-  note String?
+  note   String?
 
   /// The provider's response, with card data stripped before it gets here.
   /// Never a PAN, never a CVV — see payment-provider-registry.ts, which is the
@@ -1840,8 +1989,8 @@ model ErpSyncIssue {
   /// The ERP's own code for the row that did not land.
   externalCode String
   /// Whatever name came with it, to make the list readable.
-  label  String?
-  reason String
+  label        String?
+  reason       String
 
   createdAt DateTime @default(now())
 
@@ -2165,7 +2314,7 @@ model PasswordResetToken {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tokenHash String   @unique
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
 
@@ -2369,8 +2518,8 @@ model PushDevice {
 
   /// Expo'nun ürettiği adres: `ExponentPushToken[...]`. Sır değil ama kişiye
   /// bağlı bir tanıtıcı, bu yüzden dışarıya hiçbir uçtan geri dönülmüyor.
-  token    String  @unique
-  platform String
+  token      String  @unique
+  platform   String
   /// "Said'in telefonu" gibi — kullanıcı hangi cihazı çıkardığını görebilsin.
   deviceName String?
 

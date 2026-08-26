@@ -334,6 +334,17 @@ export class Fixtures {
     await prisma.visitRequest.deleteMany({ where: { companyId } });
     await prisma.salesTarget.deleteMany({ where: { salesRepId: userId } });
 
+    // İade belgesi iki yere birden bakıyor: satırı sipariş satırına, kendisi de
+    // teslim alırken yazılan cari alacağa. İkisinden de önce gitmeli. Geri
+    // gelen malın stok defterine yazdığı satır da öyle — siparişe bağlı.
+    await prisma.returnItem.deleteMany({
+      where: { returnRequest: { companyId } },
+    });
+    await prisma.returnRequest.deleteMany({ where: { companyId } });
+    await prisma.stockMovement.deleteMany({
+      where: { OR: [{ order: { companyId } }, { recordedById: userId }] },
+    });
+
     // The till rows point at the paper and the paper points back: a cheque
     // carries the movement that settled it, a card intent carries the movement
     // that banked it. Both have to go before the movements themselves.
