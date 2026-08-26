@@ -1,30 +1,31 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
 import { deleteVariants } from "./image";
+import { normalizeKey, storage } from "./storage";
 import { uploadRoot } from "./upload-root";
 
 export { uploadRoot };
 
 // Uploaded files (product photos, for now).
 //
-// Files go to a directory on disk — `UPLOAD_DIR`, defaulting to ./uploads —
-// and are served back through a route handler rather than out of `public/`.
-// That is deliberate: `public/` is a build-time directory, and writing into it
-// at runtime works on a laptop and stops working the moment the app is packaged
-// or containerised. A plain directory plus one reader is boring and portable,
-// and it is the shape a future S3/MinIO swap slots into.
+// Files are never written into `public/`: that is a build-time directory, and
+// writing into it at runtime works on a laptop and stops working the moment the
+// app is packaged or containerised. They go to a storage driver instead — a
+// directory on disk by default, an S3/MinIO bucket when one is configured (see
+// `storage.ts`) — and are served back through a route handler.
+//
+// This module does not know which driver is underneath. It decides *what may be
+// stored* and *what a URL means*; the driver decides where the bytes live.
 //
 // Three rules make this safe to expose:
 //  1. The *content* decides the type, not the name. A file called photo.png that
 //     starts with `<?php` is rejected, because only known image signatures are
 //     accepted at all.
-//  2. The client's filename is never used on disk. Names are random; there is no
-//     path to traverse, nothing to overwrite, and no way to guess a URL.
-//  3. Reads resolve the final path and check it is still inside the root, so a
-//     crafted `../` in a URL cannot escape.
+//  2. The client's filename is never used as a key. Names are random; there is
+//     no path to traverse, nothing to overwrite, and no way to guess a URL.
+//  3. URL segments become a key through `normalizeKey`, which refuses `..` and
+//     anything else that could point outside the store.
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -108,12 +109,11 @@ export async function saveImage(params: {
   }
 
   const name = `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}.${signature.ext}`;
-  const dir = path.join(uploadRoot(), folder);
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), params.data);
+  const key = `${folder}/${name}`;
+  await storage().put(key, params.data, signature.mime);
 
   return {
-    url: `${MEDIA_URL_PREFIX}/${folder}/${name}`,
+    url: `${MEDIA_URL_PREFIX}/${key}`,
     mime: signature.mime,
     bytes: params.data.length,
   };
@@ -129,21 +129,18 @@ export interface MediaFile {
  * the caller answers 404 rather than leaking whether a directory exists.
  */
 export async function readMedia(segments: string[]): Promise<MediaFile | null> {
-  const root = path.resolve(uploadRoot());
-  const target = path.resolve(root, ...segments);
+  const key = normalizeKey(segments);
+  if (!key) return null;
 
-  // The one check that matters: after resolution, are we still inside?
-  if (target !== root && !target.startsWith(root + path.sep)) return null;
-
-  const ext = path.extname(target).slice(1).toLowerCase();
-  const mime = MIME_BY_EXT[ext];
+  const dot = key.lastIndexOf(".");
+  const mime = dot === -1 ? undefined : MIME_BY_EXT[key.slice(dot + 1).toLowerCase()];
   if (!mime) return null;
 
-  try {
-    return { data: await readFile(target), mime };
-  } catch {
-    return null;
-  }
+  // Errors are not swallowed into a 404 here. A missing file and an unreachable
+  // bucket look the same to the visitor but not to the operator: turning an S3
+  // outage into "resim yok" would hide it, and the route caches 404s badly.
+  const data = await storage().get(key);
+  return data ? { data, mime } : null;
 }
 
 /**
@@ -157,20 +154,14 @@ export async function deleteMedia(url: string): Promise<boolean> {
   if (!url.startsWith(`${MEDIA_URL_PREFIX}/`)) return false;
 
   const segments = url.slice(MEDIA_URL_PREFIX.length + 1).split("/");
-  const root = path.resolve(uploadRoot());
-  const target = path.resolve(root, ...segments);
-  if (!target.startsWith(root + path.sep)) return false;
+  const key = normalizeKey(segments);
+  if (!key) return false;
 
   // Variants first: an original that is gone with its thumbnails still cached
   // would keep serving a picture of something that was deleted.
   await deleteVariants(segments);
 
-  try {
-    await unlink(target);
-    return true;
-  } catch {
-    return false;
-  }
+  return storage().remove(key);
 }
 
 /**
@@ -186,38 +177,14 @@ export async function deleteMedia(url: string): Promise<boolean> {
  * ayrımda gerçek görselleri silmek demek.
  */
 export async function listOrphanMedia(minAgeHours = 24): Promise<string[]> {
-  const root = path.resolve(uploadRoot());
   const cutoff = Date.now() - minAgeHours * 3_600_000;
 
-  let folders: string[];
-  try {
-    folders = (await readdir(root, { withFileTypes: true }))
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      // The variant cache is derived data, not an upload. It happens to hold
-      // only directories at this level, but relying on that would make a
-      // future flat cache delete itself.
-      .filter((name) => !name.startsWith("."));
-  } catch {
-    return []; // dizin hiç oluşmamış — yüklenen görsel yok
-  }
-
-  const onDisk: string[] = [];
-  for (const folder of folders) {
-    let entries;
-    try {
-      entries = await readdir(path.join(root, folder), { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      const full = path.join(root, folder, entry.name);
-      const info = await stat(full).catch(() => null);
-      if (!info || info.mtimeMs > cutoff) continue;
-      onDisk.push(`${MEDIA_URL_PREFIX}/${folder}/${entry.name}`);
-    }
-  }
+  // The driver leaves the variant cache out of its listing — derived data is
+  // not an upload, and a sweep that saw it would delete the cache every night.
+  const stored = await storage().list();
+  const onDisk = stored
+    .filter((object) => object.modifiedAt <= cutoff)
+    .map((object) => `${MEDIA_URL_PREFIX}/${object.key}`);
   if (onDisk.length === 0) return [];
 
   const products = await prisma.product.findMany({ select: { images: true } });

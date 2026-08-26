@@ -1,6 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { uploadRoot } from "./upload-root";
+import { normalizeKey, storage } from "./storage";
 
 /**
  * Resized copies of uploaded images.
@@ -10,9 +8,9 @@ import { uploadRoot } from "./upload-root";
  * is the difference between a list that loads and one that does not, and the
  * mobile app pays it on every scroll.
  *
- * Variants are produced **on demand and cached on disk** rather than at upload
- * time. Two reasons, and the first one decided it: there are already thousands
- * of products with photos, and on-demand means every one of them gets a thumb
+ * Variants are produced **on demand and cached in the store** rather than at
+ * upload time. Two reasons, and the first one decided it: there are already
+ * thousands of products with photos, and on-demand means every one gets a thumb
  * without a backfill script that has to be run on each installation. The second
  * is that the set of sizes stops being a decision made once — adding a width
  * costs a cache miss, not a migration.
@@ -37,12 +35,18 @@ export function isVariantWidth(value: unknown): value is VariantWidth {
   return VARIANT_WIDTHS.includes(Number(value) as VariantWidth);
 }
 
-/** Where a variant of `segments` at `width` is cached. */
-function cachePath(segments: string[], width: VariantWidth): string {
-  const root = path.resolve(uploadRoot());
-  // Leading dot keeps the cache out of the orphan sweep's way, which only ever
-  // looks at ordinary upload folders.
-  return path.join(root, ".cache", `w${width}`, ...segments) + ".webp";
+/**
+ * Where a variant of `segments` at `width` is cached — a key in the same store
+ * the originals live in, so an installation on S3 caches on S3 and one on disk
+ * caches on disk. Null when the segments are not a legal key at all.
+ *
+ * Leading dot keeps the cache out of the orphan sweep's way: the storage driver
+ * refuses to list anything under a dotted segment, because derived data is not
+ * an upload and a sweep that saw it would delete the cache every night.
+ */
+function cacheKey(segments: string[], width: VariantWidth): string | null {
+  const key = normalizeKey(segments);
+  return key === null ? null : `.cache/w${width}/${key}.webp`;
 }
 
 export interface ImageVariant {
@@ -113,9 +117,11 @@ export async function readVariant(
   width: VariantWidth,
   readOriginal: () => Promise<Buffer | null>,
 ): Promise<ImageVariant | null> {
-  const target = cachePath(segments, width);
+  const key = cacheKey(segments, width);
+  if (!key) return null;
 
-  const cached = await readFile(target).catch(() => null);
+  const store = storage();
+  const cached = await store.get(key).catch(() => null);
   if (cached) return { data: cached, mime: "image/webp" };
 
   const original = await readOriginal();
@@ -132,8 +138,7 @@ export async function readVariant(
   }
 
   try {
-    await mkdir(path.dirname(target), { recursive: true });
-    await writeFile(target, data);
+    await store.put(key, data, "image/webp");
   } catch {
     // Serve it anyway.
   }
@@ -143,7 +148,9 @@ export async function readVariant(
 
 /** Drop every cached variant of one stored file. */
 export async function deleteVariants(segments: string[]): Promise<void> {
+  const store = storage();
   for (const width of VARIANT_WIDTHS) {
-    await rm(cachePath(segments, width), { force: true }).catch(() => {});
+    const key = cacheKey(segments, width);
+    if (key) await store.remove(key).catch(() => false);
   }
 }

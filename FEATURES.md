@@ -438,11 +438,37 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 ### Görsel yükleme
 
 - `POST /api/admin/uploads` (multipart, yalnızca süper admin) → `GET /api/media/<klasör>/<dosya>`.
-- Dosyalar `public/` içine değil, `UPLOAD_DIR` (varsayılan `./uploads`) altına yazılıyor ve bir uç üzerinden servis ediliyor: `public/` derleme zamanı bir dizin, çalışırken içine yazmak paketlenmiş/konteynerli kurulumda çalışmaz.
+- Dosyalar `public/` içine değil, **depo sürücüsüne** yazılıyor ve bir uç üzerinden servis ediliyor: `public/` derleme zamanı bir dizin, çalışırken içine yazmak paketlenmiş/konteynerli kurulumda çalışmaz.
 - **Türü içerik belirliyor, ad değil**: yalnızca JPEG/PNG/WebP/AVIF/GIF imzası taşıyan dosya kabul ediliyor; `photo.png` adlı bir PHP dosyası reddediliyor.
 - İstemcinin dosya adı diske **hiç yazılmıyor** — ad rastgele üretiliyor: geçilecek yol, üzerine yazılacak dosya ve tahmin edilecek URL yok.
-- Okuma yolu çözümlendikten sonra kökün içinde kalıp kalmadığı kontrol ediliyor; `../` ile dışarı çıkılamıyor.
+- URL parçaları `normalizeKey` ile tek bir anahtara çevriliyor; `..`, ters bölü ve boş parça reddediliyor. Disk sürücüsü ayrıca çözümlenmiş yolun kökün içinde kaldığını bir daha kontrol ediyor.
 - Sınır 5 MB. Yükleme denetim kaydına `MEDIA_UPLOADED` olarak düşüyor.
+### Depo sürücüsü: disk ya da S3/MinIO
+
+`packages/services/src/storage.ts` tek karar noktası; `media.ts` ve küçültme
+önbelleği (`image.ts`) dosya sistemine değil bu arayüze konuşuyor.
+
+- **Disk** (varsayılan): `UPLOAD_DIR`, yoksa `./uploads`. Tek sunuculu
+  kurulumların hepsi böyle çalışıyor.
+- **S3 uyumlu**: `S3_BUCKET` dolduğu anda devreye giriyor (AWS S3, MinIO,
+  Cloudflare R2, Wasabi). `S3_ENDPOINT` verilince yol biçimi (`/kova/anahtar`)
+  varsayılan olur — MinIO'nun istediği budur; AWS'te alan adı biçimi kalır.
+- **Neden**: web kapsayıcısını iki kopya çalıştıran ya da diski kalıcı olmayan
+  bir yerde barındıran kurulumda disk yanlış cevap — bir kopyanın yüklediği
+  görsel diğerinde 404 olur, imaj yenilenince katalog fotoğrafsız kalır.
+- **Yarım yapılandırma açılışı durduruyor**: kova verilip anahtar verilmezse
+  hata fırlıyor. Sessizce diske düşmek, kapsayıcı yenilenene kadar çalışıp
+  sonra bütün görselleri kaybetmek demekti.
+- **Bağımlılık yok**: SigV4 imzası `node:crypto`, istekler `fetch` ile.
+  `@aws-sdk/client-s3` yüz küsur paket getiriyor, buradan kullanılan yüzey ise
+  dört fiil ve bir listeleme. İmza, AWS'in yayımladığı üç örnek isteğin
+  imzasıyla test altında (`storage.test.ts`).
+- **Küçültme önbelleği aynı depoda**, `.cache/w<genişlik>/…` anahtarıyla.
+  Sürücü nokta ile başlayan parça içeren anahtarları **listelemiyor**: yetim
+  taraması türetilmiş veriyi görseydi önbelleği her gece silerdi.
+- `/api/health`'in `uploads` kontrolü sürücüye soruyor: diskte yazma izni,
+  S3'te kovanın erişilebilirliği.
+
 - `/api/media` **kimlik doğrulaması istemiyor**: bunlar katalog fotoğrafı, belge değil; mobilde `<Image>` bearer token ekleyemez. Adlar rastgele olduğu için URL tahmin edilemiyor.
 
 ## 17. Kampanya Motoru v2 (Adım 17)
@@ -1409,14 +1435,15 @@ jetonu üretebilirdi.
 ### Açılışta yapılandırma denetimi
 
 `src/instrumentation.ts` süreç açılışında `assertRuntimeEnv()` çağırıyor.
-Üretimde `DATABASE_URL`, `AUTH_SECRET`, `TENANT_DIR`, `APP_URL`, `UPLOAD_DIR`
-zorunlu; kısa ya da geliştirme sabitine eşit `AUTH_SECRET` ve localhost'a bakan
+Üretimde `DATABASE_URL`, `AUTH_SECRET`, `TENANT_DIR`, `APP_URL` ve (S3
+kullanılmıyorsa) `UPLOAD_DIR` zorunlu; kısa ya da geliştirme sabitine eşit `AUTH_SECRET` ve localhost'a bakan
 `APP_URL` ölümcül sayılıyor. SMTP boşluğu ve `http://` uyarı olarak günlüğe
 düşüyor, süreci durdurmuyor.
 
 `UPLOAD_DIR` listede çünkü varsayılanı `process.cwd()/uploads`: kapsayıcıda bu,
 imaj her güncellendiğinde silinen bir dizin demek — yüklenen ürün görselleri
-sessizce kaybolurdu.
+sessizce kaybolurdu. `S3_BUCKET` verilmiş kurulumlarda aranmıyor; buna karşılık
+kova verilip anahtarı verilmemişse **o** ölümcül sayılıyor.
 
 Hata durumunda süreç **açıkça düşürülüyor** (`process.exit(1)`). Next bu
 kancadaki hatayı yakalayıp "Failed to prepare server" yazıyor ve süreci ayakta

@@ -68,6 +68,8 @@ services:
       # Kapsayıcı içindeki sabit yollar; .env.production'daki değerleri ezer ki
       # birim bağlama noktalarıyla her zaman uyumlu kalsınlar.
       TENANT_DIR: /data/tenant
+      # S3/MinIO kullanılıyorsa (.env.production'daki S3_* değerleri env_file
+      # ile zaten geçiyor) bu yol yok sayılıyor — depo sürücüsü kovayı seçer.
       UPLOAD_DIR: /data/uploads
       APP_VERSION: ${APP_VERSION:-local}
       # Güncelleme ajanının durum dosyası. Ajan host'ta çalışıyor, web yalnızca

@@ -47,6 +47,7 @@ export * from "./password-reset";
 export * from "./notification";
 export * from "./push";
 export * from "./cart";
+export * from "./storage";
 export * from "./media";
 export * from "./image";
 export * from "./rate-limit";

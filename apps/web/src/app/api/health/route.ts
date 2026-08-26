@@ -1,6 +1,5 @@
-import { access, constants } from "node:fs/promises";
 import { prisma } from "@repo/database";
-import { envProblems, loadTenant, uploadRoot } from "@repo/services";
+import { envProblems, loadTenant, storage } from "@repo/services";
 
 /**
  * GET /api/health — kapsayıcı sağlık kontrolü ve güncelleme kapısı.
@@ -25,7 +24,7 @@ interface Checks {
   database: boolean;
   /** tenant.json okunabiliyor ve geçerli — yoksa belge basılamaz. */
   tenant: boolean;
-  /** UPLOAD_DIR var ve yazılabilir. */
+  /** Görsel deposu (disk ya da S3) yazılabilir durumda. */
   uploads: boolean;
   /** Üretimde zorunlu ortam değişkenlerinin hepsi dolu. */
   config: boolean;
@@ -57,9 +56,11 @@ async function checkTenant(): Promise<boolean> {
 }
 
 async function checkUploads(): Promise<boolean> {
+  // Sürücü hangisiyse ona soruluyor: diskte yazma izni, S3'te kovanın
+  // erişilebilirliği. Yarım yapılandırma sürücüyü kurarken fırlatıyor ve o da
+  // buraya "hayır" olarak düşüyor — dışarıya yine tek bit çıkıyor.
   try {
-    await access(uploadRoot(), constants.W_OK);
-    return true;
+    return await storage().healthy();
   } catch {
     return false;
   }

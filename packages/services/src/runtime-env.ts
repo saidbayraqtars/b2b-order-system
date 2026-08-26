@@ -1,3 +1,5 @@
+import { storageKind } from "./storage";
+
 /**
  * Açılışta ortam değişkeni denetimi.
  *
@@ -32,10 +34,6 @@ function value(name: string): string {
 /**
  * Üretimde bulunması **zorunlu** olanlar ve neden.
  *
- * `UPLOAD_DIR` listede çünkü varsayılanı `process.cwd()/uploads`: kapsayıcı
- * içinde bu, imaj her güncellendiğinde silinen bir dizin demek. Yüklenen ürün
- * görselleri sessizce kaybolur. Kalıcı bir birim (volume) yolu verilmesi şart.
- *
  * `APP_URL` listede çünkü şifre sıfırlama bağlantısı buradan üretiliyor;
  * varsayılanı localhost ve müşteriye giden e-postada localhost bağlantısı
  * "sistem çalışmıyor" demenin uzun yolu.
@@ -45,7 +43,6 @@ const REQUIRED_IN_PRODUCTION: ReadonlyArray<{ name: string; why: string }> = [
   { name: "AUTH_SECRET", why: "oturum ve mobil jeton imzası" },
   { name: "TENANT_DIR", why: "bu kurulumun hangi firmaya ait olduğu" },
   { name: "APP_URL", why: "e-postadaki bağlantıların adresi" },
-  { name: "UPLOAD_DIR", why: "yüklenen görsellerin kalıcı dizini" },
 ];
 
 /**
@@ -60,6 +57,26 @@ export function envProblems(): string[] {
 
   for (const { name, why } of REQUIRED_IN_PRODUCTION) {
     if (value(name) === "") problems.push(`${name} tanımlı değil (${why}).`);
+  }
+
+  // Görsel deposu iki türlü kurulabiliyor ve zorunlu değişken hangisinin
+  // seçildiğine bağlı:
+  //  - disk: `UPLOAD_DIR` şart. Varsayılanı `process.cwd()/uploads`, kapsayıcı
+  //    içinde bu imaj her güncellendiğinde silinen bir dizin demek — yüklenen
+  //    ürün görselleri sessizce kaybolur.
+  //  - S3: dizin aranmıyor, çünkü o kurulumda diskte hiçbir şey durmuyor.
+  // Yarım S3 yapılandırması (kova var, anahtar yok) sürücüyü kurarken
+  // patlıyor; hatayı yutmak yerine sorun listesine yazıyoruz, yoksa açılış
+  // "her şey yolunda" der ve ilk görsel yüklemesinde çöker.
+  try {
+    if (storageKind() === "local" && value("UPLOAD_DIR") === "") {
+      problems.push(
+        "UPLOAD_DIR tanımlı değil (yüklenen görsellerin kalıcı dizini). " +
+          "Nesne deposu kullanacaksanız S3_BUCKET verin.",
+      );
+    }
+  } catch (err) {
+    problems.push((err as Error).message);
   }
 
   const secret = value("AUTH_SECRET");

@@ -91,7 +91,8 @@ curl -s localhost:3000/api/health | jq
 
 - **database** — veritabanına ulaşılamıyor **ya da** yarım kalmış migration var
 - **tenant** — `tenant.json` okunamıyor/geçersiz; belge basılamaz
-- **uploads** — `UPLOAD_DIR` yok ya da yazılamıyor; görsel yüklenemez
+- **uploads** — görsel deposu yazılamıyor: `UPLOAD_DIR` yok/izinsiz, ya da
+  S3 kullanılıyorsa kova erişilemiyor
 - **config** — üretimde zorunlu bir ortam değişkeni eksik
 
 Neden düştüğü **kasten** yazılmaz: hata metni bağlantı dizesi ve dosya yolu
@@ -285,7 +286,7 @@ göç düşerse hiç başlamaz.
 | Ne | Nerede | Not |
 |---|---|---|
 | Veritabanı | `b2b_pgdata` birimi | |
-| Yüklenen görseller | `b2b_uploads` birimi → `/data/uploads` | `UPLOAD_DIR` ile eşleşir |
+| Yüklenen görseller | `b2b_uploads` birimi → `/data/uploads` | `UPLOAD_DIR` ile eşleşir; S3 kullanılıyorsa gereksiz |
 | Kiracı klasörü | host'taki `TENANT_SOURCE` → `/data/tenant` | **salt okunur** bağlanır |
 
 İmajın içinde kalıcı hiçbir şey yok; güncelleme kapsayıcıyı değiştirir, veriyi
@@ -329,7 +330,7 @@ herkesi kilitler.
 | Kapsayıcı sürekli yeniden başlıyor | `logs web` → büyük olasılıkla eksik ortam değişkeni (`EnvError`) |
 | `/api/health` → `tenant: false` | `TENANT_SOURCE` yolu, `tenant.json` biçimi |
 | `/api/health` → `database: false` | `DATABASE_URL`, `migrate` servisinin çıktısı, yarım kalmış migration |
-| Görsel yüklenmiyor | `uploads: false` → birim bağlanmamış ya da sahiplik yanlış |
+| Görsel yüklenmiyor | `uploads: false` → birim bağlanmamış/sahiplik yanlış; S3'te kova ya da anahtar hatalı |
 | E-posta gitmiyor | `SMTP_HOST` boş → günlüğe yazılıyor; açılışta uyarı basılır |
 | Mobil giriş çalışmıyor | `AUTH_SECRET` değişmiş olabilir — değişince tüm jetonlar geçersiz olur |
 
