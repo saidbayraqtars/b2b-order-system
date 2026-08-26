@@ -10,14 +10,14 @@ Google Stitch projesi **"Dual-Portal Corporate Dashboard"** (ID
 `10805844652839299989`). İndirilmiş ekran görüntüleri ve HTML'leri:
 `docs/design/stitch-v2/`
 
-| Dosya              | Ekran                             |
-| ------------------ | --------------------------------- |
-| `1-temsilci`       | Temsilcilik bilgileri / cari özet |
-| `2-sepet`          | Sepet + sipariş özeti             |
-| `3-siparisler`     | Sipariş listesi (tablo)           |
-| `4-musteri-ozet`   | Müşteri listesi + sayı kutuları   |
-| `5-katalog`        | Ürün kataloğu (kart ızgarası)     |
-| `6-analitik`       | Analitik panosu                   |
+| Dosya            | Ekran                             |
+| ---------------- | --------------------------------- |
+| `1-temsilci`     | Temsilcilik bilgileri / cari özet |
+| `2-sepet`        | Sepet + sipariş özeti             |
+| `3-siparisler`   | Sipariş listesi (tablo)           |
+| `4-musteri-ozet` | Müşteri listesi + sayı kutuları   |
+| `5-katalog`      | Ürün kataloğu (kart ızgarası)     |
+| `6-analitik`     | Analitik panosu                   |
 
 Stitch MCP sunucusu Claude Code'un araç şemasını çözemiyor
 (`can't resolve reference #/$defs/ScreenInstance`), bu yüzden çağrılar `curl`
@@ -58,16 +58,16 @@ Beş kural. Yeni yazılan her ekran bunlara uyar:
 Anlamsal isimler CSS değişkeninden okunur (`src/app/globals.css`), koyu temada
 kendiliğinden döner. **Yeni kodda `dark:` yazmayın**, anlamsal ismi kullanın:
 
-| Sınıf                              | Ne için                       | Açık      | Koyu      |
-| ---------------------------------- | ----------------------------- | --------- | --------- |
-| `bg-surface`                       | sayfa zemini                  | `#f9f9fb` | `#0f1112` |
-| `bg-panel`                         | kart, tablo, kutu             | `#ffffff` | `#191c1e` |
-| `bg-sunken`                        | girdi, görsel kutusu, th      | `#f3f3f6` | `#232627` |
-| `bg-subtle`                        | üzerine gelince, vurgusuz     | `#edeef0` | `#2a2d2e` |
-| `border-line` / `border-line-strong` | kenar / ayraç               | `#dcdee0` / `#c5c6ca` | `#2e3132` / `#44474a` |
-| `text-ink` / `-muted` / `-faint`   | ana / ikincil / etiket metni  | `#191c1e` / `#44474a` / `#75777a` | `#e5e7e8` / `#a9adae` / `#7d8283` |
-| `bg-accent` `text-on-accent`       | birincil eylem, seçili öğe    | `#1a1c1e` / beyaz | beyaz / `#101314` |
-| `text-positive` / `-caution` / `-critical` | durum renkleri        | — | — |
+| Sınıf                                      | Ne için                      | Açık                              | Koyu                              |
+| ------------------------------------------ | ---------------------------- | --------------------------------- | --------------------------------- |
+| `bg-surface`                               | sayfa zemini                 | `#f9f9fb`                         | `#0f1112`                         |
+| `bg-panel`                                 | kart, tablo, kutu            | `#ffffff`                         | `#191c1e`                         |
+| `bg-sunken`                                | girdi, görsel kutusu, th     | `#f3f3f6`                         | `#232627`                         |
+| `bg-subtle`                                | üzerine gelince, vurgusuz    | `#edeef0`                         | `#2a2d2e`                         |
+| `border-line` / `border-line-strong`       | kenar / ayraç                | `#dcdee0` / `#c5c6ca`             | `#2e3132` / `#44474a`             |
+| `text-ink` / `-muted` / `-faint`           | ana / ikincil / etiket metni | `#191c1e` / `#44474a` / `#75777a` | `#e5e7e8` / `#a9adae` / `#7d8283` |
+| `bg-accent` `text-on-accent`               | birincil eylem, seçili öğe   | `#1a1c1e` / beyaz                 | beyaz / `#101314`                 |
+| `text-positive` / `-caution` / `-critical` | durum renkleri               | —                                 | —                                 |
 
 ### Yazı ölçeği (`text-*`)
 
@@ -115,20 +115,49 @@ kendi `px-4 py-6`sını yazmaz; yalnızca `mx-auto max-w-*` ile genişlik seçer
 
 Doğrulama: `tsc --noEmit` temiz, `vitest run` 218/218 geçti, `next build` başarılı.
 
-### ▢ Adım 2 — Portal / vitrin
+### ✔ Adım 2 — Portal / vitrin (bitti)
 
-Öncelik: müşterinin aradığını bulması. Yapılacaklar:
+Öncelik müşterinin aradığını bulmasıydı; sıra da ona göre kuruldu.
 
-- Katalog aramasını sayfa gövdesinden **üst şeride** taşı
-  (`SidebarShell`'in `search` yuvası hazır) — Stitch `5-katalog`.
-- Ürün kartı: kare görsel kutusu (`bg-sunken`, `object-contain`), sol üstte
-  kategori künyesi, altında `KOD: …`, ad, stok noktası, fiyat + sepet düğmesi.
-- Sepet paneli: Stitch `2-sepet` — solda satır tablosu, sağda yapışkan
-  "Sipariş Özeti" kutusu (ara toplam / iskonto / KDV / genel toplam).
-- Sipariş listesi: `Table` + `Badge` durum künyeleri (Stitch `3-siparisler`).
-- Ekstre, ziyaret, onaylar, kullanıcılar: `PageHeader` + `Panel`e geçir.
-- Dosyalar: `src/app/portal/**`, `src/components/storefront/**`,
-  `src/components/orders-board.tsx`, `statement-view.tsx`.
+- **Arama üst şeride taşındı.** `SidebarShell`'in `search` yuvası artık dar
+  ekranda da çiziliyor: arama kutusu varsa sayfa başlığı mobilde çekiliyor —
+  ikisi 64 pikselde yan yana sığmıyor ve arama, sayfanın adından daha çok işe
+  yarıyor. Okutma bildirimi kutunun **altına, akışın dışına** konumlanıyor;
+  satır açsaydı şeridi ve sepet sayacını yerinden oynatırdı.
+- **Ürün kartı Stitch `5-katalog` düzenine geçti**: kare `bg-sunken` kutu +
+  `object-contain` (toptan katalogda fotoğraflar farklı oranlarda geliyor,
+  kırpmak etiketi kesiyordu), sol üstte kategori künyesi, `KOD: <sku>`, ad,
+  stok noktası, fiyat + sepet düğmesi.
+  - **Üç varyant satırı karttan kalktı.** Sebep kalabalık değil yanlış vaat:
+    üç satır gösterip dördüncüyü "+2 varyant daha" diye saklamak, ızgarayı
+    tarayan kişiye kartın tam künye olduğunu düşündürüyordu. Tek varyantlı
+    ürün — katalogun büyük çoğunluğu — karttan doğrudan sepete girer; çok
+    varyantlı ürünün sepet düğmesi detaya götürür, çünkü hangi varyantın
+    istendiği kartta cevaplanamaz.
+  - Stok işaretinin sınırı koli büyüklüğüne bağlı (`5 × unitsPerCase`):
+    toptancı için "az kaldı" mutlak bir adet değil, birkaç koli demek.
+  - Kategori adı `categoryId`den ekranda çözülüyor (kenar çubuğunun zaten
+    indirdiği ağaçtan) — katalog cevabına ikinci bir alan eklemek aynı adı her
+    satırda tekrar indirmek olurdu.
+- **Sepet iki kutuya ayrıldı**: üstte kalem listesi, altında Stitch `2-sepet`
+  yerleşimindeki "Sipariş Özeti" (ödeme yöntemi / vade / kupon → ara toplam,
+  iskonto, KDV, genel toplam). Kenar sütunu 300→320 piksel. Ayrı bir `/sepet`
+  rotası **açılmadı**: sepet sayfa düzeni motorunda `CART_PANEL` bloğu, yeni
+  rota onu yerinden ederdi.
+- **Sipariş listesi** `Table` + `Badge` künyeleriyle zaten çiziliyordu; kalan
+  ham kabuk, toplu basım şeridi ve yazdırma ikonu anlamsal tokenlara geçti.
+- **Ekstre** `StatTile` + `Panel` + `Table`e taşındı; ham indigo "CSV indir"
+  düğmesi `Button`, yazdırma bağlantısı `LinkButton` oldu.
+- **Ziyaret, onaylar, kullanıcılar, firma seçimi** `PageHeader` + paylaşılan
+  form bileşenlerine geçti. `ErrorLine` artık düz metin de kabul ediyor —
+  ziyaret ekranı hatayı `string` olarak tutuyor ve bileşen onu "Beklenmeyen bir
+  hata" diye yutuyordu.
+- Vitrin yardımcıları da elden geçti: `ActingAsBar` (kendi `max-w`si kaldırıldı,
+  kabuğun dolgusuna oturdu), `Announcements` (bant/şerit/pencere),
+  `CompanySwitcher`, `CompanyPicker`, ürün detayı.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 218/218 geçti,
+`next build` başarılı.
 
 ### ▢ Adım 3 — Yönetim çekirdeği
 
@@ -168,8 +197,9 @@ tema ve renk kuralları burada geçerli değil).
 
 ### ▢ Adım 10 — Temizlik
 
-- Kalan ham sınıfları anlamsala çevir. Adım 1 sonrası sayaç:
-  `dark:` 506, `neutral-` 1033, `brand-` 90. Hedef: üçü de sıfır.
+- Kalan ham sınıfları anlamsala çevir. Sayaç: Adım 1 sonrası `dark:` 506,
+  `neutral-` 1033, `brand-` 90 → Adım 2 sonrası **348 / 792 / 46**. Hedef:
+  üçü de sıfır.
 - Kiracı marka adını kabuğa bağla: `loadTenant()` →
   `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
   Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ImageOff, Plus } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
@@ -9,44 +9,99 @@ import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
 
-// Vitrin ürün kartı — endüstriyel/teknik kimlik: ölçen her sayı (SKU, fiyat,
-// stok, koli) monospace ve sekmeli, kartlar arasında rakamlar hizalanıyor.
-// Kart artık ürün detayına da bağlanıyor; hızlı sipariş için varyant satırları
-// yerinde duruyor.
+/**
+ * Vitrin ürün kartı.
+ *
+ * Kart artık üç varyant satırını üzerinde taşımıyor. Sebebi kalabalık değil,
+ * yanlış vaat: üç satır gösterip dördüncüyü "+2 varyant daha" diye saklamak,
+ * ızgarayı tarayan kişiye kartın tam künye olduğunu düşündürüyordu. Tek
+ * varyantlı ürün — katalogun büyük çoğunluğu — karttan doğrudan sepete girer;
+ * çok varyantlı ürünün sepet düğmesi detaya götürür, çünkü hangi varyantın
+ * istendiği kartta cevaplanamaz.
+ *
+ * Görsel kutusu kare ve `object-contain`: toptan katalogda fotoğraflar farklı
+ * oranlarda geliyor, kırpmak etiketi ya da kapağı kesiyordu.
+ */
 
-function variantLabel(v: CatalogVariant): string {
-  const parts = [v.color, v.size].filter(Boolean);
-  return parts.length ? parts.join(" · ") : v.sku;
+/** Kartın künye satırı: tek varyantta SKU, çoklu varyantta adet. */
+function codeLabel(product: CatalogProduct): string {
+  const first = product.variants[0];
+  if (product.variants.length === 1 && first) return `KOD: ${first.sku}`;
+  if (product.variants.length === 0) return "VARYANT YOK";
+  return `${product.variants.length} VARYANT`;
 }
 
 /** Kartta özet olarak gösterilecek fiyat: en düşük satılabilir birim fiyat. */
-function fromPrice(product: CatalogProduct): string | null {
+function priceRange(product: CatalogProduct): {
+  from: string | null;
+  multiple: boolean;
+} {
   const prices = product.variants
     .map((v) => v.netUnitPrice)
     .filter((p): p is string => p !== null)
     .map(Number)
     .filter((n) => Number.isFinite(n));
-  return prices.length ? formatTRY(Math.min(...prices)) : null;
+  if (prices.length === 0) return { from: null, multiple: false };
+  const min = Math.min(...prices);
+  return { from: formatTRY(min), multiple: Math.max(...prices) > min };
 }
+
+/**
+ * Stok işareti.
+ *
+ * Sınırın koli büyüklüğüne bağlanması bilinçli: toptancı için "az kaldı" mutlak
+ * bir adet değil, birkaç koli demek. 12'li kolide 40 adet azdır, 1'lik kolide
+ * değildir.
+ */
+function stockNote(product: CatalogProduct): {
+  label: string;
+  tone: "positive" | "caution" | "critical";
+} {
+  const total = product.variants.reduce((s, v) => s + v.stock, 0);
+  if (total <= 0) return { label: "Stok yok", tone: "critical" };
+  const perCase = Math.max(1, ...product.variants.map((v) => v.unitsPerCase));
+  if (total <= perCase * 5) {
+    return { label: `Sınırlı stok (${total} adet)`, tone: "caution" };
+  }
+  return { label: `Stokta var (${total} adet)`, tone: "positive" };
+}
+
+/** Karttan doğrudan sepete girebilecek tek varyant — yoksa null. */
+function soleOrderableVariant(product: CatalogProduct): CatalogVariant | null {
+  if (product.variants.length !== 1) return null;
+  const v = product.variants[0]!;
+  return v.netUnitPrice !== null && v.stock >= v.moqUnits ? v : null;
+}
+
+const STOCK_TONE = {
+  positive: "text-positive",
+  caution: "text-caution",
+  critical: "text-critical",
+} as const;
 
 export function ProductCard({
   product,
   companyId,
+  categoryName,
 }: {
   product: CatalogProduct;
   companyId: string;
+  /** Görselin üstündeki künye. Yoksa marka, o da yoksa hiç çizilmez. */
+  categoryName?: string | null;
 }) {
   const { add } = useCart(companyId);
-  const price = fromPrice(product);
-  const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+  const { from, multiple } = priceRange(product);
+  const stock = stockNote(product);
+  const sole = soleOrderableVariant(product);
   // Seçili firma detay sayfasına da taşınır; plasiyer ürüne tıklayınca hangi
   // firma adına çalıştığını kaybetmemeli.
   const detailHref = `/portal/urun/${product.id}?companyId=${encodeURIComponent(companyId)}`;
+  const tag = categoryName ?? product.brand;
 
   return (
-    <article className="group flex flex-col border border-neutral-300 bg-white transition-colors hover:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-brand-500">
-      <Link href={detailHref} className="block">
-        <div className="relative aspect-[4/3] overflow-hidden border-b border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800">
+    <article className="group flex flex-col rounded-lg border border-line bg-panel transition-colors hover:border-line-strong">
+      <Link href={detailHref} className="block p-3 pb-0">
+        <div className="relative aspect-square overflow-hidden rounded bg-sunken">
           {product.images[0] ? (
             // Görseller kendi rotamızdan, aynı kaynaktan ve değişmez servis
             // ediliyor; next/image burada kazanç sağlamadan loader isterdi.
@@ -56,109 +111,116 @@ export function ProductCard({
               srcSet={mediaSrcSet(product.images[0], 320)}
               alt={product.name}
               loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-full w-full object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
             />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <span className="tech-label">görsel yok</span>
+              <ImageOff className="h-6 w-6 text-ink-faint" aria-hidden />
+              <span className="sr-only">Görsel yok</span>
             </div>
           )}
-          {totalStock === 0 && (
-            <span className="absolute left-0 top-0 bg-neutral-900 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
-              stok yok
+
+          {tag && (
+            <span className="absolute left-2 top-2 max-w-[calc(100%-1rem)] truncate rounded border border-line bg-panel px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+              {tag}
+            </span>
+          )}
+
+          {stock.tone === "critical" && (
+            <span className="absolute inset-x-0 bottom-0 bg-accent/85 py-1 text-center text-[10px] font-semibold uppercase tracking-wider text-on-accent">
+              Tükendi
             </span>
           )}
         </div>
-
-        <div className="border-b border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
-          <p className="tech-label truncate">
-            {product.brand ?? "—"} · KDV %{product.vatRate}
-          </p>
-          <h3 className="mt-0.5 truncate text-sm font-semibold leading-snug text-neutral-900 group-hover:text-brand-700 dark:text-neutral-100 dark:group-hover:text-brand-400">
-            {product.name}
-          </h3>
-          <p className="tech-num mt-1.5 text-base font-bold text-neutral-900 dark:text-white">
-            {price ? (
-              <>
-                {price}
-                <span className="tech-label ml-1.5 font-normal">&apos;den</span>
-              </>
-            ) : (
-              <span className="text-sm font-normal text-neutral-400">
-                fiyat tanımsız
-              </span>
-            )}
-          </p>
-        </div>
       </Link>
 
-      {/* Varyant satırları: teknik künye + tek tıkla sepete. */}
-      <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-        {product.variants.slice(0, 3).map((v) => {
-          const orderable = v.netUnitPrice !== null && v.stock >= v.moqUnits;
-          return (
-            <li
-              key={v.id}
-              className="flex items-center justify-between gap-2 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-neutral-800 dark:text-neutral-200">
-                  {variantLabel(v)}
-                </p>
-                <p className="tech-num mt-0.5 text-[10px] text-neutral-500">
-                  {v.sku} · STK {v.stock} · KOL {v.unitsPerCase}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="tech-num text-xs font-semibold">
-                  {v.netUnitPrice !== null ? formatTRY(v.netUnitPrice) : "—"}
-                  {/*
-                    Dövizle listelenen ürünün orijinal fiyatı: müşteri dolarla
-                    anlaştıysa hangi sayıdan çevrildiğini görmek istiyor.
-                    Tahsil edilen tutar her zaman yukarıdaki TL.
-                  */}
-                  <CurrencyNote
-                    currency={v.listCurrency}
-                    amount={v.listUnitPrice}
-                    className="ml-1 font-normal text-neutral-500"
-                  />
-                </span>
-                <button
-                  type="button"
-                  disabled={!orderable}
-                  title={orderable ? "Sepete ekle" : "Sipariş edilemez"}
-                  aria-label={`${variantLabel(v)} sepete ekle`}
-                  onClick={() =>
-                    add({
-                      variantId: v.id,
-                      unitsPerCase: v.unitsPerCase,
-                      moqUnits: v.moqUnits,
-                      stock: v.stock,
-                    })
-                  }
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center border transition-colors",
-                    orderable
-                      ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
-                      : "cursor-not-allowed border-neutral-300 text-neutral-300 dark:border-neutral-700 dark:text-neutral-600",
-                  )}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="tech-label truncate">{codeLabel(product)}</p>
+        <h3 className="mt-1 text-body-sm font-semibold leading-snug text-ink">
+          <Link href={detailHref} className="line-clamp-2 hover:underline">
+            {product.name}
+          </Link>
+        </h3>
 
-      {product.variants.length > 3 && (
-        <Link
-          href={`/portal/urun/${product.id}`}
-          className="tech-label border-t border-neutral-200 px-3 py-2 text-center transition-colors hover:bg-neutral-50 hover:text-brand-600 dark:border-neutral-800 dark:hover:bg-neutral-800"
+        <p
+          className={cn(
+            "mt-1.5 flex items-center gap-1.5 text-xs tabular-nums",
+            STOCK_TONE[stock.tone],
+          )}
         >
-          +{product.variants.length - 3} varyant daha →
-        </Link>
-      )}
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+          />
+          {stock.label}
+        </p>
+
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+          <span className="min-w-0">
+            {from ? (
+              <span className="block text-body-lg font-bold tabular-nums text-ink">
+                {from}
+                {multiple && (
+                  <span className="ml-1 text-xs font-normal text-ink-faint">
+                    &apos;den
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="block text-body-sm text-ink-faint">
+                Fiyat tanımsız
+              </span>
+            )}
+            {/*
+              Dövizle listelenen ürünün orijinal fiyatı: müşteri dolarla
+              anlaştıysa hangi sayıdan çevrildiğini görmek istiyor. Tahsil
+              edilen tutar her zaman yukarıdaki TL.
+            */}
+            {product.variants.length === 1 && product.variants[0] && (
+              <CurrencyNote
+                currency={product.variants[0].listCurrency}
+                amount={product.variants[0].listUnitPrice}
+                className="block text-[10px] text-ink-faint"
+              />
+            )}
+          </span>
+
+          {sole ? (
+            <button
+              type="button"
+              title="Sepete ekle"
+              aria-label={`${product.name} sepete ekle`}
+              onClick={() =>
+                add({
+                  variantId: sole.id,
+                  unitsPerCase: sole.unitsPerCase,
+                  moqUnits: sole.moqUnits,
+                  stock: sole.stock,
+                })
+              }
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-accent text-on-accent transition-opacity hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          ) : product.variants.length > 1 ? (
+            <Link
+              href={detailHref}
+              title="Varyant seçin"
+              aria-label={`${product.name} varyantlarını aç`}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-line text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
+            >
+              <Plus className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span
+              title="Sipariş edilemez"
+              className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center rounded border border-line text-ink-faint opacity-50"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+            </span>
+          )}
+        </div>
+      </div>
     </article>
   );
 }

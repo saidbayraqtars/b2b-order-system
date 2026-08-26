@@ -3,10 +3,29 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Download, Hourglass, Printer } from "lucide-react";
 import type { CompanyAging, Statement } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  ErrorLine,
+  Button,
+  Label,
+  LinkButton,
+  Panel,
+  TextInput,
+} from "@/components/form";
+import {
+  LoadingState,
+  StatTile,
+  TBody,
+  THead,
+  Table,
+  TableEmpty,
+  Td,
+  Th,
+} from "@/components/ui";
 import { formatTRY } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 // Cari ekstre for one company. Used by both /portal/statement (the company
 // looking at itself) and /admin/companies/:id/statement — the API scopes the
@@ -58,11 +77,7 @@ export function StatementView({ companyId }: { companyId: string }) {
     return <LoadingState />;
   }
   if (statement.isError) {
-    return (
-      <p className="text-sm text-red-600">
-        {(statement.error as Error).message}
-      </p>
-    );
+    return <ErrorLine error={statement.error} />;
   }
 
   const s = statement.data!;
@@ -71,52 +86,59 @@ export function StatementView({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="Açılış bakiyesi" value={formatTRY(s.openingBalance)} />
-        <Card label="Borç" value={formatTRY(s.totalDebit)} />
-        <Card label="Alacak" value={formatTRY(s.totalCredit)} />
-        <Card
+        <StatTile label="Açılış bakiyesi" value={formatTRY(s.openingBalance)} />
+        <StatTile label="Borç" value={formatTRY(s.totalDebit)} />
+        <StatTile label="Alacak" value={formatTRY(s.totalCredit)} />
+        <StatTile
           label="Kapanış bakiyesi"
           value={formatTRY(s.closingBalance)}
-          strong
+          hint={`Vade ${s.company.paymentTermDays} gün`}
         />
       </section>
 
-      <section className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-neutral-500">
+      <section className="flex flex-wrap items-center gap-x-6 gap-y-1 text-body-sm text-ink-muted">
         <span>
           Kredi limiti:{" "}
-          <strong className="tabular-nums text-neutral-900 dark:text-neutral-100">
+          <strong className="tabular-nums text-ink">
             {formatTRY(s.company.creditLimit)}
           </strong>
         </span>
         <span>
           Kullanılabilir:{" "}
           <strong
-            className={`tabular-nums ${available < 0 ? "text-red-600" : "text-emerald-600"}`}
+            className={cn(
+              "tabular-nums",
+              available < 0 ? "text-critical" : "text-positive",
+            )}
           >
             {formatTRY(available)}
           </strong>
         </span>
-        <span>Vade: {s.company.paymentTermDays} gün</span>
       </section>
 
       {aging.data && (
-        <section className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold">Yaşlandırma</h2>
-            <span className="text-sm">
+        <Panel
+          title="Yaşlandırma"
+          icon={<Hourglass className="h-4 w-4" />}
+          action={
+            <span className="text-body-sm text-ink-muted">
               Vadesi geçen:{" "}
               <strong
-                className={`tabular-nums ${Number(aging.data.overdue) > 0 ? "text-red-600" : ""}`}
+                className={cn(
+                  "tabular-nums",
+                  Number(aging.data.overdue) > 0 ? "text-critical" : "text-ink",
+                )}
               >
                 {formatTRY(aging.data.overdue)}
               </strong>
               {aging.data.oldestDueDate && (
-                <span className="ml-2 text-neutral-500">
+                <span className="ml-2 text-ink-faint">
                   en eski vade: {dateOnly(aging.data.oldestDueDate)}
                 </span>
               )}
             </span>
-          </div>
+          }
+        >
           <div className="grid gap-2 sm:grid-cols-5">
             {BUCKET_LABELS.map(([key, label]) => {
               const value = aging.data!.buckets[key];
@@ -124,163 +146,150 @@ export function StatementView({ companyId }: { companyId: string }) {
               return (
                 <div
                   key={key}
-                  className={`rounded-md border px-3 py-2 ${
+                  className={cn(
+                    "rounded border px-3 py-2",
                     overdue
-                      ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
-                      : "border-neutral-200 dark:border-neutral-800"
-                  }`}
+                      ? "border-critical/30 bg-critical/10"
+                      : "border-line bg-sunken",
+                  )}
                 >
-                  <p className="text-xs text-neutral-500">{label}</p>
-                  <p className="tabular-nums">{formatTRY(value)}</p>
+                  <p className="tech-label">{label}</p>
+                  <p
+                    className={cn(
+                      "mt-0.5 tabular-nums",
+                      overdue ? "font-semibold text-critical" : "text-ink",
+                    )}
+                  >
+                    {formatTRY(value)}
+                  </p>
                 </div>
               );
             })}
           </div>
           {Number(aging.data.unappliedCredit) > 0 && (
-            <p className="mt-2 text-xs text-neutral-500">
+            <p className="mt-3 text-xs text-ink-faint">
               Açık borca mahsup edilmemiş tahsilat (avans):{" "}
               {formatTRY(aging.data.unappliedCredit)}
             </p>
           )}
-        </section>
+        </Panel>
       )}
 
       <section className="flex flex-wrap items-end gap-3">
-        <label className="text-xs text-neutral-500">
-          Başlangıç
-          <input
+        <div>
+          <Label htmlFor="statement-from">Başlangıç</Label>
+          <TextInput
+            id="statement-from"
+            size="sm"
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="ml-2 h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-auto"
           />
-        </label>
-        <label className="text-xs text-neutral-500">
-          Bitiş
-          <input
+        </div>
+        <div>
+          <Label htmlFor="statement-to">Bitiş</Label>
+          <TextInput
+            id="statement-to"
+            size="sm"
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="ml-2 h-9 rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-auto"
           />
-        </label>
+        </div>
         {(from || to) && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               setFrom("");
               setTo("");
             }}
-            className="h-9 rounded-md border border-neutral-300 px-3 text-sm dark:border-neutral-700"
           >
             Temizle
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          size="sm"
           onClick={() => downloadCsv(s)}
           disabled={s.rows.length === 0}
-          className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white disabled:opacity-50"
         >
+          <Download className="h-3.5 w-3.5" />
           CSV indir
-        </button>
+        </Button>
         {/*
           PDF, belgenin yazdırma görünümünden alınır: tarayıcının "PDF olarak
           kaydet" adımı her makinede var ve Türkçe karakterlerle sorun çıkarmaz.
           Seçili tarih aralığı bağlantıda taşınır — ekranda görülen ekstre ile
           çıkan kâğıt aynı olmalı.
         */}
-        <a
+        <LinkButton
           href={`/documents/statement/${companyId}${suffix}`}
           target="_blank"
           rel="noreferrer"
-          className="h-9 rounded-md border border-neutral-300 px-3 text-sm leading-9 dark:border-neutral-700"
         >
+          <Printer className="h-3.5 w-3.5" />
           PDF / Yazdır
-        </a>
+        </LinkButton>
       </section>
 
-      <section className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+      <section className="overflow-hidden rounded-lg border border-line bg-panel">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-3 py-2">Tarih</th>
-              <th className="px-3 py-2">Açıklama</th>
-              <th className="px-3 py-2">Kaydeden</th>
-              <th className="px-3 py-2 text-right">Borç</th>
-              <th className="px-3 py-2 text-right">Alacak</th>
-              <th className="px-3 py-2 text-right">Bakiye</th>
+              <Th>Tarih</Th>
+              <Th>Açıklama</Th>
+              <Th>Kaydeden</Th>
+              <Th align="right">Borç</Th>
+              <Th align="right">Alacak</Th>
+              <Th align="right">Bakiye</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            <tr className="bg-neutral-50/60 dark:bg-neutral-900/40">
-              <td className="px-3 py-2 text-neutral-500" colSpan={5}>
+          </THead>
+          <TBody>
+            <tr className="bg-sunken/60">
+              <Td muted colSpan={5}>
                 Açılış bakiyesi
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums">
+              </Td>
+              <Td align="right" numeric>
                 {formatTRY(s.openingBalance)}
-              </td>
+              </Td>
             </tr>
             {s.rows.map((r) => (
               <tr key={r.id}>
-                <td className="whitespace-nowrap px-3 py-2 text-neutral-500">
+                <Td muted className="whitespace-nowrap">
                   {dateTime(r.createdAt)}
-                </td>
-                <td className="px-3 py-2">
+                </Td>
+                <Td>
                   {r.orderId ? (
-                    <Link href={`/orders/${r.orderId}`} className="underline">
+                    <Link
+                      href={`/orders/${r.orderId}`}
+                      className="hover:underline"
+                    >
                       {r.description}
                     </Link>
                   ) : (
                     r.description
                   )}
-                </td>
-                <td className="px-3 py-2 text-neutral-500">
-                  {r.recordedByName ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td muted>{r.recordedByName ?? "—"}</Td>
+                <Td align="right" numeric>
                   {r.type === "DEBIT" ? formatTRY(r.debit) : "—"}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-500">
+                </Td>
+                <Td align="right" numeric className="text-positive">
                   {r.type === "CREDIT" ? formatTRY(r.credit) : "—"}
-                </td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                </Td>
+                <Td align="right" numeric className="font-medium">
                   {formatTRY(r.balance)}
-                </td>
+                </Td>
               </tr>
             ))}
             {s.rows.length === 0 && (
-              <tr>
-                <td
-                  className="px-3 py-6 text-center text-neutral-500"
-                  colSpan={6}
-                >
-                  Bu aralıkta hareket yok.
-                </td>
-              </tr>
+              <TableEmpty colSpan={6} label="Bu aralıkta hareket yok." />
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </section>
-    </div>
-  );
-}
-
-function Card({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className={`tabular-nums ${strong ? "text-lg font-bold" : "text-lg"}`}>
-        {value}
-      </p>
     </div>
   );
 }

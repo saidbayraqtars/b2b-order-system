@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
 import { PortalNav } from "@/components/portal-nav";
 import { UserManager } from "@/components/user-manager";
+import { EmptyState, PageHeader } from "@/components/ui";
 
 // A company admin managing their own staff. The service pins every read and
 // write to their company and refuses the two system roles, so this screen
@@ -12,10 +13,8 @@ export default async function PortalUsersPage() {
   if (!user.companyId) {
     return (
       <main className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-bold">Kullanıcılar</h1>
-        <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-          Hesabınıza firma atanmamış.
-        </p>
+        <PageHeader title="Kullanıcılar" />
+        <EmptyState label="Hesabınıza firma atanmamış." />
       </main>
     );
   }
@@ -32,18 +31,17 @@ export default async function PortalUsersPage() {
       companyName={company?.name ?? user.name}
       userName={user.name}
     >
-      <div className="mx-auto max-w-5xl">
-        <h1 className="mb-4 text-lg font-semibold">Kullanıcılar</h1>
+      <div className="mx-auto max-w-6xl">
+        <PageHeader
+          title="Kullanıcılar"
+          subtitle="Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir; personel yalnızca sipariş oluşturur."
+        />
         <UserManager
           currentUserId={user.id}
           fixedCompanyId={user.companyId}
           allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}
           grantablePermissions={user.permissions}
         />
-        <p className="mt-4 text-sm text-neutral-500">
-          Firma yöneticisi sipariş onaylayabilir ve kullanıcı yönetebilir;
-          personel yalnızca sipariş oluşturur.
-        </p>
       </div>
     </PortalNav>
   );

@@ -50,17 +50,12 @@ function useDismissal() {
 }
 
 const TONE_BANNER: Record<string, string> = {
-  brand:
-    "border-brand-300 bg-brand-50 text-brand-900 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200",
-  neutral:
-    "border-neutral-300 bg-neutral-100 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-200",
-  success:
-    "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200",
-  warning:
-    "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200",
-  danger:
-    "border-red-300 bg-red-50 text-red-900 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200",
-  info: "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200",
+  brand: "border-line-strong bg-subtle text-ink",
+  neutral: "border-line bg-sunken text-ink-muted",
+  success: "border-positive/30 bg-positive/10 text-positive",
+  warning: "border-caution/30 bg-caution/10 text-caution",
+  danger: "border-critical/30 bg-critical/10 text-critical",
+  info: "border-line-strong bg-subtle text-ink-muted",
 };
 
 export function Announcements({ companyId }: { companyId: string }) {
@@ -101,7 +96,7 @@ export function Announcements({ companyId }: { companyId: string }) {
 /** Kayan şerit. İçerik iki kez basılır; %50 kayınca dikiş görünmez. */
 function Ticker({ items }: { items: AnnouncementView[] }) {
   return (
-    <div className="overflow-hidden border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="mb-4 overflow-hidden rounded-lg border border-line bg-panel">
       <div className="marquee-track flex w-max animate-marquee">
         <TickerRun items={items} />
         {/* İkinci kopya sonsuz akış için var; ekran okuyucu aynı metni iki kez
@@ -126,20 +121,14 @@ function TickerRun({
     >
       {items.map((a) => (
         <span key={a.id} className="flex items-center gap-2 px-6 py-2">
-          <span className="h-1 w-1 shrink-0 bg-brand-500" />
-          <span className="tech-label text-neutral-700 dark:text-neutral-300">
-            {a.title}
-          </span>
-          {a.body && (
-            <span className="font-mono text-[11px] text-neutral-500">
-              {a.body}
-            </span>
-          )}
+          <span className="h-1 w-1 shrink-0 rounded-full bg-accent" />
+          <span className="text-label uppercase text-ink">{a.title}</span>
+          {a.body && <span className="text-xs text-ink-faint">{a.body}</span>}
           {a.linkUrl && (
             <Link
               href={a.linkUrl}
               tabIndex={ariaHidden ? -1 : undefined}
-              className="font-mono text-[11px] font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+              className="text-xs font-medium text-ink underline-offset-2 hover:underline"
             >
               {a.linkLabel ?? "İncele"}
             </Link>
@@ -161,20 +150,18 @@ function Banner({
   return (
     <div
       className={cn(
-        "mb-4 flex items-start gap-3 border px-4 py-3",
+        "mb-4 flex items-start gap-3 rounded-lg border px-4 py-3",
         TONE_BANNER[item.tone] ?? TONE_BANNER.neutral,
       )}
     >
       <Megaphone className="mt-0.5 h-4 w-4 shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">
-          {item.title}
-        </p>
-        {item.body && <p className="mt-1 text-sm">{item.body}</p>}
+        <p className="text-label uppercase">{item.title}</p>
+        {item.body && <p className="mt-1 text-body-sm">{item.body}</p>}
         {item.linkUrl && (
           <Link
             href={item.linkUrl}
-            className="mt-2 inline-block font-mono text-xs font-medium underline underline-offset-4"
+            className="mt-2 inline-block text-xs font-medium underline underline-offset-4"
           >
             {item.linkLabel ?? "İncele"} →
           </Link>
@@ -215,11 +202,11 @@ function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={item.title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm"
       onClick={onDismiss}
     >
       <div
-        className="w-full max-w-md animate-fade-in border border-neutral-300 bg-white p-6 shadow-card-hover dark:border-neutral-700 dark:bg-neutral-900"
+        className="w-full max-w-md animate-fade-in rounded-lg border border-line bg-panel p-6 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start justify-between gap-4">
@@ -228,23 +215,21 @@ function Modal({
             type="button"
             onClick={onDismiss}
             aria-label="Kapat"
-            className="-mr-1 -mt-1 p-1 text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white"
+            className="-mr-1 -mt-1 p-1 text-ink-faint transition-colors hover:text-ink"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <h2 className="font-display text-lg font-bold">{item.title}</h2>
+        <h2 className="text-headline-sm text-ink">{item.title}</h2>
         {item.body && (
-          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-            {item.body}
-          </p>
+          <p className="mt-2 text-body-sm text-ink-muted">{item.body}</p>
         )}
         <div className="mt-5 flex items-center gap-2">
           {item.linkUrl && (
             <Link
               href={item.linkUrl}
               onClick={onDismiss}
-              className="inline-flex h-9 items-center bg-brand-600 px-4 font-mono text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-brand-700"
+              className="inline-flex h-9 items-center rounded bg-accent px-4 text-body-sm font-medium text-on-accent transition-opacity hover:opacity-90"
             >
               {item.linkLabel ?? "İncele"}
             </Link>
@@ -252,7 +237,7 @@ function Modal({
           <button
             type="button"
             onClick={onDismiss}
-            className="inline-flex h-9 items-center border border-neutral-300 px-4 font-mono text-xs font-medium uppercase tracking-wider transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="inline-flex h-9 items-center rounded border border-line px-4 text-body-sm font-medium text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
           >
             Kapat
           </button>

@@ -172,15 +172,18 @@ export function SidebarShell({
             <Menu className="h-5 w-5" />
           </button>
 
-          <span className="truncate text-body-md font-semibold text-ink md:text-headline-sm">
+          {/* Dar ekranda arama kutusu varsa başlık çekilir: ikisi yan yana
+              sığmıyor ve arama, sayfanın adından daha çok işe yarıyor. */}
+          <span
+            className={cn(
+              "truncate text-body-md font-semibold text-ink md:text-headline-sm",
+              search && "hidden md:inline",
+            )}
+          >
             {context ?? brand}
           </span>
 
-          {search && (
-            <div className="mx-auto hidden w-full max-w-md md:block">
-              {search}
-            </div>
-          )}
+          {search && <div className="mx-auto w-full max-w-md">{search}</div>}
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {actions}

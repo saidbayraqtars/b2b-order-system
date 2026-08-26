@@ -75,14 +75,14 @@ export function CompanySwitcher({
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex h-9 items-center gap-2 border px-3 transition-colors",
+          "flex h-9 items-center gap-2 rounded border px-3 transition-colors",
           currentCompanyId
-            ? "border-neutral-300 bg-white hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900"
-            : "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200",
+            ? "border-line bg-panel text-ink-muted hover:border-line-strong hover:text-ink"
+            : "border-caution/50 bg-caution/10 text-caution",
         )}
       >
         <Building2 className="h-3.5 w-3.5 shrink-0" />
-        <span className="max-w-[12rem] truncate font-mono text-[11px] font-medium uppercase tracking-wider">
+        <span className="max-w-[12rem] truncate text-xs font-medium">
           {currentCompanyName ?? "Firma seçin"}
         </span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
@@ -99,27 +99,27 @@ export function CompanySwitcher({
           />
           <div
             role="listbox"
-            className="absolute right-0 z-50 mt-1 w-80 animate-fade-in border border-neutral-300 bg-white shadow-card-hover dark:border-neutral-700 dark:bg-neutral-900"
+            className="absolute right-0 z-50 mt-1 w-80 animate-fade-in overflow-hidden rounded-lg border border-line bg-panel shadow-pop"
           >
-            <div className="relative border-b border-neutral-200 dark:border-neutral-800">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+            <div className="relative border-b border-line">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint" />
               <input
                 autoFocus
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder="Firma ara…"
-                className="h-9 w-full bg-transparent pl-9 pr-3 text-xs outline-none"
+                className="h-9 w-full bg-transparent pl-9 pr-3 text-xs text-ink outline-none placeholder:text-ink-faint"
               />
             </div>
 
             <ul className="max-h-80 overflow-y-auto">
               {query.isLoading && (
-                <li className="px-3 py-3 text-xs text-neutral-500">
+                <li className="px-3 py-3 text-xs text-ink-faint">
                   Yükleniyor…
                 </li>
               )}
               {!query.isLoading && companies.length === 0 && (
-                <li className="px-3 py-3 text-xs text-neutral-500">
+                <li className="px-3 py-3 text-xs text-ink-faint">
                   Firma bulunamadı.
                 </li>
               )}
@@ -136,21 +136,21 @@ export function CompanySwitcher({
                       className={cn(
                         "flex w-full flex-col gap-0.5 border-l-2 px-3 py-2 text-left transition-colors",
                         active
-                          ? "border-brand-600 bg-brand-50 dark:bg-brand-500/10"
-                          : "border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800",
+                          ? "border-accent bg-subtle"
+                          : "border-transparent hover:bg-subtle",
                       )}
                     >
-                      <span className="truncate text-xs font-semibold">
+                      <span className="truncate text-xs font-semibold text-ink">
                         {c.name}
                       </span>
-                      <span className="tech-num flex items-center gap-2 text-[10px] text-neutral-500">
+                      <span className="flex items-center gap-2 text-[10px] tabular-nums text-ink-faint">
                         {c.city && <span>{c.city}</span>}
                         <span>bakiye {formatTRY(c.currentBalance)}</span>
                         <span
                           className={
                             available < 0
-                              ? "font-bold text-red-600 dark:text-red-400"
-                              : "text-emerald-600 dark:text-emerald-400"
+                              ? "font-bold text-critical"
+                              : "text-positive"
                           }
                         >
                           kullanılabilir {formatTRY(c.availableCredit)}

@@ -8,6 +8,7 @@ import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import type { CompanyOption } from "@/components/storefront/company-switcher";
 import { LoadingState, EmptyState } from "@/components/ui";
+import { ErrorLine } from "@/components/form";
 
 /**
  * "Hangi firma adına?" — vekil kullanıcı (plasiyer / süper admin) henüz firma
@@ -47,29 +48,27 @@ export function CompanyPicker({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-1 flex items-center gap-2">
-        <Building2 className="h-4 w-4 text-brand-600" />
+        <Building2 className="h-4 w-4 text-ink-faint" />
         <span className="tech-label">{eyebrow}</span>
       </div>
-      <h1 className="mb-1 font-display text-xl font-bold">{title}</h1>
-      <p className="mb-5 text-sm text-neutral-500">{subtitle}</p>
+      <h1 className="mb-1 text-headline-md text-ink">{title}</h1>
+      <p className="mb-5 text-body-sm text-ink-muted">{subtitle}</p>
 
       <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
         <input
           autoFocus
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Firma ara…"
-          className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none transition-colors focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
+          className="h-10 w-full rounded border border-line bg-panel pl-9 pr-3 text-body-sm text-ink outline-none transition-colors placeholder:text-ink-faint hover:border-line-strong focus:border-ink-muted"
         />
       </div>
 
       {query.isLoading ? (
         <LoadingState />
       ) : query.isError ? (
-        <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
-          {(query.error as Error).message}
-        </p>
+        <ErrorLine error={query.error} />
       ) : companies.length === 0 ? (
         <EmptyState
           label={
@@ -79,37 +78,32 @@ export function CompanyPicker({
           }
         />
       ) : (
-        <ul className="border border-neutral-300 dark:border-neutral-700">
+        <ul className="overflow-hidden rounded-lg border border-line bg-panel">
           {companies.map((c, i) => {
             const available = Number(c.availableCredit);
             return (
-              <li
-                key={c.id}
-                className={
-                  i > 0
-                    ? "border-t border-neutral-200 dark:border-neutral-800"
-                    : ""
-                }
-              >
+              <li key={c.id} className={i > 0 ? "border-t border-line" : ""}>
                 <Link
                   href={`${basePath}?companyId=${encodeURIComponent(c.id)}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-subtle"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <p className="tech-num mt-0.5 text-[10px] text-neutral-500">
+                    <p className="truncate text-body-sm font-semibold text-ink">
+                      {c.name}
+                    </p>
+                    <p className="mt-0.5 text-[10px] tabular-nums text-ink-faint">
                       {[c.city, c.district].filter(Boolean).join(" / ") || "—"}
                     </p>
                   </div>
-                  <div className="tech-num shrink-0 text-right text-[11px]">
-                    <p className="text-neutral-500">
+                  <div className="shrink-0 text-right text-[11px] tabular-nums">
+                    <p className="text-ink-faint">
                       bakiye {formatTRY(c.currentBalance)}
                     </p>
                     <p
                       className={
                         available < 0
-                          ? "font-bold text-red-600 dark:text-red-400"
-                          : "text-emerald-600 dark:text-emerald-400"
+                          ? "font-bold text-critical"
+                          : "text-positive"
                       }
                     >
                       limit {formatTRY(c.availableCredit)}

@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ScanLine,
-  Search,
-  ShoppingCart,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ScanLine, Search, ShoppingCart } from "lucide-react";
 import type { CatalogProduct, CategoryNode, PageBlock } from "@repo/services";
 import type { Permission, Role } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
@@ -16,8 +11,8 @@ import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
 import { Announcements } from "@/components/storefront/announcements";
 import { ActingAsBar } from "@/components/storefront/acting-as-bar";
-import { Checkbox } from "@/components/form";
-import { LoadingState, EmptyState } from "@/components/ui";
+import { Checkbox, ErrorLine, Select } from "@/components/form";
+import { EmptyState, LoadingState, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
@@ -125,14 +120,14 @@ export function PortalClient({
   const showCart = on.has("CART_PANEL");
 
   // Üç sütunlu satır: kapatılan sütun yer kaplamıyor, kalanlar genişliyor.
-  // Sabit `lg:grid-cols-[180px_1fr_300px]` bırakılsaydı kapatılan kenar çubuğu
+  // Sabit `lg:grid-cols-[180px_1fr_320px]` bırakılsaydı kapatılan kenar çubuğu
   // yerinde bir boşluk olarak durur ve "kapanmadı" gibi görünürdü.
   const rowTemplate = showSidebar
     ? showCart
-      ? "lg:grid-cols-[180px_1fr_300px]"
-      : "lg:grid-cols-[180px_1fr]"
+      ? "lg:grid-cols-[200px_1fr_320px]"
+      : "lg:grid-cols-[200px_1fr]"
     : showCart
-      ? "lg:grid-cols-[1fr_300px]"
+      ? "lg:grid-cols-[1fr_320px]"
       : "lg:grid-cols-1";
 
   const gridColumns =
@@ -229,6 +224,14 @@ export function PortalClient({
     [categoriesQuery.data],
   );
 
+  // Kartın görsel üstündeki künyesi kategorinin adı. Ürün yalnızca kimliği
+  // taşıdığı için ad burada çözülüyor — katalog isteğine ikinci bir alan
+  // eklemek, aynı adı her satırda tekrar indirmek olurdu.
+  const categoryNames = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
+
   // Sıralama ve stok filtresi istemcide: katalog zaten tek istekte geliyor,
   // her sıralama değişiminde sunucuya gitmek gereksiz gecikme olurdu.
   const products = useMemo(() => {
@@ -259,6 +262,20 @@ export function PortalClient({
       userName={userName}
       isProxy={isProxy}
       companyId={companyId}
+      // Arama üst şeritte: katalog ekranının en çok kullanılan kontrolü, sayfa
+      // kaydırıldığında da yerinde kalmalı. Sepet sayacıyla aynı hizada durması
+      // da tesadüf değil — okutulan ürün soldaki kutudan sağdaki sayaca gidiyor.
+      search={
+        showSearch ? (
+          <CatalogSearch
+            value={search}
+            onChange={setSearch}
+            onScan={handleScan}
+            scanning={scanning}
+            notice={scanNotice}
+          />
+        ) : undefined
+      }
       right={
         <span className="flex items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-semibold tabular-nums text-on-accent">
           <ShoppingCart className="h-3.5 w-3.5" />
@@ -286,84 +303,47 @@ export function PortalClient({
         ) : null,
       )}
 
-      <div className="mx-auto max-w-6xl">
-        {/* Arama + sıralama şeridi */}
-        {showSearch && (
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[16rem] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-              <input
-                type="search"
-                placeholder="Ürün adı, marka, SKU veya barkod…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  // Barkod okuyucu kodun sonuna Enter basar. Kutu bir formun
-                  // içinde değil, yine de varsayılan engelleniyor: tarayıcı
-                  // type="search" alanında Enter'ı kendi arama davranışına
-                  // bağlayabiliyor.
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  void handleScan();
-                }}
-                aria-describedby={scanNotice ? "scan-notice" : undefined}
-                className="h-10 w-full border border-neutral-300 bg-white pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
-              />
-              <ScanLine
-                aria-hidden
-                className={cn(
-                  "pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors",
-                  scanning ? "text-brand-600" : "text-neutral-300",
+      <div className="mx-auto max-w-7xl">
+        <PageHeader
+          title="Ürün Kataloğu"
+          subtitle={
+            catalogQuery.isLoading
+              ? "Yükleniyor…"
+              : `${companyName} için ${products.length} ürün listeleniyor`
+          }
+          actions={
+            showSearch ? (
+              <>
+                {showStockFilter && (
+                  <Checkbox
+                    checked={inStockOnly}
+                    onChange={(e) => setInStockOnly(e.target.checked)}
+                    label="Yalnızca stokta"
+                  />
                 )}
-              />
-            </div>
-
-            {showStockFilter && (
-              <Checkbox
-                checked={inStockOnly}
-                onChange={(e) => setInStockOnly(e.target.checked)}
-                label={<span className="tech-label">stokta</span>}
-              />
-            )}
-
-            <div className="flex h-10 items-center gap-2 border border-neutral-300 bg-white px-3 dark:border-neutral-700 dark:bg-neutral-900">
-              <SlidersHorizontal className="h-3.5 w-3.5 text-neutral-400" />
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
-                aria-label="Sıralama"
-                className="bg-transparent font-mono text-[11px] uppercase tracking-wider outline-none"
-              >
-                {Object.entries(SORTS).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {scanNotice && (
-              <p
-                id="scan-notice"
-                role="status"
-                className={cn(
-                  "w-full px-1 font-mono text-[11px] uppercase tracking-wider",
-                  scanNotice.kind === "ok"
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : "text-amber-700 dark:text-amber-400",
-                )}
-              >
-                {scanNotice.text}
-              </p>
-            )}
-          </div>
-        )}
+                <Select
+                  size="sm"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortKey)}
+                  aria-label="Sıralama"
+                  className="w-auto"
+                >
+                  {Object.entries(SORTS).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            ) : undefined
+          }
+        />
 
         <div className={cn("grid gap-6", rowTemplate)}>
           {/* Kategori kenar çubuğu */}
           {showSidebar && (
-            <aside className="h-fit border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-              <p className="tech-label border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+            <aside className="h-fit overflow-hidden rounded-lg border border-line bg-panel">
+              <p className="tech-label border-b border-line bg-sunken px-3 py-2">
                 Kategoriler
               </p>
               <ul className="max-h-[28rem] overflow-y-auto py-1">
@@ -390,26 +370,21 @@ export function PortalClient({
 
           {/* Ürün ızgarası */}
           <section>
-            <div className="mb-2 flex items-baseline justify-between">
-              <span className="tech-label">
-                {catalogQuery.isLoading
-                  ? "yükleniyor"
-                  : `${products.length} ürün`}
-              </span>
-            </div>
-
             {catalogQuery.isLoading ? (
               <LoadingState />
             ) : catalogQuery.isError ? (
-              <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
-                {(catalogQuery.error as Error).message}
-              </p>
+              <ErrorLine error={catalogQuery.error} />
             ) : products.length === 0 ? (
               <EmptyState label="Ürün bulunamadı." />
             ) : (
-              <div className={cn("grid gap-3 sm:grid-cols-2", gridColumns)}>
+              <div className={cn("grid gap-4 sm:grid-cols-2", gridColumns)}>
                 {products.map((p) => (
-                  <ProductCard key={p.id} product={p} companyId={companyId} />
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    companyId={companyId}
+                    categoryName={categoryNames.get(p.categoryId) ?? null}
+                  />
                 ))}
               </div>
             )}
@@ -419,6 +394,70 @@ export function PortalClient({
         </div>
       </div>
     </PortalNav>
+  );
+}
+
+/**
+ * Üst şeritteki arama kutusu.
+ *
+ * Okutma bildirimi kutunun altına, akışın dışına konumlanıyor: şerit 64 piksel
+ * sabit yükseklikte ve bildirimin satır açması başlığı da sepet sayacını da
+ * yerinden oynatırdı.
+ */
+function CatalogSearch({
+  value,
+  onChange,
+  onScan,
+  scanning,
+  notice,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onScan: () => void | Promise<void>;
+  scanning: boolean;
+  notice: ScanNotice | null;
+}) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+      <input
+        type="search"
+        placeholder="Ürün kodu, adı veya barkod ara…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          // Barkod okuyucu kodun sonuna Enter basar. Kutu bir formun içinde
+          // değil, yine de varsayılan engelleniyor: tarayıcı type="search"
+          // alanında Enter'ı kendi arama davranışına bağlayabiliyor.
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          void onScan();
+        }}
+        aria-describedby={notice ? "scan-notice" : undefined}
+        className="h-9 w-full rounded border border-line bg-sunken pl-9 pr-9 text-body-sm text-ink outline-none transition-colors placeholder:text-ink-faint hover:border-line-strong focus:border-ink-muted"
+      />
+      <ScanLine
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors",
+          scanning ? "text-ink" : "text-ink-faint/60",
+        )}
+      />
+      {notice && (
+        <p
+          id="scan-notice"
+          role="status"
+          className={cn(
+            "absolute inset-x-0 top-full z-10 mt-1 truncate rounded border bg-panel px-3 py-1.5 text-xs shadow-pop",
+            notice.kind === "ok"
+              ? "border-positive/40 text-positive"
+              : "border-caution/40 text-caution",
+          )}
+        >
+          {notice.text}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -440,10 +479,10 @@ function CategoryItem({
         onClick={onClick}
         style={{ paddingLeft: `${12 + depth * 10}px` }}
         className={cn(
-          "block w-full truncate py-1.5 pr-3 text-left text-xs transition-colors",
+          "block w-full truncate border-l-2 py-1.5 pr-3 text-left text-xs transition-colors",
           active
-            ? "border-l-2 border-brand-600 bg-brand-50 font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-            : "border-l-2 border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+            ? "border-accent bg-subtle font-semibold text-ink"
+            : "border-transparent text-ink-muted hover:bg-subtle hover:text-ink",
         )}
       >
         {children}
@@ -462,11 +501,11 @@ function CategoryItem({
 function RichText({ title, body }: { title: string; body: string }) {
   if (!title.trim() && !body.trim()) return null;
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="border border-neutral-300 bg-white px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="mx-auto mb-4 max-w-7xl">
+      <div className="rounded-lg border border-line bg-panel px-4 py-3">
         {title.trim() && <p className="tech-label mb-1">{title}</p>}
         {body.trim() && (
-          <p className="whitespace-pre-line text-sm text-neutral-700 dark:text-neutral-300">
+          <p className="whitespace-pre-line text-body-sm text-ink-muted">
             {body}
           </p>
         )}

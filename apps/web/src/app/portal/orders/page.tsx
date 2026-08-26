@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePage } from "@/lib/guard";
 import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
+import { PageHeader } from "@/components/ui";
 import { OrdersBoard } from "@/components/orders-board";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +29,15 @@ export default async function PortalOrdersPage({ searchParams }: Props) {
       isProxy={ctx.isProxy}
       companyId={ctx.companyId}
     >
-      <div className="mx-auto max-w-5xl">
-        <h1 className="mb-4 text-lg font-semibold">
-          {ctx.isProxy ? `${ctx.companyName} — Siparişler` : "Siparişlerim"}
-        </h1>
+      <div className="mx-auto max-w-6xl">
+        <PageHeader
+          title="Siparişler"
+          subtitle={
+            ctx.isProxy
+              ? `${ctx.companyName} adına girilen siparişler`
+              : "Firmanızın sipariş geçmişi ve bekleyen onaylar"
+          }
+        />
         <OrdersBoard
           companyId={ctx.companyId}
           canApproveCredit={user.role === "SUPER_ADMIN"}

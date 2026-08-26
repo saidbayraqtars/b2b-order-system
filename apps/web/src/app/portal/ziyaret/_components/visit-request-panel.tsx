@@ -8,6 +8,7 @@ import {
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
+import { Button, ErrorLine, Label, TextInput } from "@/components/form";
 
 // Bayinin "uğrayın" çağrısı.
 //
@@ -64,51 +65,50 @@ export function VisitRequestPanel({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-6">
       <Card>
-        <h2 className="mb-1 text-sm font-semibold">Temsilcinizi çağırın</h2>
-        <p className="mb-3 text-sm text-neutral-500">
+        <h2 className="mb-1 text-headline-sm text-ink">Temsilcinizi çağırın</h2>
+        <p className="mb-3 text-body-sm text-ink-muted">
           Çağrınız satış temsilcinizin o günkü ziyaret listesine düşer.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">
-              Tercih ettiğiniz gün (isteğe bağlı)
-            </span>
-            <input
+          <div>
+            <Label htmlFor="visit-day" hint="(isteğe bağlı)">
+              Tercih ettiğiniz gün
+            </Label>
+            <TextInput
+              id="visit-day"
               type="date"
               value={day}
               onChange={(e) => setDay(e.target.value)}
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-neutral-500">Not</span>
-            <input
+          </div>
+          <div>
+            <Label htmlFor="visit-note">Not</Label>
+            <TextInput
+              id="visit-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Örn. sipariş vereceğiz, numune isteriz"
-              className="h-9 w-full rounded-md border border-neutral-300 px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
-          </label>
+          </div>
         </div>
 
-        <button
-          type="button"
+        <Button
+          className="mt-3"
+          loading={send.isPending}
           onClick={() => send.mutate()}
-          disabled={send.isPending}
-          className="mt-3 h-9 rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {send.isPending ? "Gönderiliyor…" : "Ziyaret çağrısı gönder"}
-        </button>
+        </Button>
 
         {done && !error && (
-          <p className="mt-2 text-sm text-emerald-600">Çağrınız iletildi.</p>
+          <p className="mt-2 text-body-sm text-positive">Çağrınız iletildi.</p>
         )}
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <ErrorLine error={error} />
       </Card>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">Çağrılarınız</h2>
+        <h2 className="mb-3 text-headline-sm text-ink">Çağrılarınız</h2>
         {list.isLoading ? (
           <LoadingState />
         ) : (list.data?.requests.length ?? 0) === 0 ? (
@@ -120,13 +120,15 @@ export function VisitRequestPanel({ companyId }: { companyId: string }) {
                 <Card>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm">
+                      <p className="text-body-sm text-ink">
                         İstenen gün: {trDate(r.requestedFor)}
                       </p>
                       {r.note && (
-                        <p className="text-sm text-neutral-500">“{r.note}”</p>
+                        <p className="text-body-sm text-ink-muted">
+                          “{r.note}”
+                        </p>
                       )}
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-ink-faint">
                         Gönderildi: {trDate(r.createdAt)}
                         {r.completedAt
                           ? ` · Ziyaret: ${trDate(r.completedAt)}`

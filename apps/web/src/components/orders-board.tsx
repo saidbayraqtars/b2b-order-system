@@ -110,11 +110,11 @@ export function OrdersBoard({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-lg border border-line bg-panel">
       <ErrorLine error={action.error} />
       {canPrint && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
-          <span className="text-xs text-neutral-500">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
+          <span className="text-xs text-ink-faint">
             {selected.length > 0
               ? `${selected.length} sipariş seçili`
               : "Toplu basım için satırları işaretleyin"}
@@ -139,7 +139,7 @@ export function OrdersBoard({
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="text-xs text-neutral-500 hover:underline"
+              className="text-xs text-ink-faint transition-colors hover:text-ink"
             >
               Seçimi temizle
             </button>
@@ -200,7 +200,7 @@ export function OrdersBoard({
                   <Link href={`/orders/${o.id}`} className="hover:underline">
                     {o.orderNumber}
                   </Link>
-                  <span className="ml-1 text-xs text-neutral-400">
+                  <span className="ml-1 text-xs text-ink-faint">
                     ({o._count.items} kalem)
                   </span>
                 </Td>
@@ -221,7 +221,7 @@ export function OrdersBoard({
                       target="_blank"
                       rel="noreferrer"
                       title="Sipariş fişi"
-                      className="mr-2 inline-flex text-neutral-500 hover:text-brand-600"
+                      className="mr-2 inline-flex text-ink-faint transition-colors hover:text-ink"
                     >
                       <Printer className="h-4 w-4" />
                     </a>

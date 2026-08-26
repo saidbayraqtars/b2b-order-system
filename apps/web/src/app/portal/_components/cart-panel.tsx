@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import type {
   CreateOrderResult,
   OrderQuoteView,
@@ -13,6 +14,9 @@ import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
 import { CurrencyNote } from "@/components/currency-note";
 import { apiGet, apiPost } from "@/lib/fetcher";
+import { Button, ErrorLine, Label, Select, TextInput } from "@/components/form";
+import { LoadingState } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 const STATUS_MESSAGE: Record<string, string> = {
   CONFIRMED: "Siparişiniz onaylandı ve işleme alındı.",
@@ -112,248 +116,289 @@ export function CartPanel({ companyId }: { companyId: string }) {
   const priced = q !== undefined;
 
   return (
-    <aside className="sticky top-20 flex h-fit flex-col gap-4 border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
-      <div className="flex items-baseline justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
-        <h2 className="tech-label text-neutral-900 dark:text-neutral-100">
-          Sepet
-        </h2>
-        <span className="tech-num text-xs text-neutral-500">
-          {lines.length} kalem
-        </span>
-      </div>
+    <aside className="sticky top-20 flex h-fit flex-col gap-4">
+      <section className="overflow-hidden rounded-lg border border-line bg-panel">
+        <header className="flex items-center justify-between gap-2 border-b border-line bg-sunken px-4 py-2.5">
+          <h2 className="flex items-center gap-2 text-headline-sm text-ink">
+            <ShoppingCart className="h-4 w-4 text-ink-faint" />
+            Sepet
+          </h2>
+          <span className="tech-label tabular-nums">{lines.length} kalem</span>
+        </header>
 
-      {result && (
-        <div className="bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-          <p className="font-medium">
-            <Link href={`/orders/${result.orderId}`} className="underline">
-              Sipariş #{result.orderNumber}
-            </Link>
-          </p>
-          <p>{STATUS_MESSAGE[result.status] ?? result.status}</p>
-          {result.promotions.length > 0 && (
-            <p className="mt-1">
-              Kampanya indirimi: {formatTRY(Number(result.promotionTotal))}
+        {result && (
+          <div className="border-b border-positive/30 bg-positive/10 px-4 py-3 text-body-sm text-positive">
+            <p className="flex items-center gap-1.5 font-medium">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <Link href={`/orders/${result.orderId}`} className="underline">
+                Sipariş #{result.orderNumber}
+              </Link>
             </p>
-          )}
-        </div>
-      )}
-      {mutation.isError && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
-          {(mutation.error as Error).message}
-        </p>
-      )}
+            <p className="mt-1">
+              {STATUS_MESSAGE[result.status] ?? result.status}
+            </p>
+            {result.promotions.length > 0 && (
+              <p className="mt-1 tabular-nums">
+                Kampanya indirimi: {formatTRY(Number(result.promotionTotal))}
+              </p>
+            )}
+          </div>
+        )}
 
-      {isLoading ? (
-        <p className="text-sm text-neutral-500">Sepet yükleniyor…</p>
-      ) : lines.length === 0 ? (
-        <p className="text-sm text-neutral-500">Sepetiniz boş.</p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {lines.map((l) => (
-            <li key={l.variantId} className="text-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{l.productName}</p>
-                  <p className="text-xs text-neutral-500">{l.sku}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => remove(l.variantId)}
-                  className="text-xs text-neutral-400 hover:text-red-600"
-                >
-                  Kaldır
-                </button>
-              </div>
-              <div className="mt-1 flex items-center justify-between">
-                <div className="flex items-center">
+        {isLoading ? (
+          <div className="px-4">
+            <LoadingState label="Sepet yükleniyor…" />
+          </div>
+        ) : lines.length === 0 ? (
+          <p className="px-4 py-8 text-center text-body-sm text-ink-faint">
+            Sepetiniz boş.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {lines.map((l) => (
+              <li key={l.variantId} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-body-sm font-medium text-ink">
+                      {l.productName}
+                    </p>
+                    <p className="tech-label truncate">{l.sku}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => dec(l.variantId)}
-                    aria-label="Azalt"
-                    className="h-6 w-6 border border-neutral-300 font-mono text-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                    onClick={() => remove(l.variantId)}
+                    aria-label={`${l.productName} sepetten çıkar`}
+                    title="Kaldır"
+                    className="-mr-1 shrink-0 p-1 text-ink-faint transition-colors hover:text-critical"
                   >
-                    −
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
-                  <span className="tech-num w-12 border-y border-neutral-300 py-0.5 text-center text-xs dark:border-neutral-700">
-                    {l.quantity}
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center">
+                    <StepButton
+                      label="Azalt"
+                      onClick={() => dec(l.variantId)}
+                      className="rounded-l border-r-0"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </StepButton>
+                    <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
+                      {l.quantity}
+                    </span>
+                    <StepButton
+                      label="Artır"
+                      onClick={() => inc(l.variantId)}
+                      className="rounded-r border-l-0"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </StepButton>
+                  </div>
+                  <span className="text-right text-body-sm font-semibold tabular-nums text-ink">
+                    {l.netUnitPrice === null
+                      ? "fiyat yok"
+                      : formatTRY(Number(l.netUnitPrice) * l.quantity)}
+                    {/* Kur yok: sepetteki kur henüz donmadı, sipariş
+                        verildiğinde donacak. Burada gösterilen sayı bir söz
+                        değil, malın hangi para biriminde listelendiği. */}
+                    <CurrencyNote
+                      currency={l.listCurrency}
+                      amount={l.listUnitPrice}
+                      prefix="birim"
+                      className="block text-[10px] font-normal text-ink-faint"
+                    />
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => inc(l.variantId)}
-                    aria-label="Artır"
-                    className="h-6 w-6 border border-neutral-300 font-mono text-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                  >
-                    +
-                  </button>
                 </div>
-                <span className="tech-num text-right text-xs font-semibold">
-                  {l.netUnitPrice === null
-                    ? "fiyat yok"
-                    : formatTRY(Number(l.netUnitPrice) * l.quantity)}
-                  {/* Kur yok: sepetteki kur henüz donmadı, sipariş
-                      verildiğinde donacak. Burada gösterilen sayı bir söz
-                      değil, malın hangi para biriminde listelendiği. */}
-                  <CurrencyNote
-                    currency={l.listCurrency}
-                    amount={l.listUnitPrice}
-                    prefix="birim"
-                    className="block text-[10px] font-normal text-neutral-500"
-                  />
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {lines.length > 0 && (
-        <div className="flex flex-col gap-3 border-t border-neutral-200 pt-3 text-sm dark:border-neutral-800">
-          {methods.length > 0 && (
-            <label className="block">
-              <span className="tech-label mb-1 block">Ödeme yöntemi</span>
-              <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                className="h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
-              >
-                {methods.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+        <section className="overflow-hidden rounded-lg border border-line bg-panel">
+          <header className="border-b border-line bg-sunken px-4 py-2.5">
+            <h2 className="text-headline-sm text-ink">Sipariş Özeti</h2>
+          </header>
 
-          {termsOffered.length > 0 && (
-            <label className="block">
-              <span className="tech-label mb-1 block">Vade</span>
-              <select
-                value={termId}
-                onChange={(e) => setTermId(e.target.value)}
-                className="h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 dark:border-neutral-700 dark:bg-neutral-900"
-              >
-                <option value="">
-                  Varsayılan ({options.data?.defaultTermDays ?? 0} gün)
-                </option>
-                {termsOffered.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.days === 0 ? "peşin" : `${t.days} gün`})
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          <div className="flex items-end gap-2">
-            <label className="flex-1">
-              <span className="tech-label mb-1 block">Kupon kodu</span>
-              <input
-                value={couponDraft}
-                onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
-                placeholder="KUPON25"
-                disabled={coupon !== null}
-                className="tech-num h-8 w-full border border-neutral-300 px-2 text-xs outline-none focus:border-brand-500 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900"
-              />
-            </label>
-            {coupon === null ? (
-              <button
-                type="button"
-                disabled={couponDraft.trim().length < 3}
-                onClick={() => setCoupon(couponDraft.trim())}
-                className="h-8 border border-neutral-300 px-3 font-mono text-[11px] font-medium uppercase tracking-wider transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-              >
-                Uygula
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setCoupon(null);
-                  setCouponDraft("");
-                }}
-                className="h-8 border border-neutral-300 px-3 font-mono text-[11px] font-medium uppercase tracking-wider transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-              >
-                Kaldır
-              </button>
+          <div className="flex flex-col gap-3 p-4">
+            {methods.length > 0 && (
+              <div>
+                <Label htmlFor="cart-method">Ödeme yöntemi</Label>
+                <Select
+                  id="cart-method"
+                  size="sm"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                >
+                  {methods.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             )}
-          </div>
 
-          {quote.isError && (
-            <p className="bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              {(quote.error as Error).message}
-            </p>
-          )}
-
-          <div className="flex flex-col gap-1">
-            <Row
-              label="Ara toplam"
-              value={formatTRY(
-                priced
-                  ? Number(q.subtotal) - Number(q.discountTotal)
-                  : localTotals.subtotal,
-              )}
-            />
-            {priced && q.volumeDiscount && (
-              // Named, not subtracted: "Ara toplam" above is already net of it.
-              // Showing it as its own deduction row would read as a second
-              // discount the customer never gets.
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                Hacim iskontosu — {q.volumeDiscount.tierName} (%
-                {q.volumeDiscount.percent}), ara toplama dahil: −
-                {formatTRY(Number(q.volumeDiscount.amount))}
-              </p>
+            {termsOffered.length > 0 && (
+              <div>
+                <Label htmlFor="cart-term">Vade</Label>
+                <Select
+                  id="cart-term"
+                  size="sm"
+                  value={termId}
+                  onChange={(e) => setTermId(e.target.value)}
+                >
+                  <option value="">
+                    Varsayılan ({options.data?.defaultTermDays ?? 0} gün)
+                  </option>
+                  {termsOffered.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.days === 0 ? "peşin" : `${t.days} gün`})
+                    </option>
+                  ))}
+                </Select>
+              </div>
             )}
-            {priced &&
-              q.promotions.map((p) => (
-                <Row
-                  key={p.promotionId}
-                  label={`Kampanya: ${p.name}`}
-                  value={`− ${formatTRY(Number(p.amount))}`}
-                  accent
+
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Label htmlFor="cart-coupon">Kupon kodu</Label>
+                <TextInput
+                  id="cart-coupon"
+                  size="sm"
+                  value={couponDraft}
+                  onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
+                  placeholder="KUPON25"
+                  disabled={coupon !== null}
+                  className="tabular-nums"
                 />
-              ))}
-            <Row
-              label="KDV"
-              value={formatTRY(
-                priced ? Number(q.taxTotal) : localTotals.taxTotal,
+              </div>
+              {coupon === null ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={couponDraft.trim().length < 3}
+                  onClick={() => setCoupon(couponDraft.trim())}
+                >
+                  Uygula
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setCoupon(null);
+                    setCouponDraft("");
+                  }}
+                >
+                  Kaldır
+                </Button>
               )}
-            />
-            <Row
-              label="Genel toplam"
-              value={formatTRY(
-                priced ? Number(q.grandTotal) : localTotals.grandTotal,
-              )}
-              bold
-            />
-            {quote.isFetching && (
-              <p className="text-xs text-neutral-400">Fiyat güncelleniyor…</p>
-            )}
-            {priced && (
-              // What the settlement actually resolved to, straight from the
-              // quote — the buyer should see the vade before ordering, not
-              // discover it on the invoice.
-              <p className="mt-1 text-xs text-neutral-500">
-                {q.createsReceivable
-                  ? q.paymentTermDays > 0
-                    ? `Cari hesaba işlenir · ${q.paymentTermDays} gün vade`
-                    : "Cari hesaba işlenir · peşin"
-                  : "Sipariş anında ödenir — cari hesaba işlenmez"}
-              </p>
-            )}
-          </div>
+            </div>
 
-          <button
-            type="button"
-            disabled={mutation.isPending || quote.isError || quote.isLoading}
-            onClick={() => mutation.mutate()}
-            className="bg-brand-600 px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
-          >
-            {mutation.isPending ? "Gönderiliyor…" : "Siparişi oluştur"}
-          </button>
-        </div>
+            <ErrorLine error={quote.isError ? quote.error : null} />
+
+            <div className="flex flex-col gap-1 border-t border-line pt-3">
+              <Row
+                label="Ara toplam"
+                value={formatTRY(
+                  priced
+                    ? Number(q.subtotal) - Number(q.discountTotal)
+                    : localTotals.subtotal,
+                )}
+              />
+              {priced && q.volumeDiscount && (
+                // Named, not subtracted: "Ara toplam" above is already net of
+                // it. Showing it as its own deduction row would read as a
+                // second discount the customer never gets.
+                <p className="text-xs text-positive">
+                  Hacim iskontosu — {q.volumeDiscount.tierName} (%
+                  {q.volumeDiscount.percent}), ara toplama dahil: −
+                  {formatTRY(Number(q.volumeDiscount.amount))}
+                </p>
+              )}
+              {priced &&
+                q.promotions.map((p) => (
+                  <Row
+                    key={p.promotionId}
+                    label={`Kampanya: ${p.name}`}
+                    value={`− ${formatTRY(Number(p.amount))}`}
+                    accent
+                  />
+                ))}
+              <Row
+                label="KDV"
+                value={formatTRY(
+                  priced ? Number(q.taxTotal) : localTotals.taxTotal,
+                )}
+              />
+              <Row
+                label="Genel toplam"
+                value={formatTRY(
+                  priced ? Number(q.grandTotal) : localTotals.grandTotal,
+                )}
+                bold
+              />
+              {quote.isFetching && (
+                <p className="text-xs text-ink-faint">Fiyat güncelleniyor…</p>
+              )}
+              {priced && (
+                // What the settlement actually resolved to, straight from the
+                // quote — the buyer should see the vade before ordering, not
+                // discover it on the invoice.
+                <p className="mt-1 text-xs text-ink-faint">
+                  {q.createsReceivable
+                    ? q.paymentTermDays > 0
+                      ? `Cari hesaba işlenir · ${q.paymentTermDays} gün vade`
+                      : "Cari hesaba işlenir · peşin"
+                    : "Sipariş anında ödenir — cari hesaba işlenmez"}
+                </p>
+              )}
+            </div>
+
+            <ErrorLine error={mutation.error} />
+
+            <Button
+              className="w-full"
+              loading={mutation.isPending}
+              disabled={quote.isError || quote.isLoading}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Gönderiliyor…" : "Siparişi oluştur"}
+            </Button>
+          </div>
+        </section>
       )}
     </aside>
+  );
+}
+
+/** Adet kutusunun iki ucundaki düğme — üçü tek bir kutu gibi görünsün diye. */
+function StepButton({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        "flex h-7 w-7 items-center justify-center border border-line text-ink-muted transition-colors hover:bg-subtle hover:text-ink",
+        className,
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -370,22 +415,23 @@ function Row({
 }) {
   return (
     <div
-      className={`flex justify-between gap-2 text-xs ${bold ? "border-t border-neutral-200 pt-1.5 text-sm font-bold dark:border-neutral-800" : ""}`}
+      className={cn(
+        "flex justify-between gap-2 text-xs",
+        bold && "border-t border-line pt-2 text-body-md font-bold text-ink",
+      )}
     >
       <span
-        className={
+        className={cn(
           accent
-            ? "truncate text-emerald-700 dark:text-emerald-400"
+            ? "truncate text-positive"
             : bold
-              ? ""
-              : "text-neutral-500"
-        }
+              ? undefined
+              : "text-ink-muted",
+        )}
       >
         {label}
       </span>
-      <span
-        className={`tech-num ${accent ? "text-emerald-700 dark:text-emerald-400" : ""}`}
-      >
+      <span className={cn("tabular-nums", accent && "text-positive")}>
         {value}
       </span>
     </div>

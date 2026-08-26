@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
 import { PortalNav } from "@/components/portal-nav";
 import { OrdersBoard } from "@/components/orders-board";
+import { PageHeader } from "@/components/ui";
 
 // Company-admin approval surface. COMPANY_ADMIN may approve PENDING_APPROVAL;
 // PENDING_CREDIT still requires a super admin (canApproveCredit=false).
@@ -26,8 +27,11 @@ export default async function ApprovalsPage() {
       companyName={company?.name ?? user.name}
       userName={user.name}
     >
-      <div className="mx-auto max-w-5xl">
-        <h1 className="mb-4 text-lg font-semibold">Sipariş Onayları</h1>
+      <div className="mx-auto max-w-6xl">
+        <PageHeader
+          title="Sipariş Onayları"
+          subtitle="Onay bekleyen siparişleri buradan geçirin ya da reddedin"
+        />
         <OrdersBoard canApproveCredit={isSuper} />
       </div>
     </PortalNav>
