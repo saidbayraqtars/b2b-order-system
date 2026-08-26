@@ -28,7 +28,8 @@ export default function ForbiddenPage({
       <p className="text-neutral-500">
         {perm ? (
           <>
-            Bu sayfa <strong className="text-neutral-700 dark:text-neutral-200">
+            Bu sayfa{" "}
+            <strong className="text-neutral-700 dark:text-neutral-200">
               {PERMISSION_LABELS[perm]}
             </strong>{" "}
             yetkisini gerektiriyor. Hesabınızda bu yetki yok.

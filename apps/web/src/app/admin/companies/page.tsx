@@ -6,7 +6,7 @@ export default async function AdminCompaniesPage() {
   await requirePage(["SUPER_ADMIN"], "companies.view");
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-6xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Firmalar</h1>
         <Link

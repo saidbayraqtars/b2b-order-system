@@ -21,12 +21,17 @@ export function WarehousesPanel() {
 
   const warehouses = useQuery({
     queryKey: ["warehouses"],
-    queryFn: () => apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
+    queryFn: () =>
+      apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
   });
 
   const save = useMutation({
-    mutationFn: (input: { code: string; name: string; isDefault?: boolean; isActive?: boolean }) =>
-      apiPost("/api/admin/warehouses", input),
+    mutationFn: (input: {
+      code: string;
+      name: string;
+      isDefault?: boolean;
+      isActive?: boolean;
+    }) => apiPost("/api/admin/warehouses", input),
     onSuccess: () => {
       setCode("");
       setName("");
@@ -82,7 +87,10 @@ export function WarehousesPanel() {
         ) : (
           <ul className="divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
             {rows.map((w) => (
-              <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+              <li
+                key={w.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-2.5"
+              >
                 <span className="flex flex-wrap items-center gap-2">
                   <strong>{w.name}</strong>
                   <span className="text-neutral-500">{w.code}</span>
@@ -95,7 +103,11 @@ export function WarehousesPanel() {
                       size="sm"
                       variant="secondary"
                       onClick={() =>
-                        save.mutate({ code: w.code, name: w.name, isDefault: true })
+                        save.mutate({
+                          code: w.code,
+                          name: w.name,
+                          isDefault: true,
+                        })
                       }
                     >
                       Varsayılan yap
@@ -105,7 +117,11 @@ export function WarehousesPanel() {
                     size="sm"
                     variant="ghost"
                     onClick={() =>
-                      save.mutate({ code: w.code, name: w.name, isActive: !w.isActive })
+                      save.mutate({
+                        code: w.code,
+                        name: w.name,
+                        isActive: !w.isActive,
+                      })
                     }
                   >
                     {w.isActive ? "Kapat" : "Aç"}

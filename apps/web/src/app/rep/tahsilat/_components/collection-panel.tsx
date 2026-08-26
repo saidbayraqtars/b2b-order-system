@@ -15,7 +15,14 @@ import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CompanyOption } from "@/components/storefront/company-switcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 /**
  * Tekrar anahtarı üretici.
@@ -234,8 +241,8 @@ export function CollectionPanel({
               <span className="text-base font-bold tabular-nums">
                 {formatTRY(parsed)}
               </span>{" "}
-              {COLLECTION_METHOD_LABELS[method].toLocaleLowerCase("tr")} tahsilat
-              işlenecek.
+              {COLLECTION_METHOD_LABELS[method].toLocaleLowerCase("tr")}{" "}
+              tahsilat işlenecek.
             </p>
             {afterBalance !== null && (
               <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
@@ -344,7 +351,12 @@ function PaymentRow({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <span className={cn("tabular-nums", reversed && "line-through opacity-60")}>
+            <span
+              className={cn(
+                "tabular-nums",
+                reversed && "line-through opacity-60",
+              )}
+            >
               {formatTRY(payment.amount)}
             </span>
             {payment.collectionMethod && (
@@ -370,9 +382,7 @@ function PaymentRow({
 
       {open && (
         <div className="mt-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-          <Label htmlFor={`iptal-${payment.id}`}>
-            İptal gerekçesi
-          </Label>
+          <Label htmlFor={`iptal-${payment.id}`}>İptal gerekçesi</Label>
           <TextInput
             id={`iptal-${payment.id}`}
             autoFocus

@@ -19,7 +19,8 @@ export function TermsManager() {
 
   const query = useQuery({
     queryKey: ["admin-payment-terms"],
-    queryFn: () => apiGet<{ terms: PaymentTermRow[] }>("/api/admin/payment-terms"),
+    queryFn: () =>
+      apiGet<{ terms: PaymentTermRow[] }>("/api/admin/payment-terms"),
   });
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["admin-payment-terms"] });
@@ -111,7 +112,9 @@ function TermRow({
   });
   const toggle = useMutation({
     mutationFn: () =>
-      apiPatch(`/api/admin/payment-terms/${term.id}`, { isActive: !term.isActive }),
+      apiPatch(`/api/admin/payment-terms/${term.id}`, {
+        isActive: !term.isActive,
+      }),
     onSuccess: onChanged,
   });
   const remove = useMutation({
@@ -153,8 +156,8 @@ function TermRow({
               {!term.isActive && <Badge tone="neutral">Pasif</Badge>}
             </p>
             <p className="text-neutral-500">
-              {term.days === 0 ? "Peşin" : `${term.days} gün`} · {term.companyCount}{" "}
-              firmaya tanımlı
+              {term.days === 0 ? "Peşin" : `${term.days} gün`} ·{" "}
+              {term.companyCount} firmaya tanımlı
             </p>
           </div>
         )}
@@ -180,7 +183,8 @@ function TermRow({
                   : undefined
               }
               onClick={() => {
-                if (confirm(`"${term.name}" vade tanımı silinsin mi?`)) remove.mutate();
+                if (confirm(`"${term.name}" vade tanımı silinsin mi?`))
+                  remove.mutate();
               }}
             >
               Sil

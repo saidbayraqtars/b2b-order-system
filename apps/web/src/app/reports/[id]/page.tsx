@@ -23,7 +23,7 @@ export default async function ReportPage({
   if (!definition) notFound();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="mx-auto max-w-7xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">{definition.name}</h1>
         {/* Server-built downloads: the file someone saves and the file that

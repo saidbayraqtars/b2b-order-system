@@ -59,7 +59,8 @@ export function TiersManager() {
 
   const query = useQuery({
     queryKey: ["admin-volume-tiers"],
-    queryFn: () => apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
+    queryFn: () =>
+      apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
   });
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ["admin-volume-tiers"] });
@@ -180,7 +181,8 @@ function TierRow({
   });
 
   const save = useMutation({
-    mutationFn: () => apiPatch(`/api/admin/volume-tiers/${tier.id}`, toPayload(draft)),
+    mutationFn: () =>
+      apiPatch(`/api/admin/volume-tiers/${tier.id}`, toPayload(draft)),
     onSuccess: () => {
       setEditing(false);
       onChanged();
@@ -188,7 +190,9 @@ function TierRow({
   });
   const toggle = useMutation({
     mutationFn: () =>
-      apiPatch(`/api/admin/volume-tiers/${tier.id}`, { isActive: !tier.isActive }),
+      apiPatch(`/api/admin/volume-tiers/${tier.id}`, {
+        isActive: !tier.isActive,
+      }),
     onSuccess: onChanged,
   });
   const remove = useMutation({
@@ -249,7 +253,8 @@ function TierRow({
                   : undefined
               }
               onClick={() => {
-                if (confirm(`"${tier.name}" basamağı silinsin mi?`)) remove.mutate();
+                if (confirm(`"${tier.name}" basamağı silinsin mi?`))
+                  remove.mutate();
               }}
             >
               Sil

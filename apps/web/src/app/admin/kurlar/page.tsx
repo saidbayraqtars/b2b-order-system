@@ -8,7 +8,7 @@ export default async function RatesPage() {
   await requirePage(["SUPER_ADMIN"], "pricing.manage");
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
+    <main className="mx-auto max-w-4xl">
       <PageHeader
         title="Döviz kurları"
         subtitle="Dövizle listelenen ürünler bu kurla TL'ye çevrilir; kur siparişte donar"

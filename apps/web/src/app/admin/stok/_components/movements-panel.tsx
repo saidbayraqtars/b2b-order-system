@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { StockCountResult, StockMovementRow, WarehouseRow } from "@repo/services";
+import type {
+  StockCountResult,
+  StockMovementRow,
+  WarehouseRow,
+} from "@repo/services";
 import {
   STOCK_MOVEMENT_SOURCE_LABELS,
   StockMovementSourceEnum,
@@ -10,7 +14,14 @@ import {
   type StockMovementSource,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
 import { VariantPicker } from "./variant-picker";
 
@@ -28,7 +39,8 @@ export function MovementsPanel() {
 
   const warehouses = useQuery({
     queryKey: ["warehouses"],
-    queryFn: () => apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
+    queryFn: () =>
+      apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
   });
 
   const movements = useQuery({
@@ -49,7 +61,9 @@ export function MovementsPanel() {
     void qc.invalidateQueries({ queryKey: ["stock-summary"] });
   };
 
-  const openWarehouses = (warehouses.data?.warehouses ?? []).filter((w) => w.isActive);
+  const openWarehouses = (warehouses.data?.warehouses ?? []).filter(
+    (w) => w.isActive,
+  );
 
   return (
     <Panel
@@ -69,7 +83,9 @@ export function MovementsPanel() {
             <Label>Kaynak</Label>
             <Select
               value={source}
-              onChange={(e) => setSource(e.target.value as StockMovementSource | "")}
+              onChange={(e) =>
+                setSource(e.target.value as StockMovementSource | "")
+              }
               className="w-44"
             >
               <option value="">Tümü</option>
@@ -128,8 +144,10 @@ function MovementRow({
     },
   });
 
-  const byOrder = movement.source === "ORDER" || movement.source === "ORDER_CANCEL";
-  const canReverse = !byOrder && !movement.reversedById && !movement.reversalOfId;
+  const byOrder =
+    movement.source === "ORDER" || movement.source === "ORDER_CANCEL";
+  const canReverse =
+    !byOrder && !movement.reversedById && !movement.reversalOfId;
   const sign = movement.direction === "IN" ? "+" : "−";
   const color =
     movement.direction === "IN"
@@ -181,12 +199,20 @@ function MovementRow({
               >
                 İptal et
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setAsking(false)}
+              >
                 Vazgeç
               </Button>
             </div>
           ) : (
-            <Button size="sm" variant="secondary" onClick={() => setAsking(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setAsking(true)}
+            >
               İptal
             </Button>
           ))}
@@ -209,7 +235,11 @@ function WarehouseField({
   return (
     <label>
       <Label hint="isteğe bağlı">Depo</Label>
-      <Select value={value} onChange={(e) => onChange(e.target.value)} className="w-36">
+      <Select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-36"
+      >
         <option value="">Belirtilmedi</option>
         {warehouses.map((w) => (
           <option key={w.id} value={w.id}>

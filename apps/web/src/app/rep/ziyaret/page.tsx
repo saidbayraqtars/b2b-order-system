@@ -24,16 +24,15 @@ export default async function RepVisitPage({ searchParams }: Props) {
     : null;
 
   return (
-    <div>
-      <RepNav
-        userName={user.name}
-        permissions={user.permissions}
-        current="/rep/ziyaret"
-        companyId={ctx?.companyId}
-        companyName={ctx?.companyName}
-        showCompany
-      />
-      <div className="mx-auto max-w-4xl px-4 pb-10">
+    <RepNav
+      userName={user.name}
+      permissions={user.permissions}
+      current="/rep/ziyaret"
+      companyId={ctx?.companyId}
+      companyName={ctx?.companyName}
+      showCompany
+    >
+      <div className="mx-auto max-w-4xl">
         {/* Gün planı üstte: ekranı açan plasiyerin ilk sorusu "bugün nereye
             gideceğim", "geçmiş ziyaretlerim ne" değil. */}
         <VisitPlan />
@@ -42,6 +41,6 @@ export default async function RepVisitPage({ searchParams }: Props) {
           companyName={ctx?.companyName ?? null}
         />
       </div>
-    </div>
+    </RepNav>
   );
 }

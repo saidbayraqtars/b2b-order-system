@@ -19,7 +19,14 @@ import {
   Th,
   THead,
 } from "@/components/ui";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // Kur girişi.
 //
@@ -107,7 +114,9 @@ export function RateManager() {
                   {r.validFrom ? trDateTime(r.validFrom) : ""}
                 </div>
                 {r.staleHours !== null && r.staleHours >= 24 ? (
-                  <Badge tone="warning">{Math.floor(r.staleHours / 24)} gün önce</Badge>
+                  <Badge tone="warning">
+                    {Math.floor(r.staleHours / 24)} gün önce
+                  </Badge>
                 ) : null}
               </>
             )}

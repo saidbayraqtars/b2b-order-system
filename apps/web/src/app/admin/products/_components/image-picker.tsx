@@ -17,7 +17,10 @@ interface Props {
  * have to re-upload them to be usable here.
  */
 export function ImagePicker({ value, onChange }: Props) {
-  const urls = value.split("\n").map((s) => s.trim()).filter(Boolean);
+  const urls = value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +46,9 @@ export function ImagePicker({ value, onChange }: Props) {
       }).catch(() => null);
 
       if (!res?.ok) {
-        const detail = (await res?.json().catch(() => null)) as
-          | { error?: string }
-          | null;
+        const detail = (await res?.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         setError(detail?.error ?? `${file.name} yüklenemedi`);
         break;
       }

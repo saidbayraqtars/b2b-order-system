@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Toptan Sipariş ve Saha Sistemi — Kaanlar Gıda</title>
+<link rel="stylesheet" href="base.css">
+<style>
+/* ---------- kapak ---------- */
+.cover{ background:var(--ink); color:#F4F2ED; padding:0; display:block; }
+.cover-in{ position:absolute; inset:0; padding:20mm 16mm 14mm; display:flex; flex-direction:column; }
+.cover .eyebrow{ color:#9AA39F; }
+.cover-top{ display:flex; justify-content:space-between; align-items:baseline;
+  padding-bottom:4mm; border-bottom:.5pt solid rgba(244,242,237,.22); }
+.cover .kicker{ font-family:"IBM Plex Mono",monospace; font-size:7.4pt; letter-spacing:.19em;
+  text-transform:uppercase; color:#7FD6B6; margin-top:auto; display:block; margin-bottom:6mm; }
+.cover h1{
+  font-family:"IBM Plex Serif",Georgia,serif; font-weight:400;
+  font-size:35pt; line-height:1.15; letter-spacing:-.025em;
+  margin-top:0; max-width:20ch; color:#FFFDF8;
+}
+.cover h1 b{ font-weight:600; color:#7FD6B6; }
+.cover .lede{ margin-top:9mm; max-width:56ch; font-size:10.4pt; line-height:1.62; color:#C6CCC9; }
+.cover .lede strong{ color:#FFFDF8; font-weight:500; }
+.cover-figs{ margin-top:13mm; display:grid; grid-template-columns:repeat(4,1fr);
+  border-top:.75pt solid rgba(244,242,237,.28); }
+.cover-figs > div{ padding:5mm 5mm 0 0; border-right:.5pt solid rgba(244,242,237,.14); }
+.cover-figs > div:last-child{ border-right:0; }
+.cover-figs > div + div{ padding-left:5mm; }
+.cover-figs b{ display:block; font-family:"IBM Plex Mono",monospace; font-size:15pt;
+  font-weight:600; color:#7FD6B6; line-height:1; letter-spacing:-.02em; }
+.cover-figs span{ display:block; margin-top:2.2mm; font-size:8pt; color:#9AA39F; line-height:1.35; }
+.cover-foot{ margin-top:9mm; padding-top:4mm; border-top:.5pt solid rgba(244,242,237,.18);
+  display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace;
+  font-size:7pt; letter-spacing:.1em; color:#8A928E; }
+
+/* ---------- gün akışı ---------- */
+.day{ border-top:1pt solid var(--ink); flex:none; }
+.row{ display:grid; grid-template-columns:26mm 1fr; gap:6mm;
+  padding:4.6mm 0; border-bottom:.5pt solid var(--rule-2); }
+.row .t{ font-family:"IBM Plex Mono",monospace; font-size:8.6pt; font-weight:600; color:var(--ink); letter-spacing:-.01em; }
+.row .t span{ display:block; font-size:6.6pt; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); margin-top:1.4mm; }
+.row .b h4{ font-size:10.4pt; margin-bottom:1.8mm; letter-spacing:-.015em; }
+.row .b p{ color:var(--ink-2); font-size:9.1pt; line-height:1.47; max-width:78ch; }
+.day.after .t{ color:var(--accent); }
+.day.after .row{ background:linear-gradient(to right, var(--accent-soft) 0 26mm, transparent 26mm); }
+
+.verdict{ margin-top:6mm; padding:6mm 6.5mm; background:var(--ink); color:#F0EEE9; flex:none; }
+.verdict .lbl{ font-family:"IBM Plex Mono",monospace; font-size:6.8pt; letter-spacing:.16em;
+  text-transform:uppercase; color:#8FBFAE; display:block; margin-bottom:2.5mm; }
+.verdict p{ font-family:"IBM Plex Serif",Georgia,serif; font-size:11pt; line-height:1.48; color:#FFFDF8; }
+.verdict p + p{ margin-top:2.5mm; font-size:9.4pt; color:#B9C0BC; font-family:"IBM Plex Sans",sans-serif; }
+
+/* ---------- üç kapı ---------- */
+.doors{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; border-top:1pt solid var(--ink); }
+.doors > div{ padding:5mm 5mm 5mm 0; border-right:.5pt solid var(--rule-2); border-bottom:.5pt solid var(--rule-2); }
+.doors > div:last-child{ border-right:0; }
+.doors > div + div{ padding-left:5mm; }
+.doors .n{ font-family:"IBM Plex Mono",monospace; font-size:6.6pt; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--signal); display:block; margin-bottom:2mm; }
+.doors h4{ font-size:11.5pt; font-family:"IBM Plex Serif",Georgia,serif; margin-bottom:2mm; }
+.doors p{ font-size:8.9pt; color:var(--ink-2); line-height:1.45; }
+
+/* ---------- adımlar ---------- */
+.steps{ border-top:1pt solid var(--ink); }
+.steps .st{ display:grid; grid-template-columns:13mm 1fr 30mm; gap:5mm; align-items:baseline;
+  padding:4.2mm 0; border-bottom:.5pt solid var(--rule-2); }
+.steps .st .n{ font-family:"IBM Plex Mono",monospace; font-size:12pt; font-weight:600; color:var(--accent); line-height:1; }
+.steps .st h4{ font-size:10.2pt; margin-bottom:1.4mm; }
+.steps .st p{ font-size:8.9pt; color:var(--ink-2); line-height:1.45; }
+.steps .st .w{ font-family:"IBM Plex Mono",monospace; font-size:7.6pt; color:var(--ink-3);
+  text-align:right; letter-spacing:.04em; }
+
+/* ---------- SSS ---------- */
+.qa{ border-top:1pt solid var(--ink); }
+.qa .q{ padding:4.2mm 0; border-bottom:.5pt solid var(--rule-2); }
+.qa .q h4{ font-size:10pt; margin-bottom:1.7mm; font-family:"IBM Plex Serif",Georgia,serif; }
+.qa .q h4::before{ content:"— "; color:var(--signal); }
+.qa .q p{ font-size:9pt; color:var(--ink-2); line-height:1.48; padding-left:4.5mm; }
+
+.close{ margin-top:auto; padding:7mm 7mm; background:var(--accent); color:#F1F7F4; flex:none; }
+.close h3{ font-family:"IBM Plex Serif",Georgia,serif; font-size:14.5pt; line-height:1.25;
+  color:#FFFFFF; max-width:34ch; font-weight:400; }
+.close p{ margin-top:3.5mm; font-size:9.4pt; color:#C5DDD4; max-width:64ch; line-height:1.5; }
+.close .sig{ margin-top:6mm; padding-top:4mm; border-top:.5pt solid rgba(255,255,255,.28);
+  display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace;
+  font-size:7.6pt; letter-spacing:.06em; color:#DCEAE4; }
+
+.push{ margin-top:auto !important; }
+.tight .sec{ margin-bottom:5mm; }
+.slim .sec{ margin-bottom:6mm; }
+.slim .card{ padding:3.8mm 6mm 4.1mm 0; }
+.slim .grid > .card:nth-child(odd){ padding-right:7mm; }
+.slim .card li{ margin-bottom:1.1mm; }
+.slim .gain{ margin-top:4.5mm; padding:4mm 6mm; }
+.tight .steps .st{ padding:1.9mm 0; }
+.tight .steps .st p{ font-size:8.5pt; line-height:1.42; }
+.tight .steps .st h4{ font-size:9.8pt; margin-bottom:1.1mm; }
+.tight .qa .q{ padding:2.1mm 0; }
+.tight .qa .q p{ font-size:8.6pt; line-height:1.44; }
+.tight .qa .q h4{ font-size:9.5pt; }
+.tight .qa .q h4{ margin-bottom:1.3mm; }
+.back-list{ margin-top:12mm; display:grid; grid-template-columns:1fr 1fr; gap:0;
+  border-top:.75pt solid rgba(244,242,237,.28); }
+.back-list > div{ display:flex; gap:4mm; align-items:baseline; padding:3.6mm 6mm 3.6mm 0;
+  border-bottom:.5pt solid rgba(244,242,237,.13); }
+.back-list > div:nth-child(even){ padding-left:6mm; border-left:.5pt solid rgba(244,242,237,.13); }
+.back-list b{ font-family:"IBM Plex Mono",monospace; font-size:8.4pt; color:#7FD6B6; flex:none; }
+.back-list span{ font-size:8.9pt; color:#C6CCC9; line-height:1.4; }
+.pill{ display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:6.6pt;
+  letter-spacing:.13em; text-transform:uppercase; padding:1.1mm 2.4mm; margin-right:1.5mm;
+  background:var(--warm-2); color:var(--ink-2); }
+.strip{ display:flex; flex-wrap:wrap; gap:1.5mm; margin-top:5mm; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. KAPAK ============ -->
+<section class="page cover">
+  <div class="cover-in">
+    <div class="cover-top">
+      <span class="eyebrow">Bayraktar Yazılım · Kurumsal Yazılım</span>
+      <span class="eyebrow">Kaanlar Gıda · Samsun Bölge Müdürlüğü</span>
+    </div>
+
+    <span class="kicker">Toptan Sipariş ve Saha Satış Sistemi</span>
+    <h1>Bayiniz siparişini kendi verir.<br>Deponuz doğru kasayı<br><b>kendi seçer.</b></h1>
+
+    <p class="lede">Şarküteride raf ömrü <strong>45–75 gün</strong>. Sahada plasiyeriniz var,
+    bayi ağınız büyüyor, Vega merkezde duruyor ve ona dokunulmasını kimse istemiyor.
+    Bu sistem tam bu tabloya kuruldu: <strong>Vega yerinde kalır</strong>, sistem onun
+    bıraktığı boşluğu doldurur — bayi vitrini, saha satışı ve dağıtım.</p>
+
+    <div class="cover-figs">
+      <div><b>FEFO</b><span>SKT'si yakın mal her zaman önce çıkar</span></div>
+      <div><b>7/24</b><span>Bayi gece yarısı da sipariş geçer</span></div>
+      <div><b>10 gün</b><span>Sözleşmeden canlı kullanıma</span></div>
+      <div><b>0</b><span>Vega'da değişen tek satır yok</span></div>
+    </div>
+
+    <div class="cover-foot">
+      <span>Toptan Sipariş ve Saha Satış Sistemi</span>
+      <span>Ağustos 2026 · Teklif eki</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. BUGÜN ============ -->
+<section class="page">
+  <div class="runner">
+    <span class="eyebrow">Durum</span>
+    <span class="eyebrow">Kaanlar Gıda · Samsun</span>
+  </div>
+
+  <div class="sec">
+    <div class="no">01</div>
+    <div>
+      <h2 class="serif">Bugün bir gün nasıl geçiyor</h2>
+      <p class="lede">Aşağıdakilerin hiçbiri beceriksizlik değil; kimse yanlış yapmıyor.
+      Hepsi tek bir sebepten oluyor: <strong>bilgi tek defterde durmuyor.</strong>
+      Depoda bir yerde, plasiyerin cebinde bir yerde, muhasebede bir yerde.</p>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="row">
+      <div class="t">08:20<span>Depo</span></div>
+      <div class="b">
+        <h4>Hangi kasa çıkacak — depocunun hafızasına kalıyor</h4>
+        <p>Sevkiyat listesi çıkar, depocu rafa bakar. İki parti var, hangisinin tarihi daha
+        yakın? Öndeki kasayı alır, çünkü öndedir. Arkadaki kasa bir hafta daha bekler.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">10:40<span>Telefon</span></div>
+      <div class="b">
+        <h4>Sipariş hattan geçiyor, hat tıkanıyor</h4>
+        <p>Bayi arar, kalemleri söyler. Adet yanlış anlaşılır, iskonto "her zamanki gibi"
+        kalır, bir kalem unutulur. Hattaki kişi katalogda ürünü ararken bayi bekler.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">13:00<span>Saha</span></div>
+      <div class="b">
+        <h4>Bakiye kapıda kafadan söyleniyor</h4>
+        <p>Plasiyer üç firmadan tahsilat aldı. Müşteri "benim borcum ne kadar" diye sordu,
+        cevabı hafızadan verdi. Fişler cebinde; akşam büroya girecek.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">16:20<span>Muhasebe</span></div>
+      <div class="b">
+        <h4>Aynı para iki kez isteniyor</h4>
+        <p>Ofisten havaleyle işlenmiş bir ödeme, sahadan bir kez daha giriliyor — ya da
+        girilmiş bir tahsilat müşteriden ikinci kez isteniyor. İkisi de iki gün sonra çıkıyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">18:45<span>Vardiya sonu</span></div>
+      <div class="b">
+        <h4>Plasiyer aynı günü ikinci kez yazıyor</h4>
+        <p>Büroya döner, defteri açar, sabahtan beri yaptığı her şeyi bir kez daha girer.
+        Sahada geçirdiği saatin üstüne, ofiste bir saat daha.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">Ay sonu<span>Kapanış</span></div>
+      <div class="b">
+        <h4>Cevaplar üç ayrı yerde</h4>
+        <p>"Bu mal kime gitti", "bu para ne zaman girdi", "bu iskonto neden verildi" —
+        biri Excel'de, biri defterde, biri de birinin hatırladığı kadar.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <span class="lbl">En pahalı soru</span>
+    <p>SKT'si geçmiş mal depodan geri geldiğinde, o kasa orada neden bekledi?</p>
+    <p>Bu sorunun cevabı yok — çünkü kimse yanlış yapmadı. Sadece kimse bakmıyordu.
+    Şarküteride bekleyen mal bekleyen mal değildir; <strong style="color:#F0EEE9">eriyen paradır.</strong></p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>02</span></div>
+</section>
+
+<!-- ============ 3. AYNI GÜN, SİSTEMLE ============ -->
+<section class="page">
+  <div class="runner">
+    <span class="eyebrow">Karşılık</span>
+    <span class="eyebrow">Aynı gün · sistem kurulduktan sonra</span>
+  </div>
+
+  <div class="sec">
+    <div class="no">02</div>
+    <div>
+      <h2 class="serif">Aynı gün, tek defterle</h2>
+      <p class="lede">Aşağıdaki gün, bir önceki sayfadaki günün aynısı. Aynı bayiler, aynı
+      plasiyerler, aynı depo. Değişen tek şey: <strong>her karar, verildiği anda bir yere yazılıyor</strong>
+      — ve herkes aynı yeri okuyor.</p>
+    </div>
+  </div>
+
+  <div class="day after">
+    <div class="row">
+      <div class="t">01:40<span>Bayi</span></div>
+      <div class="b">
+        <h4>Sipariş gece yarısı çoktan girilmiş</h4>
+        <p>Bayi kendi ekranından, kendi fiyatıyla, kendi iskontosu ve limitiyle siparişini
+        geçti. Kimse aranmadı, kimse mesai beklemedi. Sabah sipariş listede hazır duruyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">08:20<span>Depo</span></div>
+      <div class="b">
+        <h4>Liste partilere bölünmüş çıkıyor</h4>
+        <p>Depocu parti seçmiyor; hangi kasayı alacağı listede yazıyor. SKT'si en yakın olan
+        her zaman ilk sırada. Bloke ve tarihi geçmiş parti sıraya hiç girmiyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">10:40<span>Ofis</span></div>
+      <div class="b">
+        <h4>Telefon sipariş için çalmıyor</h4>
+        <p>Sipariş ekranda. Onay gerektiren varsa yöneticiye bildirim düşmüş, limiti aşan
+        sipariş sessizce geçmemiş, karara düşmüş. Ofis sipariş yazmıyor — sipariş yönetiyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">13:00<span>Saha</span></div>
+      <div class="b">
+        <h4>Bakiye kapıda ekranda</h4>
+        <p>Plasiyer tahsilatı orada giriyor. Kaydetmeden önce ekran soruyor:
+        <strong>"Ak Bayi'ye 12.500 ₺ · bakiye 84.300 → 71.800"</strong>. Onaylıyor, bakiye o an düşüyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">16:20<span>Muhasebe</span></div>
+      <div class="b">
+        <h4>Ofisin işlediği ödeme sahada da görünüyor</h4>
+        <p>Liste merkezden girilen ödemeleri de gösteriyor. Aynı para ikinci kez istenmiyor;
+        şebeke koptuğunda da aynı tahsilat iki kez yazılmıyor.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="t">18:45<span>Vardiya sonu</span></div>
+      <div class="b">
+        <h4>Plasiyer büroya dönmüyor</h4>
+        <p>Girdiği her şey zaten sistemde. Karnesi — ziyaret ve ciro, hedefin yüzde kaçı —
+        kendi telefonunda. Akşam ofiste geçen o bir saat ortadan kalkıyor.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="gain push">
+    <span class="lbl">Ay sonu</span>
+    <p>Kimin nerede olduğu, ne sattığı, ne tahsil ettiği ve hangi malın hangi bayiye gittiği
+    gün gün okunuyor. Mutabakat bir arşiv kazısı olmaktan çıkıyor.</p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>03</span></div>
+</section>
+
+<!-- ============ 4. ERİYEN PARA ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 01</span><span class="eyebrow">Parti · SKT · FEFO</span></div>
+
+  <div class="sec">
+    <div class="no">03</div>
+    <div>
+      <h2 class="serif">Eriyen parayı erken görmek</h2>
+      <p class="lede">Bir kasa iki hafta fazla beklerse indirimle çıkar, dört hafta beklerse
+      hiç çıkmaz. Bu sistemin gıdadaki asıl işi şu: <strong>"hangi malı önce çıkaralım" kararını
+      insanın hafızasından alıp defterin içine koymak.</strong></p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Parti defteri</span>
+      <h3>Her kasa hangi partiden geldi</h3>
+      <ul>
+        <li>Parti kodu, üretim tarihi, son kullanma tarihi ve o partiden kalan adet</li>
+        <li><strong>Kod yoksa sistem üretir</strong> — dökme malın kutusunda kod olmaz, SKT'si olur</li>
+        <li>SKT boş bırakılırsa raf ömründen hesaplanır; depocu her kutuya iki tarih yazmaz</li>
+        <li>Aynı koda ikinci giriş yeni parti açmaz, üstüne ekler ve ilk tarihi ezmez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Sevkiyat</span>
+      <h3>Çıkış sırasını sistem verir, depocu değil</h3>
+      <ul>
+        <li>Çıkış partilere otomatik bölünür; <strong>depocu parti seçmez</strong></li>
+        <li>FIFO değil <strong>FEFO</strong>: depoya önce giren, her zaman önce bozulan değildir</li>
+        <li>İnsan seçseydi SKT'si yakın mal depoda kalır, bir gün fire olarak geri gelirdi</li>
+        <li>Sipariş iptali malı çıktığı partiye geri verir</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Uyarı</span>
+      <h3>Sürpriz olmaktan çıkıp karar olur</h3>
+      <ul>
+        <li>Uyarı eşiği kalem bazlı: <strong>sütte 3 gün, konservede 90 gün</strong> aynı şey değil</li>
+        <li>SKT'si geçen kırmızı, eşiğe giren sarı satır olarak ekranda durur</li>
+        <li>Özet süzgeçten bağımsız — filtre uyarıyı gizleyemez</li>
+        <li>Eşiğe düşen malı kampanyaya bağlamak artık zamanında verilen bir karar</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">İzlenebilirlik</span>
+      <h3>Geri çağırma tek sorguda biter</h3>
+      <ul>
+        <li>Üretici bir partiyi geri çağırdığında, <strong>o partinin hangi bayiye kaç adet
+        gittiği</strong> defterden okunur</li>
+        <li>Her stok hareketi partiyi ve siparişi birlikte taşır</li>
+        <li>Şüpheli soğuk zincir, karantina ya da numune: parti bloke edilir — satılamaz, sevk edilemez</li>
+        <li>Bloke ve tarihi geçmiş parti sevkiyat sırasına hiç girmez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Çift birim</span>
+      <h3>Kasa satılır, kilo konuşulur</h3>
+      <ul>
+        <li>1 kasa = 12,5 kg tanımlanır; müşteri kasa sipariş eder, fiyat kilodan yürür</li>
+        <li>Belgede <strong>"84,50 ₺/kg"</strong> satırı basılır — pazarlığın yapıldığı sayı budur</li>
+        <li>Çarpan siparişe donar: yarın değişse dünkü faturanın açıklaması değişmez</li>
+        <li>Tartılarak sevk edilen mal (peynir, et, zeytin) işaretlenir, belgeye not düşer</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Fire &amp; sayım</span>
+      <h3>"Defter yanılmış" ile "mal gitti" ayrı iki sayı</h3>
+      <ul>
+        <li>Gıdada yıl sonunda bu ikisi ayrı ayrı sorulur; sistem ayrı ayrı tutar</li>
+        <li>Sayım sayılan adedi ister, farkı kendisi hesaplar</li>
+        <li>Fark sıfırsa hiçbir şey yazılmaz — defter gereksiz satırla şişmez</li>
+        <li>Yanlış kayıt silinmez, ters kayıtla düzeltilir; geçmiş her zaman okunabilir</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="gain">
+    <span class="lbl">Kazanç</span>
+    <p>Fire, yıl sonunda öğrenilen bir rakam olmaktan çıkıp <strong>haftalık bakılan bir liste</strong>
+    oluyor. İndirim kararı malın değeri hâlâ üstündeyken veriliyor, sıfırlandıktan sonra değil.</p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>04</span></div>
+</section>
+
+<!-- ============ 5. PLASİYER ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 02</span><span class="eyebrow">Saha satışı</span></div>
+
+  <div class="sec">
+    <div class="no">04</div>
+    <div>
+      <h2 class="serif">Plasiyerin bütün günü tek uygulamada</h2>
+      <p class="lede">Portföy, ziyaret, sipariş, tahsilat ve karne — hepsi telefonda, hepsi
+      kapının önünde. <strong>Şebeke çekmese de.</strong> Akşam büroya dönüp günü ikinci kez
+      yazmasına gerek kalmıyor.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Portföy</span>
+      <h3>Gün, kimi göreceğiyle başlar</h3>
+      <ul>
+        <li>Portföy alacakları, vadesi geçenler, son 30 günün en iyileri</li>
+        <li>Her firmanın satırında tek dokunuşla <strong>Sipariş · Tahsilat · Ziyaret</strong></li>
+        <li>Bakiye ve kullanılabilir limit listede görünür — müşterinin kapısında hesap yapılmaz</li>
+        <li>Plasiyer yalnızca kendi portföyünü görür; kapsam sunucuda belirlenir</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Ziyaret</span>
+      <h3>Kapıda GPS ile giriş–çıkış</h3>
+      <ul>
+        <li>Konumlu ziyaret, not ve süre; kaydın <strong>sahadan mı ofisten mi</strong> girildiği
+        sunucuda damgalanır</li>
+        <li>Aynı anda tek açık ziyaret — üst üste binen kayıt unutulmuş bir çıkıştır</li>
+        <li>Süre raporda plasiyer ve müşteri bazında karşılaştırılır</li>
+        <li>Konum alınamazsa ziyaret konumsuz kaydedilir; plasiyer kapıda bloke olmaz</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Sipariş</span>
+      <h3>Müşteri adına, müşterinin fiyatıyla</h3>
+      <ul>
+        <li>Katalog o müşterinin fiyatlarıyla açılır; iskonto, kampanya ve vade otomatik gelir</li>
+        <li>Üstte <strong>"X firması adına sipariş giriyorsunuz"</strong> + kullanılabilir limit</li>
+        <li>Limit doluysa uyarı siparişten <strong>önce</strong> çıkar, sonra değil</li>
+        <li>Barkodu okut, ürün koli katına yuvarlanmış adetle sepete girsin</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Tahsilat</span>
+      <h3>Para kapıda alınır, bakiye anında düşer</h3>
+      <ul>
+        <li>Nakit · havale · çek · senet · kart; çek künyesi (banka, seri, keşideci, vade) sahada girilir</li>
+        <li>Kaydetmeden önce onay adımı: <strong>"X firmasına Y ₺, bakiye A → B"</strong></li>
+        <li>Şebeke koparsa aynı tahsilat iki kez yazılmaz; kayıt kuyrukta bekler</li>
+        <li>Liste ofisin girdiklerini de gösterir — merkezden işlenmiş ödeme tekrar istenmez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Karne</span>
+      <h3>Hedef ve gerçekleşen, aynı ekranda</h3>
+      <ul>
+        <li>İki ölçü: ziyaret noktası ve ciro; günlük, haftalık, aylık, yıllık</li>
+        <li>Yanında dönemin yüzde kaçı geçti yazar: <strong>ayın 3'ünde %10 iyi, 28'inde felakettir</strong></li>
+        <li>Gerçekleşen hareketlerden hesaplanır — iptal edilen sipariş karneyi şişirmez</li>
+        <li>Plasiyer kendi karnesini görür; kıyaslamalı rapor yönetimde kalır</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kapsama alanı</span>
+      <h3>Şebeke yokken de çalışır</h3>
+      <ul>
+        <li>Müşteri listesi, katalog ve bakiye telefonda saklı: <strong>ekranlar boş açılmaz</strong></li>
+        <li>Tahsilat, ziyaret ve teslim onayı kuyruğa girer, hat gelince kendiliğinden gider</li>
+        <li>Uygulama kapanıp açılsa da kuyruk durur; "N kayıt bekliyor" şeridi görünür</li>
+        <li>Sipariş her zaman canlı fiyattan geçer — müşteriye okunan tutar tutmalıdır</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="gain">
+    <span class="lbl">Kazanç</span>
+    <p>Plasiyer başına <strong>günde bir saat</strong> ofis işi ortadan kalkıyor; o saat sahaya
+    dönüyor. Tahsilat kapıda kaydedildiği için de ay sonu farkı bir hafta değil, aynı gün görülüyor.</p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>05</span></div>
+</section>
+
+<!-- ============ 6. BAYİ + TELEFON ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 03</span><span class="eyebrow">Bayi portalı · Android</span></div>
+
+  <div class="sec">
+    <div class="no">05</div>
+    <div>
+      <h2 class="serif">Bayi siparişini kendi verir</h2>
+      <p class="lede">Gece yarısı, hafta sonu ya da plasiyer başka ilçedeyken. Telefonla alınan
+      sipariş, yanlış anlaşılan adet ve unutulan not ortadan kalkıyor —
+      <strong>ve ofisiniz sipariş yazmayı bırakıp sipariş yönetmeye başlıyor.</strong></p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Vitrin</span>
+      <h3>Herkes yalnızca kendi fiyatını görür</h3>
+      <ul>
+        <li>Bayinin gördüğü fiyat <strong>kendi anlaşmasıdır</strong>: grup fiyatı, iskontosu ve
+        kampanyası uygulanmış hâlde</li>
+        <li>Fiyat sunucuda çözülür; tarayıcıya ham fiyat listesi hiç gitmez</li>
+        <li>Ağaç kategoriler; ad · marka · SKU · <strong>barkod</strong> araması — elindeki
+        kutunun barkodunu yazıp bulur</li>
+        <li>Stok durumu, koli içi adet ve minimum sipariş satırda görünür</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Sepet</span>
+      <h3>Sepet cihazda değil, hesapta</h3>
+      <ul>
+        <li>Telefonda kurulan sepet masaüstünde açık kalır; sekme kapanınca kaybolmaz</li>
+        <li>Fiyat her açılışta yeniden çözülür — sepet geçen haftanın fiyatını taşımaz</li>
+        <li>Plasiyer üç müşteri için üç ayrı sepet taşır, birbirine karışmaz</li>
+        <li>Sipariş verilince sepet boşalır: ikinci sekme aynı siparişi tekrarlayamaz</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Onay</span>
+      <h3>Limit ve onay kuralları sizde kalır</h3>
+      <ul>
+        <li>İsteyen firmada personelin siparişi <strong>kendi yöneticisinin</strong> onayına düşer</li>
+        <li>Kredi limiti aşılırsa sipariş bekler; geçme kararı satıcı tarafında kalır</li>
+        <li>Her durum geçişi kim, ne zaman, hangi notla yaptı — silinemez bir geçmişte durur</li>
+        <li>Sipariş, durum ve fatura e-postası ilgili kişilere kendiliğinden gider</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Vitrin yönetimi</span>
+      <h3>Duyuru ve düzen sizin elinizde</h3>
+      <ul>
+        <li>Kayan şerit, kapanabilir bant ya da girişte açılan pencere ile kampanya duyurusu</li>
+        <li>Hedefleme gerçek: <strong>"yalnızca bayilere"</strong> duyuru başka gruba hiç gitmez</li>
+        <li>Blokların sırası ekrandan değişir — kampanya bandını yukarı almak için kimse aranmaz</li>
+        <li>Logo, unvan ve marka dosyaları sizin; belgeler sizin başlığınızla çıkar</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="eyebrow" style="margin-top:7mm;margin-bottom:3mm">Android uygulaması — kim giriyorsa ona göre açılıyor</p>
+  <div class="doors">
+    <div>
+      <span class="n">Giriş 1</span>
+      <h4>Plasiyer</h4>
+      <p>Müşterilerim → katalog, sepet, sipariş, ekstre, ziyaret planı, tahsilat, hedefler.</p>
+    </div>
+    <div>
+      <span class="n">Giriş 2</span>
+      <h4>Bayi</h4>
+      <p>Doğrudan kendi firmasına düşer: duyurular, cari özet, katalog, sipariş, ekstre.</p>
+    </div>
+    <div>
+      <span class="n">Giriş 3</span>
+      <h4>Kurye</h4>
+      <p>Tek ekran: teslimat listesi, yol tarifi, arama, teslim onayı. <strong>Fiyat ve cari yok.</strong></p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Uygulama elden kurulur.</strong> APK doğrudan telefona iner, mağaza onayı beklenmez.
+    Düzeltmeler uzaktan gider — kimse tek tek telefon toplamaz. Sunucu adresi cihaz ayarıdır:
+    ofis değişse de uygulama yeniden derlenmez.
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>06</span></div>
+</section>
+
+<!-- ============ 7. FİYAT & KAMPANYA ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 04</span><span class="eyebrow">Fiyat · iskonto · kampanya</span></div>
+
+  <div class="sec">
+    <div class="no">06</div>
+    <div>
+      <h2 class="serif">Bir müşterinin neden o fiyatı gördüğü her zaman açıklanabilir</h2>
+      <p class="lede">Dört katman üst üste biner ve <strong>sırası sabittir.</strong> Kampanya kurmak
+      için kimse aranmaz, kod yazılmaz: ekrandan tanımlanır, ertesi sabah yürürlüğe girer.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th style="width:34mm">Katman</th><th>Ne yapar</th><th style="width:32mm">Nerede tanımlanır</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Grup + adet<br>kademesi</td><td>Bayi, toptancı ve zincir market ayrı fiyat listesi görür; adet arttıkça kademe düşer.</td><td>Katalog</td></tr>
+      <tr><td class="k">Firma iskontosu</td><td>Pazarlıkla verilen oran. Ürün bazlı iskonto kategori bazlıyı ezer; yüzde ya da sabit tutar.</td><td>Firma kartı</td></tr>
+      <tr><td class="k">Hacim merdiveni</td><td>Cirodan kazanılan oran: "son 12 ayda 500.000 ₺ alana %5". Her firma hak ettiği en yüksek oranı alır.</td><td>Genel merdiven</td></tr>
+      <tr><td class="k">Kampanya</td><td>Koşul + aksiyon. Öncelik sırasıyla, bileşik olarak, satır bazında uygulanır.</td><td>Kampanya kartı</td></tr>
+      <tr><td class="k">Çift birim</td><td>Kasa satılır, kilo konuşulur: çarpan fiyatlamanın girişinde uygulanır, iskonto kilo üzerinden yürür.</td><td>Ürün kartı</td></tr>
+      <tr><td class="k">Döviz</td><td>Dövizli liste fiyatı TCMB kuruyla TL'ye çevrilir; kur siparişe donar ve faturaya basılır.</td><td>Ürün kartı</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid" style="margin-top:7mm">
+    <div class="card">
+      <span class="tag">Kampanya</span>
+      <h3>Koşulu siz kurarsınız, kod yazılmaz</h3>
+      <ul>
+        <li>Koşullar: sepet tutarı, adet (kategori/ürün filtreli), müşteri grubu, firma, ödeme yöntemi, ilk sipariş</li>
+        <li>Aksiyonlar: yüzde, adet başına tutar, sipariş başına sabit tutar, ücretsiz kargo</li>
+        <li>Kullanılmış kampanya silinmez, pasife alınır — geçmiş siparişler neden ucuzladığını kaybetmez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Hediye</span>
+      <h3>X alana Y bedava — kademeli</h3>
+      <ul>
+        <li>"Her 10 adette 1", ya da merdiven: 10 alana 1, 50 alana 6</li>
+        <li>Merdiven basamak değiştirir, toplanmaz — <strong>müşteriyi 40'tan 50'ye çıkaran araç budur</strong></li>
+        <li>Hediye faturada değeriyle görünür ve sıfırlanır; bedelsiz mal muhasebede kaybolmaz</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kupon &amp; kota</span>
+      <h3>Kampanyanın sınırı sizde</h3>
+      <ul>
+        <li>Kupon kodu, tarih penceresi, toplam kota ve firma başına kota</li>
+        <li>Öncelik sırası ve "bu kampanya tektir" işareti</li>
+        <li>Her kampanyanın kaç siparişte kullanıldığı ve ne kadar indirim verdiği ekranda</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Ödeme &amp; vade</span>
+      <h3>Beş yöntem, tek kural</h3>
+      <ul>
+        <li>Açık hesap · çek · havale · nakit · kredi kartı</li>
+        <li>Vade isimli tanım ("30 gün", "60 gün"); hangi müşteriye hangisinin sunulacağı firma kartında</li>
+        <li><strong>Bayi kendi kafasına göre vade seçemez;</strong> menü satıcıyı da bağlar</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>07</span></div>
+</section>
+
+<!-- ============ 8. PARA ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 05</span><span class="eyebrow">Cari · kasa · çek · risk</span></div>
+
+  <div class="sec">
+    <div class="no">07</div>
+    <div>
+      <h2 class="serif">Paranın nerede olduğu tek ekranda</h2>
+      <p class="lede">İki ayrı defter, iki ayrı soru: <strong>müşteri ne kadar borçlu</strong>, ve
+      <strong>bugün kasaya ne girdi.</strong> İkisi karışmaz, ikisi de gün içinde okunur.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Cari defter</span>
+      <h3>Ekstre ve yaşlandırma</h3>
+      <ul>
+        <li>Tarih aralıklı ekstre: açılış bakiyesi, satır satır yürüyen bakiye, kapanış</li>
+        <li>Tahsilat en eski borçtan mahsup edilir — açık hesap mutabakatı ülkemizde böyle yapılır</li>
+        <li>Kovalar: vadesi gelmemiş · 1–30 · 31–90 · 90+ gün; <strong>hangi müşteride ne kadar para
+        yattığı tek ekranda</strong></li>
+        <li>Yazdırılabilir ekstre ve Türkçe Excel'in sihirbaz sormadan açtığı dosya</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kasa &amp; banka</span>
+      <h3>Bugün kasaya ne girdi</h3>
+      <ul>
+        <li>Kasa, banka hesabı ve POS ayrı ayrı; kart parası banka satırına karışmaz</li>
+        <li>Gün sonu: toplam giriş, çıkış, net ve hesaba göre kırılım</li>
+        <li>Hangi ödeme yönteminin hangi hesaba düşeceği önceden tanımlanır</li>
+        <li>Kasadan bankaya yatırma iki bacaklı kayıt; <strong>hiçbir para izsiz yer değiştirmez</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Çek &amp; senet</span>
+      <h3>Portföy, kâğıt tahsilatla birlikte doğar</h3>
+      <ul>
+        <li>Vade, banka, keşideci, seri — sahada girilir</li>
+        <li>Para kasaya <strong>tahsilde</strong> girer; çek henüz para değildir, kasa şişmez</li>
+        <li>Karşılıksız çıkan kâğıtta müşterinin borcu geri açılır</li>
+        <li>Vadesi gelen kâğıtlar listeden takip edilir</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Risk</span>
+      <h3>Limit ve bakiye her ekranda</h3>
+      <ul>
+        <li>Kredi limiti, güncel bakiye ve kullanılabilir limit katalogda, sipariş ekranında
+        ve saha listesinde</li>
+        <li>Limiti aşan sipariş sessizce geçmez, <strong>karara düşer</strong></li>
+        <li>Vadesi geçen alacak plasiyerin panosunda kendi başlığında durur</li>
+        <li>Cari bakiye tahsilat girildiği anda düşer; ertesi güne kalmaz</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Düzeltme</span>
+      <h3>Defter silinmez, düzeltilir</h3>
+      <ul>
+        <li>Yanlış tutar ya da yanlış cari ters kayıtla iptal edilir, <strong>gerekçesi zorunludur</strong></li>
+        <li>İki satır da ekstrede kalır: ekstreyi okuyan "neden" sorusunun cevabını satırda bulur</li>
+        <li>Aynı kayıt iki kez iptal edilemez; kapanmış bir günün gün sonu sessizce değişemez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kart tahsilatı</span>
+      <h3>Sanal POS bağlantısı hazır</h3>
+      <ul>
+        <li>Anlaştığınız banka ya da ödeme sağlayıcısı kurulumda tanımlanır</li>
+        <li>Tezgâh POS'uyla çalışan işletme için kutudan çıkan yol: çekimi yapan kişi onaylar</li>
+        <li>Para <strong>çekildiği an</strong> deftere girer, sipariş kaydedildiği an değil</li>
+        <li>Kart bilgisi sisteme hiç girmez — kart verisi saklama yükümlülüğü doğmaz</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="gain">
+    <span class="lbl">Kazanç</span>
+    <p>"Bu para nerede" sorusunun tek bir cevap yeri oluyor. Vadesi geçen alacak ay sonunda
+    değil, <strong>o gün plasiyerin panosunda</strong> görünüyor — tahsilat konuşması hâlâ
+    yapılabilecekken.</p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>08</span></div>
+</section>
+
+<!-- ============ 9. SEVKİYAT & STOK ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 06</span><span class="eyebrow">İrsaliye · fatura · teslimat · stok</span></div>
+
+  <div class="sec">
+    <div class="no">08</div>
+    <div>
+      <h2 class="serif">Kısmi sevkiyat gıdada istisna değil, kural</h2>
+      <p class="lede">İrsaliye malı taşır, fatura parayı. Sistem baştan öyle kuruldu:
+      <strong>sevkiyat sipariş bazlı değil, miktar bazlı.</strong> Ne çıktıysa o yazılır, kalan satır
+      satır takip edilir.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Kısmi sevkiyat</span>
+      <h3>Sipariş durumu elle güncellenmez</h3>
+      <ul>
+        <li>Kalan miktar satır satır takip edilir; durum <strong>çıkan maldan türetilir</strong></li>
+        <li>Fatura ister seçilen irsaliyeleri, ister faturalanmamış tüm kalanı keser</li>
+        <li>Bir siparişin faturaları toplandığında <strong>kuruşu kuruşuna siparişe eşittir</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Numaralandırma</span>
+      <h3>Seri sizin düzeninize uyar</h3>
+      <ul>
+        <li>Ön ek, basamak genişliği ve son verilen numara ekrandan ayarlanır</li>
+        <li>Sayaç ileri alınabilir: <strong>mevcut seri numaranızdan devam edersiniz</strong></li>
+        <li>Aynı anda kesilen iki irsaliye asla aynı numarayı alamaz</li>
+        <li>İptal edilen belge numarasını korur — seri boşluksuz ve açıklanabilir kalır</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kurye</span>
+      <h3>Teslim kanıtı kapıda alınır</h3>
+      <ul>
+        <li>Ayrı kurye girişi: işini görür, teslimi onaylar; <strong>müşteri fiyatı eline geçmez</strong></li>
+        <li>Teslim alanın adı ve isterseniz imzalı belgenin fotoğrafı</li>
+        <li>Teslim bir kez yazılır; kanıtın üstüne yazılamaz</li>
+        <li>Yarısı hâlâ kapıda olan sipariş "teslim edildi" sayılmaz</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Etiket &amp; fiş</span>
+      <h3>80 mm termal çıktı</h3>
+      <ul>
+        <li>Sipariş fişi, kargo etiketi ve teslim fişi; barkod ve karekod basar</li>
+        <li>Şablon ekrandan tasarlanır: hangi alan, hangi sırada, hangi boyda</li>
+        <li>Listeden satır seçip toplu basım — <strong>sabah çıkacak yükün etiketi tek seferde</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Hareket defteri</span>
+      <h3>Her adedin bir sebebi var</h3>
+      <ul>
+        <li>Sipariş · iptal · fire · sayım · depolar arası aktarım · ERP düzeltmesi</li>
+        <li>Her satırda kim, ne zaman, hangi sipariş, hangi parti ve hareketten sonraki bakiye</li>
+        <li>Stok sipariş girildiği anda düşer: <strong>aynı son kasa iki müşteriye satılmaz</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Depo</span>
+      <h3>Hangi ambarda ne var</h3>
+      <ul>
+        <li>Depo başına eldeki ve rezerve adet; satılabilir = eldeki − rezerve</li>
+        <li>Raf kodu, alış fiyatı (müşteriye gösterilmez), birim ve kritik eşik</li>
+        <li>Kritik stok listesi yalnız eşiği tanımlı ürünleri gösterir — uyarı listesi ürün
+        listesine dönmez</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Belgeler sizin unvanınızla çıkar.</strong> Logo, unvan, adres, vergi dairesi ve numarası,
+    MERSİS, faturaya basılacak IBAN'lar. IBAN yalnız faturada görünür — irsaliye mal taşır, para
+    değil. Ekstre, irsaliye ve fatura aynı başlığı kullanır; ikisi ayrışamaz.
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>09</span></div>
+</section>
+
+<!-- ============ 10. RAPOR & YETKİ ============ -->
+<section class="page">
+  <div class="runner"><span class="eyebrow">Kazanç 07</span><span class="eyebrow">Raporlama · yetki · güvenlik</span></div>
+
+  <div class="sec">
+    <div class="no">09</div>
+    <div>
+      <h2 class="serif">Yeni bir soru için kimseyi aramazsınız</h2>
+      <p class="lede">Açınca hazır beş rapor var. Altıncısını sormak istediğinizde
+      <strong>kendiniz kuruyorsunuz</strong> — dokuz veri kümesi, alan seç, süz, grupla, grafiğe
+      dök, kaydet, paylaş.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Hazır</span>
+      <h3>Açınca hazır beş rapor</h3>
+      <ul>
+        <li><strong>Satış:</strong> ciro, sipariş adedi, ortalama sepet, günlük grafik</li>
+        <li><strong>Ürünler:</strong> hangi üründen kaç adet, ne ciro, kaç ayrı siparişte</li>
+        <li><strong>Plasiyer:</strong> portföy, ciro, sipariş, tahsilat, ziyaret, bakiye</li>
+        <li><strong>Tahsilat ve yaşlandırma:</strong> para nerede, ne kadar bekliyor</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Tasarımcı</span>
+      <h3>Kendi raporunuzu kurun</h3>
+      <ul>
+        <li>Dokuz veri kümesi: sipariş, sipariş kalemi, cari, firma, ziyaret, kasa, stok, parti, kampanya</li>
+        <li>Toplam, adet, ortalama, en küçük/büyük; hesaplanmış sütun ("iskontonun ciroya oranı")</li>
+        <li>Tablo, sütun, çizgi ya da pasta grafik — kaydedilir, paylaşılır</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Pano</span>
+      <h3>Sabah bakılan üç rakam</h3>
+      <ul>
+        <li>Kayıtlı raporlar tek ekranda kart kart durur</li>
+        <li>Rapor düzeltilince pano da düzelir — panoda eski rakam kalmaz</li>
+        <li>Herkes panoyu kendi yetkisiyle açar: plasiyer kendi portföyünü görür</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Otomasyon</span>
+      <h3>Rapor sabah e-postada</h3>
+      <ul>
+        <li>Haftalık satış tablosu, aylık yaşlandırma — Excel ya da CSV eki olarak</li>
+        <li>Alıcı sistemde hesabı olmayan biri de olabilir: <strong>mali müşavir, patron</strong></li>
+        <li>Excel'de sayılar sayı olarak açılır; toplama yapılabilir</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="eyebrow" style="margin-top:7mm;margin-bottom:3mm">Kim neyi görecek — tek tek belirlenir</p>
+  <table>
+    <tbody>
+      <tr><td class="k" style="width:32mm">Yetki</td><td>36 ayrı yetki, altı grupta. Rol bir başlangıç şablonu; sonrası kişi bazında tek tek açılıp kapatılır. <strong>Muhasebeci kasayı görür, fiyata dokunmaz.</strong></td></tr>
+      <tr><td class="k">Taraflar ayrı</td><td>Satıcı, bayi, saha ve dağıtım ayrı hesap aileleri. Bayi personeline yanlışlıkla depo ya da sevkiyat yetkisi verilemez.</td></tr>
+      <tr><td class="k">Anında geçerli</td><td>Bir hesabın yetkisi kısıldığında ya da kapatıldığında elindeki açık oturumlar o an düşer — telefondaki uygulama dâhil.</td></tr>
+      <tr><td class="k">Veri sınırı</td><td>Plasiyer yalnız portföyünü, bayi yalnız kendi firmasını görür. Sınır ekranda gizlemekle değil, <strong>sunucuda</strong> uygulanır.</td></tr>
+      <tr><td class="k">Kayıt</td><td>Kim ne yaptı, hangi kayda, hangi cihazdan — silinemeyen bir güvenlik kaydında durur, dışa aktarılabilir.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>10</span></div>
+</section>
+
+<!-- ============ 11. VEGA ============ -->
+<section class="page slim">
+  <div class="runner"><span class="eyebrow">Kazanç 08</span><span class="eyebrow">Vega entegrasyonu · işletim</span></div>
+
+  <div class="sec">
+    <div class="no">10</div>
+    <div>
+      <h2 class="serif">Vega yerinde kalır ve iş yapma biçiminiz değişmez</h2>
+      <p class="lede">Bu bir ERP değişikliği değil. Cari, stok ve fiyat <strong>Vega'dan gelir</strong>;
+      sipariş, irsaliye, fatura ve tahsilat <strong>B2B'den Vega'ya</strong> otomatik işlenir.
+      İki sistem sürekli eşit tutulur. Merkezin sistemine dokunulmuyor.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Bağlantı</span>
+      <h3>ERP'ye dışarıdan kapı açılmaz</h3>
+      <ul>
+        <li>Bağlantıyı kuran küçük bir ajan <strong>sizin makinenizde</strong> çalışır; Vega dışarıya açılmaz</li>
+        <li>Ürün, stok ve cari eşlenir — sistem Vega'da olmayan kayıt uydurmaz</li>
+        <li>Firma ve ürün eşleme kodları ayrı alanlarda durur; eşleşme her zaman görünür</li>
+        <li>Stok senkronu üstüne yazmaz, farkı hareket olarak yazar: <strong>gece ne olduğu sabah okunur</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">E-fatura</span>
+      <h3>Faturanız bugünkü yerinde kesilir</h3>
+      <ul>
+        <li>E-fatura ve e-irsaliye <strong>Vega tarafında</strong> kesilmeye devam eder — mevcut düzeniniz bozulmaz</li>
+        <li>Belge serisi "numarayı ERP verir" olarak işaretlenir; sistem kendi numarasını üretmez</li>
+        <li>Böylece iki sistemde iki ayrı numara dizisi oluşmaz; mutabakat tek dizi üzerinden yürür</li>
+        <li>Sevkiyat ERP'yi beklemeden yola çıkar</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Bölge müdürlüğü</span>
+      <h3>Kurulum bölgeye yapılır</h3>
+      <ul>
+        <li>Fiyat ve kampanya merkezin belirlediği gibi kalır; <strong>Vega'dan gelir</strong></li>
+        <li>Bölge kendi bayi ağını, sahasını ve dağıtımını buradan yönetir</li>
+        <li>Kendi belge seriniz, kendi logonuz, kendi unvanınız</li>
+        <li>İkinci bir şube ya da bölge kurulumu ayrı bir kurulumdur — biri diğerini etkilemez</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Kurulum</span>
+      <h3>İlk gün adım adım</h3>
+      <ul>
+        <li>Sihirbaz sırayı söyler: kuruluş → grup → kategori → depo → ürün → fiyat → vade → kasa → firma → kullanıcı</li>
+        <li>Her adım ne işe yaradığını ve atlanırsa neyin çalışmayacağını yazar</li>
+        <li><strong>Gıda toptanı paketi</strong> tek düğmeyle kurulur: müşteri grupları, kategori ağacı, vade, depo, kasa, hacim merdiveni</li>
+        <li>Katalog ve müşteri listesi Vega'dan ya da tablodan aktarılır</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">İşletim</span>
+      <h3>Sizin sunucunuzda, sizin verinizle</h3>
+      <ul>
+        <li>Kendi sunucunuz ya da sizin için alınan hosting; <strong>veriniz başka müşterinin
+        verisiyle aynı yerde durmaz</strong></li>
+        <li>Günlük yedek, tek komutla geri dönüş</li>
+        <li>Güncellemeler duyurulur; ne zaman uygulanacağına siz karar verirsiniz</li>
+        <li>Güncelleme tutmazsa sistem kendiliğinden bir önceki sürüme döner</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Sahiplik</span>
+      <h3>Veri sizin, karar sizin</h3>
+      <ul>
+        <li>Sistemdeki veri müşteriye aittir; talep hâlinde dışa aktarılır</li>
+        <li>Kullanım hakkı <strong>süresiz</strong>; sonraki yıllar için lisans bedeli yok</li>
+        <li>Kullanıcı, bayi ve plasiyer sayısı sınırsız — ağınız büyüyünce bedel büyümez</li>
+        <li>Bakım anlaşması olmasa da sistem ayakta kalır: <strong>Android uyumluluk sürümleri üç
+        yıl ücretsiz</strong>, web tarafı bakımdan bağımsız çalışır</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="gain">
+    <span class="lbl">Kazanç</span>
+    <p>Vega'da tek satır değişmeden bayi ağınız kendi siparişini vermeye, plasiyeriniz sahadan
+    tahsilat girmeye ve deponuz doğru partiyi çıkarmaya başlıyor.</p>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>11</span></div>
+</section>
+
+<!-- ============ 12. BAŞLANGIÇ ============ -->
+<section class="page tight">
+  <div class="runner"><span class="eyebrow">Başlangıç</span><span class="eyebrow">10 iş günü</span></div>
+
+  <div class="sec">
+    <div class="no">11</div>
+    <div>
+      <h2 class="serif">Sözleşmeden canlı kullanıma on iş günü</h2>
+      <p class="lede">Kurulum, veri aktarımı ve eğitim bedele dahil. Aşağıdaki sıra
+      <strong>bizim işimiz</strong>; sizden istenen tek şey Vega erişimi ve iki yarım günlük eğitim
+      katılımı.</p>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="st"><div class="n">01</div><div><h4>Kurulum ve kimlik</h4>
+      <p>Sunucu hazırlanır, sistem kurulur; unvan, logo, adres, vergi bilgisi ve IBAN'lar tanımlanır. Belgeler ilk günden sizin başlığınızla çıkar.</p></div>
+      <div class="w">1.–2. gün</div></div>
+    <div class="st"><div class="n">02</div><div><h4>Vega bağlantısı</h4>
+      <p>Ajan sizin makinenize kurulur, ürün · stok · cari eşlemesi yapılır ve çift yönlü akış test edilir. Vega dışarıya açılmaz.</p></div>
+      <div class="w">3.–4. gün</div></div>
+    <div class="st"><div class="n">03</div><div><h4>Veri aktarımı</h4>
+      <p>Katalog, müşteri listesi, fiyat listeleri, vade tanımları, depo ve açılış bakiyeleri aktarılır; gıda paketi açılır.</p></div>
+      <div class="w">4.–6. gün</div></div>
+    <div class="st"><div class="n">04</div><div><h4>Kullanıcı ve yetki</h4>
+      <p>Yönetim, saha, dağıtım ve bayi hesapları açılır; kim neyi görecek tek tek belirlenir. Plasiyer portföyleri tanımlanır.</p></div>
+      <div class="w">6.–7. gün</div></div>
+    <div class="st"><div class="n">05</div><div><h4>Eğitim</h4>
+      <p>Üç ayrı oturum: ofis (sipariş, sevkiyat, fatura, cari), saha (telefon uygulaması), bayi (vitrin). Her biri yarım gün.</p></div>
+      <div class="w">8.–9. gün</div></div>
+    <div class="st"><div class="n">06</div><div><h4>Canlı kullanım</h4>
+      <p>Seçilen bayi grubuyla başlanır, ilk hafta yanınızdayız. Sonrasında altı ay boyunca geliştirme, uzak destek ve sürüm güncellemesi dahil.</p></div>
+      <div class="w">10. gün</div></div>
+  </div>
+
+  <p class="eyebrow" style="margin-top:6mm;margin-bottom:2.5mm">Aklınıza gelen sorular</p>
+  <div class="qa">
+    <div class="q"><h4>Bayilerim bilgisayarla arası iyi değil, kullanır mı?</h4>
+      <p>Bayi tarafı bir muhasebe programı değil, bir vitrin: kategoriye tıkla, adet yaz, gönder.
+      Kullanmayan bayi eskisi gibi arar; plasiyer onun adına sipariş girer, hiçbir şey kaybolmaz.</p></div>
+    <div class="q"><h4>Vega'ya bir zarar gelir mi?</h4>
+      <p>Bağlantıyı kuran ajan sizin makinenizde çalışır ve Vega'yı dışarıya açmaz. Sistem
+      Vega'da olmayan kayıt uydurmaz, stokun üstüne yazmaz — farkı hareket olarak yazar, gece
+      ne olduğu sabah okunur.</p></div>
+    <div class="q"><h4>Yarın başka bir ERP'ye geçersek?</h4>
+      <p>B2B'nin yeni sisteme entegrasyonu bir kez ücretsiz yapılır. Teklifin içinde yazılıdır.</p></div>
+    <div class="q"><h4>Verilerimiz nerede duruyor?</h4>
+      <p>Kendi sunucunuzda ya da sizin adınıza alınan hosting'de; veriniz başka müşterinin
+      verisiyle aynı yerde durmaz. Talep hâlinde tümü dışa aktarılır.</p></div>
+    <div class="q"><h4>Altı ay bittikten sonra size mecbur kalır mıyız?</h4>
+      <p>Hayır. Bakım anlaşması yeni özellik ve öncelikli destek içindir, sistemin ayakta
+      kalmasının şartı değildir. Web tarafı bakımdan bağımsız çalışır; Android uygulamasının çalışır
+      kalması için gereken uyumluluk sürümleri <strong>üç yıl ücretsizdir</strong>. Bakım isterseniz
+      yıllık bedel lisansın %20'sini aşamaz — tavan teklifte yazılıdır.</p></div>
+  </div>
+
+  <div class="foot"><span>Bayraktar Yazılım</span><span>12</span></div>
+</section>
+
+<!-- ============ 13. KAPANIŞ ============ -->
+<section class="page cover">
+  <div class="cover-in">
+    <div class="cover-top">
+      <span class="eyebrow">Sonraki adım</span>
+      <span class="eyebrow">Bayraktar Yazılım</span>
+    </div>
+
+    <span class="kicker">Kaanlar Gıda · Samsun Bölge Müdürlüğü</span>
+    <h1 style="font-size:29pt;max-width:23ch">Bir sonraki adım:<br><b>sizin verinizle bir gösterim.</b></h1>
+
+    <p class="lede">Kendi ürünlerinizden kurulmuş bir katalog, kendi bayilerinizden birkaç firma
+    ve bir plasiyer portföyüyle hazırlanmış ekranlar üzerinden <strong>bir saat</strong>.
+    Bölgede kaç bayi ve kaç plasiyer çalıştığını konuşalım — kurulum ve eğitim planı o rakamlara
+    göre çıkıyor. <strong>Lisans bedeli bayi ve kullanıcı sayısından bağımsızdır;</strong> ağınız
+    büyüdükçe değişmez.</p>
+
+    <div class="back-list">
+      <div><b>01</b><span>Parti, SKT ve FEFO — eriyen malı erken görmek</span></div>
+      <div><b>02</b><span>Plasiyerin günü: ziyaret, sipariş, tahsilat, karne</span></div>
+      <div><b>03</b><span>Bayi kendi siparişini kendi fiyatıyla verir</span></div>
+      <div><b>04</b><span>Fiyat, iskonto ve kampanya — dört katman, sabit sıra</span></div>
+      <div><b>05</b><span>Cari, kasa, çek ve risk tek defterde</span></div>
+      <div><b>06</b><span>Kısmi sevkiyat, fatura, kurye ve stok hareketi</span></div>
+      <div><b>07</b><span>Hazır raporlar, rapor tasarımcısı ve yetki</span></div>
+      <div><b>08</b><span>Vega yerinde kalır — çift yönlü entegrasyon</span></div>
+    </div>
+
+    <div class="cover-foot" style="margin-top:12mm">
+      <span>Said Bayraktar · saidbayraktar9@gmail.com</span>
+      <span>Bayraktar Yazılım · Ağustos 2026</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

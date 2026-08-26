@@ -89,7 +89,9 @@ function Block({ block, data }: { block: LabelBlock; data: LabelData }) {
               <tr key={i}>
                 <td className="align-top">
                   {it.name}
-                  <span className="block text-[2.4mm] opacity-70">{it.sku}</span>
+                  <span className="block text-[2.4mm] opacity-70">
+                    {it.sku}
+                  </span>
                 </td>
                 <td className="whitespace-nowrap pl-1 text-right align-top">
                   {it.quantity} ad
@@ -137,7 +139,9 @@ function Block({ block, data }: { block: LabelBlock; data: LabelData }) {
           {recorded && (
             <p style={{ fontSize: "2.8mm" }}>
               {recorded}
-              {data.fields["teslim.tarih"] ? ` · ${data.fields["teslim.tarih"]}` : ""}
+              {data.fields["teslim.tarih"]
+                ? ` · ${data.fields["teslim.tarih"]}`
+                : ""}
             </p>
           )}
         </div>
@@ -150,9 +154,7 @@ function Block({ block, data }: { block: LabelBlock; data: LabelData }) {
 function Bars({ value }: { value: string }) {
   // Aynı metin her zaman aynı deseni versin diye basit bir toplam kullanılıyor;
   // rastgele olsaydı iki basımda iki farklı görüntü çıkardı.
-  const widths = Array.from(value).map(
-    (ch) => (ch.charCodeAt(0) % 3) + 1,
-  );
+  const widths = Array.from(value).map((ch) => (ch.charCodeAt(0) % 3) + 1);
   return (
     <div className="flex h-8 items-end justify-center gap-[0.3mm]">
       {widths.map((w, i) => (

@@ -252,23 +252,20 @@ export function PortalClient({
   }, [catalogQuery.data, sort, inStockOnly]);
 
   return (
-    <div className="min-h-screen tech-paper">
-      <PortalNav
-        role={role}
-        permissions={permissions}
-        companyName={companyName}
-        userName={userName}
-        current="/portal"
-        isProxy={isProxy}
-        companyId={companyId}
-        right={
-          <span className="mr-1 flex items-center gap-1.5 bg-brand-600 px-3 py-1.5 font-mono text-xs font-bold text-white">
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {itemCount}
-          </span>
-        }
-      />
-
+    <PortalNav
+      role={role}
+      permissions={permissions}
+      companyName={companyName}
+      userName={userName}
+      isProxy={isProxy}
+      companyId={companyId}
+      right={
+        <span className="flex items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-semibold tabular-nums text-on-accent">
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {itemCount}
+        </span>
+      }
+    >
       {isProxy && (
         <ActingAsBar
           companyName={companyName}
@@ -289,7 +286,7 @@ export function PortalClient({
         ) : null,
       )}
 
-      <div className="mx-auto max-w-6xl px-4 pb-10">
+      <div className="mx-auto max-w-6xl">
         {/* Arama + sıralama şeridi */}
         {showSearch && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -421,7 +418,7 @@ export function PortalClient({
           {showCart && <CartPanel companyId={companyId} />}
         </div>
       </div>
-    </div>
+    </PortalNav>
   );
 }
 
@@ -465,7 +462,7 @@ function CategoryItem({
 function RichText({ title, body }: { title: string; body: string }) {
   if (!title.trim() && !body.trim()) return null;
   return (
-    <div className="mx-auto max-w-6xl px-4 pt-4">
+    <div className="mx-auto max-w-6xl">
       <div className="border border-neutral-300 bg-white px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900">
         {title.trim() && <p className="tech-label mb-1">{title}</p>}
         {body.trim() && (

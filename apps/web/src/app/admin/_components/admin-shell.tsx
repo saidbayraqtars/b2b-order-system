@@ -60,59 +60,199 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
   {
     title: "Katalog",
     links: [
-      { href: "/admin/products", label: "Ürünler", icon: Package, permission: "products.view" },
-      { href: "/admin/categories", label: "Kategoriler", icon: Tags, permission: "products.view" },
-      { href: "/admin/promotions", label: "Kampanyalar", icon: Percent, permission: "promotions.manage" },
-      { href: "/admin/stok", label: "Stok defteri", icon: Boxes, permission: "stock.view" },
-      { href: "/admin/sayfa-duzeni", label: "Sayfa düzeni", icon: LayoutTemplate, permission: "design.manage" },
+      {
+        href: "/admin/products",
+        label: "Ürünler",
+        icon: Package,
+        permission: "products.view",
+      },
+      {
+        href: "/admin/categories",
+        label: "Kategoriler",
+        icon: Tags,
+        permission: "products.view",
+      },
+      {
+        href: "/admin/promotions",
+        label: "Kampanyalar",
+        icon: Percent,
+        permission: "promotions.manage",
+      },
+      {
+        href: "/admin/stok",
+        label: "Stok defteri",
+        icon: Boxes,
+        permission: "stock.view",
+      },
+      {
+        href: "/admin/sayfa-duzeni",
+        label: "Sayfa düzeni",
+        icon: LayoutTemplate,
+        permission: "design.manage",
+      },
     ],
   },
   {
     title: "Müşteriler",
     links: [
-      { href: "/admin/companies", label: "Firmalar", icon: Building2, permission: "companies.view" },
-      { href: "/admin/users", label: "Kullanıcılar", icon: Users, permission: "users.manage" },
-      { href: "/admin/customer-groups", label: "Gruplar", icon: Layers, permission: "companies.view" },
+      {
+        href: "/admin/companies",
+        label: "Firmalar",
+        icon: Building2,
+        permission: "companies.view",
+      },
+      {
+        href: "/admin/users",
+        label: "Kullanıcılar",
+        icon: Users,
+        permission: "users.manage",
+      },
+      {
+        href: "/admin/customer-groups",
+        label: "Gruplar",
+        icon: Layers,
+        permission: "companies.view",
+      },
     ],
   },
   {
     title: "Saha & Dağıtım",
     links: [
-      { href: "/admin/targets", label: "Hedefler", icon: Target, permission: "targets.manage" },
-      { href: "/admin/deliveries", label: "Dağıtım", icon: Truck, permission: "orders.fulfil" },
-      { href: "/admin/iadeler", label: "İadeler", icon: Undo2, permission: "returns.manage" },
+      {
+        href: "/admin/targets",
+        label: "Hedefler",
+        icon: Target,
+        permission: "targets.manage",
+      },
+      {
+        href: "/admin/deliveries",
+        label: "Dağıtım",
+        icon: Truck,
+        permission: "orders.fulfil",
+      },
+      {
+        href: "/admin/iadeler",
+        label: "İadeler",
+        icon: Undo2,
+        permission: "returns.manage",
+      },
     ],
   },
   {
     title: "Finans",
     links: [
-      { href: "/admin/kasa", label: "Kasa & Banka", icon: Wallet, permission: "cash.view" },
-      { href: "/admin/cekler", label: "Çek & senet", icon: ScrollText, permission: "cheques.manage" },
-      { href: "/admin/kurlar", label: "Döviz kurları", icon: Coins, permission: "pricing.manage" },
-      { href: "/admin/payment-terms", label: "Vadeler", icon: CalendarClock, permission: "payment_terms.manage" },
-      { href: "/admin/volume-tiers", label: "Hacim iskontosu", icon: TrendingUp, permission: "volume_tiers.manage" },
+      {
+        href: "/admin/kasa",
+        label: "Kasa & Banka",
+        icon: Wallet,
+        permission: "cash.view",
+      },
+      {
+        href: "/admin/cekler",
+        label: "Çek & senet",
+        icon: ScrollText,
+        permission: "cheques.manage",
+      },
+      {
+        href: "/admin/kurlar",
+        label: "Döviz kurları",
+        icon: Coins,
+        permission: "pricing.manage",
+      },
+      {
+        href: "/admin/payment-terms",
+        label: "Vadeler",
+        icon: CalendarClock,
+        permission: "payment_terms.manage",
+      },
+      {
+        href: "/admin/volume-tiers",
+        label: "Hacim iskontosu",
+        icon: TrendingUp,
+        permission: "volume_tiers.manage",
+      },
     ],
   },
   {
     title: "Belge & Rapor",
     links: [
-      { href: "/admin/documents", label: "Belgeler", icon: FileText, permission: "documents.view" },
-      { href: "/admin/labels", label: "Etiket & fiş", icon: Sticker, permission: "labels.manage" },
-      { href: "/admin/reports", label: "Raporlar", icon: BarChart3, permission: "reports.view" },
-      { href: "/reports", label: "Rapor tasarımcısı", icon: Wand2, permission: "reports.build" },
+      {
+        href: "/admin/documents",
+        label: "Belgeler",
+        icon: FileText,
+        permission: "documents.view",
+      },
+      {
+        href: "/admin/labels",
+        label: "Etiket & fiş",
+        icon: Sticker,
+        permission: "labels.manage",
+      },
+      {
+        href: "/admin/reports",
+        label: "Raporlar",
+        icon: BarChart3,
+        permission: "reports.view",
+      },
+      {
+        href: "/reports",
+        label: "Rapor tasarımcısı",
+        icon: Wand2,
+        permission: "reports.build",
+      },
     ],
   },
   {
     title: "Sistem",
     links: [
-      { href: "/admin/kurulum", label: "Kurulum", icon: ListChecks, permission: "organization.manage" },
-      { href: "/admin/organization", label: "Kuruluş", icon: Landmark, permission: "organization.manage" },
-      { href: "/admin/erp", label: "ERP köprüsü", icon: Plug, permission: "erp.manage" },
-      { href: "/admin/announcements", label: "Duyurular", icon: Megaphone, permission: "announcements.manage" },
-      { href: "/admin/activity", label: "Hareketler", icon: Activity, permission: "activity.view" },
-      { href: "/admin/audit", label: "Güvenlik", icon: ShieldCheck, permission: "audit.view" },
-      { href: "/admin/jobs", label: "Bakım işleri", icon: Timer, permission: "jobs.manage" },
-      { href: "/admin/surum", label: "Sürüm", icon: ArrowUpCircle, permission: "system.update" },
+      {
+        href: "/admin/kurulum",
+        label: "Kurulum",
+        icon: ListChecks,
+        permission: "organization.manage",
+      },
+      {
+        href: "/admin/organization",
+        label: "Kuruluş",
+        icon: Landmark,
+        permission: "organization.manage",
+      },
+      {
+        href: "/admin/erp",
+        label: "ERP köprüsü",
+        icon: Plug,
+        permission: "erp.manage",
+      },
+      {
+        href: "/admin/announcements",
+        label: "Duyurular",
+        icon: Megaphone,
+        permission: "announcements.manage",
+      },
+      {
+        href: "/admin/activity",
+        label: "Hareketler",
+        icon: Activity,
+        permission: "activity.view",
+      },
+      {
+        href: "/admin/audit",
+        label: "Güvenlik",
+        icon: ShieldCheck,
+        permission: "audit.view",
+      },
+      {
+        href: "/admin/jobs",
+        label: "Bakım işleri",
+        icon: Timer,
+        permission: "jobs.manage",
+      },
+      {
+        href: "/admin/surum",
+        label: "Sürüm",
+        icon: ArrowUpCircle,
+        permission: "system.update",
+      },
     ],
   },
 ];
@@ -121,7 +261,9 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
 function visibleGroups(permissions: readonly Permission[]): SidebarGroup[] {
   return GROUPS.map((g) => ({
     title: g.title,
-    links: g.links.filter((l) => !l.permission || hasPermission(permissions, l.permission)),
+    links: g.links.filter(
+      (l) => !l.permission || hasPermission(permissions, l.permission),
+    ),
   })).filter((g) => g.links.length > 0);
 }
 

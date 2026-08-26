@@ -8,15 +8,13 @@ export default async function OrderDetailPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requirePage([
-    "COMPANY_ADMIN",
-    "COMPANY_STAFF",
-    "SALES_REP",
-    "SUPER_ADMIN",
-  ], "orders.view");
+  const user = await requirePage(
+    ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    "orders.view",
+  );
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
+    <main className="mx-auto max-w-4xl">
       <Link
         href={defaultRouteForRole(user.role)}
         className="mb-3 inline-block text-sm text-neutral-500 hover:underline"

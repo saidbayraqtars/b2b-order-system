@@ -6,7 +6,15 @@ import type { StockSummary } from "@repo/services";
 import { STOCK_MOVEMENT_SOURCE_LABELS } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
-import { EmptyState, LoadingState, Table, TBody, Td, Th, THead } from "@/components/ui";
+import {
+  EmptyState,
+  LoadingState,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 // Dönem özeti. Tek soruyu cevaplıyor: bu aralıkta stoktan çıkan malın ne kadarı
 // satış, ne kadarı fire, ne kadarı ERP'nin düzeltmesi.

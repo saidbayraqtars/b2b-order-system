@@ -152,7 +152,8 @@ export function VisitPanel({
                 </Button>
                 {coords && (
                   <span className="text-xs tabular-nums text-neutral-500">
-                    {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)} (±
+                    {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{" "}
+                    (±
                     {coords.accuracy} m)
                   </span>
                 )}
@@ -164,7 +165,10 @@ export function VisitPanel({
               )}
 
               <div className="mt-4">
-                <Button loading={start.isPending} onClick={() => start.mutate()}>
+                <Button
+                  loading={start.isPending}
+                  onClick={() => start.mutate()}
+                >
                   <MapPin className="h-4 w-4" />
                   Ziyareti başlat
                 </Button>
@@ -301,7 +305,10 @@ function useElapsed(since: string): string {
     return () => clearInterval(t);
   }, []);
 
-  const minutes = Math.max(0, Math.floor((now - new Date(since).getTime()) / 60_000));
+  const minutes = Math.max(
+    0,
+    Math.floor((now - new Date(since).getTime()) / 60_000),
+  );
   const hours = Math.floor(minutes / 60);
   return hours > 0 ? `${hours} sa ${minutes % 60} dk` : `${minutes} dk`;
 }

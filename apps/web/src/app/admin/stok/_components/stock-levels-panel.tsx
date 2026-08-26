@@ -2,11 +2,31 @@
 
 import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { StockLevelRow, StockMovementRow, WarehouseRow } from "@repo/services";
+import type {
+  StockLevelRow,
+  StockMovementRow,
+  WarehouseRow,
+} from "@repo/services";
 import { STOCK_MOVEMENT_SOURCE_LABELS } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, Select, TextInput } from "@/components/form";
-import { Badge, EmptyState, LoadingState, Table, TBody, Td, Th, THead } from "@/components/ui";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  Select,
+  TextInput,
+} from "@/components/form";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 // Hangi üründe kaç adet var — ve bir satıra basınca o ürünün kendi defteri.
 //
@@ -22,7 +42,8 @@ export function StockLevelsPanel() {
 
   const warehouses = useQuery({
     queryKey: ["warehouses"],
-    queryFn: () => apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
+    queryFn: () =>
+      apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
   });
 
   const levels = useQuery({
@@ -83,7 +104,9 @@ export function StockLevelsPanel() {
       {levels.data &&
         (levels.data.levels.length === 0 ? (
           <EmptyState
-            label={lowOnly ? "Kritik seviyede ürün yok." : "Bu filtrede ürün yok."}
+            label={
+              lowOnly ? "Kritik seviyede ürün yok." : "Bu filtrede ürün yok."
+            }
           />
         ) : (
           <Table>
@@ -100,7 +123,8 @@ export function StockLevelsPanel() {
             </THead>
             <TBody>
               {levels.data.levels.map((row) => {
-                const critical = row.minStock !== null && row.stock <= row.minStock;
+                const critical =
+                  row.minStock !== null && row.stock <= row.minStock;
                 const open = openVariantId === row.variantId;
                 return (
                   <Fragment key={row.variantId}>
@@ -110,12 +134,16 @@ export function StockLevelsPanel() {
                       <Td align="right" numeric>
                         <span
                           className={
-                            critical ? "font-semibold text-red-600 dark:text-red-400" : ""
+                            critical
+                              ? "font-semibold text-red-600 dark:text-red-400"
+                              : ""
                           }
                         >
                           {row.stock}
                         </span>{" "}
-                        <span className="text-neutral-500">{row.unit ?? "adet"}</span>
+                        <span className="text-neutral-500">
+                          {row.unit ?? "adet"}
+                        </span>
                       </Td>
                       {warehouseId && (
                         <Td align="right" numeric>
@@ -130,7 +158,9 @@ export function StockLevelsPanel() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setOpenVariantId(open ? null : row.variantId)}
+                          onClick={() =>
+                            setOpenVariantId(open ? null : row.variantId)
+                          }
                         >
                           {open ? "Gizle" : "Defter"}
                         </Button>

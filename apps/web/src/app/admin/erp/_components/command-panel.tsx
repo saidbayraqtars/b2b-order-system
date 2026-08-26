@@ -15,7 +15,11 @@ import { Button, ErrorLine, Panel } from "@/components/form";
 // sınırlıyor; bir belge, siparişinin kendi ekranındaki onaydan gider.
 
 const COMMANDS = [
-  { name: "ping", label: "Ajanı yokla", hint: "Tünel ayakta mı, yazma açık mı" },
+  {
+    name: "ping",
+    label: "Ajanı yokla",
+    hint: "Tünel ayakta mı, yazma açık mı",
+  },
   {
     name: "describeOrderTables",
     label: "Sipariş tablolarını incele",
@@ -28,7 +32,9 @@ export function CommandPanel() {
 
   const run = useMutation({
     mutationFn: (command: string) =>
-      apiPost<{ command: string; result: unknown }>("/api/admin/erp/command", { command }),
+      apiPost<{ command: string; result: unknown }>("/api/admin/erp/command", {
+        command,
+      }),
     onSuccess: (data) => setOutput(JSON.stringify(data.result, null, 2)),
     onError: () => setOutput(null),
   });
@@ -58,8 +64,8 @@ export function CommandPanel() {
       )}
 
       <p className="mt-3 text-sm text-neutral-500">
-        Bu iki komut ERP&apos;yi yalnızca <strong>okur</strong>. Sipariş aktarımı
-        buradan değil, siparişin kendi ekranından yapılır.{" "}
+        Bu iki komut ERP&apos;yi yalnızca <strong>okur</strong>. Sipariş
+        aktarımı buradan değil, siparişin kendi ekranından yapılır.{" "}
         <em>Sipariş tablolarını incele</em> çıktısında bakılacaklar:{" "}
         <code>configured.referenceColumnExists</code> (sipariş numarasının
         yazılacağı sütun bu kurulumda var mı), <code>series</code> (kendi

@@ -1,6 +1,7 @@
 import { hasPermission } from "@repo/types";
 import { requirePage } from "@/lib/guard";
-import { AppHeader } from "@/components/app-shell";
+import { Truck } from "lucide-react";
+import { SidebarShell } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/ui";
 import { DeliveryBoard } from "@/components/delivery-board";
 
@@ -14,17 +15,23 @@ export const dynamic = "force-dynamic";
  * bağlantısı bilerek yok, kurye o ekranlara girmemeli.
  */
 export default async function CourierPage() {
-  const user = await requirePage(["COURIER", "SUPER_ADMIN"], "delivery.confirm");
+  const user = await requirePage(
+    ["COURIER", "SUPER_ADMIN"],
+    "delivery.confirm",
+  );
 
   return (
-    <div>
-      <AppHeader
-        context="Kurye"
-        links={[{ href: "/kurye", label: "Teslimatlarım" }]}
-        current="/kurye"
-        userLabel={user.name}
-      />
-      <main className="mx-auto max-w-3xl px-4 pb-8">
+    <SidebarShell
+      context="Kurye"
+      groups={[
+        {
+          title: "",
+          links: [{ href: "/kurye", label: "Teslimatlarım", icon: Truck }],
+        },
+      ]}
+      userLabel={user.name}
+    >
+      <main className="mx-auto max-w-3xl">
         <PageHeader
           title="Teslimatlarım"
           subtitle="Yol tarifi al, teslim et, imzalı belgeyi yükle"
@@ -33,6 +40,6 @@ export default async function CourierPage() {
           canDispatch={hasPermission(user.permissions, "orders.fulfil")}
         />
       </main>
-    </div>
+    </SidebarShell>
   );
 }

@@ -50,7 +50,8 @@ function useDismissal() {
 }
 
 const TONE_BANNER: Record<string, string> = {
-  brand: "border-brand-300 bg-brand-50 text-brand-900 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200",
+  brand:
+    "border-brand-300 bg-brand-50 text-brand-900 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200",
   neutral:
     "border-neutral-300 bg-neutral-100 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-200",
   success:
@@ -130,7 +131,9 @@ function TickerRun({
             {a.title}
           </span>
           {a.body && (
-            <span className="font-mono text-[11px] text-neutral-500">{a.body}</span>
+            <span className="font-mono text-[11px] text-neutral-500">
+              {a.body}
+            </span>
           )}
           {a.linkUrl && (
             <Link

@@ -24,13 +24,7 @@ import {
   Th,
   THead,
 } from "@/components/ui";
-import {
-  Button,
-  ErrorLine,
-  Label,
-  Panel,
-  TextInput,
-} from "@/components/form";
+import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 
 // Reporting dashboard. One shared date range drives every tab, so switching
 // tabs compares the same window instead of silently changing it.
@@ -247,7 +241,8 @@ function ProductsTab({ range }: { range: string }) {
 function RepsTab({ range }: { range: string }) {
   const q = useQuery({
     queryKey: ["report", "reps", range],
-    queryFn: () => apiGet<{ reps: RepPerformance[] }>(`/api/reports/reps?${range}`),
+    queryFn: () =>
+      apiGet<{ reps: RepPerformance[] }>(`/api/reports/reps?${range}`),
   });
   if (q.isLoading) return <Loading />;
   if (q.isError) return <Failed error={q.error} />;
@@ -284,7 +279,8 @@ function RepsTab({ range }: { range: string }) {
 function CollectionsTab({ range }: { range: string }) {
   const q = useQuery({
     queryKey: ["report", "collections", range],
-    queryFn: () => apiGet<CollectionsReport>(`/api/reports/collections?${range}`),
+    queryFn: () =>
+      apiGet<CollectionsReport>(`/api/reports/collections?${range}`),
   });
   if (q.isLoading) return <Loading />;
   if (q.isError) return <Failed error={q.error} />;
@@ -310,7 +306,11 @@ function CollectionsTab({ range }: { range: string }) {
         <SummaryTable
           title="Kaydeden"
           head={["Kullanıcı", "Adet", "Tutar"]}
-          rows={d.byRep.map((r) => [r.name, String(r.count), formatTRY(r.total)])}
+          rows={d.byRep.map((r) => [
+            r.name,
+            String(r.count),
+            formatTRY(r.total),
+          ])}
         />
       </div>
 
@@ -349,7 +349,11 @@ function ReceivablesTab() {
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Toplam alacak" value={formatTRY(d.totals.balance)} strong />
+        <Stat
+          label="Toplam alacak"
+          value={formatTRY(d.totals.balance)}
+          strong
+        />
         <Stat
           label="Vadesi geçen"
           value={formatTRY(d.totals.overdue)}
@@ -411,8 +415,8 @@ function ReceivablesTab() {
       </Panel>
 
       <p className="text-xs text-neutral-500">
-        Tahsilatlar en eski borçtan başlayarak (FIFO) mahsup edilir; vade, borcun
-        oluştuğu tarihe firmanın vade günü eklenerek bulunur.
+        Tahsilatlar en eski borçtan başlayarak (FIFO) mahsup edilir; vade,
+        borcun oluştuğu tarihe firmanın vade günü eklenerek bulunur.
       </p>
     </div>
   );
@@ -421,7 +425,11 @@ function ReceivablesTab() {
 function Aged({ value }: { value: string }) {
   const n = Number(value);
   return (
-    <Td align="right" numeric className={n > 0 ? "text-red-600" : "text-neutral-400"}>
+    <Td
+      align="right"
+      numeric
+      className={n > 0 ? "text-red-600" : "text-neutral-400"}
+    >
       {n > 0 ? formatTRY(value) : "—"}
     </Td>
   );
@@ -485,7 +493,11 @@ function SummaryTable({
           {rows.map((r, ri) => (
             <tr key={ri}>
               {r.map((cell, ci) => (
-                <Td key={ci} align={ci === 0 ? "left" : "right"} numeric={ci > 0}>
+                <Td
+                  key={ci}
+                  align={ci === 0 ? "left" : "right"}
+                  numeric={ci > 0}
+                >
                   {cell}
                 </Td>
               ))}

@@ -174,7 +174,9 @@ export function DemoLogin() {
             className="flex items-center justify-between gap-2 rounded-md border border-amber-300/60 bg-white px-2.5 py-1.5 text-left text-sm text-neutral-800 transition hover:border-amber-500 hover:bg-amber-100/60 disabled:opacity-50 dark:border-amber-500/30 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-amber-950/40"
           >
             <span className="min-w-0">
-              <span className="block truncate font-medium">{account.label}</span>
+              <span className="block truncate font-medium">
+                {account.label}
+              </span>
               <span className="block truncate text-xs text-neutral-500">
                 {account.role} · {account.landing}
               </span>

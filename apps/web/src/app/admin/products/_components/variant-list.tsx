@@ -332,9 +332,12 @@ function StockCard({
     shelfCode: variant.shelfCode ?? "",
     isActive: variant.isActive,
     tracksLots: variant.tracksLots,
-    shelfLifeDays: variant.shelfLifeDays != null ? String(variant.shelfLifeDays) : "",
+    shelfLifeDays:
+      variant.shelfLifeDays != null ? String(variant.shelfLifeDays) : "",
     expiryWarningDays:
-      variant.expiryWarningDays != null ? String(variant.expiryWarningDays) : "",
+      variant.expiryWarningDays != null
+        ? String(variant.expiryWarningDays)
+        : "",
     pricingUnit: variant.pricingUnit ?? "",
     unitFactor: variant.unitFactor ?? "",
     isVariableWeight: variant.isVariableWeight,
@@ -394,7 +397,9 @@ function StockCard({
             <TextInput
               value={form.shelfLifeDays}
               inputMode="numeric"
-              onChange={(e) => setForm({ ...form, shelfLifeDays: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, shelfLifeDays: e.target.value })
+              }
             />
           </div>
           <div>
@@ -411,7 +416,9 @@ function StockCard({
             <Label hint="Fiyat hangi birimde: KG, LT…">Fiyat birimi</Label>
             <TextInput
               value={form.pricingUnit}
-              onChange={(e) => setForm({ ...form, pricingUnit: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, pricingUnit: e.target.value })
+              }
             />
           </div>
           <div>
@@ -457,7 +464,9 @@ function StockCard({
               shelfCode: form.shelfCode.trim() || null,
               isActive: form.isActive,
               tracksLots: form.tracksLots,
-              shelfLifeDays: form.shelfLifeDays ? Number(form.shelfLifeDays) : null,
+              shelfLifeDays: form.shelfLifeDays
+                ? Number(form.shelfLifeDays)
+                : null,
               expiryWarningDays: form.expiryWarningDays
                 ? Number(form.expiryWarningDays)
                 : null,

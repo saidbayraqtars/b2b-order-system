@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CashAccountRow, CashMovementRow, MethodBinding } from "@repo/services";
+import type {
+  CashAccountRow,
+  CashMovementRow,
+  MethodBinding,
+} from "@repo/services";
 import {
   CASH_MOVEMENT_SOURCE_LABELS,
   CashMovementSourceEnum,
@@ -62,7 +66,9 @@ export function MovementsPanel() {
     void qc.invalidateQueries({ queryKey: ["cash-summary"] });
   };
 
-  const openAccounts = (accounts.data?.accounts ?? []).filter((a) => a.isActive);
+  const openAccounts = (accounts.data?.accounts ?? []).filter(
+    (a) => a.isActive,
+  );
 
   return (
     <Panel
@@ -88,7 +94,9 @@ export function MovementsPanel() {
             <Label>Kaynak</Label>
             <Select
               value={source}
-              onChange={(e) => setSource(e.target.value as CashMovementSource | "")}
+              onChange={(e) =>
+                setSource(e.target.value as CashMovementSource | "")
+              }
               className="w-40"
             >
               <option value="">Tümü</option>
@@ -193,12 +201,20 @@ function MovementRow({
               >
                 İptal et
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setAsking(false)}
+              >
                 Vazgeç
               </Button>
             </div>
           ) : (
-            <Button size="sm" variant="secondary" onClick={() => setAsking(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setAsking(true)}
+            >
               İptal
             </Button>
           ))}
@@ -328,7 +344,10 @@ function TransferForm({
   });
 
   const ready =
-    fromAccountId !== "" && toAccountId !== "" && fromAccountId !== toAccountId && Number(amount) > 0;
+    fromAccountId !== "" &&
+    toAccountId !== "" &&
+    fromAccountId !== toAccountId &&
+    Number(amount) > 0;
 
   return (
     <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">

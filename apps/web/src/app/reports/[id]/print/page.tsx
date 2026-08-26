@@ -52,7 +52,8 @@ export default async function ReportPrintPage({
 
       <div className="no-print mx-auto mb-4 flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4">
         <p className="text-sm text-neutral-600">
-          Tarayıcının yazdırma penceresinden “PDF olarak kaydet”i seçebilirsiniz.
+          Tarayıcının yazdırma penceresinden “PDF olarak kaydet”i
+          seçebilirsiniz.
         </p>
         <PrintButton />
       </div>

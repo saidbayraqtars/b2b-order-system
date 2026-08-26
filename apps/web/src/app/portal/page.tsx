@@ -10,12 +10,10 @@ export const dynamic = "force-dynamic";
 type Props = { searchParams: { companyId?: string } };
 
 export default async function PortalPage({ searchParams }: Props) {
-  const user = await requirePage([
-    "COMPANY_ADMIN",
-    "COMPANY_STAFF",
-    "SALES_REP",
-    "SUPER_ADMIN",
-  ], "products.view");
+  const user = await requirePage(
+    ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    "products.view",
+  );
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
 
@@ -23,21 +21,19 @@ export default async function PortalPage({ searchParams }: Props) {
   // Fiyat firmaya göre çözüldüğü için firmasız katalog zaten anlamsız olurdu.
   if (!ctx.companyId) {
     return (
-      <div className="min-h-screen tech-paper">
-        <PortalNav
-          role={user.role}
-          permissions={user.permissions}
-          companyName={null}
-          userName={user.name}
-          current="/portal"
-          isProxy
-        />
+      <PortalNav
+        role={user.role}
+        permissions={user.permissions}
+        companyName={null}
+        userName={user.name}
+        isProxy
+      >
         <CompanyPicker
           basePath="/portal"
           eyebrow="Adına sipariş girilecek firma"
           subtitle="Fiyatlar, kampanyalar ve kredi limiti firmaya göre çözülür — katalog firma seçilmeden açılamaz."
         />
-      </div>
+      </PortalNav>
     );
   }
 

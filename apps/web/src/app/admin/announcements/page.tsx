@@ -6,7 +6,7 @@ export default async function AdminAnnouncementsPage() {
 
   return (
     <div>
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      <main className="mx-auto max-w-4xl">
         <h1 className="mb-5 text-xl font-bold">Vitrin Duyuruları</h1>
         <AnnouncementsManager />
         <p className="mt-4 text-sm text-neutral-500">

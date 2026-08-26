@@ -12,33 +12,29 @@ type Props = { searchParams: { companyId?: string } };
 // ekstresini görür — plasiyerin sipariş almadan önce bakiyeye bakması işin
 // normal parçası.
 export default async function PortalStatementPage({ searchParams }: Props) {
-  const user = await requirePage([
-    "COMPANY_ADMIN",
-    "COMPANY_STAFF",
-    "SALES_REP",
-    "SUPER_ADMIN",
-  ], "companies.view");
+  const user = await requirePage(
+    ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    "companies.view",
+  );
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
   if (!ctx.companyId) redirect("/portal");
 
   return (
-    <div>
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={ctx.companyName}
-        userName={user.name}
-        current="/portal/statement"
-        isProxy={ctx.isProxy}
-        companyId={ctx.companyId}
-      />
-      <div className="mx-auto max-w-5xl px-4 pb-6">
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={ctx.companyName}
+      userName={user.name}
+      isProxy={ctx.isProxy}
+      companyId={ctx.companyId}
+    >
+      <div className="mx-auto max-w-5xl">
         <h1 className="mb-4 text-lg font-semibold">
           {ctx.isProxy ? `${ctx.companyName} — Cari Ekstre` : "Cari Ekstre"}
         </h1>
         <StatementView companyId={ctx.companyId} />
       </div>
-    </div>
+    </PortalNav>
   );
 }

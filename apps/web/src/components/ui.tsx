@@ -3,7 +3,11 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Genel kart yüzeyi — Panel'in başlıksız, tek kullanımlık hali (stat kutusu, ürün kartı vb.). */
+// Paylaşılan yüzeyler. Kural basit: yüzeyler gölgeyle değil 1px çizgiyle
+// ayrılır, renk yalnızca durum bildirir, ölçüler tailwind.config'teki ölçekten
+// gelir. Ekranlar kendi kart/tablo sınıflarını yazmaz.
+
+/** Genel kart yüzeyi — Panel'in başlıksız, tek kullanımlık hali. */
 export function Card({
   children,
   className,
@@ -17,7 +21,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-neutral-200 bg-white p-4 shadow-card dark:border-neutral-800 dark:bg-neutral-900",
+        "rounded-lg border border-line bg-panel p-4",
         hover && "transition-shadow hover:shadow-card-hover",
         className,
       )}
@@ -27,17 +31,57 @@ export function Card({
   );
 }
 
+/**
+ * Sayı kutusu: küçük büyük-harf etiket, altında büyük rakam, altında değişim.
+ *
+ * Yönetim ve portal panolarının yarısı bu kutudan oluşuyor ve her ekran kendi
+ * yazı boyunu seçiyordu — üç ayrı "önemli sayı" görüntüsü çıkmıştı.
+ */
+export function StatTile({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+  icon,
+}: {
+  label: string;
+  value: ReactNode;
+  /** Rakamın altındaki tek satır: "geçen aya göre +%4,2" gibi. */
+  hint?: ReactNode;
+  tone?: "neutral" | "positive" | "caution" | "critical";
+  icon?: ReactNode;
+}) {
+  const hintTone = {
+    neutral: "text-ink-faint",
+    positive: "text-positive",
+    caution: "text-caution",
+    critical: "text-critical",
+  }[tone];
+
+  return (
+    <div className="rounded-lg border border-line bg-panel p-4">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <span className="tech-label">{label}</span>
+        {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
+      </div>
+      <div className="text-headline-lg tabular-nums text-ink">{value}</div>
+      {hint && <div className={cn("mt-1 text-xs", hintTone)}>{hint}</div>}
+    </div>
+  );
+}
+
 const BADGE_TONE = {
-  neutral: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  brand: "bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300",
-  success: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  warning: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  danger: "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400",
-  info: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
+  neutral: "border-line bg-sunken text-ink-muted",
+  brand: "border-accent bg-accent text-on-accent",
+  success: "border-positive/30 bg-positive/10 text-positive",
+  warning: "border-caution/30 bg-caution/10 text-caution",
+  danger: "border-critical/30 bg-critical/10 text-critical",
+  info: "border-line-strong bg-subtle text-ink-muted",
 } as const;
 
 export type BadgeTone = keyof typeof BADGE_TONE;
 
+/** Durum işareti. Küçük, büyük harf, dikdörtgen — rozet değil künye. */
 export function Badge({
   tone = "neutral",
   children,
@@ -48,7 +92,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
         BADGE_TONE[tone],
       )}
     >
@@ -70,23 +114,25 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div>
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+      <div className="min-w-0">
         {back && (
           <Link
             href={back.href}
-            className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400"
+            className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-ink-faint transition-colors hover:text-ink"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {back.label}
           </Link>
         )}
-        <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{title}</h1>
+        <h1 className="text-headline-lg text-ink">{title}</h1>
         {subtitle && (
-          <p className="mt-0.5 text-sm text-neutral-500">{subtitle}</p>
+          <p className="mt-1 text-body-sm text-ink-muted">{subtitle}</p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      )}
     </header>
   );
 }
@@ -94,7 +140,7 @@ export function PageHeader({
 /** Tam ekran değil, panel-içi bekleme durumu — "Yükleniyor…" düz metninin yerine. */
 export function LoadingState({ label = "Yükleniyor…" }: { label?: string }) {
   return (
-    <p className="flex items-center gap-2 py-6 text-sm text-neutral-500">
+    <p className="flex items-center gap-2 py-6 text-body-sm text-ink-faint">
       <Loader2 className="h-4 w-4 animate-spin" />
       {label}
     </p>
@@ -102,11 +148,18 @@ export function LoadingState({ label = "Yükleniyor…" }: { label?: string }) {
 }
 
 /** Boş liste/tablo durumu — ikon + mesaj, sade ama "unutulmuş ekran" hissi vermez. */
-export function EmptyState({ label }: { label: string }) {
+export function EmptyState({
+  label,
+  action,
+}: {
+  label: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-neutral-400">
+    <div className="flex flex-col items-center gap-3 py-12 text-center text-body-sm text-ink-faint">
       <PackageSearch className="h-6 w-6" />
       {label}
+      {action}
     </div>
   );
 }
@@ -128,7 +181,7 @@ export function Tabs<T extends string>({
   items: ReadonlyArray<{ key: T; label: string; count?: number }>;
 }) {
   return (
-    <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
+    <nav className="flex flex-wrap gap-4 border-b border-line">
       {items.map((item) => (
         <button
           key={item.key}
@@ -136,19 +189,60 @@ export function Tabs<T extends string>({
           onClick={() => onChange(item.key)}
           aria-current={value === item.key ? "page" : undefined}
           className={cn(
-            "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+            "-mb-px border-b-2 pb-2.5 pt-1 text-body-sm font-medium transition-colors",
             value === item.key
-              ? "border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300"
-              : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200",
+              ? "border-accent text-ink"
+              : "border-transparent text-ink-faint hover:text-ink",
           )}
         >
           {item.label}
           {item.count !== undefined && (
-            <span className="ml-1.5 text-xs text-neutral-400">{item.count}</span>
+            <span className="ml-1.5 tabular-nums text-xs text-ink-faint">
+              {item.count}
+            </span>
           )}
         </button>
       ))}
     </nav>
+  );
+}
+
+/**
+ * Filtre şeridi: yan yana duran, seçileni siyah dolan küçük düğmeler.
+ *
+ * Sekmeden farkı, bunun bir *daraltma* olması — "Tümü / Süt Ürünleri /
+ * Şarküteri". Sayfayı değiştirmez, listeyi kısar. Ayrı bir görüntü hak ediyor.
+ */
+export function Chips<T extends string>({
+  value,
+  onChange,
+  items,
+  className,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  items: ReadonlyArray<{ key: T; label: string }>;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex gap-2 overflow-x-auto pb-1", className)}>
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onChange(item.key)}
+          aria-pressed={value === item.key}
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded border px-3 py-1.5 text-xs font-medium transition-colors",
+            value === item.key
+              ? "border-accent bg-accent text-on-accent"
+              : "border-line bg-panel text-ink-muted hover:bg-subtle",
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -157,9 +251,9 @@ export function Tabs<T extends string>({
 // ─────────────────────────────────────────────
 //
 // Yönetim panelinin yarısı tablo ve her ekran kendi başlık/hücre sınıflarını
-// yazıyordu: aynı tablo bir ekranda `text-sm`, diğerinde `text-xs`, birinde
+// yazıyordu: aynı tablo bir ekranda "text-sm", diğerinde "text-xs", birinde
 // koyu tema satır ayracı var, diğerinde yok. Aşağıdakiler bileşen kütüphanesi
-// değil — `<table>`'ın kendisi yerinde duruyor, yalnızca sınıflar tek yerde.
+// değil — tablo elemanının kendisi yerinde duruyor, yalnızca sınıflar tek yerde.
 
 /** Yatay kaydırma kabuğu + tablo. Dar ekranda sayfayı değil tabloyu kaydırır. */
 export function Table({
@@ -171,25 +265,24 @@ export function Table({
 }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className={cn("w-full text-left text-sm", className)}>{children}</table>
+      <table className={cn("w-full text-left text-body-sm", className)}>
+        {children}
+      </table>
     </div>
   );
 }
 
+/** Başlık satırı: gömük zemin, küçük büyük-harf etiketler. */
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800">
+    <thead className="border-y border-line bg-sunken text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
       {children}
     </thead>
   );
 }
 
 export function TBody({ children }: { children: ReactNode }) {
-  return (
-    <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-      {children}
-    </tbody>
-  );
+  return <tbody className="divide-y divide-line">{children}</tbody>;
 }
 
 type CellAlign = "left" | "right" | "center";
@@ -210,7 +303,13 @@ export function Th({
   className?: string;
 }) {
   return (
-    <th className={cn("whitespace-nowrap px-3 py-2 font-medium", ALIGN[align], className)}>
+    <th
+      className={cn(
+        "whitespace-nowrap px-4 py-2.5 font-semibold",
+        ALIGN[align],
+        className,
+      )}
+    >
       {children}
     </th>
   );
@@ -236,10 +335,10 @@ export function Td({
     <td
       colSpan={colSpan}
       className={cn(
-        "px-3 py-2",
+        "px-4 py-3",
         ALIGN[align],
         numeric && "tabular-nums",
-        muted && "text-xs text-neutral-500",
+        muted && "text-xs text-ink-faint",
         className,
       )}
     >
@@ -258,7 +357,10 @@ export function TableEmpty({
 }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-neutral-400">
+      <td
+        colSpan={colSpan}
+        className="px-4 py-10 text-center text-body-sm text-ink-faint"
+      >
         {label}
       </td>
     </tr>

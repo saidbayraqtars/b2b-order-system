@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, MapPin, Navigation, Phone } from "lucide-react";
-import { VISIT_REQUEST_STATUS_LABELS, type VisitRequestStatus } from "@repo/types";
+import {
+  VISIT_REQUEST_STATUS_LABELS,
+  type VisitRequestStatus,
+} from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
@@ -97,7 +100,8 @@ export function VisitPlan() {
   }, [list.data, order]);
 
   const saveOrder = useMutation({
-    mutationFn: (ids: string[]) => apiPost("/api/visit-requests/reorder", { ids }),
+    mutationFn: (ids: string[]) =>
+      apiPost("/api/visit-requests/reorder", { ids }),
     onSuccess: () => {
       setOrder(null);
       void qc.invalidateQueries({ queryKey: ["visit-requests"] });
@@ -123,7 +127,9 @@ export function VisitPlan() {
 
   if (list.isLoading) return <LoadingState />;
   if (list.isError) {
-    return <p className="text-sm text-red-600">{(list.error as Error).message}</p>;
+    return (
+      <p className="text-sm text-red-600">{(list.error as Error).message}</p>
+    );
   }
 
   const route = routeUrl(rows);
@@ -193,7 +199,9 @@ export function VisitPlan() {
                         </p>
                       )}
                       {r.note && (
-                        <p className="mt-1 text-sm text-neutral-500">“{r.note}”</p>
+                        <p className="mt-1 text-sm text-neutral-500">
+                          “{r.note}”
+                        </p>
                       )}
                       <p className="mt-1 text-xs text-neutral-400">
                         İstenen gün: {trDate(r.requestedFor)}
@@ -252,7 +260,9 @@ export function VisitPlan() {
                     {r.status === "OPEN" && (
                       <button
                         type="button"
-                        onClick={() => setStatus.mutate({ id: r.id, status: "PLANNED" })}
+                        onClick={() =>
+                          setStatus.mutate({ id: r.id, status: "PLANNED" })
+                        }
                         className="h-8 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
                       >
                         Güne al
@@ -260,7 +270,9 @@ export function VisitPlan() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setStatus.mutate({ id: r.id, status: "CANCELLED" })}
+                      onClick={() =>
+                        setStatus.mutate({ id: r.id, status: "CANCELLED" })
+                      }
                       className="h-8 rounded-md px-2.5 text-xs text-red-600 hover:underline"
                     >
                       İptal

@@ -11,7 +11,11 @@ import { AdminShell } from "./_components/admin-shell";
  * `requirePage` kaldırılmıyor: layout'un çalıştığı garanti bir güvenlik sınırı
  * değil ve her ekranın kendi izni ayrıca gerekiyor.
  */
-export default async function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const user = await requirePage(["SUPER_ADMIN"]);
   return (
     <AdminShell email={user.email} permissions={user.permissions}>

@@ -15,7 +15,7 @@ export default async function TargetsPage() {
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-6xl">
       <PageHeader
         title="Temsilci hedefleri"
         subtitle="Günlük, haftalık, aylık ve yıllık ziyaret ve ciro hedefleri"

@@ -11,7 +11,7 @@ export default async function PortalUsersPage() {
 
   if (!user.companyId) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
+      <main className="mx-auto max-w-3xl">
         <h1 className="text-2xl font-bold">Kullanıcılar</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
           Hesabınıza firma atanmamış.
@@ -26,15 +26,13 @@ export default async function PortalUsersPage() {
   });
 
   return (
-    <div>
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={company?.name ?? user.name}
-        userName={user.name}
-        current="/portal/users"
-      />
-      <div className="mx-auto max-w-5xl px-4 pb-6">
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={company?.name ?? user.name}
+      userName={user.name}
+    >
+      <div className="mx-auto max-w-5xl">
         <h1 className="mb-4 text-lg font-semibold">Kullanıcılar</h1>
         <UserManager
           currentUserId={user.id}
@@ -47,6 +45,6 @@ export default async function PortalUsersPage() {
           personel yalnızca sipariş oluşturur.
         </p>
       </div>
-    </div>
+    </PortalNav>
   );
 }

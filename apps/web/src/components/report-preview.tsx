@@ -41,7 +41,11 @@ export function formatCell(
         minute: "2-digit",
       });
     default:
-      return typeof value === "boolean" ? (value ? "Evet" : "Hayır") : String(value);
+      return typeof value === "boolean"
+        ? value
+          ? "Evet"
+          : "Hayır"
+        : String(value);
   }
 }
 
@@ -188,7 +192,11 @@ function Chart({ result }: { result: ReportRunResult }) {
 
       {chart.type === "line" && (
         <>
-          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="h-40 w-full">
+          <svg
+            viewBox="0 0 100 40"
+            preserveAspectRatio="none"
+            className="h-40 w-full"
+          >
             <polyline
               fill="none"
               stroke={PALETTE[0]}
@@ -196,7 +204,8 @@ function Chart({ result }: { result: ReportRunResult }) {
               vectorEffect="non-scaling-stroke"
               points={points
                 .map((p, i) => {
-                  const x = points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
+                  const x =
+                    points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
                   const y = 40 - ((p.value - min) / span) * 38 - 1;
                   return `${x},${y}`;
                 })
@@ -231,7 +240,11 @@ function Pie({
   const positive = points.filter((p) => p.value > 0).slice(0, 8);
   const total = positive.reduce((a, p) => a + p.value, 0);
   if (total <= 0) {
-    return <p className="text-sm text-neutral-500">Pasta grafik için pozitif değer yok.</p>;
+    return (
+      <p className="text-sm text-neutral-500">
+        Pasta grafik için pozitif değer yok.
+      </p>
+    );
   }
 
   let cursor = 0;

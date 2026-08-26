@@ -1,0 +1,177 @@
+# Arayüz Yenilemesi — plan ve ilerleme
+
+Bu dosya hem yol haritası hem de sohbetler arası devir teslim notudur. Yeni bir
+sohbet açtığınızda önce burayı okutun: nerede kalındığı, hangi kararların
+verildiği ve sıradaki adımın ne olduğu burada yazılı.
+
+## Tasarım kaynağı
+
+Google Stitch projesi **"Dual-Portal Corporate Dashboard"** (ID
+`10805844652839299989`). İndirilmiş ekran görüntüleri ve HTML'leri:
+`docs/design/stitch-v2/`
+
+| Dosya              | Ekran                             |
+| ------------------ | --------------------------------- |
+| `1-temsilci`       | Temsilcilik bilgileri / cari özet |
+| `2-sepet`          | Sepet + sipariş özeti             |
+| `3-siparisler`     | Sipariş listesi (tablo)           |
+| `4-musteri-ozet`   | Müşteri listesi + sayı kutuları   |
+| `5-katalog`        | Ürün kataloğu (kart ızgarası)     |
+| `6-analitik`       | Analitik panosu                   |
+
+Stitch MCP sunucusu Claude Code'un araç şemasını çözemiyor
+(`can't resolve reference #/$defs/ScreenInstance`), bu yüzden çağrılar `curl`
+ile yapıldı:
+
+```bash
+curl -s -X POST https://stitch.googleapis.com/mcp \
+  -H "X-Goog-Api-Key: $STITCH_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"get_screen",
+                 "arguments":{"projectId":"10805844652839299989",
+                              "screenId":"<id>"}}}'
+```
+
+`get_screen` çağrısında `name` alanı yerine `projectId` + `screenId` verin;
+`name` biçimi bazı ekranlarda "invalid argument" dönüyor.
+
+## Tasarım dili — "Executive Precision"
+
+Beş kural. Yeni yazılan her ekran bunlara uyar:
+
+1. **Tek renk ailesi var, o da gri.** Renk süs değil işaret: yeşil "stokta",
+   kehribar "sınırlı", kırmızı "borç/iptal", siyah "birincil eylem". Eski indigo
+   marka rengi kaldırıldı — `brand-600` artık mürekkep siyahı.
+2. **Yüzeyler gölgeyle değil 1px çizgiyle ayrılır.** `shadow-card` bilerek
+   `none`. Gölge yalnızca gerçekten üstte duran şeyde (pencere, açılır menü).
+3. **Köşeler sıkı.** Kart 6px, düğme/girdi 4px, künye 4px. Yuvarlak hatlar
+   "uygulama" hissi veriyordu; burada belge hissi isteniyor.
+4. **Tek yazı tipi: Inter.** Başlık için ayrı aile yok — hiyerarşi ağırlık ve
+   harf aralığıyla kuruluyor. Ölçen sayılar `tabular-nums`.
+5. **Tek kabuk.** Solda 256px sabit gezinme, üstte 64px ince şerit. Yönetim,
+   portal, plasiyer ve kurye aynı yerleşimi paylaşır.
+
+### Renk değerleri
+
+Anlamsal isimler CSS değişkeninden okunur (`src/app/globals.css`), koyu temada
+kendiliğinden döner. **Yeni kodda `dark:` yazmayın**, anlamsal ismi kullanın:
+
+| Sınıf                              | Ne için                       | Açık      | Koyu      |
+| ---------------------------------- | ----------------------------- | --------- | --------- |
+| `bg-surface`                       | sayfa zemini                  | `#f9f9fb` | `#0f1112` |
+| `bg-panel`                         | kart, tablo, kutu             | `#ffffff` | `#191c1e` |
+| `bg-sunken`                        | girdi, görsel kutusu, th      | `#f3f3f6` | `#232627` |
+| `bg-subtle`                        | üzerine gelince, vurgusuz     | `#edeef0` | `#2a2d2e` |
+| `border-line` / `border-line-strong` | kenar / ayraç               | `#dcdee0` / `#c5c6ca` | `#2e3132` / `#44474a` |
+| `text-ink` / `-muted` / `-faint`   | ana / ikincil / etiket metni  | `#191c1e` / `#44474a` / `#75777a` | `#e5e7e8` / `#a9adae` / `#7d8283` |
+| `bg-accent` `text-on-accent`       | birincil eylem, seçili öğe    | `#1a1c1e` / beyaz | beyaz / `#101314` |
+| `text-positive` / `-caution` / `-critical` | durum renkleri        | — | — |
+
+### Yazı ölçeği (`text-*`)
+
+`display` 40, `headline-lg` 32, `headline-md` 24, `headline-sm` 18,
+`body-lg` 18, `body-md` 16, `body-sm` 14, `label` 12/600/0.05em büyük harf.
+
+Sayfa başlığı `headline-lg`, panel başlığı `headline-sm`, gövde `body-sm`.
+
+## Paylaşılan bileşenler
+
+`src/components/ui.tsx`
+: `Card`, `StatTile`, `Badge`, `PageHeader`, `LoadingState`, `EmptyState`,
+`Tabs`, `Chips`, `Table`/`THead`/`TBody`/`Th`/`Td`/`TableEmpty`
+
+`src/components/form.tsx`
+: `Label`, `TextInput`, `Select`, `TextArea`, `Checkbox`, `Button`,
+`LinkButton`, `Panel`, `Modal`, `ErrorLine`
+
+`src/components/app-sidebar.tsx`
+: `SidebarShell` — uygulamanın tek kabuğu. `groups` (başlıksız grup = düz
+liste), `search` (üst şeritteki arama kutusu), `actions` (sağdaki düğmeler).
+
+**Sayfa boşluğu kabuktan geliyor** (`px-4 py-6 md:px-10 md:py-8`). Ekranlar
+kendi `px-4 py-6`sını yazmaz; yalnızca `mx-auto max-w-*` ile genişlik seçer.
+
+---
+
+## İlerleme
+
+### ✔ Adım 1 — Temel katman ve kabuk (bitti)
+
+- `tailwind.config.ts`: yeni token seti. `neutral` ve `brand` merdivenleri
+  yerinde bırakılıp **değerleri** değiştirildi — elden geçmemiş 1000+ satır
+  dokunulmadan yeni tona geçti. Köşe yarıçapları sıkıldı, yazı ölçeği eklendi,
+  `shadow-card` sıfırlandı.
+- `src/app/globals.css`: anlamsal CSS değişkenleri + `.dark` karşılıkları,
+  odak halkası nötrleştirildi, `tech-paper` deseni kaldırıldı.
+- `layout.tsx`: Plus Jakarta Sans kaldırıldı (tek aile Inter).
+- `ui.tsx` / `form.tsx`: hepsi anlamsal tokenlara taşındı; `StatTile` ve `Chips`
+  eklendi, `Panel` ikon aldı, tablo başlığı gömük zemine oturdu.
+- **Üç kabuk teke indi.** `AppHeader` (üst bar) ve kullanılmayan `AdminNav`
+  silindi; `PortalNav`, `RepNav` ve kurye ekranı `SidebarShell` sarmalayıcısına
+  dönüştü. Çağrı yerleri artık `<PortalNav …>{içerik}</PortalNav>` biçiminde.
+- Sayfa gutter'ları kabuğa taşındı (45 dosya).
+
+Doğrulama: `tsc --noEmit` temiz, `vitest run` 218/218 geçti, `next build` başarılı.
+
+### ▢ Adım 2 — Portal / vitrin
+
+Öncelik: müşterinin aradığını bulması. Yapılacaklar:
+
+- Katalog aramasını sayfa gövdesinden **üst şeride** taşı
+  (`SidebarShell`'in `search` yuvası hazır) — Stitch `5-katalog`.
+- Ürün kartı: kare görsel kutusu (`bg-sunken`, `object-contain`), sol üstte
+  kategori künyesi, altında `KOD: …`, ad, stok noktası, fiyat + sepet düğmesi.
+- Sepet paneli: Stitch `2-sepet` — solda satır tablosu, sağda yapışkan
+  "Sipariş Özeti" kutusu (ara toplam / iskonto / KDV / genel toplam).
+- Sipariş listesi: `Table` + `Badge` durum künyeleri (Stitch `3-siparisler`).
+- Ekstre, ziyaret, onaylar, kullanıcılar: `PageHeader` + `Panel`e geçir.
+- Dosyalar: `src/app/portal/**`, `src/components/storefront/**`,
+  `src/components/orders-board.tsx`, `statement-view.tsx`.
+
+### ▢ Adım 3 — Yönetim çekirdeği
+
+`admin/page.tsx` (pano → `StatTile` satırı + iki tablo), `admin/companies/**`,
+`admin/products/**`, `orders/[id]/**`.
+
+### ▢ Adım 4 — Finans
+
+`admin/kasa`, `admin/cekler`, `admin/iadeler`, `admin/kurlar`,
+`admin/payment-terms`, `admin/volume-tiers`.
+
+### ▢ Adım 5 — Operasyon
+
+`admin/deliveries`, `admin/stok`, `admin/labels`, `admin/documents`,
+`kurye`, `documents/**` (yazdırma yüzeyleri — bunlar kâğıda basılıyor, koyu
+tema ve renk kuralları burada geçerli değil).
+
+### ▢ Adım 6 — Yapılandırma ve sistem
+
+`admin/promotions`, `admin/categories`, `admin/customer-groups`,
+`admin/sayfa-duzeni`, `admin/kurulum`, `admin/organization`, `admin/erp`,
+`admin/announcements`, `admin/jobs`, `admin/surum`, `admin/users`,
+`admin/audit`, `admin/activity`, `admin/targets`.
+
+### ▢ Adım 7 — Rapor tasarımcısı ve panolar
+
+`reports/**`, `admin/reports`.
+
+### ▢ Adım 8 — Giriş ve hesap
+
+`login`, `sifremi-unuttum`, `hesabim`, `403`.
+
+### ▢ Adım 9 — Mobil
+
+`apps/mobile` — aynı palet ve tipografi. NativeWind'in bilinen iki tuzağı için
+`b2b-theme-engine` hafıza notuna bakın.
+
+### ▢ Adım 10 — Temizlik
+
+- Kalan ham sınıfları anlamsala çevir. Adım 1 sonrası sayaç:
+  `dark:` 506, `neutral-` 1033, `brand-` 90. Hedef: üçü de sıfır.
+- Kiracı marka adını kabuğa bağla: `loadTenant()` →
+  `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
+  Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için
+  sunucu tarafında yakalanıp yedeğe düşen küçük bir yardımcı gerekiyor.
+- Genel arama (Ctrl+K): ürün, firma, sipariş no tek kutudan.

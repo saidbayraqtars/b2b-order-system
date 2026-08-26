@@ -1,5 +1,16 @@
-import { AlertTriangle, CheckCircle2, CircleSlash, Clock, Download, XCircle } from "lucide-react";
-import { readUpdateState, updateStatus, type UpdateStatus } from "@repo/services";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleSlash,
+  Clock,
+  Download,
+  XCircle,
+} from "lucide-react";
+import {
+  readUpdateState,
+  updateStatus,
+  type UpdateStatus,
+} from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { Badge, Card, PageHeader, type BadgeTone } from "@/components/ui";
 
@@ -27,7 +38,10 @@ function trDateTime(iso: string | null): string {
   }).format(d);
 }
 
-const STATUS_TEXT: Record<UpdateStatus, { label: string; tone: BadgeTone; detail: string }> = {
+const STATUS_TEXT: Record<
+  UpdateStatus,
+  { label: string; tone: BadgeTone; detail: string }
+> = {
   disabled: {
     label: "Ajan kurulu değil",
     tone: "neutral",
@@ -52,7 +66,11 @@ const STATUS_TEXT: Record<UpdateStatus, { label: string; tone: BadgeTone; detail
     detail:
       "Ajan çalışıyor ama sürüm akışını indiremedi. Yeni sürüm çıkmış olabilir ve bu kurulum haberi almıyor.",
   },
-  current: { label: "Güncel", tone: "success", detail: "Çalışan sürüm, kanalın yayımladığı sürüm." },
+  current: {
+    label: "Güncel",
+    tone: "success",
+    detail: "Çalışan sürüm, kanalın yayımladığı sürüm.",
+  },
   available: {
     label: "Güncelleme var",
     tone: "info",
@@ -82,11 +100,19 @@ const POLICY_TEXT: Record<string, string> = {
   auto: "Otomatik — bakım penceresinde kendisi günceller",
 };
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 py-2 last:border-0 dark:border-neutral-800">
       <span className="text-sm text-neutral-500">{label}</span>
-      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{children}</span>
+      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+        {children}
+      </span>
     </div>
   );
 }
@@ -104,7 +130,7 @@ export default async function VersionPage() {
   const running = process.env.APP_VERSION || "unknown";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-3xl">
       <PageHeader
         title="Sürüm"
         subtitle="Bu kurulum hangi sürümde, merkez ne yayımladı, son güncelleme ne oldu"
@@ -120,7 +146,9 @@ export default async function VersionPage() {
                 <Badge tone="danger">Zorunlu sürüm</Badge>
               )}
             </div>
-            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">{info.detail}</p>
+            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+              {info.detail}
+            </p>
           </div>
         </div>
       </Card>
@@ -130,12 +158,16 @@ export default async function VersionPage() {
           Bu kurulum
         </h2>
         <Row label="Çalışan sürüm">
-          <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">{running}</code>
+          <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">
+            {running}
+          </code>
         </Row>
         {state && (
           <>
             <Row label="Kanal">{state.channel}</Row>
-            <Row label="Politika">{POLICY_TEXT[state.policy] ?? state.policy}</Row>
+            <Row label="Politika">
+              {POLICY_TEXT[state.policy] ?? state.policy}
+            </Row>
             <Row label="Son kontrol">{trDateTime(state.checkedAt)}</Row>
           </>
         )}
@@ -151,7 +183,9 @@ export default async function VersionPage() {
               {state.available.version}
             </code>
           </Row>
-          <Row label="Yayım tarihi">{trDateTime(state.available.releasedAt)}</Row>
+          <Row label="Yayım tarihi">
+            {trDateTime(state.available.releasedAt)}
+          </Row>
           {state.available.notes && (
             <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
               {state.available.notes}
@@ -196,10 +230,12 @@ export default async function VersionPage() {
       )}
 
       <p className="text-xs leading-relaxed text-neutral-500">
-        Güncelleme sunucudaki ajan tarafından uygulanır; bu ekran yalnızca gösterir. Elle
-        güncellemek için sunucuda <code>./scripts/agent.sh --now</code>, ajansız kurulumlarda{" "}
-        <code>./scripts/update.sh</code>. Şema göçü geri alınamaz: her güncelleme önce yedek alır,
-        yeni sürüm sağlıklı olmazsa uygulama eski sürüme döndürülür.
+        Güncelleme sunucudaki ajan tarafından uygulanır; bu ekran yalnızca
+        gösterir. Elle güncellemek için sunucuda{" "}
+        <code>./scripts/agent.sh --now</code>, ajansız kurulumlarda{" "}
+        <code>./scripts/update.sh</code>. Şema göçü geri alınamaz: her
+        güncelleme önce yedek alır, yeni sürüm sağlıklı olmazsa uygulama eski
+        sürüme döndürülür.
       </p>
     </main>
   );

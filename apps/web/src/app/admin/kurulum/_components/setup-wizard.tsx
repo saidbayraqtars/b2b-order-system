@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight, CircleDashed, Package, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  CircleDashed,
+  Package,
+  TriangleAlert,
+} from "lucide-react";
 import type { SetupPack, SetupStatus, SetupStepKey } from "@repo/services";
 import { Card } from "@/components/ui";
 
@@ -341,9 +347,12 @@ function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
             <p className="mt-0.5 text-xs text-neutral-500">{p.summary}</p>
             <p className="mt-1.5 text-xs tabular-nums text-neutral-400">
               {p.customerGroups.length} grup ·{" "}
-              {p.categories.reduce((n, c) => n + 1 + (c.children?.length ?? 0), 0)}{" "}
-              kategori · {p.paymentTerms.length} vade · {p.warehouses.length} depo ·{" "}
-              {p.cashAccounts.length} hesap
+              {p.categories.reduce(
+                (n, c) => n + 1 + (c.children?.length ?? 0),
+                0,
+              )}{" "}
+              kategori · {p.paymentTerms.length} vade · {p.warehouses.length}{" "}
+              depo · {p.cashAccounts.length} hesap
             </p>
             <button
               type="button"
@@ -390,7 +399,11 @@ export function SetupHint({ done, total }: { done: number; total: number }) {
     >
       <CircleDashed className="h-4 w-4 shrink-0" />
       <span>
-        Kurulum sürüyor — <strong>{done}/{total}</strong> adım tamam. Sihirbazı aç.
+        Kurulum sürüyor —{" "}
+        <strong>
+          {done}/{total}
+        </strong>{" "}
+        adım tamam. Sihirbazı aç.
       </span>
       <ChevronRight className="ml-auto h-4 w-4 shrink-0" />
     </Link>

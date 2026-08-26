@@ -66,7 +66,10 @@ function ProfilePanel({
     }
     setBusy(true);
     try {
-      const res = await apiPatch<{ account: Account }>("/api/account", parsed.data);
+      const res = await apiPatch<{ account: Account }>(
+        "/api/account",
+        parsed.data,
+      );
       onSaved(res.account);
       setSaved(true);
     } catch (e) {
@@ -222,9 +225,9 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
     return (
       <Panel title="Yedek kodlarınız">
         <p className="text-sm">
-          Bu kodları <strong>şimdi</strong> kaydedin — bir daha
-          gösterilmeyecek. Her biri bir kez kullanılır ve telefonunuza
-          erişemediğinizde doğrulama kodunun yerine geçer.
+          Bu kodları <strong>şimdi</strong> kaydedin — bir daha gösterilmeyecek.
+          Her biri bir kez kullanılır ve telefonunuza erişemediğinizde doğrulama
+          kodunun yerine geçer.
         </p>
         <ul className="my-3 grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-3">
           {backupCodes.map((c) => (
@@ -238,7 +241,9 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
         </ul>
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            onClick={() => void navigator.clipboard?.writeText(backupCodes.join("\n"))}
+            onClick={() =>
+              void navigator.clipboard?.writeText(backupCodes.join("\n"))
+            }
           >
             Kopyala
           </Button>
@@ -361,8 +366,8 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
         </div>
         {status.required && (
           <p className="mt-2 text-xs text-neutral-500">
-            {status.requirementReason} iki adımlı doğrulama zorunlu; kapatılamaz.
-            Telefonunuzu değiştirecekseniz yöneticinize sıfırlatın.
+            {status.requirementReason} iki adımlı doğrulama zorunlu;
+            kapatılamaz. Telefonunuzu değiştirecekseniz yöneticinize sıfırlatın.
           </p>
         )}
         <ErrorLine error={error} />
@@ -414,7 +419,10 @@ function PasswordPanel() {
       setError(new Error("Yeni şifre tekrarı eşleşmiyor"));
       return;
     }
-    const parsed = changePasswordSchema.safeParse({ currentPassword, newPassword });
+    const parsed = changePasswordSchema.safeParse({
+      currentPassword,
+      newPassword,
+    });
     if (!parsed.success) {
       setError(new Error(parsed.error.issues[0]?.message ?? "Geçersiz form"));
       return;
@@ -500,7 +508,9 @@ function ActivityPanel({ entries }: { entries: AuditEntry[] }) {
               className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 py-1 dark:border-neutral-900"
             >
               <span>
-                <span className="font-medium">{AUDIT_ACTION_LABELS[e.action]}</span>
+                <span className="font-medium">
+                  {AUDIT_ACTION_LABELS[e.action]}
+                </span>
                 <span className="ml-2 text-neutral-500">{e.summary}</span>
               </span>
               <span className="text-xs text-neutral-400">

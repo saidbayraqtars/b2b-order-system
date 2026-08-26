@@ -38,7 +38,8 @@ export function ErpPanel({ orderId }: Props) {
   });
 
   const push = useMutation({
-    mutationFn: () => apiPost<ErpWriteOrderResult>(`/api/orders/${orderId}/erp`, {}),
+    mutationFn: () =>
+      apiPost<ErpWriteOrderResult>(`/api/orders/${orderId}/erp`, {}),
     onSuccess: (result) => {
       setWritten(result);
       void qc.invalidateQueries({ queryKey: ["order-erp", orderId] });
@@ -78,20 +79,24 @@ export function ErpPanel({ orderId }: Props) {
             {s.pushedByName ? ` · ${s.pushedByName}` : ""}
           </p>
           <p className="text-neutral-500">
-            Belge ERP&apos;de <strong>alınan sipariş</strong> olarak duruyor. Faturaya
-            çevirme ve e-fatura gönderimi ERP&apos;nin kendi ekranından yapılır.
+            Belge ERP&apos;de <strong>alınan sipariş</strong> olarak duruyor.
+            Faturaya çevirme ve e-fatura gönderimi ERP&apos;nin kendi ekranından
+            yapılır.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-neutral-500">
-            Sipariş, ERP&apos;ye <strong>alınan sipariş</strong> olarak yazılır — yasal
-            belge değil. Cari ve stok kodları ERP&apos;de eşleşmiyorsa hiçbir şey
-            yazılmaz. Kargo bedeli satır olarak girmez, belgenin notuna yazılır.
+            Sipariş, ERP&apos;ye <strong>alınan sipariş</strong> olarak yazılır
+            — yasal belge değil. Cari ve stok kodları ERP&apos;de eşleşmiyorsa
+            hiçbir şey yazılmaz. Kargo bedeli satır olarak girmez, belgenin
+            notuna yazılır.
           </p>
 
           {s.reason ? (
-            <p className="text-sm text-amber-700 dark:text-amber-500">{s.reason}</p>
+            <p className="text-sm text-amber-700 dark:text-amber-500">
+              {s.reason}
+            </p>
           ) : (
             <Button
               onClick={() => push.mutate()}

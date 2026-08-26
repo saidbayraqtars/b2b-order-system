@@ -24,11 +24,15 @@ export function AgentsPanel() {
     queryKey: ["erp-agents"],
     queryFn: () => apiGet<{ agents: AgentRow[] }>("/api/admin/erp/agents"),
   });
-  const invalidate = () => void qc.invalidateQueries({ queryKey: ["erp-agents"] });
+  const invalidate = () =>
+    void qc.invalidateQueries({ queryKey: ["erp-agents"] });
 
   const create = useMutation({
     mutationFn: () =>
-      apiPost<IssuedAgent>("/api/admin/erp/agents", { name: name.trim(), erp: "vega" }),
+      apiPost<IssuedAgent>("/api/admin/erp/agents", {
+        name: name.trim(),
+        erp: "vega",
+      }),
     onSuccess: (agent) => {
       setName("");
       setIssued(agent);
@@ -134,7 +138,9 @@ function AgentItem({
 }) {
   const toggle = useMutation({
     mutationFn: () =>
-      apiPatch(`/api/admin/erp/agents/${agent.id}`, { isActive: !agent.isActive }),
+      apiPatch(`/api/admin/erp/agents/${agent.id}`, {
+        isActive: !agent.isActive,
+      }),
     onSuccess: onChanged,
   });
   const rotate = useMutation({

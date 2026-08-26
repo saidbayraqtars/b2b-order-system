@@ -323,7 +323,9 @@ function ProgressCard({ row }: { row: ProgressRow }) {
             {TARGET_PERIOD_LABELS[row.period]}
           </span>
         </p>
-        <Badge tone={behind ? "warning" : row.percent >= 100 ? "success" : "info"}>
+        <Badge
+          tone={behind ? "warning" : row.percent >= 100 ? "success" : "info"}
+        >
           %{row.percent}
         </Badge>
       </div>

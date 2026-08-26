@@ -17,13 +17,14 @@ export default async function AdminKasaPage() {
         <AccountsPanel />
         <p className="text-sm text-neutral-500">
           Bu defter <strong>bizim paramızı</strong> takip eder; müşterinin borcu
-          cari ekstrede durur. Nakit ve havale sipariş onaylandığında bedeli buraya
-          girer, çünkü cariye hiç yazılmaz. <strong>Kart</strong> farklıdır: para
-          çekilene kadar bizim değildir, bu yüzden sipariş yalnızca bir tahsilat
-          kaydı açar; kasaya girişi tahsilat onaylanınca olur.{" "}
-          <strong>Çek ve senet</strong> ise hiç girmez — müşterinin borcunu kapatır
-          ama tahsil edilene kadar harcanabilir para değildir. Kayıtlar silinmez:
-          yanlış bir kayıt, kendisine bağlı ters kayıtla iptal edilir.
+          cari ekstrede durur. Nakit ve havale sipariş onaylandığında bedeli
+          buraya girer, çünkü cariye hiç yazılmaz. <strong>Kart</strong>{" "}
+          farklıdır: para çekilene kadar bizim değildir, bu yüzden sipariş
+          yalnızca bir tahsilat kaydı açar; kasaya girişi tahsilat onaylanınca
+          olur. <strong>Çek ve senet</strong> ise hiç girmez — müşterinin
+          borcunu kapatır ama tahsil edilene kadar harcanabilir para değildir.
+          Kayıtlar silinmez: yanlış bir kayıt, kendisine bağlı ters kayıtla
+          iptal edilir.
         </p>
       </main>
     </div>

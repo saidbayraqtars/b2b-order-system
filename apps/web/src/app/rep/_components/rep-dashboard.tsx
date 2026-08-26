@@ -152,7 +152,6 @@ export function RepDashboard() {
           </table>
         </section>
       )}
-
     </div>
   );
 }
@@ -192,7 +191,9 @@ function Stat({
       <p className="text-xs text-neutral-500">{label}</p>
       <p
         className={`mt-0.5 text-lg font-semibold tabular-nums ${
-          danger ? "text-red-600 dark:text-red-400" : "text-neutral-900 dark:text-neutral-50"
+          danger
+            ? "text-red-600 dark:text-red-400"
+            : "text-neutral-900 dark:text-neutral-50"
         }`}
       >
         {value}

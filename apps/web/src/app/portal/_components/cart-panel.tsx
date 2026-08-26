@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { CreateOrderResult, OrderQuoteView, PaymentOptions } from "@repo/services";
+import type {
+  CreateOrderResult,
+  OrderQuoteView,
+  PaymentOptions,
+} from "@repo/services";
 import type { PaymentMethod } from "@repo/types";
 import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
@@ -285,7 +289,9 @@ export function CartPanel({ companyId }: { companyId: string }) {
             <Row
               label="Ara toplam"
               value={formatTRY(
-                priced ? Number(q.subtotal) - Number(q.discountTotal) : localTotals.subtotal,
+                priced
+                  ? Number(q.subtotal) - Number(q.discountTotal)
+                  : localTotals.subtotal,
               )}
             />
             {priced && q.volumeDiscount && (
@@ -309,7 +315,9 @@ export function CartPanel({ companyId }: { companyId: string }) {
               ))}
             <Row
               label="KDV"
-              value={formatTRY(priced ? Number(q.taxTotal) : localTotals.taxTotal)}
+              value={formatTRY(
+                priced ? Number(q.taxTotal) : localTotals.taxTotal,
+              )}
             />
             <Row
               label="Genel toplam"

@@ -11,28 +11,24 @@ type Props = { searchParams: { companyId?: string } };
 // Firmanın sipariş listesi. Alıcı kendi firmasını görür; plasiyer/süper admin
 // seçili firmanın siparişlerini — onay yetkisi rolden gelir, ekrandan değil.
 export default async function PortalOrdersPage({ searchParams }: Props) {
-  const user = await requirePage([
-    "COMPANY_ADMIN",
-    "COMPANY_STAFF",
-    "SALES_REP",
-    "SUPER_ADMIN",
-  ], "orders.view");
+  const user = await requirePage(
+    ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    "orders.view",
+  );
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
   if (!ctx.companyId) redirect("/portal");
 
   return (
-    <div>
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={ctx.companyName}
-        userName={user.name}
-        current="/portal/orders"
-        isProxy={ctx.isProxy}
-        companyId={ctx.companyId}
-      />
-      <div className="mx-auto max-w-5xl px-4 pb-6">
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={ctx.companyName}
+      userName={user.name}
+      isProxy={ctx.isProxy}
+      companyId={ctx.companyId}
+    >
+      <div className="mx-auto max-w-5xl">
         <h1 className="mb-4 text-lg font-semibold">
           {ctx.isProxy ? `${ctx.companyName} — Siparişler` : "Siparişlerim"}
         </h1>
@@ -43,6 +39,6 @@ export default async function PortalOrdersPage({ searchParams }: Props) {
           canPrint={user.permissions.includes("documents.view")}
         />
       </div>
-    </div>
+    </PortalNav>
   );
 }

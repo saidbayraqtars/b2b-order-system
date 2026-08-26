@@ -18,14 +18,14 @@ export default async function AdminStokPage() {
         <MovementsPanel />
         <WarehousesPanel />
         <p className="text-sm text-neutral-500">
-          Eldeki adet artık <strong>bu defterin bakiyesi</strong>: her hareket onu
-          farkı kadar oynatır, kimse üstüne yazmaz. Sipariş girildiği anda malı
-          düşer — sevkte değil — yoksa aynı son kutu iki müşteriye satılırdı; iptal
-          ve ret geri verir. <strong>ERP senkronu</strong> ezmez, farkı kadar
-          hareket yazar, bu yüzden &ldquo;gece stok neden düştü&rdquo; sorusunun
-          cevabı defterde durur. Kayıtlar silinmez: yanlış bir kayıt, kendisine
-          bağlı ters kayıtla iptal edilir. Sipariş kaynaklı satırların iptali ise
-          siparişin kendisinden yapılır.
+          Eldeki adet artık <strong>bu defterin bakiyesi</strong>: her hareket
+          onu farkı kadar oynatır, kimse üstüne yazmaz. Sipariş girildiği anda
+          malı düşer — sevkte değil — yoksa aynı son kutu iki müşteriye
+          satılırdı; iptal ve ret geri verir. <strong>ERP senkronu</strong>{" "}
+          ezmez, farkı kadar hareket yazar, bu yüzden &ldquo;gece stok neden
+          düştü&rdquo; sorusunun cevabı defterde durur. Kayıtlar silinmez:
+          yanlış bir kayıt, kendisine bağlı ters kayıtla iptal edilir. Sipariş
+          kaynaklı satırların iptali ise siparişin kendisinden yapılır.
         </p>
       </main>
     </div>

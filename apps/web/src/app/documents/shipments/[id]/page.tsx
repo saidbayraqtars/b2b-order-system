@@ -47,7 +47,13 @@ export default async function ShipmentDocumentPage({
             select: { name: true, taxNumber: true, taxOffice: true },
           },
           shippingAddress: {
-            select: { label: true, line1: true, line2: true, district: true, city: true },
+            select: {
+              label: true,
+              line1: true,
+              line2: true,
+              district: true,
+              city: true,
+            },
           },
         },
       },
@@ -55,7 +61,9 @@ export default async function ShipmentDocumentPage({
         select: {
           id: true,
           quantity: true,
-          orderItem: { select: { productName: true, sku: true, quantity: true } },
+          orderItem: {
+            select: { productName: true, sku: true, quantity: true },
+          },
         },
       },
     },
@@ -131,7 +139,10 @@ export default async function ShipmentDocumentPage({
           <DocumentField label="ERP numarası" value={shipment.externalNumber} />
         )}
         {shipment.invoice && (
-          <DocumentField label="Fatura" value={shipment.invoice.documentNumber} />
+          <DocumentField
+            label="Fatura"
+            value={shipment.invoice.documentNumber}
+          />
         )}
       </section>
 

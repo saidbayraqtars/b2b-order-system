@@ -7,7 +7,7 @@ export default async function ReportsPage() {
   await requirePage(REPORT_BUILDER_ROLES, "reports.build");
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-5xl">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Raporlarım</h1>

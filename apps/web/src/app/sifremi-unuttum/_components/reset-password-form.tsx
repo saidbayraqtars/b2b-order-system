@@ -50,7 +50,9 @@ export function ResetPasswordForm() {
     setLoading(false);
 
     if (!res?.ok) {
-      const body = (await res?.json().catch(() => null)) as { error?: string } | null;
+      const body = (await res?.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       setError(body?.error ?? "Şifre değiştirilemedi, tekrar deneyin");
       return;
     }

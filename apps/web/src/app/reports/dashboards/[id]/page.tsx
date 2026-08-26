@@ -12,7 +12,7 @@ export default async function DashboardPage({
   await requirePage(REPORT_BUILDER_ROLES, "reports.view");
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="mx-auto max-w-7xl">
       <DashboardView id={params.id} />
     </main>
   );

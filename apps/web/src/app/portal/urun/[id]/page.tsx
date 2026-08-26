@@ -17,12 +17,10 @@ type Props = {
 // Ürün detayı. Fiyat sunucuda, firmaya göre çözülüp gönderiliyor — istemci
 // hiçbir zaman ham fiyat listesi görmüyor.
 export default async function ProductPage({ params, searchParams }: Props) {
-  const user = await requirePage([
-    "COMPANY_ADMIN",
-    "COMPANY_STAFF",
-    "SALES_REP",
-    "SUPER_ADMIN",
-  ], "products.view");
+  const user = await requirePage(
+    ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
+    "products.view",
+  );
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);
 
@@ -44,29 +42,27 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
 
   return (
-    <div className="min-h-screen tech-paper">
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={ctx.companyName}
-        userName={user.name}
-        current="/portal"
-        isProxy={ctx.isProxy}
-        companyId={ctx.companyId}
-      />
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={ctx.companyName}
+      userName={user.name}
+      isProxy={ctx.isProxy}
+      companyId={ctx.companyId}
+    >
       {ctx.isProxy && (
         <ActingAsBar
           companyName={ctx.companyName ?? "Firma"}
           availableCredit={ctx.availableCredit}
         />
       )}
-      <div className="mx-auto max-w-6xl px-4 pb-10">
+      <div className="mx-auto max-w-6xl">
         <ProductDetail
           product={product}
           companyId={ctx.companyId}
           categoryName={category}
         />
       </div>
-    </div>
+    </PortalNav>
   );
 }

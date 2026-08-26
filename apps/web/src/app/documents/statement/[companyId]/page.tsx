@@ -137,7 +137,9 @@ export default async function StatementDocumentPage({
                   <span className="ml-1 text-xs text-neutral-500">(iptal)</span>
                 )}
               </td>
-              <td className="py-1.5 text-neutral-500">{r.orderNumber ?? "—"}</td>
+              <td className="py-1.5 text-neutral-500">
+                {r.orderNumber ?? "—"}
+              </td>
               <td className="py-1.5 text-right tabular-nums">
                 {Number(r.debit) > 0 ? formatTRY(r.debit) : "—"}
               </td>

@@ -55,7 +55,9 @@ async function SellerBlock() {
   } catch (e) {
     return (
       <div className="rounded border-2 border-red-500 bg-red-50 p-3 text-red-800">
-        <p className="font-bold uppercase">Kurulum eksik — bu belge geçersizdir</p>
+        <p className="font-bold uppercase">
+          Kurulum eksik — bu belge geçersizdir
+        </p>
         <p className="mt-1 whitespace-pre-line text-xs">
           {e instanceof Error ? e.message : String(e)}
         </p>
@@ -99,7 +101,9 @@ async function SellerBlock() {
       )}
       {(seller.phone || seller.email || seller.website) && (
         <p className="text-xs text-neutral-600">
-          {[seller.phone, seller.email, seller.website].filter(Boolean).join(" · ")}
+          {[seller.phone, seller.email, seller.website]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       )}
     </div>
@@ -135,7 +139,9 @@ export function DocumentField({
   strong?: boolean;
 }) {
   return (
-    <div className={`flex justify-between gap-6 ${strong ? "font-semibold" : ""}`}>
+    <div
+      className={`flex justify-between gap-6 ${strong ? "font-semibold" : ""}`}
+    >
       <span className={strong ? "" : "text-neutral-500"}>{label}</span>
       <span className="tabular-nums">{value}</span>
     </div>

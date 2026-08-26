@@ -3,22 +3,22 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, Menu, UserRound, X, type LucideIcon } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 /**
- * Gruplu sol kenar çubuğu kabuğu.
+ * Uygulamanın tek kabuğu: solda sabit gezinme sütunu, üstte ince bir şerit.
  *
- * Neden üst bar değil: yönetim panelinde 18 bölüm var ve düz bir üst bar bunu
- * üç satıra sarıyordu — hiyerarşi yok, hangi bölümün hangisiyle ilgili olduğu
- * belirsiz, alan bitince satır ekleniyor. Dikey liste hem gruplanabiliyor hem
- * de bölüm sayısı büyüdükçe kaymaya devam ediyor. Alıcı portalı ve saha
- * ekranları (5-6 bağlantı) üst barda kalır; orada dikey liste sadece yer yer.
+ * Neden üç ayrı kabuk değil de bir tane: yönetim paneli kenar çubuğu, portal
+ * üst barı ve plasiyer üst barı ayrı ayrı yazılmıştı; aynı kullanıcı gün içinde
+ * ikisini birden görüyor ve arayüz her geçişte yer değiştiriyordu. Bölüm sayısı
+ * farklı (yönetimde 25, portalda 6) ama *yapı* aynı olmalı — portalda gruplar
+ * başlıksız tek liste hâlinde akar, o kadar.
  *
- * Aktif bağlantı `usePathname` ile bulunur, sayfadan `current` prop'u geçilmez:
- * alt kırılımlar (firma detayı, ürün düzenleme) kendiliğinden üst bölümü işaretler.
+ * Aktif bağlantı `usePathname` ile bulunur, sayfadan `current` geçilmez: alt
+ * kırılımlar (firma detayı, ürün düzenleme) kendiliğinden üst bölümü işaretler.
  */
 
 export interface SidebarLink {
@@ -28,20 +28,29 @@ export interface SidebarLink {
 }
 
 export interface SidebarGroup {
+  /** Boş bırakılırsa başlık çizilmez — kısa, tek parça menüler için. */
   title: string;
   links: readonly SidebarLink[];
 }
 
 export function SidebarShell({
+  brand = "B2B Portal",
   context,
   groups,
   userLabel,
+  /** Üst şeridin ortasındaki arama kutusu. Yoksa şerit boş kalır, kutu çizilmez. */
+  search,
+  /** Üst şeridin sağındaki ek düğmeler: firma seçici, sepet, yazdır… */
+  actions,
   children,
 }: {
-  /** Marka satırının altındaki ikinci satır: "Yönetim Paneli" vb. */
+  brand?: string;
+  /** Marka satırının altındaki ikinci satır: "Yönetim Paneli", firma adı… */
   context?: string;
   groups: readonly SidebarGroup[];
   userLabel: string;
+  search?: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -51,40 +60,43 @@ export function SidebarShell({
   useEffect(() => setOpen(false), [pathname]);
 
   // En uzun eşleşen yol kazanır: "/admin" her şeyin ön eki olduğu için aksi
-  // hâlde her ekranda "Panel" aktif görünürdü.
+  // hâlde her ekranda "Panel" aktif görünürdü. Bağlantılar sorgu taşıyabildiği
+  // için (portalda seçili firma) karşılaştırma yoldan önceki parçaya bakar.
   const active = groups
     .flatMap((g) => g.links)
-    .filter((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    .map((l) => l.href.split("?")[0] ?? l.href)
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-surface">
       {open && (
         <button
           type="button"
           aria-label="Menüyü kapat"
-          className="fixed inset-0 z-20 bg-neutral-900/50 md:hidden"
+          className="fixed inset-0 z-20 bg-neutral-950/40 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-neutral-200 bg-white transition-transform dark:border-neutral-800 dark:bg-neutral-950 md:sticky md:top-0 md:h-screen md:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-line bg-panel transition-transform",
+          "md:sticky md:top-0 md:h-screen md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-neutral-200 px-4 py-4 dark:border-neutral-800">
-          <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-sm shadow-brand-600/30">
-              B
+        <div className="flex shrink-0 items-center gap-3 px-4 py-5">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-subtle text-body-md font-bold text-ink">
+              {brand.slice(0, 1).toUpperCase()}
             </span>
-            <span className="flex min-w-0 flex-col leading-none">
-              <span className="truncate font-display text-sm font-bold text-neutral-900 dark:text-white">
-                B2B Portal
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-body-md font-bold leading-tight text-ink">
+                {brand}
               </span>
               {context && (
-                <span className="mt-0.5 truncate text-xs text-neutral-500">
+                <span className="truncate text-xs leading-tight text-ink-faint">
                   {context}
                 </span>
               )}
@@ -93,33 +105,35 @@ export function SidebarShell({
           <button
             type="button"
             aria-label="Menüyü kapat"
-            className="ml-auto p-1 text-neutral-500 md:hidden"
+            className="ml-auto p-1 text-ink-faint md:hidden"
             onClick={() => setOpen(false)}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-          {groups.map((group) => (
-            <div key={group.title} className="mb-4 last:mb-0">
-              <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                {group.title}
-              </p>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+          {groups.map((group, i) => (
+            <div key={group.title || i} className="mb-5 last:mb-0">
+              {group.title && (
+                <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+                  {group.title}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {group.links.map((l) => {
                   const Icon = l.icon;
-                  const isActive = l.href === active;
+                  const isActive = (l.href.split("?")[0] ?? l.href) === active;
                   return (
                     <Link
                       key={l.href}
                       href={l.href}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 rounded px-3 py-2 text-body-sm transition-colors",
                         isActive
-                          ? "bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
-                          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+                          ? "bg-accent font-medium text-on-accent"
+                          : "text-ink-muted hover:bg-subtle hover:text-ink",
                       )}
                     >
                       {Icon && <Icon className="h-4 w-4 shrink-0" />}
@@ -132,36 +146,51 @@ export function SidebarShell({
           ))}
         </nav>
 
-        <div className="shrink-0 border-t border-neutral-200 px-3 py-3 dark:border-neutral-800">
+        <div className="shrink-0 border-t border-line px-3 py-3">
           <Link
             href="/hesabim"
-            className="block truncate px-2 pb-2 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+            className="flex items-center gap-3 rounded px-3 py-2 text-body-sm text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
           >
-            {userLabel}
+            <UserRound className="h-4 w-4 shrink-0" />
+            <span className="truncate">{userLabel}</span>
           </Link>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <SignOutButton />
-          </div>
+          <SignOutButton className="flex w-full items-center gap-3 rounded px-3 py-2 text-body-sm text-ink-muted transition-colors hover:bg-subtle hover:text-ink">
+            <LogOut className="h-4 w-4 shrink-0" />
+            Çıkış
+          </SignOutButton>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-neutral-200 bg-white/90 px-4 py-2 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90 md:hidden">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-surface px-4 md:px-8">
           <button
             type="button"
             aria-label="Menü"
-            className="p-1.5 text-neutral-600 dark:text-neutral-300"
+            className="-ml-1 p-2 text-ink-muted md:hidden"
             onClick={() => setOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-display text-sm font-bold">B2B Portal</span>
-          <span className="ml-auto">
-            <ThemeToggle />
+
+          <span className="truncate text-body-md font-semibold text-ink md:text-headline-sm">
+            {context ?? brand}
           </span>
+
+          {search && (
+            <div className="mx-auto hidden w-full max-w-md md:block">
+              {search}
+            </div>
+          )}
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {actions}
+            <ThemeToggle />
+          </div>
         </header>
-        {children}
+
+        {/* Sayfa boşluğu tek yerde. Önceden her ekran kendi `px-4 py-6`sını
+            yazıyordu ve üç ayrı gutter ortaya çıkmıştı. */}
+        <div className="flex-1 px-4 py-6 md:px-10 md:py-8">{children}</div>
       </div>
     </div>
   );

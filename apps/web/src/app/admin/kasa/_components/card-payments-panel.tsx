@@ -18,7 +18,12 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
-import { Badge, EmptyState, LoadingState, type BadgeTone } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  type BadgeTone,
+} from "@/components/ui";
 
 // Kart tahsilatları.
 //
@@ -72,7 +77,9 @@ export function CardPaymentsPanel() {
           <Label>Durum</Label>
           <Select
             value={status}
-            onChange={(e) => setStatus(e.target.value as PaymentIntentStatus | "")}
+            onChange={(e) =>
+              setStatus(e.target.value as PaymentIntentStatus | "")
+            }
             className="w-44"
           >
             <option value="">Tümü</option>
@@ -123,7 +130,8 @@ function IntentRow({
   const [reason, setReason] = useState("");
 
   const capture = useMutation({
-    mutationFn: () => apiPost(`/api/admin/payment-intents/${intent.id}/capture`, {}),
+    mutationFn: () =>
+      apiPost(`/api/admin/payment-intents/${intent.id}/capture`, {}),
     onSuccess: onChanged,
   });
   const cancel = useMutation({
@@ -158,7 +166,9 @@ function IntentRow({
             {intent.providerRef ? ` · ${intent.providerRef}` : ""}
           </p>
           {intent.failureReason && (
-            <p className="text-red-600 dark:text-red-400">{intent.failureReason}</p>
+            <p className="text-red-600 dark:text-red-400">
+              {intent.failureReason}
+            </p>
           )}
         </div>
 
@@ -193,12 +203,20 @@ function IntentRow({
                 >
                   İptal et
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setAsking(false)}
+                >
                   Vazgeç
                 </Button>
               </>
             ) : (
-              <Button size="sm" variant="secondary" onClick={() => setAsking(true)}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAsking(true)}
+              >
                 İptal
               </Button>
             )}

@@ -6,7 +6,12 @@ import type { MappingStatus, SyncIssueRow, SyncRunRow } from "@repo/services";
 import { ERP_SYNC_KIND_LABELS, ERP_SYNC_STATUS_LABELS } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { Button, ErrorLine, Panel } from "@/components/form";
-import { Badge, EmptyState, LoadingState, type BadgeTone } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  type BadgeTone,
+} from "@/components/ui";
 
 // Eşitleme geçmişi + eşleme durumu.
 //
@@ -88,14 +93,18 @@ export function SyncRunsPanel() {
                         {run.agentName ? ` · ${run.agentName}` : ""}
                       </p>
                       {run.error && (
-                        <p className="text-red-600 dark:text-red-400">{run.error}</p>
+                        <p className="text-red-600 dark:text-red-400">
+                          {run.error}
+                        </p>
                       )}
                     </div>
                     {run.skipped > 0 && (
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setOpenRun(openRun === run.id ? null : run.id)}
+                        onClick={() =>
+                          setOpenRun(openRun === run.id ? null : run.id)
+                        }
                       >
                         {openRun === run.id ? "Gizle" : "Eşleşmeyenler"}
                       </Button>
@@ -165,7 +174,10 @@ function IssueList({ runId }: { runId: string }) {
             </thead>
             <tbody>
               {query.data.issues.map((issue) => (
-                <tr key={issue.id} className="border-t border-neutral-100 dark:border-neutral-800">
+                <tr
+                  key={issue.id}
+                  className="border-t border-neutral-100 dark:border-neutral-800"
+                >
                   <td className="py-1 pr-3 font-mono">{issue.externalCode}</td>
                   <td className="py-1 pr-3">{issue.label ?? "—"}</td>
                   <td className="py-1 text-neutral-500">{issue.reason}</td>
@@ -173,9 +185,7 @@ function IssueList({ runId }: { runId: string }) {
               ))}
             </tbody>
           </table>
-          {query.data.issues.length === 0 && (
-            <EmptyState label="Kayıt yok." />
-          )}
+          {query.data.issues.length === 0 && <EmptyState label="Kayıt yok." />}
         </div>
       )}
     </div>

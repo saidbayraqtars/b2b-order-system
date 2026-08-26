@@ -111,7 +111,9 @@ export function AccountsPanel() {
               <Label>Banka</Label>
               <TextInput
                 value={draft.bankName}
-                onChange={(e) => setDraft({ ...draft, bankName: e.target.value })}
+                onChange={(e) =>
+                  setDraft({ ...draft, bankName: e.target.value })
+                }
                 className="w-36"
               />
             </label>
@@ -133,7 +135,9 @@ export function AccountsPanel() {
             step="0.01"
             value={draft.openingBalance}
             placeholder="0"
-            onChange={(e) => setDraft({ ...draft, openingBalance: e.target.value })}
+            onChange={(e) =>
+              setDraft({ ...draft, openingBalance: e.target.value })
+            }
             className="w-32"
           />
         </label>
@@ -188,7 +192,8 @@ function AccountRow({
     onSuccess: onChanged,
   });
   const makeDefault = useMutation({
-    mutationFn: () => apiPost(`/api/admin/cash-accounts/${account.id}/default`, {}),
+    mutationFn: () =>
+      apiPost(`/api/admin/cash-accounts/${account.id}/default`, {}),
     onSuccess: onChanged,
   });
   const remove = useMutation({
@@ -208,7 +213,8 @@ function AccountRow({
           </p>
           <p className="text-neutral-500">
             Bakiye <strong>{formatTRY(account.currentBalance)}</strong> · devir{" "}
-            {formatTRY(account.openingBalance)} · {account.movementCount} hareket
+            {formatTRY(account.openingBalance)} · {account.movementCount}{" "}
+            hareket
             {account.boundMethods.length > 0 && (
               <>
                 {" · "}

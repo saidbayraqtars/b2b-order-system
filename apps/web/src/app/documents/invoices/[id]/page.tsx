@@ -49,15 +49,25 @@ export default async function InvoiceDocumentPage({
           label="Müşteri"
           lines={[
             invoice.company.name,
-            invoice.company.taxOffice ? `V.D. ${invoice.company.taxOffice}` : null,
-            invoice.company.taxNumber ? `VKN ${invoice.company.taxNumber}` : null,
+            invoice.company.taxOffice
+              ? `V.D. ${invoice.company.taxOffice}`
+              : null,
+            invoice.company.taxNumber
+              ? `VKN ${invoice.company.taxNumber}`
+              : null,
           ]}
         />
         <div className="space-y-1">
-          <DocumentField label="Fatura tarihi" value={trDate(invoice.issuedAt)} />
+          <DocumentField
+            label="Fatura tarihi"
+            value={trDate(invoice.issuedAt)}
+          />
           <DocumentField label="Vade tarihi" value={trDate(invoice.dueDate)} />
           {invoice.externalNumber && (
-            <DocumentField label="ERP numarası" value={invoice.externalNumber} />
+            <DocumentField
+              label="ERP numarası"
+              value={invoice.externalNumber}
+            />
           )}
           {invoice.shipmentNumbers.length > 0 && (
             <DocumentField
@@ -108,7 +118,9 @@ export default async function InvoiceDocumentPage({
                   : "—"}
               </td>
               <td className="py-2 text-right tabular-nums">%{i.vatRate}</td>
-              <td className="py-2 text-right tabular-nums">{formatTRY(i.lineTotal)}</td>
+              <td className="py-2 text-right tabular-nums">
+                {formatTRY(i.lineTotal)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -116,8 +128,14 @@ export default async function InvoiceDocumentPage({
 
       <section className="mt-4 flex justify-end">
         <div className="w-64 space-y-1">
-          <DocumentField label="Ara toplam" value={formatTRY(invoice.subtotal)} />
-          <DocumentField label="İskonto" value={formatTRY(invoice.discountTotal)} />
+          <DocumentField
+            label="Ara toplam"
+            value={formatTRY(invoice.subtotal)}
+          />
+          <DocumentField
+            label="İskonto"
+            value={formatTRY(invoice.discountTotal)}
+          />
           {Number(invoice.promotionTotal) > 0 && (
             <DocumentField
               label="Kampanya"
@@ -125,7 +143,10 @@ export default async function InvoiceDocumentPage({
             />
           )}
           {Number(invoice.shippingFee) > 0 && (
-            <DocumentField label="Nakliye" value={formatTRY(invoice.shippingFee)} />
+            <DocumentField
+              label="Nakliye"
+              value={formatTRY(invoice.shippingFee)}
+            />
           )}
           <DocumentField label="KDV" value={formatTRY(invoice.taxTotal)} />
           <DocumentField

@@ -18,7 +18,7 @@ export default async function AdminCompanyStatementPage({
   if (!company) notFound();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-5xl">
       <Link
         href={`/admin/companies/${company.id}`}
         className="mb-3 inline-block text-sm text-neutral-500 hover:underline"

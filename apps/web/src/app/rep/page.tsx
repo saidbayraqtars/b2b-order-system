@@ -9,13 +9,12 @@ export default async function RepDashboardPage() {
   const user = await requirePage(["SALES_REP", "SUPER_ADMIN"]);
 
   return (
-    <div>
-      <RepNav userName={user.name} permissions={user.permissions} current="/rep" />
-      <div className="mx-auto max-w-5xl px-4 pb-6">
+    <RepNav userName={user.name} permissions={user.permissions} current="/rep">
+      <div className="mx-auto max-w-5xl">
         {/* Hedef karnesi en üstte: günün ilk sorusu "nerede duruyorum". */}
         <TargetScorecard salesRepId={user.id} />
         <RepDashboard />
       </div>
-    </div>
+    </RepNav>
   );
 }

@@ -8,7 +8,7 @@ export default async function LabelsAdminPage() {
   await requirePage(["SUPER_ADMIN"], "labels.manage");
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-6xl">
       <PageHeader
         title="Etiket & fiş tasarımları"
         subtitle="Kargo etiketi ve 80 mm fişler — satır satır düzenlenir, aynı düzen kâğıda basılır"

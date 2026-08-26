@@ -9,13 +9,20 @@ export const dynamic = "force-dynamic";
 
 // Every authenticated role reaches this page — it is the one screen a user has
 // that is about their own account rather than about the business.
-const ALL_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP"] as const;
+const ALL_ROLES = [
+  "SUPER_ADMIN",
+  "COMPANY_ADMIN",
+  "COMPANY_STAFF",
+  "SALES_REP",
+] as const;
 
 export default async function AccountPage() {
   // İkinci adım kapısından muaf tek ekran: zorunlu kapsamdaki kullanıcı
   // 2FA'sını buradan kuracak. Kapı burada da çalışsaydı yönlendirme kendi
   // üstüne kapanır ve hesap kilitlenirdi (bkz. guard.ts GuardOptions).
-  const user = await requirePage(ALL_ROLES, undefined, { twoFactorGate: false });
+  const user = await requirePage(ALL_ROLES, undefined, {
+    twoFactorGate: false,
+  });
   const [account, activity, twoFactor] = await Promise.all([
     getAccount(user.id),
     listOwnActivity(user.id, 20),
@@ -23,7 +30,7 @@ export default async function AccountPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl">
       <PageHeader
         title="Hesabım"
         subtitle={`${ROLE_LABELS[account.role]}${account.company ? ` · ${account.company.name}` : ""}`}

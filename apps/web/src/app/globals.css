@@ -2,8 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Anlamsal renk değişkenleri ───────────────────────────────────────────
+   Değerler RGB üçlüsü olarak duruyor ki Tailwind `rgb(var(--x) / <alpha>)`
+   ile saydamlık uygulayabilsin. Koyu tema tek yerde tanımlı: aşağıdaki
+   `.dark` bloğu. Ekranlarda artık `dark:` ikizi yazmaya gerek yok. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+
+  --surface: 249 249 251; /* #f9f9fb — sayfa zemini */
+  --panel: 255 255 255; /* #ffffff — kart */
+  --sunken: 243 243 246; /* #f3f3f6 — girdi, görsel kutusu */
+  --subtle: 237 238 240; /* #edeef0 — üzerine gelince, vurgusuz dolgu */
+  --line: 220 222 224; /* #dcdee0 — kenar çizgisi */
+  --line-strong: 197 198 202; /* #c5c6ca — ayraç */
+  --ink: 25 28 30; /* #191c1e — ana metin */
+  --ink-muted: 68 71 74; /* #44474a — ikincil metin */
+  --ink-faint: 117 119 122; /* #75777a — etiket */
+  --accent: 26 28 30; /* #1a1c1e — birincil eylem */
+  --on-accent: 255 255 255;
+  --positive: 22 121 82; /* stok var, tahsil edildi */
+  --caution: 176 116 8; /* sınırlı stok, bekliyor */
+  --critical: 186 26 26; /* borç, iptal, hata */
+}
+
+.dark {
+  color-scheme: dark;
+
+  --surface: 15 17 18;
+  --panel: 25 28 30;
+  --sunken: 35 38 39;
+  --subtle: 42 45 46;
+  --line: 46 49 50;
+  --line-strong: 68 71 74;
+  --ink: 229 231 232;
+  --ink-muted: 169 173 174;
+  --ink-faint: 125 130 131;
+  --accent: 232 234 235; /* koyuda birincil eylem beyaza döner */
+  --on-accent: 16 19 20;
+  --positive: 74 190 139;
+  --caution: 224 168 61;
+  --critical: 255 138 128;
 }
 
 html,
@@ -13,71 +51,60 @@ body {
 
 @layer base {
   body {
-    @apply bg-neutral-50 font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
-    /* Tema anahtarı basılınca renkler sertçe değil yumuşak değişsin. */
+    @apply bg-surface font-sans text-body-sm text-ink antialiased;
     transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
 
   h1,
   h2,
   h3 {
-    @apply font-display;
+    @apply font-display text-ink;
   }
 
-  /* Kurumsal odak halkası — klavye erişilebilirliği, marka rengiyle tutarlı. */
+  /* Odak halkası: marka rengi değil, kömür grisi ince bir çerçeve. Klavyeyle
+     gezinen kullanıcı nerede olduğunu görsün ama arayüz "renklenmesin". */
   *:focus-visible {
-    @apply outline-none ring-2 ring-brand-500/60 ring-offset-2 ring-offset-neutral-50 dark:ring-offset-neutral-950;
+    @apply outline-none ring-2 ring-line-strong ring-offset-2 ring-offset-surface;
   }
 
   ::selection {
-    @apply bg-brand-500/25;
+    @apply bg-accent/15;
   }
 
-  /* İnce, kurumsal kaydırma çubuğu (Webkit). */
+  /* İnce kaydırma çubuğu — tasarımdaki `minimal-scroll`. */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
-
   ::-webkit-scrollbar-thumb {
-    background-color: rgb(203 213 225);
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-  .dark ::-webkit-scrollbar-thumb {
-    background-color: rgb(51 65 85);
+    @apply rounded-full bg-line-strong;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(148 163 184);
-    background-clip: padding-box;
+    @apply bg-ink-faint;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
 }
 
-/* ── VİTRİN: endüstriyel / teknik kimlik ────────────────────────────────────
-   Yalnızca müşteriye bakan katalog yüzeyinde kullanılır. Yönetim ekranları
-   Faz 1'in nötr dilinde kalır — orada veri girişi var, vitrin karakteri değil. */
 @layer components {
-  /* Ölçen her işaret: SKU, stok, koli, adet, fiyat. Sekmeli rakam şart —
-     alt alta gelen fiyatların basamakları hizalanmazsa tablo okunmuyor. */
+  /* Ölçen her işaret: SKU, stok, koli, adet, fiyat. Ayrı bir yazı tipi değil —
+     sekmeli rakam yeter; alt alta gelen tutarların basamakları hizalanır. */
   .tech-num {
-    @apply font-mono tabular-nums;
+    @apply tabular-nums;
   }
 
-  /* Levha numarası / bölüm etiketi. Vitrindeki her başlığın üstünde bunun
-     gibi küçük, aralıklı, büyük harf bir "kod" durur. */
+  /* Bölüm etiketi: küçük, aralıklı, büyük harf. Başlığın üstünde durur. */
   .tech-label {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-neutral-500;
+    @apply text-label uppercase text-ink-faint;
   }
 
-  /* Teknik çizim kâğıdı zemini — vitrin gövdesinde. */
+  /* Eski "teknik çizim kâğıdı" zemini. Desen kaldırıldı; sınıf, kullanan üç
+     ekran için düz yüzeye çözülüyor. */
   .tech-paper {
-    @apply bg-tech-grid bg-tech-grid;
+    @apply bg-surface;
   }
 }
 

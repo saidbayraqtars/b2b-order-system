@@ -60,3 +60,6 @@ uploads/
 *.log
 npm-debug.log*
 coverage/
+
+# Yerel veritabanı yedekleri — asla depoya girmez (müşteri verisi taşır).
+/yedek/

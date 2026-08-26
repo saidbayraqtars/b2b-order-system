@@ -23,33 +23,36 @@ export default async function RepCollectionPage({ searchParams }: Props) {
 
   if (!ctx.companyId) {
     return (
-      <div>
-        <RepNav userName={user.name} permissions={user.permissions} current="/rep/tahsilat" showCompany />
+      <RepNav
+        userName={user.name}
+        permissions={user.permissions}
+        current="/rep/tahsilat"
+        showCompany
+      >
         <CompanyPicker
           basePath="/rep/tahsilat"
           eyebrow="Tahsilat girilecek firma"
           subtitle="Tahsilat carinin defterine yazılır; hangi firma olduğu seçilmeden tutar girilemez."
         />
-      </div>
+      </RepNav>
     );
   }
 
   return (
-    <div>
-      <RepNav
-        userName={user.name}
-        permissions={user.permissions}
-        current="/rep/tahsilat"
-        companyId={ctx.companyId}
-        companyName={ctx.companyName}
-        showCompany
-      />
-      <div className="mx-auto max-w-4xl px-4 pb-10">
+    <RepNav
+      userName={user.name}
+      permissions={user.permissions}
+      current="/rep/tahsilat"
+      companyId={ctx.companyId}
+      companyName={ctx.companyName}
+      showCompany
+    >
+      <div className="mx-auto max-w-4xl">
         <CollectionPanel
           companyId={ctx.companyId}
           companyName={ctx.companyName ?? "Firma"}
         />
       </div>
-    </div>
+    </RepNav>
   );
 }

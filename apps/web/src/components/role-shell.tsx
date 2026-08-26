@@ -42,14 +42,13 @@ export async function RoleShell({
 
   if (user.role === "SALES_REP") {
     return (
-      <div>
-        <RepNav
-          userName={user.name}
-          permissions={user.permissions}
-          current={current}
-        />
+      <RepNav
+        userName={user.name}
+        permissions={user.permissions}
+        current={current}
+      >
         {children}
-      </div>
+      </RepNav>
     );
   }
 
@@ -62,15 +61,13 @@ export async function RoleShell({
     : null;
 
   return (
-    <div>
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={company?.name ?? null}
-        userName={user.name}
-        current={current}
-      />
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={company?.name ?? null}
+      userName={user.name}
+    >
       {children}
-    </div>
+    </PortalNav>
   );
 }

@@ -63,7 +63,8 @@ export function CompanyAddresses({
   });
 
   const makeDefault = useMutation({
-    mutationFn: (id: string) => apiPatch(`/api/admin/addresses/${id}`, { isDefault: true }),
+    mutationFn: (id: string) =>
+      apiPatch(`/api/admin/addresses/${id}`, { isDefault: true }),
     onSuccess: () => router.refresh(),
   });
 
@@ -86,19 +87,31 @@ export function CompanyAddresses({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label>
               <Label hint="Merkez, Depo…">Etiket</Label>
-              <TextInput value={form.label} onChange={(e) => set("label", e.target.value)} />
+              <TextInput
+                value={form.label}
+                onChange={(e) => set("label", e.target.value)}
+              />
             </label>
             <label className="sm:col-span-2">
               <Label>Adres</Label>
-              <TextInput value={form.line1} onChange={(e) => set("line1", e.target.value)} />
+              <TextInput
+                value={form.line1}
+                onChange={(e) => set("line1", e.target.value)}
+              />
             </label>
             <label className="sm:col-span-2">
               <Label>Adres (2. satır)</Label>
-              <TextInput value={form.line2} onChange={(e) => set("line2", e.target.value)} />
+              <TextInput
+                value={form.line2}
+                onChange={(e) => set("line2", e.target.value)}
+              />
             </label>
             <label>
               <Label>Şehir</Label>
-              <TextInput value={form.city} onChange={(e) => set("city", e.target.value)} />
+              <TextInput
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+              />
             </label>
             <label>
               <Label>İlçe</Label>
@@ -136,7 +149,10 @@ export function CompanyAddresses({
           <div className="mt-3">
             <Button
               disabled={
-                create.isPending || !form.label.trim() || !form.line1.trim() || !form.city.trim()
+                create.isPending ||
+                !form.label.trim() ||
+                !form.line1.trim() ||
+                !form.city.trim()
               }
               onClick={() => create.mutate()}
             >
@@ -198,7 +214,8 @@ export function CompanyAddresses({
                   variant="danger"
                   disabled={remove.isPending}
                   onClick={() => {
-                    if (confirm(`"${a.label}" adresi silinsin mi?`)) remove.mutate(a.id);
+                    if (confirm(`"${a.label}" adresi silinsin mi?`))
+                      remove.mutate(a.id);
                   }}
                 >
                   Sil

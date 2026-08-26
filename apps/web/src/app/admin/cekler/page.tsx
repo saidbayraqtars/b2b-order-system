@@ -17,7 +17,7 @@ export default async function ChequesPage() {
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
+    <main className="mx-auto max-w-7xl">
       <PageHeader
         title="Çek & senet portföyü"
         subtitle="Vade takibi, tahsile verme, karşılıksız ve ciro"

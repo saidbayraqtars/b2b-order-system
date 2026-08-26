@@ -73,14 +73,15 @@ function trDate(iso: string | null): string {
 
 export function ReturnBoard() {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<"OPEN" | ReturnStatus>("OPEN");
+  const [statusFilter, setStatusFilter] = useState<"OPEN" | ReturnStatus>(
+    "OPEN",
+  );
   const [acting, setActing] = useState<{ row: Row; to: ReturnStatus } | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
 
-  const qs =
-    statusFilter === "OPEN" ? "open=1" : `status=${statusFilter}`;
+  const qs = statusFilter === "OPEN" ? "open=1" : `status=${statusFilter}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ["returns", qs],
@@ -337,7 +338,9 @@ function ActionModal({
     queryKey: ["return", row.id],
     enabled: receiving,
     queryFn: async () => {
-      const res = await apiGet<{ return: ReturnView }>(`/api/returns/${row.id}`);
+      const res = await apiGet<{ return: ReturnView }>(
+        `/api/returns/${row.id}`,
+      );
       setLines(
         Object.fromEntries(
           res.return.items.map((i) => [

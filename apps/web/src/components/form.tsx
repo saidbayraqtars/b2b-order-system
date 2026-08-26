@@ -9,17 +9,16 @@ import type {
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Admin ekranlarının paylaştığı form/panel bileşenleri. Plan büyük bir bileşen
-// kütüphanesi değil — düz Tailwind, ama tek noktadan: marka rengi, gölge ve
-// köşe yarıçapı burada değişince 20 ekrana birden yansır.
+// Ekranların paylaştığı form/panel bileşenleri. Plan büyük bir bileşen
+// kütüphanesi değil — düz Tailwind, ama tek noktadan: köşe yarıçapı, kenar
+// çizgisi ve odak davranışı burada değişince 60 ekrana birden yansır.
 
 const CONTROL = cn(
-  "w-full rounded-lg border border-neutral-300 bg-white text-neutral-900",
-  "placeholder:text-neutral-400 outline-none transition-colors",
-  "hover:border-neutral-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10",
-  "disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400",
-  "dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-600",
-  "dark:disabled:bg-neutral-900/50 dark:disabled:text-neutral-600",
+  "w-full rounded border border-line bg-panel text-ink",
+  "placeholder:text-ink-faint outline-none transition-colors",
+  // Odakta renk patlaması yok: kenar koyulaşır, ince bir halka eklenir.
+  "hover:border-line-strong focus:border-ink-muted focus:ring-1 focus:ring-ink-muted",
+  "disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-faint",
 );
 
 /**
@@ -31,8 +30,8 @@ const CONTROL = cn(
  * (`h-7`, `h-8`, `h-9`) — ikisi seçildi, gerisi gitti.
  */
 const CONTROL_SIZE = {
-  sm: "h-8 px-2 text-xs",
-  md: "h-10 px-3 text-sm",
+  sm: "h-8 px-2.5 text-xs",
+  md: "h-10 px-3 text-body-sm",
 } as const;
 
 export type ControlSize = keyof typeof CONTROL_SIZE;
@@ -44,17 +43,17 @@ export function Label({
 }: {
   children: ReactNode;
   hint?: string;
-  /** Verilirse gerçek bir <label for=…> üretir — ekran okuyucu input'a bağlar. */
+  /** Verilirse gerçek bir label/for bağı üretir — ekran okuyucu input'a bağlar. */
   htmlFor?: string;
 }) {
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-xs font-medium text-neutral-700 dark:text-neutral-300"
+      className="mb-1.5 block text-xs font-medium text-ink-muted"
     >
       {children}
       {hint ? (
-        <span className="ml-1 font-normal text-neutral-400">{hint}</span>
+        <span className="ml-1 font-normal text-ink-faint">{hint}</span>
       ) : null}
     </label>
   );
@@ -94,7 +93,11 @@ export function TextArea(
   return (
     <textarea
       {...props}
-      className={cn(CONTROL, "min-h-20 px-3 py-2 text-sm", props.className)}
+      className={cn(
+        CONTROL,
+        "min-h-20 px-3 py-2 text-body-sm",
+        props.className,
+      )}
     />
   );
 }
@@ -102,8 +105,8 @@ export function TextArea(
 /**
  * Onay kutusu.
  *
- * 19 ekranda ham `<input type="checkbox">` olarak duruyordu: kimi etiketiyle
- * `<label>` içindeydi, kimi yanındaki metne hiç bağlı değildi (yani metne
+ * 19 ekranda ham `input type=checkbox` olarak duruyordu: kimi etiketiyle
+ * `label` içindeydi, kimi yanındaki metne hiç bağlı değildi (yani metne
  * tıklamak işe yaramıyordu), hiçbirinde odak halkası yoktu. Yerli kutu
  * korunuyor — erişilebilirliği ve klavye davranışı bedava — yalnızca rengi,
  * odak halkası ve etikete bağlanması tek yerde.
@@ -122,10 +125,9 @@ export function Checkbox({
       {...props}
       type="checkbox"
       className={cn(
-        "h-4 w-4 shrink-0 cursor-pointer rounded border-neutral-300 accent-brand-600",
-        "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20",
+        "h-4 w-4 shrink-0 cursor-pointer rounded-sm border-line-strong accent-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-strong",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        "dark:border-neutral-600",
         className,
       )}
     />
@@ -137,7 +139,7 @@ export function Checkbox({
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300",
+        "flex cursor-pointer items-center gap-2 text-body-sm text-ink-muted",
         props.disabled && "cursor-not-allowed opacity-60",
       )}
     >
@@ -145,7 +147,7 @@ export function Checkbox({
       <span>
         {label}
         {hint ? (
-          <span className="ml-1 text-xs text-neutral-400">{hint}</span>
+          <span className="ml-1 text-xs text-ink-faint">{hint}</span>
         ) : null}
       </span>
     </label>
@@ -153,21 +155,17 @@ export function Checkbox({
 }
 
 const BUTTON_VARIANT = {
-  primary:
-    "bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:bg-brand-800",
+  primary: "bg-accent text-on-accent hover:opacity-90 active:opacity-80",
   secondary:
-    "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-400 active:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:border-neutral-600",
-  danger:
-    "bg-red-600 text-white shadow-sm shadow-red-600/20 hover:bg-red-700 active:bg-red-800",
-  success:
-    "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700 active:bg-emerald-800",
-  ghost:
-    "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100",
+    "border border-line bg-panel text-ink-muted hover:bg-subtle hover:border-line-strong hover:text-ink",
+  danger: "bg-critical text-white hover:opacity-90 active:opacity-80",
+  success: "bg-positive text-white hover:opacity-90 active:opacity-80",
+  ghost: "text-ink-faint hover:bg-subtle hover:text-ink",
 } as const;
 
 const BUTTON_SIZE = {
-  sm: "h-8 gap-1.5 px-2.5 text-xs",
-  md: "h-10 gap-2 px-4 text-sm",
+  sm: "h-8 gap-1.5 px-3 text-xs",
+  md: "h-10 gap-2 px-4 text-body-sm",
 } as const;
 
 export function Button({
@@ -188,8 +186,8 @@ export function Button({
       {...props}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-lg font-medium transition-colors",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+        "inline-flex shrink-0 items-center justify-center rounded font-medium transition-all",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         BUTTON_VARIANT[variant],
         BUTTON_SIZE[size],
         props.className,
@@ -205,10 +203,9 @@ export function Button({
  * Düğme gibi görünen bağlantı.
  *
  * "Kargo etiketi", "yol tarifi", "yeni rapor" gibi yerlerde gerçekten gezinme
- * var — `<button onClick={router.push}>` yeni sekmede açmayı, orta tıklamayı ve
- * bağlantı adresini görmeyi bozardı. Bu yüzden eleman `<a>` kalıyor, yalnızca
- * görünümü `Button`la ortak. Sınıfları elle yazılan beş ekran vardı ve üçü
- * birbirinden farklı yükseklikteydi.
+ * var — bir düğmeye router.push bağlamak yeni sekmede açmayı, orta tıklamayı ve
+ * bağlantı adresini görmeyi bozardı. Bu yüzden eleman bağlantı kalıyor, yalnızca
+ * görünümü `Button`la ortak.
  */
 export function LinkButton({
   variant = "secondary",
@@ -224,7 +221,7 @@ export function LinkButton({
     <a
       {...props}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-lg font-medium transition-colors",
+        "inline-flex shrink-0 items-center justify-center rounded font-medium transition-all",
         BUTTON_VARIANT[variant],
         BUTTON_SIZE[size],
         className,
@@ -237,21 +234,32 @@ export function LinkButton({
 
 export function Panel({
   title,
+  icon,
   action,
   children,
+  className,
   /** Gövde dolgusunu kaldırmak için ("p-0") — kenardan kenara liste/tablo. */
   bodyClassName,
 }: {
   title: string;
+  /** Başlığın solunda küçük bir ikon — panelin ne olduğunu bir bakışta söyler. */
+  icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
+  className?: string;
   bodyClassName?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
-      <header className="flex items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-          {title}
+    <section
+      className={cn(
+        "overflow-hidden rounded-lg border border-line bg-panel",
+        className,
+      )}
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <h2 className="flex min-w-0 items-center gap-2 text-headline-sm text-ink">
+          {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
+          <span className="truncate">{title}</span>
         </h2>
         {action}
       </header>
@@ -289,7 +297,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -301,24 +309,24 @@ export function Modal({
     >
       <div
         className={cn(
-          "w-full rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-900",
+          "w-full rounded-lg border border-line bg-panel shadow-pop",
           width,
         )}
       >
-        <h2 className="mb-3 text-base font-semibold text-neutral-900 dark:text-neutral-50">
+        <h2 className="border-b border-line px-4 py-3 text-headline-sm text-ink">
           {title}
         </h2>
-        {children}
+        <div className="p-4">{children}</div>
       </div>
     </div>
   );
 }
 
-/** Inline error line for a failed mutation. */
+/** Başarısız bir işlemin satır içi hata satırı. */
 export function ErrorLine({ error }: { error: unknown }) {
   if (!error) return null;
   return (
-    <p className="mt-2 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
+    <p className="mt-2 flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-body-sm text-critical">
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
       {error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu"}
     </p>

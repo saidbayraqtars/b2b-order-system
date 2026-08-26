@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BlockCatalogEntry, PageBlock, PageLayoutView } from "@repo/services";
+import type {
+  BlockCatalogEntry,
+  PageBlock,
+  PageLayoutView,
+} from "@repo/services";
 import { PAGE_KEY_LABELS, type PageKey } from "@repo/types";
 import { apiDelete, apiGet, apiPut } from "@/lib/fetcher";
 import {
@@ -69,7 +73,9 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
   const layout = query.data!.layout;
   const current = blocks ?? layout.blocks;
   const defOf = (type: string) => catalog.find((c) => c.type === type);
-  const missing = catalog.filter((c) => !current.some((b) => b.type === c.type));
+  const missing = catalog.filter(
+    (c) => !current.some((b) => b.type === c.type),
+  );
 
   const move = (i: number, delta: number) => {
     const next = [...current];
@@ -146,7 +152,9 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
                     // Zorunlu blok kapatılamıyor; sunucu da reddediyor, bu
                     // yalnızca reddedilecek isteği yazmaktan kurtarıyor.
                     disabled={def.required}
-                    onChange={(e) => patchBlock(i, { enabled: e.target.checked })}
+                    onChange={(e) =>
+                      patchBlock(i, { enabled: e.target.checked })
+                    }
                     label="açık"
                   />
                   <Button

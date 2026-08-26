@@ -6,7 +6,7 @@ export default async function DashboardsPage() {
   await requirePage(REPORT_BUILDER_ROLES, "reports.build");
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-5xl">
       <DashboardsList />
     </main>
   );

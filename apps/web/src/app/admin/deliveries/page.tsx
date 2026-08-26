@@ -8,7 +8,7 @@ export default async function AdminDeliveriesPage() {
   await requirePage(["SUPER_ADMIN"], "orders.fulfil");
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-5xl">
       <PageHeader
         title="Dağıtım"
         subtitle="Sevkiyatlara kurye ata, teslim durumunu izle"

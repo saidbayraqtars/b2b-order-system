@@ -12,7 +12,7 @@ export default async function AdminUsersPage() {
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-6xl">
       <h1 className="mb-5 text-xl font-bold">Kullanıcılar</h1>
       <UserManager
         currentUserId={user.id}

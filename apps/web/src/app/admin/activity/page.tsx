@@ -7,7 +7,7 @@ export default async function ActivityPage() {
   await requirePage(["SUPER_ADMIN"], "activity.view");
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl">
       <div className="mb-4">
         <h1 className="text-xl font-bold">Hareket Akışı</h1>
         <p className="text-sm text-neutral-500">

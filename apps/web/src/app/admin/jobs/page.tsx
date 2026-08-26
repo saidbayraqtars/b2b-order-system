@@ -8,7 +8,7 @@ export default async function JobsPage() {
   await requirePage(["SUPER_ADMIN"], "jobs.manage");
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-5xl">
       <PageHeader
         title="Bakım işleri"
         subtitle="Arka planda kendiliğinden çalışan temizlik işleri — ne zaman çalıştı, ne oldu"

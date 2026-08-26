@@ -22,7 +22,7 @@ export default async function AdminDashboard() {
     : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-6xl">
       {setup && !setup.ready && (
         <div className="mb-6">
           <SetupHint done={setup.progress.done} total={setup.progress.total} />
@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
       )}
 
       {!canSeeCompanies && !canSeeOrders && (
-        <p className="mx-auto max-w-md py-16 text-center text-sm text-neutral-500">
+        <p className="mx-auto max-w-md text-center text-sm text-neutral-500">
           Hesabınızda görüntüleyebileceğiniz bir bölüm yok. Yetki için sistem
           yöneticinize başvurun.
         </p>

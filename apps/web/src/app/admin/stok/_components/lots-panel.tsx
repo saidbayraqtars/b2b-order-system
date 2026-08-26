@@ -82,7 +82,9 @@ export function LotsPanel() {
 
   const block = useMutation({
     mutationFn: (lot: StockLotRow) =>
-      apiPatch(`/api/admin/stock-lots/${lot.id}`, { isBlocked: !lot.isBlocked }),
+      apiPatch(`/api/admin/stock-lots/${lot.id}`, {
+        isBlocked: !lot.isBlocked,
+      }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["stock-lots"] });
     },
@@ -152,7 +154,9 @@ export function LotsPanel() {
       <ErrorLine error={query.error} />
       <ErrorLine error={block.error} />
 
-      {query.data && rows.length === 0 && <EmptyState label="Parti kaydı yok" />}
+      {query.data && rows.length === 0 && (
+        <EmptyState label="Parti kaydı yok" />
+      )}
 
       {rows.length > 0 && (
         <Table>
@@ -200,7 +204,11 @@ export function LotsPanel() {
                       >
                         {lot.isBlocked ? "Blokeyi kaldır" : "Bloke et"}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setWriteOff(lot)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setWriteOff(lot)}
+                      >
                         Fire
                       </Button>
                     </div>
@@ -213,11 +221,11 @@ export function LotsPanel() {
       )}
 
       <p className="mt-3 text-sm text-neutral-500">
-        Sipariş malı <strong>FEFO</strong> ile ayırır: son kullanma tarihi en yakın
-        parti önce çıkar. SKT&apos;si geçmiş ve bloke partiler bu sıraya hiç
-        girmez — onlar bir <strong>fire kararıdır</strong>, satış anında sessizce
-        çözülecek bir şey değil. Hangi siparişe hangi partinin gittiği stok
-        defterinde duruyor; geri çağırmada aranacak yer orası.
+        Sipariş malı <strong>FEFO</strong> ile ayırır: son kullanma tarihi en
+        yakın parti önce çıkar. SKT&apos;si geçmiş ve bloke partiler bu sıraya
+        hiç girmez — onlar bir <strong>fire kararıdır</strong>, satış anında
+        sessizce çözülecek bir şey değil. Hangi siparişe hangi partinin gittiği
+        stok defterinde duruyor; geri çağırmada aranacak yer orası.
       </p>
 
       {entryOpen && <LotEntryModal onClose={() => setEntryOpen(false)} />}
@@ -328,7 +336,10 @@ function LotEntryModal({ onClose }: { onClose: () => void }) {
           <Button type="button" variant="ghost" onClick={onClose}>
             Vazgeç
           </Button>
-          <Button type="submit" disabled={!variantId || !quantity || save.isPending}>
+          <Button
+            type="submit"
+            disabled={!variantId || !quantity || save.isPending}
+          >
             {save.isPending ? "Kaydediliyor…" : "Girişi yaz"}
           </Button>
         </div>

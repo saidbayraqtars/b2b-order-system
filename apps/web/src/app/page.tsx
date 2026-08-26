@@ -22,7 +22,10 @@ export default async function HomePage() {
       {session?.user ? (
         <div className="flex flex-col items-center gap-3">
           <p className="text-neutral-500">
-            Hoş geldin, <strong className="text-neutral-800 dark:text-neutral-200">{session.user.name}</strong>{" "}
+            Hoş geldin,{" "}
+            <strong className="text-neutral-800 dark:text-neutral-200">
+              {session.user.name}
+            </strong>{" "}
             ({session.user.role})
           </p>
           <Link href={defaultRouteForRole(session.user.role)} className={CTA}>

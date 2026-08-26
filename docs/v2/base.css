@@ -1,0 +1,154 @@
+/* ============ BAYRAKTAR YAZILIM — belge tasarım sistemi ============ */
+@page { size: A4; margin: 0; }
+
+:root{
+  --paper:#FFFFFF;
+  --warm:#F7F5F0;
+  --warm-2:#EFECE4;
+  --ink:#15181B;
+  --ink-2:#4B5259;
+  --ink-3:#7C848C;
+  --rule:#D9D5CC;
+  --rule-2:#E9E6DE;
+  --accent:#0F5C46;
+  --accent-2:#0B4636;
+  --accent-soft:#E7EFEB;
+  --signal:#9A5613;
+  --signal-soft:#F7EFE3;
+  --alarm:#A32B1E;
+  --alarm-soft:#F8EAE7;
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:#8C8C8C;
+  color:var(--ink);
+  font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  font-size:9.6pt;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.page{
+  position:relative;
+  width:210mm; height:297mm;
+  padding:16mm 15mm 11mm;
+  background:var(--paper);
+  margin:0 auto 8mm;
+  overflow:hidden;
+  page-break-after:always;
+  break-after:page;
+  display:flex; flex-direction:column;
+}
+.page:last-child{ page-break-after:auto; break-after:auto; margin-bottom:0; }
+
+@media print{
+  body{ background:#fff; }
+  .page{ margin:0; box-shadow:none; }
+}
+
+h1,h2,h3,h4{ margin:0; font-weight:600; letter-spacing:-.012em; text-wrap:balance; }
+.serif{ font-family:"IBM Plex Serif",Georgia,serif; }
+.mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+p{ margin:0; }
+strong{ font-weight:600; color:var(--ink); }
+em{ font-style:normal; color:var(--accent); font-weight:600; }
+
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:6.9pt; font-weight:500; letter-spacing:.17em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+
+/* ---------- sayfa üst / alt şeridi ---------- */
+.runner{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding-bottom:3mm; border-bottom:.5pt solid var(--rule);
+  margin-bottom:8mm; flex:none;
+}
+.foot{
+  margin-top:auto; padding-top:2.5mm; border-top:.5pt solid var(--rule-2);
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:6.9pt; color:var(--ink-3);
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.08em;
+  flex:none;
+}
+
+/* ---------- bölüm başlığı ---------- */
+.sec{ display:flex; gap:7mm; align-items:flex-start; margin-bottom:7mm; flex:none; }
+.sec .no{
+  font-family:"IBM Plex Mono",monospace; font-size:8.4pt; font-weight:600;
+  color:var(--paper); background:var(--accent);
+  width:11mm; height:11mm; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  letter-spacing:.02em;
+}
+.sec h2{ font-family:"IBM Plex Serif",Georgia,serif; font-size:19pt; line-height:1.14; letter-spacing:-.02em; max-width:24ch; }
+.sec .lede{ margin-top:2.4mm; color:var(--ink-2); font-size:9.8pt; max-width:74ch; line-height:1.5; }
+.sec .lede strong{ color:var(--ink); }
+
+/* ---------- kart ızgarası ---------- */
+.grid{ display:grid; grid-template-columns:1fr 1fr; gap:0; border-top:1pt solid var(--ink); }
+.grid.three{ grid-template-columns:1fr 1fr 1fr; }
+.card{ padding:5mm 6mm 5.5mm 0; border-bottom:.5pt solid var(--rule-2); }
+.grid > .card:nth-child(odd){ padding-right:7mm; border-right:.5pt solid var(--rule-2); }
+.grid > .card:nth-child(even){ padding-left:7mm; }
+.grid.three > .card{ padding-right:5mm; border-right:.5pt solid var(--rule-2); padding-left:0; }
+.grid.three > .card:nth-child(3n){ border-right:0; padding-right:0; }
+.grid.three > .card:nth-child(3n+2){ padding-left:5mm; }
+.grid.three > .card:nth-child(3n+3){ padding-left:5mm; }
+.card .tag{
+  font-family:"IBM Plex Mono",monospace; font-size:6.6pt; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:2mm;
+}
+.card h3{ font-size:11pt; line-height:1.25; margin-bottom:2.6mm; letter-spacing:-.015em; }
+.card ul{ margin:0; padding:0; list-style:none; }
+.card li{ position:relative; padding-left:4.2mm; margin-bottom:1.7mm; color:var(--ink-2); font-size:9.1pt; line-height:1.45; }
+.card li:last-child{ margin-bottom:0; }
+.card li::before{
+  content:""; position:absolute; left:0; top:1.55mm;
+  width:1.7mm; height:1.7mm; border:.75pt solid var(--accent);
+}
+.card li strong{ color:var(--ink); }
+.card p{ color:var(--ink-2); font-size:9.1pt; }
+
+/* ---------- kazanç bandı ---------- */
+.gain{
+  margin-top:6mm; padding:5mm 6mm;
+  background:var(--accent-soft); border-left:2.5pt solid var(--accent);
+  display:flex; gap:6mm; align-items:flex-start; flex:none;
+}
+.gain .lbl{
+  font-family:"IBM Plex Mono",monospace; font-size:6.8pt; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--accent-2); flex:none; padding-top:.7mm; width:20mm;
+}
+.gain p{ font-size:9.6pt; color:var(--ink); line-height:1.5; font-family:"IBM Plex Serif",Georgia,serif; }
+
+.note{
+  margin-top:5mm; padding:4.5mm 5.5mm; background:var(--warm);
+  border-left:2.5pt solid var(--ink-3); font-size:9.1pt; color:var(--ink-2); flex:none;
+}
+.note strong{ color:var(--ink); }
+
+/* ---------- şerit rakamlar ---------- */
+.figs{ display:grid; grid-template-columns:repeat(4,1fr); border-top:1pt solid var(--ink); border-bottom:.5pt solid var(--rule); }
+.figs > div{ padding:4mm 5mm 4.5mm 0; border-right:.5pt solid var(--rule-2); }
+.figs > div:last-child{ border-right:0; }
+.figs > div + div{ padding-left:5mm; }
+.figs b{ display:block; font-family:"IBM Plex Mono",monospace; font-size:15pt; font-weight:600; line-height:1; letter-spacing:-.02em; }
+.figs span{ display:block; margin-top:2mm; font-size:8pt; color:var(--ink-3); line-height:1.35; }
+
+/* ---------- tablo ---------- */
+table{ width:100%; border-collapse:collapse; font-size:9pt; }
+th{
+  text-align:left; font-family:"IBM Plex Mono",monospace; font-size:6.7pt;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3);
+  padding:0 5mm 2.5mm 0; border-bottom:1pt solid var(--ink); font-weight:500;
+}
+td{ padding:3.4mm 5mm 3.4mm 0; border-bottom:.5pt solid var(--rule-2); color:var(--ink-2); vertical-align:top; line-height:1.4; }
+td:last-child,th:last-child{ padding-right:0; }
+td.k{ color:var(--ink); font-weight:600; white-space:nowrap; }
+
+.push{ margin-top:auto !important; }

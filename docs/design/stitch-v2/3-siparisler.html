@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kaanlar Gıda - Siparişlerim</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS & Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e5", "secondary-fixed": "#e2e2e5", "on-error": "#ffffff", "secondary-container": "#e2e2e5", "on-primary-container": "#838486", "surface-tint": "#5d5e61", "on-background": "#191c1e", "surface-container": "#edeef0", "tertiary-fixed": "#e1e3e4", "inverse-surface": "#2e3132", "primary-fixed-dim": "#c6c6c9", "on-surface-variant": "#44474a", "surface-bright": "#f9f9fb", "on-secondary-container": "#636467", "secondary": "#5d5e61", "on-tertiary": "#ffffff", "on-surface": "#191c1e", "error-container": "#ffdad6", "on-primary": "#ffffff", "tertiary-container": "#191c1d", "on-secondary-fixed": "#1a1c1e", "surface-dim": "#d9dadc", "surface": "#f9f9fb", "on-tertiary-container": "#818485", "inverse-primary": "#c6c6c9", "surface-container-low": "#f3f3f6", "outline-variant": "#c5c6ca", "surface-variant": "#e1e2e4", "primary-container": "#1a1c1e", "on-tertiary-fixed": "#191c1d", "on-secondary": "#ffffff", "secondary-fixed-dim": "#c6c6c9", "on-error-container": "#93000a", "on-tertiary-fixed-variant": "#444748", "error": "#ba1a1a", "tertiary-fixed-dim": "#c4c7c8", "tertiary": "#000000", "on-primary-fixed": "#1a1c1e", "surface-container-highest": "#e1e2e4", "primary": "#000101", "on-secondary-fixed-variant": "#454749", "on-primary-fixed-variant": "#454749", "surface-container-lowest": "#ffffff", "surface-container-high": "#e7e8ea", "outline": "#75777a", "background": "#f9f9fb", "inverse-on-surface": "#f0f1f3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sm": "12px", "xl": "80px", "margin-mobile": "16px", "xs": "4px", "gutter": "24px", "md": "24px", "lg": "48px", "margin-desktop": "64px", "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"], "headline-lg-mobile": ["Inter"], "headline-lg": ["Inter"], "body-lg": ["Inter"], "body-md": ["Inter"], "mono-data": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"], "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background flex h-screen overflow-hidden antialiased">
+<!-- SideNavBar (Shared Component) -->
+<aside class="bg-surface-container-lowest dark:bg-inverse-surface docked fixed left-0 top-0 h-screen w-64 border-r border-outline-variant dark:border-outline flat no shadows flex flex-col py-md px-sm h-full z-20 hidden md:flex">
+<div class="mb-lg px-sm flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="storefront">storefront</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Kaanlar Gıda</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Bölge Temsilciliği<br/><span class="opacity-75">Samsun Paneli</span></p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-xs">
+<!-- Inactive Tab -->
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant dark:text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span>Ürün Katalogu</span>
+</a>
+<!-- Active Tab (Siparişlerim) -->
+<a class="flex items-center gap-sm px-sm py-sm bg-primary-container dark:bg-secondary-container text-on-primary-container dark:text-on-secondary-container rounded-lg font-label-md text-label-md font-bold transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long" data-weight="fill" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span>Siparişlerim</span>
+</a>
+<!-- Inactive Tab -->
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant dark:text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span>Sepetim</span>
+</a>
+<!-- Inactive Tab -->
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant dark:text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="business">business</span>
+<span>Temsilcilik Bilgileri</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-xs pt-md border-t border-outline-variant">
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>Destek</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Çıkış</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 md:ml-64 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar (Shared Component) -->
+<header class="bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline docked full-width top-0 flat no shadows flex justify-between items-center w-full px-margin-desktop h-16 z-10 shrink-0">
+<div class="flex items-center gap-md w-1/3">
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed md:hidden">Kaanlar Gıda</h1>
+<!-- Search Bar (on_left) -->
+<div class="hidden md:flex relative w-full max-w-sm group">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-on-surface-variant transition-colors" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border border-tertiary-fixed focus:border-on-surface-variant focus:ring-1 focus:ring-on-surface-variant rounded-lg pl-10 pr-sm py-2 font-body-sm text-body-sm text-on-surface placeholder-outline transition-all" placeholder="Sipariş no veya ürün ara..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors duration-200 ease-in-out">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors duration-200 ease-in-out">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Page Content -->
+<div class="flex-1 overflow-y-auto">
+<div class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-lg">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-lg">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-xs">Siparişlerim</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Tüm geçmiş ve aktif siparişlerinizi buradan takip edebilirsiniz.</p>
+</div>
+<div class="flex gap-sm">
+<button class="px-md py-2 border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                            Filtrele
+                        </button>
+<button class="px-md py-2 bg-primary-container text-on-primary-container rounded-lg font-label-md text-label-md hover:bg-on-background hover:text-surface transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+                            Dışa Aktar
+                        </button>
+</div>
+</div>
+<!-- Data Table Panel (Executive Precision) -->
+<div class="bg-surface border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant whitespace-nowrap">SİPARİŞ NO</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant whitespace-nowrap">TARİH</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant whitespace-nowrap">TUTAR</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant whitespace-nowrap">DURUM</th>
+<th class="px-md py-sm font-label-md text-label-md text-on-surface-variant text-right whitespace-nowrap">İŞLEMLER</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1: Hazırlanıyor -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-md py-md font-mono-data text-mono-data text-on-surface">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="inventory_2">inventory_2</span>
+                                            #KNLR-2023-8901
+                                        </div>
+</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface-variant">24 Eki 2023, 14:30</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface font-medium">₺ 42.500,00</td>
+<td class="px-md py-md">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded bg-surface-variant text-on-surface-variant font-label-md text-[10px] uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                            Hazırlanıyor
+                                        </span>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex items-center justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface p-1" title="Fatura">
+<span class="material-symbols-outlined text-[20px]" data-icon="receipt">receipt</span>
+</button>
+<button class="border border-outline-variant rounded px-sm py-1 font-label-md text-label-md text-on-surface hover:border-on-surface transition-colors" title="Tekrar Sipariş Ver">
+                                                Tekrar Sipariş
+                                            </button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Yolda -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-md py-md font-mono-data text-mono-data text-on-surface">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="inventory_2">inventory_2</span>
+                                            #KNLR-2023-8895
+                                        </div>
+</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface-variant">22 Eki 2023, 09:15</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface font-medium">₺ 18.250,00</td>
+<td class="px-md py-md">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded bg-surface-container-high text-on-surface font-label-md text-[10px] uppercase tracking-wider border border-outline-variant">
+<span class="material-symbols-outlined text-[12px]" data-icon="local_shipping">local_shipping</span>
+                                            Yolda
+                                        </span>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex items-center justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface p-1" title="Fatura">
+<span class="material-symbols-outlined text-[20px]" data-icon="receipt">receipt</span>
+</button>
+<button class="border border-outline-variant rounded px-sm py-1 font-label-md text-label-md text-on-surface hover:border-on-surface transition-colors" title="Tekrar Sipariş Ver">
+                                                Tekrar Sipariş
+                                            </button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Teslim Edildi -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-md py-md font-mono-data text-mono-data text-on-surface">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="inventory_2">inventory_2</span>
+                                            #KNLR-2023-8750
+                                        </div>
+</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface-variant">15 Eki 2023, 11:45</td>
+<td class="px-md py-md font-body-sm text-body-sm text-on-surface font-medium">₺ 125.000,00</td>
+<td class="px-md py-md">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant font-label-md text-[10px] uppercase tracking-wider border border-outline-variant">
+<span class="material-symbols-outlined text-[12px]" data-icon="check_circle">check_circle</span>
+                                            Teslim Edildi
+                                        </span>
+</td>
+<td class="px-md py-md text-right">
+<div class="flex items-center justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-on-surface p-1" title="Fatura">
+<span class="material-symbols-outlined text-[20px]" data-icon="receipt">receipt</span>
+</button>
+<button class="border border-outline-variant rounded px-sm py-1 font-label-md text-label-md text-on-surface hover:border-on-surface transition-colors" title="Tekrar Sipariş Ver">
+                                                Tekrar Sipariş
+                                            </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination (Minimalist) -->
+<div class="bg-surface border-t border-outline-variant px-md py-sm flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Toplam 34 sipariş, 1-3 gösteriliyor.</span>
+<div class="flex gap-xs">
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant text-on-surface hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

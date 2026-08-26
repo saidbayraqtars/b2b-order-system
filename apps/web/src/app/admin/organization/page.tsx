@@ -42,9 +42,9 @@ export default async function AdminOrganizationPage() {
             <p className="font-semibold">Kuruluş bilgisi okunamadı</p>
             <pre className="mt-2 whitespace-pre-wrap text-xs">{problem}</pre>
             <p className="mt-3 text-sm">
-              Bu hâlde fatura ve irsaliye <strong>geçersiz</strong> basılır: belge
-              başlığında satıcı yerine bu hata görünür. Kurulum tamamlanmadan
-              belge kesmeyin.
+              Bu hâlde fatura ve irsaliye <strong>geçersiz</strong> basılır:
+              belge başlığında satıcı yerine bu hata görünür. Kurulum
+              tamamlanmadan belge kesmeyin.
             </p>
           </section>
         )}
@@ -91,7 +91,12 @@ function TenantView({
         <Field label="Ticaret sicil no" value={seller.tradeRegistryNo} />
         <Field
           label="Adres"
-          value={[a.line1, a.line2, [a.district, a.city, a.postalCode].filter(Boolean).join(" / "), a.country]
+          value={[
+            a.line1,
+            a.line2,
+            [a.district, a.city, a.postalCode].filter(Boolean).join(" / "),
+            a.country,
+          ]
             .filter(Boolean)
             .join("\n")}
         />

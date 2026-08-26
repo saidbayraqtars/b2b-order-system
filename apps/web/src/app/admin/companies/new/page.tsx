@@ -6,7 +6,7 @@ export default async function NewCompanyPage() {
   await requirePage(["SUPER_ADMIN"], "companies.manage");
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
+    <main className="mx-auto max-w-4xl">
       <Link
         href="/admin/companies"
         className="mb-3 inline-block text-sm text-neutral-500 hover:underline"

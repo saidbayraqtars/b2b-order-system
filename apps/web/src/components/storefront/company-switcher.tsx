@@ -114,7 +114,9 @@ export function CompanySwitcher({
 
             <ul className="max-h-80 overflow-y-auto">
               {query.isLoading && (
-                <li className="px-3 py-3 text-xs text-neutral-500">Yükleniyor…</li>
+                <li className="px-3 py-3 text-xs text-neutral-500">
+                  Yükleniyor…
+                </li>
               )}
               {!query.isLoading && companies.length === 0 && (
                 <li className="px-3 py-3 text-xs text-neutral-500">

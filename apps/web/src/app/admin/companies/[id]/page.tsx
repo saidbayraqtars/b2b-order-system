@@ -36,13 +36,15 @@ export default async function AdminCompanyPage({
           <h1 className="text-xl font-bold">
             {company.name}
             {!company.isActive && (
-              <span className="ml-2 text-sm font-normal text-neutral-500">(pasif)</span>
+              <span className="ml-2 text-sm font-normal text-neutral-500">
+                (pasif)
+              </span>
             )}
           </h1>
           <p className="text-sm text-neutral-500">
             Bakiye {formatTRY(company.currentBalance)} / limit{" "}
-            {formatTRY(company.creditLimit)} · vade {company.paymentTermDays} gün ·{" "}
-            {company.counts.orders} sipariş
+            {formatTRY(company.creditLimit)} · vade {company.paymentTermDays}{" "}
+            gün · {company.counts.orders} sipariş
           </p>
           <p className="text-sm text-neutral-500">
             Hacim iskontosu:{" "}

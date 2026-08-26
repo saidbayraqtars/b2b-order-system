@@ -24,12 +24,13 @@ export interface RuleOptions {
   variants: Array<{ id: string; name: string }>;
 }
 
-const OPTION_SOURCE: Partial<Record<RuleParamMeta["kind"], keyof RuleOptions>> = {
-  categoryIds: "categories",
-  productIds: "products",
-  customerGroupIds: "customerGroups",
-  companyIds: "companies",
-};
+const OPTION_SOURCE: Partial<Record<RuleParamMeta["kind"], keyof RuleOptions>> =
+  {
+    categoryIds: "categories",
+    productIds: "products",
+    customerGroupIds: "customerGroups",
+    companyIds: "companies",
+  };
 
 export function RuleList({
   title,
@@ -291,7 +292,9 @@ function TierField({
                 step={1}
                 size="sm"
                 className="w-28"
-                value={row.minQuantity === undefined ? "" : String(row.minQuantity)}
+                value={
+                  row.minQuantity === undefined ? "" : String(row.minQuantity)
+                }
                 onChange={(e) =>
                   update(index, { minQuantity: num(e.target.value) })
                 }

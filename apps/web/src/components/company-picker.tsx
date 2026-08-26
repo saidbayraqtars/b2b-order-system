@@ -39,11 +39,13 @@ export function CompanyPicker({
   const companies = useMemo(() => {
     const all = query.data?.companies ?? [];
     const q = filter.trim().toLocaleLowerCase("tr");
-    return q ? all.filter((c) => c.name.toLocaleLowerCase("tr").includes(q)) : all;
+    return q
+      ? all.filter((c) => c.name.toLocaleLowerCase("tr").includes(q))
+      : all;
   }, [query.data, filter]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-10 pt-6">
+    <div className="mx-auto max-w-3xl">
       <div className="mb-1 flex items-center gap-2">
         <Building2 className="h-4 w-4 text-brand-600" />
         <span className="tech-label">{eyebrow}</span>
@@ -83,7 +85,11 @@ export function CompanyPicker({
             return (
               <li
                 key={c.id}
-                className={i > 0 ? "border-t border-neutral-200 dark:border-neutral-800" : ""}
+                className={
+                  i > 0
+                    ? "border-t border-neutral-200 dark:border-neutral-800"
+                    : ""
+                }
               >
                 <Link
                   href={`${basePath}?companyId=${encodeURIComponent(c.id)}`}

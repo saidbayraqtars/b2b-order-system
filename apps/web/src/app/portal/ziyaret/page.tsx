@@ -26,23 +26,21 @@ export default async function PortalVisitPage({ searchParams }: Props) {
   if (!ctx.companyId) redirect("/portal");
 
   return (
-    <div>
-      <PortalNav
-        role={user.role}
-        permissions={user.permissions}
-        companyName={ctx.companyName}
-        userName={user.name}
-        current="/portal/ziyaret"
-        isProxy={ctx.isProxy}
-        companyId={ctx.companyId}
-      />
-      <main className="mx-auto max-w-3xl px-4 pb-10">
+    <PortalNav
+      role={user.role}
+      permissions={user.permissions}
+      companyName={ctx.companyName}
+      userName={user.name}
+      isProxy={ctx.isProxy}
+      companyId={ctx.companyId}
+    >
+      <main className="mx-auto max-w-3xl">
         <PageHeader
           title="Ziyaret çağrısı"
           subtitle="Satış temsilcinizin uğramasını isteyin"
         />
         <VisitRequestPanel companyId={ctx.companyId} />
       </main>
-    </div>
+    </PortalNav>
   );
 }

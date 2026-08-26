@@ -859,7 +859,9 @@ function ComputedPanel({
       ) : (
         <ul className="space-y-2">
           {computed.map((c, i) => {
-            const unknown = [...c.expression.matchAll(/[A-Za-z_][A-Za-z0-9_]*/g)]
+            const unknown = [
+              ...c.expression.matchAll(/[A-Za-z_][A-Za-z0-9_]*/g),
+            ]
               .map((m) => m[0])
               .filter((name) => !known.has(name));
             return (
@@ -946,7 +948,9 @@ function ComputedPanel({
               key={a.key}
               type="button"
               disabled={readOnly}
-              onClick={() => insert(Math.min(focused, computed.length - 1), a.key)}
+              onClick={() =>
+                insert(Math.min(focused, computed.length - 1), a.key)
+              }
               title={a.label}
               className="rounded border border-neutral-300 px-1.5 py-0.5 font-mono text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >

@@ -28,12 +28,12 @@ export default async function AdminKurulumPage() {
         <SetupWizard status={status} packs={packs} />
 
         <p className="text-sm text-neutral-500">
-          Sıra rastgele değil: kategorisiz ürün açılmaz, fiyatsız varyant sipariş
-          edilemez, grubu olmayan firma liste fiyatı görür. Paket, bu iskeletin
-          tekrar eden kısmını kurar; ürün, fiyat ve müşteri her firmada başka
-          olduğu için pakete girmiyor. Yedek dosyası yerine kod olmasının sebebi
-          de bu: yedek alındığı günün şemasına aittir, bir sonraki sürümde
-          yüklenmez — paket ise göçlerle birlikte güncellenir.
+          Sıra rastgele değil: kategorisiz ürün açılmaz, fiyatsız varyant
+          sipariş edilemez, grubu olmayan firma liste fiyatı görür. Paket, bu
+          iskeletin tekrar eden kısmını kurar; ürün, fiyat ve müşteri her
+          firmada başka olduğu için pakete girmiyor. Yedek dosyası yerine kod
+          olmasının sebebi de bu: yedek alındığı günün şemasına aittir, bir
+          sonraki sürümde yüklenmez — paket ise göçlerle birlikte güncellenir.
         </p>
       </main>
     </div>
