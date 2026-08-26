@@ -538,6 +538,11 @@ export async function advanceCheque(
     }`;
 
     let cashMovementId: string | null = null;
+    // Paranın gerçekten girdiği hesap. `input.cashAccountId` boş gelebiliyor
+    // (mobilde hesap seçici yok) ve o durumda varsayılan kasa bulunuyor;
+    // çözülen değeri saklamazsak kâğıt, parasının nereye girdiğini taşımaz ve
+    // portföy ekranında tahsil edilmiş çekin hesabı boş görünür.
+    let clearedAccountId: string | null = null;
     let reopenTransactionId: string | null = null;
 
     if (input.status === "CLEARED") {
@@ -566,6 +571,7 @@ export async function advanceCheque(
         recordedById: actorId,
       });
       cashMovementId = movement.id;
+      clearedAccountId = accountId;
     }
 
     if (input.status === "BOUNCED" || input.status === "RETURNED") {
@@ -596,7 +602,7 @@ export async function advanceCheque(
       data: {
         status: input.status,
         ...(cashMovementId
-          ? { cashMovementId, cashAccountId: input.cashAccountId ?? undefined }
+          ? { cashMovementId, cashAccountId: clearedAccountId }
           : {}),
         ...(reopenTransactionId ? { reopenTransactionId } : {}),
         ...(input.status === "ENDORSED"
