@@ -9,6 +9,8 @@ import {
   recordAudit,
   requiresTwoFactor,
   secretBoxReady,
+  SecretBoxError,
+  TwoFactorError,
   type BusinessErrorCode,
   type PrincipalRejection,
 } from "@repo/services";
@@ -553,6 +555,25 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
  * Wrap a route handler with error → JSON mapping.
  * AuthError → 401/403, BusinessError → typed 4xx with code, else 500.
  */
+/**
+ * İkinci adım hataları **kullanıcı** hatasıdır.
+ *
+ * Buraya yazılmadan önce hepsi son `catch`'e düşüp 500 "Sunucu hatası"
+ * dönüyordu: kodu yanlış giren kullanıcı, servisin özenle yazdığı "telefonun
+ * saatini kontrol edin" cümlesi yerine bir sunucu arızası görüyordu.
+ *
+ * `KOD_HATALI` 403: doğrulama başarısız, girdi bozuk değil — aynı gerekçeyle
+ * hesap ekranındaki yanlış şifre de 403 (`INVALID_PASSWORD`).
+ */
+const TWO_FACTOR_STATUS: Record<TwoFactorError["code"], number> = {
+  HESAP_YOK: 404,
+  ZATEN_ACIK: 409,
+  KURULUM_YOK: 409,
+  KOD_HATALI: 403,
+  KAPALI: 409,
+  ZORUNLU: 409,
+};
+
 export function withAuthErrors(
   handler: () => Promise<Response>,
 ): Promise<Response> {
@@ -570,6 +591,21 @@ export function withAuthErrors(
       return Response.json(
         { error: err.message, code: err.code, details: err.details },
         { status: BUSINESS_STATUS[err.code] },
+      );
+    }
+    if (err instanceof TwoFactorError) {
+      return Response.json(
+        { error: err.message, code: err.code },
+        { status: TWO_FACTOR_STATUS[err.code] },
+      );
+    }
+    if (err instanceof SecretBoxError) {
+      // Kurulum eksiği: 503, çünkü uç çalışıyor ama bu makinede ikinci adım
+      // kurulmamış. Mesaj hangi ortam değişkeninin eksik olduğunu söylüyor —
+      // ekranı gören zaten yönetici, ve bunu bilmeden düzeltemez.
+      return Response.json(
+        { error: err.message, code: err.code },
+        { status: 503 },
       );
     }
     console.error(err);

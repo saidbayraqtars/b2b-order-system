@@ -46,6 +46,16 @@ const DEAD_SESSION_CODES = new Set([
   "NO_SESSION",
 ]);
 
+/**
+ * Jeton geçerli ama hesap ikinci adımı kurmadan hiçbir ucu kullanamıyor
+ * (guard: `TOTP_SETUP_REQUIRED`, 403).
+ *
+ * Oturumu burada bitirmek bilinçli: kurulum ekranı **webde**, telefonda değil.
+ * Jeton elde tutulsaydı uygulama her ekranda 403 gösterir, kullanıcı ne
+ * yapması gerektiğini hiçbir yerde okuyamazdı.
+ */
+const SETUP_REQUIRED_CODE = "TOTP_SETUP_REQUIRED";
+
 export async function apiFetch<T>(
   path: string,
   { method = "GET", body, token }: RequestOptions = {},
@@ -74,6 +84,9 @@ export async function apiFetch<T>(
     // endpoint is a wrong password, not a dead session.
     if (res.status === 401 && token && DEAD_SESSION_CODES.has(code ?? "")) {
       onSessionExpired?.(code ?? "SESSION_REVOKED");
+    }
+    if (res.status === 403 && token && code === SETUP_REQUIRED_CODE) {
+      onSessionExpired?.(SETUP_REQUIRED_CODE);
     }
 
     throw new ApiError(res.status, message, code);
@@ -119,6 +132,9 @@ export async function apiUpload<T>(
     }
     if (res.status === 401 && token && DEAD_SESSION_CODES.has(code ?? "")) {
       onSessionExpired?.(code ?? "SESSION_REVOKED");
+    }
+    if (res.status === 403 && token && code === SETUP_REQUIRED_CODE) {
+      onSessionExpired?.(SETUP_REQUIRED_CODE);
     }
     throw new ApiError(res.status, message, code);
   }

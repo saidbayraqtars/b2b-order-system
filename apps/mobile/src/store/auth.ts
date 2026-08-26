@@ -21,7 +21,11 @@ type AuthState = {
   /** Set when the server ended the session; shown on the login screen. */
   sessionEndedReason: string | null;
   hydrate: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  /**
+   * `totp` yalnızca sunucu `TOTP_REQUIRED` dedikten sonra dolu gelir: giriş
+   * ekranı önce kodsuz dener, çünkü hesapların çoğunda ikinci adım yok.
+   */
+  login: (email: string, password: string, totp?: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -61,10 +65,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  login: async (email, password) => {
+  login: async (email, password, totp) => {
     const { token, user } = await apiFetch<{ token: string; user: SessionUser }>(
       "/api/mobile/login",
-      { method: "POST", body: { email, password } },
+      {
+        method: "POST",
+        // Boş kod hiç gönderilmiyor: şema onu bir deneme sayar ve kodu olmayan
+        // hesap "kod hatalı" cevabı alırdı.
+        body: { email, password, ...(totp ? { totp } : {}) },
+      },
     );
     await SecureStore.setItemAsync(TOKEN_KEY, token);
     set({ token, user, sessionEndedReason: null });
@@ -105,6 +114,12 @@ setSessionExpiredHandler((reason) => {
 
 const SESSION_END_MESSAGES: Record<string, string> = {
   SESSION_REVOKED: "Yetkileriniz değişti. Lütfen yeniden giriş yapın.",
+  // Kurulum yalnızca webde yapılabiliyor (QR ekranı orada). Jetonu sessizce
+  // düşürmek, kullanıcıyı sebebini söylemeden giriş ekranına atardı — girer,
+  // her ekranda 403 alır, hiçbir şey anlamaz.
+  TOTP_SETUP_REQUIRED:
+    "Bu hesap için iki adımlı doğrulama zorunlu. Web'de Hesabım ekranından " +
+    "kurun, sonra tekrar giriş yapın.",
   ACCOUNT_DISABLED: "Hesabınız pasife alınmış. Yöneticinizle görüşün.",
   ACCOUNT_MISSING: "Hesabınız bulunamadı. Yöneticinizle görüşün.",
   DEFAULT: "Oturumunuz sonlandı. Lütfen yeniden giriş yapın.",
