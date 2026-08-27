@@ -353,8 +353,24 @@ yakalamadığı üç şey:
 Sayaçlar (eşleşen satır sayısı, `app` + `components`): `dark:` 220 → **191**,
 `neutral-` 417 → **366**, `brand-` 18 (değişmedi).
 
+**Dördüncü hata görüntülerin kendisindeydi.** İlk kaydedilen altı dosyanın
+altısı da ham HTML'di — mavi altı çizili bağlantılar, kutusuz form, Times New
+Roman. Sebep: doğrulamayı yaparken `next build`i geliştirme sunucusu ayaktayken
+çalıştırdım. İkisi aynı `.next` klasörünü paylaşıyor; derleme sunucunun sunduğu
+CSS/JS parçalarını yerinden etti, sunucu ölmedi, tarayıcı parçaları 404 aldı ve
+betik altı bozuk dosyayı hiç sesini çıkarmadan yazdı. `networkidle2` de
+`settle()` de "stil geldi mi" diye sormuyordu.
+
+`screenshots.mjs` artık her sayfada `assertStyled` çağırıyor: stil sayfası
+sayısı sıfırsa ya da `body` tarayıcı varsayılanı 8px kenar boşluğunu taşıyorsa
+(Tailwind sıfırlaması onu 0'a çekiyor) hata veriyor. Ham HTML
+`{sheets: 0, margin: "8px"}`, sağlam sayfa `{sheets: 1, margin: "0px"}` —
+ikisi de temadan bağımsız. **Derlemeyi sunucu ayakta çalıştırmayın**;
+olduysa sunucuyu durdurup `apps/web/.next`i silin.
+
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti,
-`next build` başarılı, 6 ekran görüntüsü `adim-4/` altında.
+`next build` başarılı, 6 ekran görüntüsü `adim-4/` altında (temiz sunucudan
+yeniden çekildi).
 
 ### ▢ Adım 5 — Operasyon
 

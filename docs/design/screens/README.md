@@ -34,6 +34,17 @@ SHOT_BASE_URL=http://localhost:3100 pnpm shots -- --theme both
 Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür
 (`puppeteer-core`). Başka bir yerdeyse `CHROME_PATH` ile gösterin.
 
+> **Sunucu ayaktayken `next build` çalıştırmayın.** İkisi aynı `.next`
+> klasörünü paylaşıyor; derleme, geliştirme sunucusunun sunduğu CSS/JS
+> parçalarını yerinden ediyor ve sunucu ölmeden çalışmaya devam ediyor —
+> tarayıcı o parçaları 404 alıyor, sayfa **ham HTML** olarak açılıyor. Adım
+> 4'te altı ekranın altısı da böyle kaydedildi: mavi altı çizili bağlantılar,
+> kutusuz form, Times New Roman. Olduysa: sunucuyu durdurun,
+> `rm -rf apps/web/.next`, sunucuyu yeniden başlatın, çekimi tekrarlayın.
+>
+> Betik artık bunu kendisi yakalıyor (`assertStyled`, aşağıda) ama önce
+> derlemeyi ayrı sırada çalıştırmak daha ucuz.
+
 ## Kararlar
 
 - **Ölçek 1, genişlik 1440.** Görüntü, tasarımcının ekranda gördüğünün birebir
@@ -58,3 +69,10 @@ Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür
   ekranın iki çekimi birebir aynı olmayabilir — bu bir hata değil.
 - **Açık tema varsayılan.** `--theme dark` ya da `--theme both` ile koyu tema da
   alınır; koyu dosyalar `<slug>-dark.png` olur.
+- **Biçimsiz sayfa kaydedilmez** (`assertStyled`). Boş bir ekran kaydetmek
+  serbest — boş ekran da bir ekrandır — ama **stilsiz** bir ekran kaydetmek
+  betiğin tek işini boşa çıkarıyor. İki ölçüt, ikisi de temadan bağımsız:
+  sayfada hiç stil sayfası olmaması (`document.styleSheets.length === 0`) ve
+  `body`nin tarayıcı varsayılanı 8px kenar boşluğunu taşıması — Tailwind'in
+  sıfırlaması onu 0'a çekiyor. Ham HTML `{sheets: 0, margin: "8px"}` veriyor,
+  sağlam sayfa `{sheets: 1, margin: "0px"}`.

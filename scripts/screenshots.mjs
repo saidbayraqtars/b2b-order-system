@@ -66,12 +66,15 @@ function parseArgs(argv) {
     const [flag, inline] = argv[i].split("=");
     const value = inline ?? argv[++i];
     if (flag === "--step") args.step = Number(value);
-    else if (flag === "--only") args.only = value.split(",").map((s) => s.trim());
+    else if (flag === "--only")
+      args.only = value.split(",").map((s) => s.trim());
     else if (flag === "--theme") args.theme = value;
     else throw new Error(`Bilinmeyen argüman: ${argv[i]}`);
   }
   if (!["light", "dark", "both"].includes(args.theme)) {
-    throw new Error(`--theme light | dark | both olmalı, "${args.theme}" değil`);
+    throw new Error(
+      `--theme light | dark | both olmalı, "${args.theme}" değil`,
+    );
   }
   return args;
 }
@@ -112,6 +115,36 @@ async function setTheme(page, theme) {
       /* gizli sekme — tema yine sınıfla uygulanacak */
     }
   }, theme);
+}
+
+/**
+ * Sayfa gerçekten biçimlenmiş mi?
+ *
+ * Bir kez altı ekranın altısı da ham HTML olarak kaydedildi: mavi altı çizili
+ * bağlantılar, kutusuz form, Times New Roman. Sebep dev sunucusu ayaktayken
+ * `next build` çalıştırılmasıydı — ikisi aynı `.next` klasörünü paylaşıyor ve
+ * derleme, sunucunun sunduğu CSS/JS parçalarını yerinden etti; tarayıcı onları
+ * 404 aldı. Betik hiçbir şey fark etmeden altı bozuk dosyayı yazdı, çünkü
+ * `networkidle2` de `settle()` de "stil geldi mi" diye sormuyordu.
+ *
+ * İki ölçüt, ikisi de temadan bağımsız: sayfada hiç stil sayfası olmaması, ve
+ * `body`nin tarayıcı varsayılanı olan 8px kenar boşluğunu taşıması (Tailwind'in
+ * sıfırlaması onu 0'a çekiyor). Boş ekran kaydetmek serbest, **biçimsiz** ekran
+ * kaydetmek değil — bu dosyaların tek işi ekranın doğru göründüğünü söylemek.
+ */
+async function assertStyled(page, path) {
+  const bare = await page.evaluate(() => {
+    const sheets = document.styleSheets.length;
+    const margin = getComputedStyle(document.body).marginTop;
+    return { sheets, margin };
+  });
+  if (bare.sheets === 0 || bare.margin !== "0px") {
+    throw new Error(
+      `${path} biçimsiz geldi (stil sayfası: ${bare.sheets}, body margin: ${bare.margin}). ` +
+        "Sunucu ayaktayken `next build` çalıştırıldıysa `.next` ezilmiştir: " +
+        "sunucuyu durdurun, `.next` klasörünü silin, sunucuyu yeniden başlatın.",
+    );
+  }
 }
 
 /**
@@ -227,6 +260,7 @@ async function main() {
           // sayfanın altına metrelerce boşluk ekleniyordu.
           await page.setViewport(VIEWPORT);
           await page.goto(`${BASE_URL}${path}`, { waitUntil: "networkidle2" });
+          await assertStyled(page, path);
           await settle(page);
           await fitViewport(page);
 
