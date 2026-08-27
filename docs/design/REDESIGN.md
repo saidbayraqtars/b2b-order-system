@@ -683,9 +683,39 @@ Ayrıca iki test kendi saat dilimi hatasıyla gece yarısından sonra kırılıy
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 235 rota + 553
 servis testi geçti, `next build` başarılı, 11 ekran görüntüsü `adim-7/` altında.
 
-### ▢ Adım 8 (kalan) — Hesap ekranları
+### ✔ Adım 8 (kalan) — Hesap ekranları (bitti)
 
-`hesabim`, `403`. `login`, `kayit` ve `sifremi-unuttum` yukarıda bitti.
+`hesabim` ve `403`. `login`, `kayit` ve `sifremi-unuttum` yukarıda bitmişti.
+
+**İkisi de kabuksuz ve bu bir istisna, kaza değil.** Tasarım dilinin 5. kuralı
+"tek kabuk" diyor; sebebi `/hesabim`in ikinci adım kapısından muaf tek ekran
+olması. Zorunlu kapsamdaki bir kullanıcı 2FA'sını kurana kadar başka hiçbir
+ekrana giremiyor — kenar çubuğu çizilseydi oradaki her bağlantı onu kapıya,
+kapı da geri buraya yollardı. Tek çıkış başlıktaki "Panele dön" ve o da
+kullanıcının kendi rolünün varsayılan rotasına gidiyor. `/403` aynı aileden:
+oraya düşen kişinin yapabileceği tek şey geri dönmek.
+
+- **`Row` silindi, yerine `DefRow`.** Güvenlik durumu paneli künye satırını
+  kendi yazmıştı ve ölçüleri ortaktan yarım punto farklıydı. İki sütuna
+  dizilince alt sıradaki iki satırdan yalnızca biri kendi çizgisini
+  kaybediyordu (`last:border-0` ızgarada son *elemanı* biliyor, son *satırı*
+  değil); `nth-last-child(-n+2)` ile ikisi birden.
+- **Ham `<ul>` hareket listesi tabloya geçti.** Kullanıcının kendi denetim
+  kaydı, yönetimdeki güvenlik kaydının tek kişilik hâli — aynı veri iki ekranda
+  iki farklı görüntüde durmasın (Adım 6'da beş liste bu sebeple tabloya
+  geçmişti).
+- **Beş siyah düğmeden ikisi ikincil oldu**: "Kopyala" ve "Vazgeç". Yedek kod
+  ekranında ikisi de siyahken hangisinin ileri götürdüğü belirsizdi. 2FA'yı
+  kapatan düğme `dangerQuiet`: hesabın korumasını kaldırıyor ama panelin asıl
+  eylemi değil (Adım 4 kuralı).
+- **`{busy ? "Kaydediliyor…" : "Kaydet"}` kalıbı beş yerden kalktı** —
+  `Button`ın kendi `loading`i zaten dönen bir çark çiziyor ve düğmeyi
+  kilitliyor; metni değiştirmek düğmenin genişliğini de oynatıyordu.
+- Kehribar paragraflar `WarnLine`a, zorunluluk dipnotu `Note`a geçti; her
+  girdi `htmlFor` ile etiketine bağlandı.
+
+QR karesi **her temada beyaz zeminde** kalıyor: okuyucu uygulamaların bir kısmı
+koyu zemindeki kareyi çözemiyor ve bu, temaya bırakılacak bir tercih değil.
 
 ### ▢ Adım 9 — Mobil
 

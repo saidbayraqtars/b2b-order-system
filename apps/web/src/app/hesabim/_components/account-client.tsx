@@ -13,7 +13,24 @@ import type {
   EnrollmentStart,
   TwoFactorStatus,
 } from "@repo/services";
-import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  TextInput,
+  WarnLine,
+} from "@/components/form";
+import {
+  DefRow,
+  Note,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 import { apiDelete, apiPatch, apiPost } from "@/lib/fetcher";
 
 /**
@@ -83,26 +100,39 @@ function ProfilePanel({
     <Panel title="Profil">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label>Ad soyad</Label>
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+          <Label htmlFor="account-name">Ad soyad</Label>
+          <TextInput
+            id="account-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
-          <Label>Telefon</Label>
-          <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Label htmlFor="account-phone">Telefon</Label>
+          <TextInput
+            id="account-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
         </div>
         <div>
-          <Label hint="(değiştirilemez)">E-posta</Label>
-          <TextInput value={account.email} disabled />
+          <Label htmlFor="account-email" hint="(değiştirilemez)">
+            E-posta
+          </Label>
+          <TextInput id="account-email" value={account.email} disabled />
         </div>
       </div>
-      <p className="mt-2 text-xs text-neutral-500">
+      <p className="mt-2 text-xs text-ink-faint">
         E-posta, rol ve firma bilgisi yalnızca yönetici tarafından değiştirilir.
       </p>
       <div className="mt-3 flex items-center gap-3">
-        <Button onClick={save} disabled={busy}>
-          {busy ? "Kaydediliyor…" : "Kaydet"}
+        <Button onClick={save} loading={busy}>
+          Kaydet
         </Button>
-        {saved && <span className="text-sm text-emerald-600">Kaydedildi</span>}
+        {/* Yeşil, küçük, kutusuz: "oldu" demenin ağırlığı bu kadar. */}
+        {saved && (
+          <span className="text-body-sm text-positive">Kaydedildi</span>
+        )}
       </div>
       <ErrorLine error={error} />
     </Panel>
@@ -112,25 +142,19 @@ function ProfilePanel({
 function SecurityPanel({ account }: { account: Account }) {
   return (
     <Panel title="Güvenlik durumu">
-      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-        <Row label="Son giriş" value={formatDateTime(account.lastLoginAt)} />
-        <Row label="Son giriş IP" value={account.lastLoginIp ?? "—"} />
-        <Row
-          label="Şifre son değişim"
-          value={formatDateTime(account.passwordChangedAt)}
-        />
-        <Row label="Hesap açılışı" value={formatDateTime(account.createdAt)} />
+      {/* `DefRow`: bu panel künye satırını kendi yazıyordu ve ölçüleri ortak
+          bileşenden yarım punto farklıydı. */}
+      <dl className="grid gap-x-6 sm:grid-cols-2 sm:[&>div:nth-last-child(-n+2)]:border-b-0">
+        <DefRow label="Son giriş">{formatDateTime(account.lastLoginAt)}</DefRow>
+        <DefRow label="Son giriş IP">{account.lastLoginIp ?? "—"}</DefRow>
+        <DefRow label="Şifre son değişim">
+          {formatDateTime(account.passwordChangedAt)}
+        </DefRow>
+        <DefRow label="Hesap açılışı">
+          {formatDateTime(account.createdAt)}
+        </DefRow>
       </dl>
     </Panel>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-neutral-100 py-1 dark:border-neutral-900">
-      <dt className="text-neutral-500">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
   );
 }
 
@@ -212,10 +236,12 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
   if (!status.ready) {
     return (
       <Panel title="İki adımlı doğrulama">
-        <p className="text-sm text-amber-600">
-          Sunucuda <code>TOTP_ENCRYPTION_KEY</code> tanımlı olmadığı için iki
-          adımlı doğrulama kurulamıyor. Sistem yöneticinize bildirin.
-        </p>
+        <WarnLine>
+          <span>
+            Sunucuda <code>TOTP_ENCRYPTION_KEY</code> tanımlı olmadığı için iki
+            adımlı doğrulama kurulamıyor. Sistem yöneticinize bildirin.
+          </span>
+        </WarnLine>
       </Panel>
     );
   }
@@ -224,23 +250,28 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
   if (backupCodes) {
     return (
       <Panel title="Yedek kodlarınız">
-        <p className="text-sm">
-          Bu kodları <strong>şimdi</strong> kaydedin — bir daha gösterilmeyecek.
-          Her biri bir kez kullanılır ve telefonunuza erişemediğinizde doğrulama
-          kodunun yerine geçer.
+        <p className="text-body-sm text-ink">
+          Bu kodları{" "}
+          <strong className="font-semibold">şimdi</strong> kaydedin — bir daha
+          gösterilmeyecek. Her biri bir kez kullanılır ve telefonunuza
+          erişemediğinizde doğrulama kodunun yerine geçer.
         </p>
-        <ul className="my-3 grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-3">
+        <ul className="my-3 grid grid-cols-2 gap-2 font-mono text-body-sm sm:grid-cols-3">
           {backupCodes.map((c) => (
             <li
               key={c}
-              className="rounded border border-neutral-200 px-2 py-1 text-center dark:border-neutral-800"
+              className="rounded border border-line bg-sunken px-2 py-1 text-center tracking-wider text-ink"
             >
               {c}
             </li>
           ))}
         </ul>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Ekranın asıl eylemi "kaydettim, devam et"; kopyalama ona giden
+              yol. İkisi de siyah düğme olsaydı hangisinin ileri götürdüğü
+              belirsiz kalırdı. */}
           <Button
+            variant="secondary"
             onClick={() =>
               void navigator.clipboard?.writeText(backupCodes.join("\n"))
             }
@@ -253,11 +284,13 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
             </Button>
           )}
           {!status.enabled && (
-            <Button onClick={() => setBackupCodes(null)}>Kapat</Button>
+            <Button variant="secondary" onClick={() => setBackupCodes(null)}>
+              Kapat
+            </Button>
           )}
         </div>
         {status.enabled && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-ink-faint">
             İki adımlı doğrulama açıldığı için açık olan tüm oturumlar (mobil
             dahil) kapatıldı. Yeniden girerken kodu bir kez daha soracağız.
           </p>
@@ -270,7 +303,7 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
   if (enrollment) {
     return (
       <Panel title="İki adımlı doğrulama — kurulum">
-        <ol className="mb-3 list-decimal pl-5 text-sm text-neutral-600 dark:text-neutral-400">
+        <ol className="mb-3 list-decimal space-y-0.5 pl-5 text-body-sm text-ink-muted">
           <li>
             Telefonunuzda bir authenticator uygulaması açın (Google
             Authenticator, Microsoft Authenticator, Authy, 1Password…).
@@ -282,18 +315,21 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
         <div className="flex flex-col items-start gap-4 sm:flex-row">
           {/* Sunucuda üretilmiş SVG (packages/services/src/qr.ts). Dışarıdan
               gelen bir içerik değil, bu yüzden doğrudan basılıyor. */}
+          {/* Kare her zaman beyaz zeminde: okuyucu uygulamaların yarısı koyu
+              zemindeki QR'ı çözemiyor ve bu, temaya bırakılacak bir tercih
+              değil. */}
           <div
-            className="rounded border border-neutral-200 bg-white p-2 dark:border-neutral-800"
+            className="rounded border border-line bg-white p-2"
             dangerouslySetInnerHTML={{ __html: enrollment.qrSvg }}
           />
-          <div className="text-sm">
-            <p className="text-neutral-500">
+          <div>
+            <p className="text-body-sm text-ink-muted">
               QR okutamıyorsanız anahtarı elle girin:
             </p>
-            <p className="mt-1 select-all font-mono text-base tracking-wider">
+            <p className="mt-1 select-all font-mono text-body-md tracking-wider text-ink">
               {enrollment.manualKey}
             </p>
-            <p className="mt-2 text-xs text-neutral-500">
+            <p className="mt-2 text-xs text-ink-faint">
               Hesap adı: {enrollment.issuer} · Tür: zamana dayalı (TOTP), 6
               hane, 30 saniye.
             </p>
@@ -301,8 +337,9 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
         </div>
 
         <div className="mt-4 max-w-xs">
-          <Label>Uygulamadaki kod</Label>
+          <Label htmlFor="totp-enroll-code">Uygulamadaki kod</Label>
           <TextInput
+            id="totp-enroll-code"
             inputMode="numeric"
             autoComplete="one-time-code"
             placeholder="123456"
@@ -311,10 +348,18 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
           />
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <Button onClick={confirm} disabled={busy || !code.trim()}>
-            {busy ? "Doğrulanıyor…" : "Doğrula ve aç"}
+          <Button
+            onClick={confirm}
+            loading={busy}
+            disabled={!code.trim()}
+          >
+            Doğrula ve aç
           </Button>
-          <Button onClick={() => setEnrollment(null)} disabled={busy}>
+          <Button
+            variant="secondary"
+            onClick={() => setEnrollment(null)}
+            disabled={busy}
+          >
             Vazgeç
           </Button>
         </div>
@@ -327,27 +372,32 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
   if (status.enabled) {
     return (
       <Panel title="İki adımlı doğrulama">
-        <p className="text-sm text-emerald-600">
+        <p className="text-body-sm text-positive">
           Açık
           {status.enabledAt
             ? ` — ${formatDateTime(new Date(status.enabledAt).toISOString())}`
             : ""}
           .
         </p>
-        <p className="mt-1 text-sm text-neutral-500">
-          Kalan yedek kod: {status.remainingBackupCodes}
+        <p className="mt-1 text-body-sm text-ink-muted">
+          Kalan yedek kod:{" "}
+          <span className="tabular-nums">{status.remainingBackupCodes}</span>
           {status.remainingBackupCodes <= 2 && (
-            <span className="ml-2 text-amber-600">
+            <span className="ml-2 text-caution">
               Azaldı — yenilemeniz iyi olur.
             </span>
           )}
         </p>
 
         <div className="mt-3 max-w-xs">
-          <Label hint="uygulamadaki kod ya da bir yedek kod">
+          <Label
+            htmlFor="totp-code"
+            hint="uygulamadaki kod ya da bir yedek kod"
+          >
             Doğrulama kodu
           </Label>
           <TextInput
+            id="totp-code"
             inputMode="numeric"
             autoComplete="one-time-code"
             value={code}
@@ -355,20 +405,26 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
           />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button onClick={regenerate} disabled={busy || !code.trim()}>
+          <Button onClick={regenerate} loading={busy} disabled={!code.trim()}>
             Yedek kodları yenile
           </Button>
+          {/* Kapatma bu panelin asıl eylemi değil ve hesabın korumasını
+              kaldırıyor: sessiz kırmızı (Adım 4 kuralı). */}
           {!status.required && (
-            <Button onClick={disable} disabled={busy || !code.trim()}>
+            <Button
+              variant="dangerQuiet"
+              onClick={disable}
+              disabled={busy || !code.trim()}
+            >
               Kapat
             </Button>
           )}
         </div>
         {status.required && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <Note className="mt-4">
             {status.requirementReason} iki adımlı doğrulama zorunlu;
             kapatılamaz. Telefonunuzu değiştirecekseniz yöneticinize sıfırlatın.
-          </p>
+          </Note>
         )}
         <ErrorLine error={error} />
       </Panel>
@@ -379,25 +435,27 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
   return (
     <Panel title="İki adımlı doğrulama">
       {status.required ? (
-        <p className="text-sm text-amber-600">
-          {status.requirementReason} bu hesapta iki adımlı doğrulama zorunlu.
-          Kurmadan diğer ekranlara giremezsiniz.
-        </p>
+        <WarnLine>
+          <span>
+            {status.requirementReason} bu hesapta iki adımlı doğrulama zorunlu.
+            Kurmadan diğer ekranlara giremezsiniz.
+          </span>
+        </WarnLine>
       ) : (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-body-sm text-ink-muted">
           Kapalı. Açtığınızda girişte şifrenizin yanında telefonunuzdaki altı
           haneli kod da istenir; şifreniz ele geçse bile hesabınıza girilemez.
         </p>
       )}
       {status.pending && (
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-ink-faint">
           Yarım kalmış bir kurulum var. Yeniden başlatmak yeni bir anahtar
           üretir; eski kareyi okuttuysanız uygulamadaki kaydı silin.
         </p>
       )}
       <div className="mt-3">
-        <Button onClick={begin} disabled={busy}>
-          {busy ? "Hazırlanıyor…" : status.pending ? "Yeniden kur" : "Kur"}
+        <Button onClick={begin} loading={busy}>
+          {status.pending ? "Yeniden kur" : "Kur"}
         </Button>
       </div>
       <ErrorLine error={error} />
@@ -443,7 +501,7 @@ function PasswordPanel() {
   if (done) {
     return (
       <Panel title="Şifre değiştir">
-        <p className="text-sm text-emerald-600">
+        <p className="text-body-sm text-positive">
           Şifreniz değiştirildi. Tüm oturumlar kapatıldı — giriş ekranına
           yönlendiriliyorsunuz…
         </p>
@@ -455,8 +513,9 @@ function PasswordPanel() {
     <Panel title="Şifre değiştir">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <Label>Mevcut şifre</Label>
+          <Label htmlFor="password-current">Mevcut şifre</Label>
           <TextInput
+            id="password-current"
             type="password"
             autoComplete="current-password"
             value={currentPassword}
@@ -464,8 +523,11 @@ function PasswordPanel() {
           />
         </div>
         <div>
-          <Label hint="en az 8 karakter, harf + rakam">Yeni şifre</Label>
+          <Label htmlFor="password-new" hint="en az 8 karakter, harf + rakam">
+            Yeni şifre
+          </Label>
           <TextInput
+            id="password-new"
             type="password"
             autoComplete="new-password"
             value={newPassword}
@@ -473,8 +535,9 @@ function PasswordPanel() {
           />
         </div>
         <div>
-          <Label>Yeni şifre (tekrar)</Label>
+          <Label htmlFor="password-repeat">Yeni şifre (tekrar)</Label>
           <TextInput
+            id="password-repeat"
             type="password"
             autoComplete="new-password"
             value={repeat}
@@ -482,12 +545,12 @@ function PasswordPanel() {
           />
         </div>
       </div>
-      <p className="mt-2 text-xs text-neutral-500">
+      <p className="mt-2 text-xs text-ink-faint">
         Şifre değiştiğinde açık olan tüm oturumlar (mobil dahil) kapatılır.
       </p>
       <div className="mt-3">
-        <Button onClick={submit} disabled={busy}>
-          {busy ? "Değiştiriliyor…" : "Şifreyi değiştir"}
+        <Button onClick={submit} loading={busy}>
+          Şifreyi değiştir
         </Button>
       </div>
       <ErrorLine error={error} />
@@ -495,32 +558,38 @@ function PasswordPanel() {
   );
 }
 
+/**
+ * Kullanıcının kendi denetim kaydı — yönetimdeki güvenlik kaydının tek kişilik
+ * hâli, o yüzden görüntüsü de aynı: aynı veri iki ekranda iki farklı biçimde
+ * durmasın (Adım 6'da beş liste bu sebeple tabloya geçmişti).
+ */
 function ActivityPanel({ entries }: { entries: AuditEntry[] }) {
   return (
-    <Panel title="Son hareketlerim">
-      {entries.length === 0 ? (
-        <p className="text-sm text-neutral-500">Kayıt yok.</p>
-      ) : (
-        <ul className="flex flex-col gap-1 text-sm">
+    <Panel title="Son hareketlerim" bodyClassName="p-0 pb-1">
+      <Table>
+        <THead>
+          <tr>
+            <Th>İşlem</Th>
+            <Th>Özet</Th>
+            <Th align="right">Zaman</Th>
+          </tr>
+        </THead>
+        <TBody>
           {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 py-1 dark:border-neutral-900"
-            >
-              <span>
-                <span className="font-medium">
-                  {AUDIT_ACTION_LABELS[e.action]}
-                </span>
-                <span className="ml-2 text-neutral-500">{e.summary}</span>
-              </span>
-              <span className="text-xs text-neutral-400">
+            <tr key={e.id}>
+              <Td className="font-medium">{AUDIT_ACTION_LABELS[e.action]}</Td>
+              <Td muted>{e.summary}</Td>
+              <Td align="right" numeric muted>
                 {formatDateTime(e.createdAt)}
                 {e.ip ? ` · ${e.ip}` : ""}
-              </span>
-            </li>
+              </Td>
+            </tr>
           ))}
-        </ul>
-      )}
+          {entries.length === 0 && (
+            <TableEmpty colSpan={3} label="Kayıt yok." />
+          )}
+        </TBody>
+      </Table>
     </Panel>
   );
 }

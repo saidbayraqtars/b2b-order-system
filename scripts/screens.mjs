@@ -327,6 +327,22 @@ export const SCREENS = [
     as: "admin",
     path: "/admin/basvurular",
   },
+  {
+    step: 8,
+    slug: "hesabim",
+    label: "Hesabım",
+    as: "admin",
+    path: "/hesabim",
+  },
+  // Eksik yetkinin adı adreste: ekran "yetkiniz yok" değil *hangi* yetkinin
+  // eksik olduğunu söylüyor ve o cümle ancak parametreyle görülebiliyor.
+  {
+    step: 8,
+    slug: "403",
+    label: "Yetki reddi",
+    as: "admin",
+    path: "/403?perm=cash.manage",
+  },
 
   // ── Adım 7 — rapor tasarımcısı ve panolar ───────────────────────────────
   {

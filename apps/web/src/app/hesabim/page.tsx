@@ -9,6 +9,15 @@ export const dynamic = "force-dynamic";
 
 // Every authenticated role reaches this page — it is the one screen a user has
 // that is about their own account rather than about the business.
+//
+// **Kabuksuz, ve bilerek** (Adım 8 kararı). Tasarım dilinin 5. kuralı "tek
+// kabuk" diyor; buradaki istisnanın sebebi hemen aşağıdaki `twoFactorGate`
+// muafiyeti. Zorunlu kapsamdaki bir kullanıcı 2FA'sını kurana kadar başka
+// hiçbir ekrana giremiyor: kenar çubuğu çizilseydi oradaki her bağlantı onu
+// kapıya, kapı da geri buraya yollardı — çalışan ama insanı deli eden bir
+// halka. Bunun yerine tek bir çıkış var, başlıktaki "Panele dön", ve o da
+// kullanıcının kendi rolünün varsayılan rotasına gidiyor. `/403` aynı sebeple
+// kabuksuz.
 const ALL_ROLES = [
   "SUPER_ADMIN",
   "COMPANY_ADMIN",
