@@ -11,6 +11,7 @@ import {
   ErrorLine,
   Label,
   Panel,
+  Select,
   TextArea,
   TextInput,
 } from "@/components/form";
@@ -201,34 +202,36 @@ export function PromotionForm({
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-5 text-sm">
-          <Checkbox
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            label="Aktif"
-          />
-          <Checkbox
-            checked={stopFurther}
-            onChange={(e) => setStopFurther(e.target.checked)}
-            label="Uygulanırsa sonraki kampanyalar çalışmasın"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          <span className="text-neutral-500">Koşullar nasıl birleşsin?</span>
-          {(["ALL", "ANY"] as const).map((mode) => (
-            <label key={mode} className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="conditionMode"
-                checked={conditionMode === mode}
-                onChange={() => setConditionMode(mode)}
-              />
-              {mode === "ALL"
-                ? "Hepsi sağlanmalı (VE)"
-                : "En az biri yeterli (VEYA)"}
-            </label>
-          ))}
+        <div className="flex flex-wrap items-end gap-5">
+          {/* Uygulamanın tek radyo grubu buradaydı ve iki seçenekli bir form
+              alanı her yerde seçim kutusu: ayrı bir kontrol çeşidi tek kullanım
+              için odak halkasını, boyunu ve koyu temasını ikinci kez yazmak
+              demekti. */}
+          <label>
+            <Label>Koşullar nasıl birleşsin?</Label>
+            <Select
+              value={conditionMode}
+              onChange={(e) =>
+                setConditionMode(e.target.value as "ALL" | "ANY")
+              }
+              className="w-64"
+            >
+              <option value="ALL">Hepsi sağlanmalı (VE)</option>
+              <option value="ANY">En az biri yeterli (VEYA)</option>
+            </Select>
+          </label>
+          <div className="flex flex-wrap gap-5 pb-2.5">
+            <Checkbox
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+              label="Aktif"
+            />
+            <Checkbox
+              checked={stopFurther}
+              onChange={(e) => setStopFurther(e.target.checked)}
+              label="Uygulanırsa sonraki kampanyalar çalışmasın"
+            />
+          </div>
         </div>
 
         <RuleList

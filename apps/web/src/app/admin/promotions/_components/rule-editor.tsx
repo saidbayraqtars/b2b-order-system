@@ -7,7 +7,13 @@ import {
   type RuleMeta,
   type RuleParamMeta,
 } from "@repo/types";
-import { Button, Label, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  Label,
+  MultiSelect,
+  Select,
+  TextInput,
+} from "@/components/form";
 
 // The builder does not know the rule catalogue: it renders whatever
 // /api/admin/promotions/rules describes. Adding a condition or an action on the
@@ -57,11 +63,12 @@ export function RuleList({
     onChange(rules.filter((_, i) => i !== index));
 
   return (
-    <div className="rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+    <div className="rounded border border-line p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-body-sm font-semibold text-ink">{title}</h3>
         <Select
           value=""
+          size="sm"
           className="w-56"
           onChange={(e) => add(e.target.value)}
           aria-label={`${title} ekle`}
@@ -76,7 +83,7 @@ export function RuleList({
       </div>
 
       {rules.length === 0 ? (
-        <p className="text-sm text-neutral-500">{emptyHint}</p>
+        <p className="text-body-sm text-ink-muted">{emptyHint}</p>
       ) : (
         <ul className="space-y-3">
           {rules.map((rule, index) => {
@@ -84,18 +91,22 @@ export function RuleList({
             return (
               <li
                 key={`${rule.type}-${index}`}
-                className="rounded-md bg-neutral-50 p-3 dark:bg-neutral-900"
+                className="rounded bg-sunken p-3"
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-body-sm font-medium text-ink">
                       {meta?.label ?? rule.type}
                     </p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-ink-muted">
                       {meta?.description ?? "Bu kural artık tanımlı değil."}
                     </p>
                   </div>
-                  <Button variant="secondary" onClick={() => remove(index)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(index)}
+                  >
                     Kaldır
                   </Button>
                 </div>
@@ -143,23 +154,12 @@ function ParamField({
     return (
       <label className="block">
         <Label hint={param.hint}>{param.label}</Label>
-        <select
-          multiple
-          size={Math.min(6, Math.max(3, list.length))}
+        <MultiSelect
+          className="w-64"
+          options={list}
           value={selected}
-          onChange={(e) =>
-            onChange(
-              [...e.target.selectedOptions].map((o) => o.value).filter(Boolean),
-            )
-          }
-          className="w-64 rounded-md border border-neutral-300 bg-white p-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        >
-          {list.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+        />
       </label>
     );
   }
@@ -285,7 +285,7 @@ function TierField({
           // Rows have no identity of their own; position is what identifies them.
           <li key={index} className="flex items-end gap-2">
             <label className="block">
-              <span className="text-xs text-neutral-500">Adet en az</span>
+              <span className="text-xs text-ink-muted">Adet en az</span>
               <TextInput
                 type="number"
                 min={1}
@@ -301,7 +301,7 @@ function TierField({
               />
             </label>
             <label className="block">
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-ink-muted">
                 {gift ? "Hediye adedi" : "Oran (%)"}
               </span>
               <TextInput
@@ -316,7 +316,7 @@ function TierField({
               />
             </label>
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
               onClick={() => remove(index)}
               aria-label={`${index + 1}. kademeyi kaldır`}
@@ -331,11 +331,7 @@ function TierField({
         <Button variant="secondary" size="sm" onClick={add}>
           + Kademe
         </Button>
-        {warning && (
-          <span className="text-xs text-amber-600 dark:text-amber-500">
-            {warning}
-          </span>
-        )}
+        {warning && <span className="text-xs text-caution">{warning}</span>}
       </div>
     </div>
   );

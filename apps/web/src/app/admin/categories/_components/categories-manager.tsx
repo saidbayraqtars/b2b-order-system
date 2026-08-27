@@ -4,7 +4,15 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminCategoryRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 import {
   Button,
   ErrorLine,
@@ -104,89 +112,115 @@ export function CategoriesManager() {
   });
 
   return (
-    <div className="space-y-4">
-      <Panel title="Yeni kategori">
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <Label>Kategori adı</Label>
-            <TextInput
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Örn. Ambalaj"
-              className="w-56"
-            />
-          </div>
-          <div>
-            <Label>Üst kategori</Label>
-            <Select
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="w-56"
-            >
-              <option value="">(kök)</option>
-              {rows.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {"— ".repeat(c.depth)}
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button
-            disabled={!name.trim() || create.isPending}
-            onClick={() => create.mutate()}
-          >
-            Ekle
-          </Button>
+    <Panel title={`Kategoriler (${rows.length})`} bodyClassName="p-0">
+      {/* Ekleme şeridi listenin üstünde ve gömük zeminde — vade, hacim ve kasa
+          ekranlarıyla aynı yer. Ayrı bir panel olduğunda sayfa iki kutuya
+          bölünüyordu ve ikisi de "kategori" diyordu. */}
+      <div className="flex flex-wrap items-end gap-2 border-b border-line bg-sunken p-4">
+        <div>
+          <Label htmlFor="new-category">Kategori adı</Label>
+          <TextInput
+            id="new-category"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Örn. Ambalaj"
+            className="w-56"
+          />
         </div>
-        <ErrorLine error={create.error} />
-      </Panel>
+        <div>
+          <Label htmlFor="new-category-parent">Üst kategori</Label>
+          <Select
+            id="new-category-parent"
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+            className="w-56"
+          >
+            <option value="">(kök)</option>
+            {rows.map((c) => (
+              <option key={c.id} value={c.id}>
+                {"— ".repeat(c.depth)}
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button
+          disabled={!name.trim() || create.isPending}
+          onClick={() => create.mutate()}
+        >
+          Ekle
+        </Button>
+        <div className="w-full">
+          <ErrorLine error={create.error} />
+        </div>
+      </div>
 
-      <Panel title={`Kategoriler (${rows.length})`}>
-        {query.isLoading && <LoadingState />}
-        {rows.length === 0 && query.isSuccess && (
-          <p className="text-sm text-neutral-500">Henüz kategori yok.</p>
-        )}
+      {query.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
 
-        <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+      <Table>
+        <THead>
+          <tr>
+            <Th>Kategori</Th>
+            <Th>Yol</Th>
+            <Th align="right">Ürün</Th>
+            <Th align="right">Alt</Th>
+            <Th>Üst kategori</Th>
+            <Th />
+          </tr>
+        </THead>
+        <TBody>
+          {rows.length === 0 && query.isSuccess && (
+            <TableEmpty colSpan={6} label="Henüz kategori yok." />
+          )}
           {rows.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
-              <span style={{ paddingLeft: c.depth * 16 }} className="text-sm">
-                {editing === c.id ? (
-                  <TextInput
-                    value={editName}
-                    autoFocus
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && editName.trim()) {
-                        rename.mutate({ id: c.id, value: editName.trim() });
-                      }
-                      if (e.key === "Escape") setEditing(null);
-                    }}
-                    className="w-48"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(c.id);
-                      setEditName(c.name);
-                    }}
-                    className="font-medium hover:underline"
-                    title="Yeniden adlandır"
-                  >
-                    {c.name}
-                  </button>
-                )}
-              </span>
-
-              <span className="text-xs text-neutral-400">/{c.slug}</span>
-              <span className="text-xs text-neutral-500">
-                {c.productCount} ürün · {c.childCount} alt kategori
-              </span>
-
-              <div className="ml-auto flex items-center gap-2">
+            <tr key={c.id}>
+              <Td>
+                {/* Girinti hiyerarşiyi tek bakışta okutuyor; adres satırında
+                    tutulmadığı için sütunun kendisi taşıyor. */}
+                <span className="block" style={{ paddingLeft: c.depth * 16 }}>
+                  {editing === c.id ? (
+                    <TextInput
+                      value={editName}
+                      autoFocus
+                      size="sm"
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editName.trim()) {
+                          rename.mutate({ id: c.id, value: editName.trim() });
+                        }
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      className="w-48"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(c.id);
+                        setEditName(c.name);
+                      }}
+                      className="font-medium text-ink hover:underline"
+                      title="Yeniden adlandır"
+                    >
+                      {c.name}
+                    </button>
+                  )}
+                </span>
+              </Td>
+              <Td muted>/{c.slug}</Td>
+              <Td align="right" numeric>
+                {c.productCount}
+              </Td>
+              <Td align="right" numeric>
+                {c.childCount}
+              </Td>
+              <Td>
                 <Select
+                  size="sm"
                   value={c.parentId ?? ""}
                   onChange={(e) =>
                     move.mutate({
@@ -195,7 +229,7 @@ export function CategoriesManager() {
                     })
                   }
                   className="w-44"
-                  title="Üst kategoriyi değiştir"
+                  aria-label={`${c.name} üst kategorisi`}
                 >
                   <option value="">(kök)</option>
                   {rows
@@ -207,8 +241,13 @@ export function CategoriesManager() {
                       </option>
                     ))}
                 </Select>
+              </Td>
+              <Td align="right">
+                {/* Elli satırın üstünde `dangerQuiet` sağ kenarda kırmızı
+                    bir sütuna dönüşüyor — stok partilerindeki ile aynı sebep. */}
                 <Button
-                  variant="danger"
+                  variant="ghost"
+                  size="sm"
                   disabled={remove.isPending}
                   onClick={() => {
                     if (confirm(`"${c.name}" kategorisi silinsin mi?`))
@@ -217,15 +256,15 @@ export function CategoriesManager() {
                 >
                   Sil
                 </Button>
-              </div>
-            </li>
+              </Td>
+            </tr>
           ))}
-        </ul>
+        </TBody>
+      </Table>
 
-        <ErrorLine error={rename.error} />
-        <ErrorLine error={move.error} />
-        <ErrorLine error={remove.error} />
-      </Panel>
-    </div>
+      <div className="px-4 pb-4">
+        <ErrorLine error={rename.error ?? move.error ?? remove.error} />
+      </div>
+    </Panel>
   );
 }

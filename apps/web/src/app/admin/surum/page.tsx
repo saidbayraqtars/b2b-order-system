@@ -12,7 +12,15 @@ import {
   type UpdateStatus,
 } from "@repo/services";
 import { requirePage } from "@/lib/guard";
-import { Badge, Card, PageHeader, type BadgeTone } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  DefRow,
+  Note,
+  PageHeader,
+  type BadgeTone,
+} from "@/components/ui";
+import { Panel } from "@/components/form";
 
 /**
  * Sürüm ekranı — bu kurulum hangi sürümde, merkez ne yayımladı, ajan ne yaptı.
@@ -100,23 +108,6 @@ const POLICY_TEXT: Record<string, string> = {
   auto: "Otomatik — bakım penceresinde kendisi günceller",
 };
 
-function Row({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-neutral-100 py-2 last:border-0 dark:border-neutral-800">
-      <span className="text-sm text-neutral-500">{label}</span>
-      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-        {children}
-      </span>
-    </div>
-  );
-}
-
 export default async function VersionPage() {
   await requirePage(["SUPER_ADMIN"], "system.update");
 
@@ -138,7 +129,7 @@ export default async function VersionPage() {
 
       <Card className="mb-4">
         <div className="flex items-start gap-3">
-          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-neutral-400" />
+          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-ink-faint" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={info.tone}>{info.label}</Badge>
@@ -146,60 +137,49 @@ export default async function VersionPage() {
                 <Badge tone="danger">Zorunlu sürüm</Badge>
               )}
             </div>
-            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-              {info.detail}
-            </p>
+            <p className="mt-2 text-body-sm text-ink-muted">{info.detail}</p>
           </div>
         </div>
       </Card>
 
-      <Card className="mb-4">
-        <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Bu kurulum
-        </h2>
-        <Row label="Çalışan sürüm">
-          <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">
+      <Panel title="Bu kurulum" className="mb-4">
+        <DefRow label="Çalışan sürüm">
+          <code className="rounded bg-sunken px-1.5 py-0.5 font-mono">
             {running}
           </code>
-        </Row>
+        </DefRow>
         {state && (
           <>
-            <Row label="Kanal">{state.channel}</Row>
-            <Row label="Politika">
+            <DefRow label="Kanal">{state.channel}</DefRow>
+            <DefRow label="Politika">
               {POLICY_TEXT[state.policy] ?? state.policy}
-            </Row>
-            <Row label="Son kontrol">{trDateTime(state.checkedAt)}</Row>
+            </DefRow>
+            <DefRow label="Son kontrol">{trDateTime(state.checkedAt)}</DefRow>
           </>
         )}
-      </Card>
+      </Panel>
 
       {state?.available && (
-        <Card className="mb-4">
-          <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Kanalda yayımlanan
-          </h2>
-          <Row label="Sürüm">
-            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-neutral-800">
+        <Panel title="Kanalda yayımlanan" className="mb-4">
+          <DefRow label="Sürüm">
+            <code className="rounded bg-sunken px-1.5 py-0.5 font-mono">
               {state.available.version}
             </code>
-          </Row>
-          <Row label="Yayım tarihi">
+          </DefRow>
+          <DefRow label="Yayım tarihi">
             {trDateTime(state.available.releasedAt)}
-          </Row>
+          </DefRow>
           {state.available.notes && (
-            <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="mt-3 text-body-sm text-ink-muted">
               {state.available.notes}
             </p>
           )}
-        </Card>
+        </Panel>
       )}
 
       {state?.lastRun && (
-        <Card className="mb-4">
-          <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Son güncelleme denemesi
-          </h2>
-          <Row label="Sonuç">
+        <Panel title="Son güncelleme denemesi" className="mb-4">
+          <DefRow label="Sonuç">
             <Badge
               tone={
                 state.lastRun.result === "success"
@@ -215,28 +195,34 @@ export default async function VersionPage() {
                   ? "Yarıda kalmış"
                   : "Düştü"}
             </Badge>
-          </Row>
-          <Row label="Nereden → nereye">
+          </DefRow>
+          <DefRow label="Nereden → nereye">
             {state.lastRun.fromVersion} → {state.lastRun.toVersion}
-          </Row>
-          <Row label="Başlangıç">{trDateTime(state.lastRun.startedAt)}</Row>
-          <Row label="Bitiş">{trDateTime(state.lastRun.finishedAt)}</Row>
+          </DefRow>
+          <DefRow label="Başlangıç">
+            {trDateTime(state.lastRun.startedAt)}
+          </DefRow>
+          <DefRow label="Bitiş">{trDateTime(state.lastRun.finishedAt)}</DefRow>
           {state.lastRun.message && (
-            <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="mt-3 text-body-sm text-ink-muted">
               {state.lastRun.message}
             </p>
           )}
-        </Card>
+        </Panel>
       )}
 
-      <p className="text-xs leading-relaxed text-neutral-500">
-        Güncelleme sunucudaki ajan tarafından uygulanır; bu ekran yalnızca
-        gösterir. Elle güncellemek için sunucuda{" "}
+      <Note>
+        Bu ekranda <strong>düğme yok</strong> ve olmaması bir karar:
+        güncellemeyi host&apos;taki ajan çalıştırır, web bir kapsayıcının içinde
+        ve orada ne
+        <code> git</code> ne <code>docker</code> var. Erişebilsin diye docker
+        soketi kapsayıcıya bağlansaydı, uygulamada bulunacak herhangi bir açık
+        host&apos;ta root&apos;a çıkardı. Elle güncellemek için sunucuda{" "}
         <code>./scripts/agent.sh --now</code>, ajansız kurulumlarda{" "}
         <code>./scripts/update.sh</code>. Şema göçü geri alınamaz: her
         güncelleme önce yedek alır, yeni sürüm sağlıklı olmazsa uygulama eski
         sürüme döndürülür.
-      </p>
+      </Note>
     </main>
   );
 }

@@ -20,7 +20,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/form";
-import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import { Badge, EmptyState, LoadingState, MultiChips } from "@/components/ui";
 
 // Vitrin duyuruları. Kampanya motorundan bağımsız: buradaki hiçbir kayıt bir
 // tutarı değiştirmez, yalnızca müşteriye ne gösterileceğini söyler.
@@ -176,49 +176,28 @@ export function AnnouncementsManager() {
             />
           </label>
 
-          <Checkbox
-            checked={draft.dismissible}
-            onChange={(e) =>
-              setDraft({ ...draft, dismissible: e.target.checked })
-            }
-            label={
-              <>
-                <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                  Müşteri kapatabilsin
-                </span>
-              </>
-            }
-          />
+          {/* Kutu, yanındaki girdilerin etiketi kadar aşağıda dursun diye
+              sarmalanıyor. */}
+          <div className="pb-2.5 sm:self-end">
+            <Checkbox
+              checked={draft.dismissible}
+              onChange={(e) =>
+                setDraft({ ...draft, dismissible: e.target.checked })
+              }
+              label="Müşteri kapatabilsin"
+            />
+          </div>
 
           {groups.length > 0 && (
             <div className="sm:col-span-2">
               <Label hint="boş = herkese">Hedef müşteri grupları</Label>
-              <div className="flex flex-wrap gap-2">
-                {groups.map((g) => {
-                  const on = draft.customerGroupIds.includes(g.id);
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() =>
-                        setDraft({
-                          ...draft,
-                          customerGroupIds: on
-                            ? draft.customerGroupIds.filter((x) => x !== g.id)
-                            : [...draft.customerGroupIds, g.id],
-                        })
-                      }
-                      className={`border px-2.5 py-1 text-xs transition-colors ${
-                        on
-                          ? "border-brand-600 bg-brand-600 text-white"
-                          : "border-neutral-300 text-neutral-600 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-400"
-                      }`}
-                    >
-                      {g.name}
-                    </button>
-                  );
-                })}
-              </div>
+              <MultiChips
+                value={draft.customerGroupIds}
+                onChange={(customerGroupIds) =>
+                  setDraft({ ...draft, customerGroupIds })
+                }
+                items={groups.map((g) => ({ key: g.id, label: g.name }))}
+              />
             </div>
           )}
         </div>
@@ -242,12 +221,14 @@ export function AnnouncementsManager() {
         ) : items.length === 0 ? (
           <EmptyState label="Henüz duyuru yok." />
         ) : (
-          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <ul className="divide-y divide-line">
             {items.map((a) => (
               <li key={a.id} className="flex items-start gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold">{a.title}</span>
+                    <span className="text-body-sm font-semibold text-ink">
+                      {a.title}
+                    </span>
                     <Badge tone={a.enabled ? "success" : "neutral"}>
                       {a.enabled ? "Yayında" : "Kapalı"}
                     </Badge>
@@ -261,9 +242,9 @@ export function AnnouncementsManager() {
                     )}
                   </div>
                   {a.body && (
-                    <p className="mt-1 text-xs text-neutral-500">{a.body}</p>
+                    <p className="mt-1 text-xs text-ink-muted">{a.body}</p>
                   )}
-                  <p className="mt-1 font-mono text-[10px] text-neutral-400">
+                  <p className="mt-1 text-xs tabular-nums text-ink-faint">
                     öncelik {a.priority}
                     {a.dismissible ? " · kapatılabilir" : " · kapatılamaz"}
                   </p>
@@ -281,9 +262,13 @@ export function AnnouncementsManager() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="danger"
+                    variant="dangerQuiet"
                     loading={remove.isPending}
-                    onClick={() => remove.mutate(a.id)}
+                    onClick={() => {
+                      if (confirm(`"${a.title}" duyurusu silinsin mi?`)) {
+                        remove.mutate(a.id);
+                      }
+                    }}
                   >
                     Sil
                   </Button>

@@ -12,7 +12,16 @@ import type {
 } from "@repo/services";
 import type { PromotionRuleCatalog } from "@repo/types";
 import { apiDelete, apiGet, apiPatch } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { Button, ErrorLine, Panel } from "@/components/form";
 import { PromotionForm } from "./promotion-form";
@@ -118,34 +127,56 @@ export function PromotionsManager() {
         />
       )}
 
+      {/* Panel "Kampanyalar" diyordu ve sayfa başlığı da öyle: aynı kelime
+          iki kez, üst üste. */}
       <Panel
-        title="Kampanyalar"
+        title="Tanımlar"
+        bodyClassName="p-0"
         action={
           !editing && (
-            <Button onClick={() => setEditing("new")}>Yeni kampanya</Button>
+            <Button size="sm" onClick={() => setEditing("new")}>
+              Yeni kampanya
+            </Button>
           )
         }
       >
-        {promotions.isLoading && <LoadingState />}
-        <ErrorLine error={promotions.error ?? rules.error} />
-
-        {promotions.data && rows.length === 0 && (
-          <p className="text-sm text-neutral-500">
-            Henüz kampanya yok. Kampanya, koşul + aksiyon olarak tanımlanır;
-            fiyat ve firma iskontosunun üzerine uygulanır.
-          </p>
+        {promotions.isLoading && (
+          <div className="px-4">
+            <LoadingState />
+          </div>
         )}
+        {(promotions.error ?? rules.error) ? (
+          <div className="px-4 pb-4">
+            <ErrorLine error={promotions.error ?? rules.error} />
+          </div>
+        ) : null}
 
-        <ul className="space-y-2">
-          {rows.map((p) => (
-            <PromotionRowItem
-              key={p.id}
-              promotion={p}
-              onEdit={() => setEditing(p.id)}
-              onChanged={invalidate}
-            />
-          ))}
-        </ul>
+        {promotions.data && rows.length === 0 ? (
+          <EmptyState label="Henüz kampanya yok — kampanya koşul + aksiyon olarak tanımlanır ve fiyatın üzerine uygulanır." />
+        ) : (
+          <Table>
+            <THead>
+              <tr>
+                <Th>Kampanya</Th>
+                <Th>Kural</Th>
+                <Th align="right">Öncelik</Th>
+                <Th>Süre ve limit</Th>
+                <Th align="right">Kullanım</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {rows.map((p) => (
+                <PromotionRowItem
+                  key={p.id}
+                  promotion={p}
+                  onEdit={() => setEditing(p.id)}
+                  onChanged={invalidate}
+                />
+              ))}
+            </TBody>
+          </Table>
+        )}
       </Panel>
     </div>
   );
@@ -192,65 +223,82 @@ function PromotionRowItem({
       : null,
   ].filter(Boolean);
 
-  return (
-    <li className="rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="text-sm">
-          <p className="font-medium">
-            {promotion.name}
-            {promotion.code && (
-              <span className="ml-2 rounded bg-indigo-100 px-2 py-0.5 font-mono text-xs text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
-                {promotion.code}
-              </span>
-            )}
-            {!promotion.enabled && (
-              <span className="ml-2 rounded bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                pasif
-              </span>
-            )}
-          </p>
-          <p className="text-neutral-500">
-            {promotion.conditions.length} koşul · {promotion.actions.length}{" "}
-            aksiyon · öncelik {promotion.priority}
-            {promotion.stopFurther ? " · tekil" : ""} · {windowLabel}
-            {limits.length > 0 ? ` · limit: ${limits.join(", ")}` : ""}
-          </p>
-          <p className="text-neutral-500">
-            {promotion.usedCount} siparişte kullanıldı ·{" "}
-            {formatTRY(Number(promotion.discountGranted))} indirim
-          </p>
-        </div>
+  const error = toggle.error ?? remove.error;
 
-        <div className="flex gap-1">
-          <Button variant="secondary" onClick={onEdit}>
-            Düzenle
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={toggle.isPending}
-            onClick={() => toggle.mutate()}
-          >
-            {promotion.enabled ? "Pasife al" : "Aktifleştir"}
-          </Button>
-          <Button
-            variant="danger"
-            disabled={promotion.usedCount > 0 || remove.isPending}
-            title={
-              promotion.usedCount > 0
-                ? "Siparişlerde kullanılmış kampanya silinemez, pasife alın"
-                : undefined
-            }
-            onClick={() => {
-              if (confirm(`"${promotion.name}" kampanyası silinsin mi?`)) {
-                remove.mutate();
+  return (
+    <>
+      <tr>
+        <Td>
+          <span className="font-medium text-ink">{promotion.name}</span>
+          {(promotion.code || !promotion.enabled) && (
+            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+              {promotion.code && <Badge tone="brand">{promotion.code}</Badge>}
+              {!promotion.enabled && <Badge tone="neutral">Pasif</Badge>}
+            </span>
+          )}
+        </Td>
+        <Td muted>
+          {promotion.conditions.length} koşul · {promotion.actions.length}{" "}
+          aksiyon
+          {promotion.stopFurther ? " · tekil" : ""}
+        </Td>
+        <Td align="right" numeric>
+          {promotion.priority}
+        </Td>
+        <Td muted>
+          {windowLabel}
+          {limits.length > 0 && (
+            <span className="block">limit: {limits.join(", ")}</span>
+          )}
+        </Td>
+        <Td align="right" numeric>
+          {promotion.usedCount} sipariş
+          <span className="block text-xs text-ink-faint">
+            {formatTRY(Number(promotion.discountGranted))} indirim
+          </span>
+        </Td>
+        <Td align="right">
+          <div className="flex justify-end gap-1">
+            <Button variant="secondary" size="sm" onClick={onEdit}>
+              Düzenle
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={toggle.isPending}
+              onClick={() => toggle.mutate()}
+            >
+              {promotion.enabled ? "Pasife al" : "Aktifleştir"}
+            </Button>
+            <Button
+              variant="dangerQuiet"
+              size="sm"
+              disabled={promotion.usedCount > 0 || remove.isPending}
+              title={
+                promotion.usedCount > 0
+                  ? "Siparişlerde kullanılmış kampanya silinemez, pasife alın"
+                  : undefined
               }
-            }}
-          >
-            Sil
-          </Button>
-        </div>
-      </div>
-      <ErrorLine error={toggle.error ?? remove.error} />
-    </li>
+              onClick={() => {
+                if (confirm(`"${promotion.name}" kampanyası silinsin mi?`)) {
+                  remove.mutate();
+                }
+              }}
+            >
+              Sil
+            </Button>
+          </div>
+        </Td>
+      </tr>
+      {/* Hata satırın altında, kendi satırında: hücreye konsaydı o sütunu
+          bütün tablo boyunca genişletirdi. */}
+      {error && (
+        <tr>
+          <Td colSpan={6} className="pt-0">
+            <ErrorLine error={error} />
+          </Td>
+        </tr>
+      )}
+    </>
   );
 }

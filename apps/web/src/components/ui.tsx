@@ -70,6 +70,96 @@ export function StatTile({
   );
 }
 
+const METER_TONE = {
+  neutral: "bg-accent",
+  positive: "bg-positive",
+  caution: "bg-caution",
+  critical: "bg-critical",
+} as const;
+
+/**
+ * Doluluk çubuğu — hedefin yüzdesi, kurulumun kaçta kaçı.
+ *
+ * Üç ekran bunu kendi yazıyordu ve üçü de farklı bir renk seçmişti (mavi,
+ * marka, zümrüt). Renk burada süs değil işaret: varsayılan mürekkep, kırmızı
+ * "geride", yeşil "tamam". Yükseklik ve yarıçap tek yerde.
+ */
+export function Meter({
+  value,
+  tone = "neutral",
+  label,
+}: {
+  /** 0–100. Dışarı taşan değerler kırpılır: %140 çubuğu taşırmaz. */
+  value: number;
+  tone?: keyof typeof METER_TONE;
+  /** Ekran okuyucu için — çubuk görsel, sayı metinde başka yerde duruyor. */
+  label?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <div
+      className="h-1.5 w-full overflow-hidden rounded-sm bg-subtle"
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+    >
+      <div
+        className={cn("h-full transition-all", METER_TONE[tone])}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Künye alanı: küçük büyük-harf etiket, altında değer.
+ *
+ * Kuruluş bilgileri, saklama sayıları ve iş kartları üçü de aynı şeyi ayrı ayrı
+ * yazmıştı — biri `text-xs uppercase`, biri `text-xs`, biri hiç etiketlememiş.
+ */
+export function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <dt className="tech-label">{label}</dt>
+      <dd className="mt-0.5 whitespace-pre-line text-body-sm text-ink">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Künye satırı: solda etiket, sağda değer, altında ayraç.
+ *
+ * `Field`ten farkı yön: burada okunan şey satırın *sağ* ucu ve alt alta gelen
+ * değerler bir kolon oluşturuyor. Sürüm ekranı ile bakım işleri kartı bunu iki
+ * ayrı biçimde yazmıştı.
+ */
+export function DefRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line py-2 last:border-0">
+      <span className="text-body-sm text-ink-muted">{label}</span>
+      <span className="text-body-sm font-medium tabular-nums text-ink">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 const BADGE_TONE = {
   neutral: "border-line bg-sunken text-ink-muted",
   brand: "border-accent bg-accent text-on-accent",
@@ -158,6 +248,10 @@ export function Note({
       className={cn(
         "mt-8 border-l-2 border-line-strong pl-4 text-body-sm leading-relaxed text-ink-muted",
         "[&_strong]:font-semibold [&_strong]:text-ink",
+        // Dipnotların yarısı bir dosya adı ya da bir komut söylüyor. Kutu iki
+        // ekranda elle yazılmıştı, gerisinde çıplak duruyordu — aynı cümlenin
+        // iki görüntüsü.
+        "[&_code]:rounded [&_code]:bg-sunken [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:text-ink",
         className,
       )}
     >
@@ -242,6 +336,11 @@ export function Tabs<T extends string>({
  * Sekmeden farkı, bunun bir *daraltma* olması — "Tümü / Süt Ürünleri /
  * Şarküteri". Sayfayı değiştirmez, listeyi kısar. Ayrı bir görüntü hak ediyor.
  */
+const CHIP =
+  "shrink-0 whitespace-nowrap rounded border px-3 py-1.5 text-xs font-medium transition-colors";
+const CHIP_ON = "border-accent bg-accent text-on-accent";
+const CHIP_OFF = "border-line bg-panel text-ink-muted hover:bg-subtle";
+
 export function Chips<T extends string>({
   value,
   onChange,
@@ -261,16 +360,51 @@ export function Chips<T extends string>({
           type="button"
           onClick={() => onChange(item.key)}
           aria-pressed={value === item.key}
-          className={cn(
-            "shrink-0 whitespace-nowrap rounded border px-3 py-1.5 text-xs font-medium transition-colors",
-            value === item.key
-              ? "border-accent bg-accent text-on-accent"
-              : "border-line bg-panel text-ink-muted hover:bg-subtle",
-          )}
+          className={cn(CHIP, value === item.key ? CHIP_ON : CHIP_OFF)}
         >
           {item.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * `Chips`in çoklu seçim hâli: hedef müşteri grupları gibi "hiçbiri, biri ya da
+ * hepsi" seçimleri için. Görüntü birebir aynı — aynı ekranda iki farklı "seçili
+ * küçük düğme" görüntüsü olmasın diye sınıflar paylaşılıyor. Ayrı bileşen
+ * olmasının sebebi anlam: burada seçim bir *küme*, sarmalanabilsin diye şerit de
+ * kaydırmıyor.
+ */
+export function MultiChips<T extends string>({
+  value,
+  onChange,
+  items,
+}: {
+  value: readonly T[];
+  onChange: (next: T[]) => void;
+  items: ReadonlyArray<{ key: T; label: string }>;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => {
+        const on = value.includes(item.key);
+        return (
+          <button
+            key={item.key}
+            type="button"
+            aria-pressed={on}
+            onClick={() =>
+              onChange(
+                on ? value.filter((v) => v !== item.key) : [...value, item.key],
+              )
+            }
+            className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+          >
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

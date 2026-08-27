@@ -25,7 +25,17 @@ import {
   TextInput,
 } from "@/components/form";
 import { PermissionPicker } from "@/components/permission-picker";
-import { LoadingState, Tabs } from "@/components/ui";
+import {
+  Badge,
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tabs,
+} from "@/components/ui";
 
 /** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
 function samePermissionSet(
@@ -114,113 +124,110 @@ export function UserManager({
 
   return (
     <Panel
-      title="Kullanıcılar"
+      title="Hesaplar"
+      bodyClassName="p-0"
       action={
-        <Button onClick={() => setCreating((v) => !v)}>
+        <Button size="sm" onClick={() => setCreating((v) => !v)}>
           {creating ? "Vazgeç" : "Yeni kullanıcı"}
         </Button>
       }
     >
-      {creating && (
-        <CreateUserForm
-          allowedRoles={allowedRoles}
-          companies={companies}
-          fixedCompanyId={fixedCompanyId}
-          grantablePermissions={grantablePermissions}
-          onDone={() => {
-            setCreating(false);
-            invalidate();
-          }}
-        />
-      )}
+      <div className="p-4 pb-0">
+        {creating && (
+          <CreateUserForm
+            allowedRoles={allowedRoles}
+            companies={companies}
+            fixedCompanyId={fixedCompanyId}
+            grantablePermissions={grantablePermissions}
+            onDone={() => {
+              setCreating(false);
+              invalidate();
+            }}
+          />
+        )}
 
-      {showFamilies && (
-        <div className="mb-3">
-          <Tabs
-            value={family}
-            onChange={setFamily}
-            items={[
-              { key: "ALL" as const, label: "Tümü", count: all.length },
-              {
-                key: "SELLER" as const,
-                label: ROLE_FAMILY_LABELS.SELLER,
-                count: countOf("SELLER"),
-              },
-              {
-                key: "DEALER" as const,
-                label: ROLE_FAMILY_LABELS.DEALER,
-                count: countOf("DEALER"),
-              },
-              {
-                key: "FIELD" as const,
-                label: ROLE_FAMILY_LABELS.FIELD,
-                count: countOf("FIELD"),
-              },
-              {
-                key: "DELIVERY" as const,
-                label: ROLE_FAMILY_LABELS.DELIVERY,
-                count: countOf("DELIVERY"),
-              },
-            ]}
+        {showFamilies && (
+          <div className="mb-3">
+            <Tabs
+              value={family}
+              onChange={setFamily}
+              items={[
+                { key: "ALL" as const, label: "Tümü", count: all.length },
+                {
+                  key: "SELLER" as const,
+                  label: ROLE_FAMILY_LABELS.SELLER,
+                  count: countOf("SELLER"),
+                },
+                {
+                  key: "DEALER" as const,
+                  label: ROLE_FAMILY_LABELS.DEALER,
+                  count: countOf("DEALER"),
+                },
+                {
+                  key: "FIELD" as const,
+                  label: ROLE_FAMILY_LABELS.FIELD,
+                  count: countOf("FIELD"),
+                },
+                {
+                  key: "DELIVERY" as const,
+                  label: ROLE_FAMILY_LABELS.DELIVERY,
+                  count: countOf("DELIVERY"),
+                },
+              ]}
+            />
+          </div>
+        )}
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <TextInput
+            value={search}
+            placeholder="Ad veya e-posta ara"
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-64"
+          />
+          <Checkbox
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+            label="Pasifleri de göster"
           />
         </div>
-      )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <TextInput
-          value={search}
-          placeholder="Ad veya e-posta ara"
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-64"
-        />
-        <Checkbox
-          checked={includeInactive}
-          onChange={(e) => setIncludeInactive(e.target.checked)}
-          label="Pasifleri de göster"
-        />
+        {query.isLoading && <LoadingState />}
+        <ErrorLine error={query.error} />
       </div>
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
-
       {query.data && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
-              <tr>
-                <th className="px-3 py-2">Ad</th>
-                <th className="px-3 py-2">E-posta</th>
-                <th className="px-3 py-2">Rol</th>
-                {!fixedCompanyId && <th className="px-3 py-2">Firma</th>}
-                <th className="px-3 py-2">Durum</th>
-                <th className="px-3 py-2 text-right">İşlem</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {rows.map((u) => (
-                <UserRowView
-                  key={u.id}
-                  user={u}
-                  allowedRoles={allowedRoles}
-                  grantablePermissions={grantablePermissions}
-                  showCompany={!fixedCompanyId}
-                  isSelf={u.id === currentUserId}
-                  onChanged={invalidate}
-                />
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td
-                    className="px-3 py-6 text-center text-neutral-500"
-                    colSpan={fixedCompanyId ? 5 : 6}
-                  >
-                    Kullanıcı yok.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <tr>
+              <Th>Ad</Th>
+              <Th>E-posta</Th>
+              <Th>Rol</Th>
+              {!fixedCompanyId && <Th>Firma</Th>}
+              <Th>Durum</Th>
+              <Th align="right">İşlem</Th>
+            </tr>
+          </THead>
+          <TBody>
+            {rows.map((u) => (
+              <UserRowView
+                key={u.id}
+                user={u}
+                allowedRoles={allowedRoles}
+                grantablePermissions={grantablePermissions}
+                showCompany={!fixedCompanyId}
+                isSelf={u.id === currentUserId}
+                onChanged={invalidate}
+              />
+            ))}
+            {rows.length === 0 && (
+              <TableEmpty
+                colSpan={fixedCompanyId ? 5 : 6}
+                label="Bu süzgeçte kullanıcı yok."
+              />
+            )}
+          </TBody>
+        </Table>
       )}
     </Panel>
   );
@@ -291,7 +298,7 @@ function CreateUserForm({
   });
 
   return (
-    <div className="mb-4 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+    <div className="mb-4 rounded border border-line bg-sunken p-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label>
           <Label>Ad soyad</Label>
@@ -374,7 +381,7 @@ function CreateUserForm({
           Oluştur
         </Button>
         {permissions.length === 0 && (
-          <span className="ml-3 text-xs text-amber-600 dark:text-amber-400">
+          <span className="ml-3 text-xs text-caution">
             Hiç yetki seçilmedi — bu hesap giriş yapar ama hiçbir ekranı açamaz.
           </span>
         )}
@@ -445,7 +452,7 @@ function UserRowView({
   if (editing) {
     return (
       <tr>
-        <td className="px-3 py-2" colSpan={showCompany ? 6 : 5}>
+        <Td colSpan={showCompany ? 6 : 5}>
           <div className="flex flex-wrap items-end gap-2">
             <label>
               <Label>Ad</Label>
@@ -507,13 +514,14 @@ function UserRowView({
                 onChange={setPermissions}
               />
               {isSelf && (
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-ink-faint">
                   Kendi hesabınızı düzenliyorsunuz: kullanıcı yönetimi yetkisini
                   kaldıramazsınız, aksi hâlde geri açacak kimse kalmaz.
                 </p>
               )}
             </div>
             <Button
+              size="sm"
               disabled={patch.isPending || setPass.isPending}
               onClick={async () => {
                 if (password) await setPass.mutateAsync();
@@ -532,68 +540,72 @@ function UserRowView({
             >
               Kaydet
             </Button>
-            <Button variant="secondary" onClick={() => setEditing(false)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setEditing(false)}
+            >
               Vazgeç
             </Button>
           </div>
           <ErrorLine error={error} />
-        </td>
+        </Td>
       </tr>
     );
   }
 
   return (
     <tr className={user.isActive ? "" : "opacity-60"}>
-      <td className="px-3 py-2 font-medium">{user.name}</td>
-      <td className="px-3 py-2 text-neutral-500">{user.email}</td>
-      <td className="px-3 py-2">
-        {ROLE_LABELS[user.role]}
-        {/* Hesap tipi: yetki kapsamını belirleyen şey rolün kendisi değil ailesi,
-            o yüzden listede de görünüyor. */}
-        <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-          {ROLE_FAMILY_LABELS[ROLE_FAMILY[user.role]]}
+      <Td className="font-medium text-ink">{user.name}</Td>
+      <Td muted>{user.email}</Td>
+      {/* Rol, hesap tipi ve iki sayı tek satıra diziliyordu ve sütun dar
+          olduğu için "10" ile "yetki" ayrı satırlara düşüyordu. İki satır:
+          üstte rolün kendisi, altında sayılar. */}
+      <Td>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-ink">{ROLE_LABELS[user.role]}</span>
+          {/* Hesap tipi: yetki kapsamını belirleyen şey rolün kendisi değil
+              ailesi, o yüzden listede de görünüyor. */}
+          <Badge tone="neutral">
+            {ROLE_FAMILY_LABELS[ROLE_FAMILY[user.role]]}
+          </Badge>
         </span>
-        {user.managedCompanyCount > 0 && (
-          <span className="ml-2 text-xs text-neutral-500">
-            {user.managedCompanyCount} firma
-          </span>
-        )}
         {/* Rol artık yetkiyi anlatmadığı için sayısı da yazılıyor: aynı roldeki
             iki hesabın farklı yetkileri olabilir. */}
-        <span
-          className="ml-2 text-xs text-neutral-400"
-          title={
-            user.permissions.length > 0
-              ? user.permissions.map((p) => PERMISSION_LABELS[p]).join("\n")
-              : "Hiç yetki yok"
-          }
-        >
-          {user.permissions.length} yetki
+        <span className="mt-1 block whitespace-nowrap text-xs text-ink-faint">
+          <span
+            title={
+              user.permissions.length > 0
+                ? user.permissions.map((p) => PERMISSION_LABELS[p]).join("\n")
+                : "Hiç yetki yok"
+            }
+          >
+            {user.permissions.length} yetki
+          </span>
+          {user.managedCompanyCount > 0 &&
+            ` · ${user.managedCompanyCount} firma`}
         </span>
-      </td>
-      {showCompany && (
-        <td className="px-3 py-2 text-neutral-500">
-          {user.company?.name ?? "—"}
-        </td>
-      )}
-      <td className="px-3 py-2">
+      </Td>
+      {showCompany && <Td muted>{user.company?.name ?? "—"}</Td>}
+      <Td>
         {user.isActive ? (
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            aktif
-          </span>
+          <Badge tone="success">Aktif</Badge>
         ) : (
-          <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-            pasif
-          </span>
+          <Badge tone="neutral">Pasif</Badge>
         )}
-      </td>
-      <td className="px-3 py-2">
+      </Td>
+      <Td>
         <div className="flex justify-end gap-1">
-          <Button variant="secondary" onClick={() => setEditing(true)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setEditing(true)}
+          >
             Düzenle
           </Button>
           <Button
-            variant="secondary"
+            size="sm"
+            variant="ghost"
             disabled={isSelf || patch.isPending}
             title={isSelf ? "Kendi hesabınızı pasife alamazsınız" : undefined}
             onClick={() => patch.mutate({ isActive: !user.isActive })}
@@ -602,7 +614,8 @@ function UserRowView({
           </Button>
           {user.twoFactorEnabled && (
             <Button
-              variant="secondary"
+              size="sm"
+              variant="ghost"
               disabled={resetTwoFactor.isPending}
               title="Kullanıcı telefonunu ve yedek kodlarını kaybettiyse"
               onClick={() => {
@@ -619,8 +632,12 @@ function UserRowView({
               2FA sıfırla
             </Button>
           )}
+          {/* Elli satırlık bir listede `dangerQuiet` sağ kenarda kırmızı bir
+              sütuna dönüşüyor (stok partilerindeki ile aynı sebep); yıkıcılığı
+              taşıyan şey zaten onay penceresi. */}
           <Button
-            variant="danger"
+            size="sm"
+            variant="ghost"
             disabled={isSelf || remove.isPending}
             onClick={() => {
               if (
@@ -636,7 +653,7 @@ function UserRowView({
           </Button>
         </div>
         <ErrorLine error={error} />
-      </td>
+      </Td>
     </tr>
   );
 }

@@ -87,6 +87,51 @@ export function Select({
   );
 }
 
+/**
+ * Çoklu seçim kutusu — kampanya kuralının "şu kategorilerde" alanı gibi.
+ *
+ * `Select`ten ayrı duruyor çünkü yüksekliği satır sayısından geliyor, `h-10`dan
+ * değil: `CONTROL_SIZE` uygulanırsa liste tek satıra iniyor. Kaç satır
+ * görüneceğini seçeneklerin sayısı belirliyor (en az 3, en çok 6) — üç ürünlük
+ * bir listeye altı satır ayırmak da, iki yüz ürünü üç satırdan seçtirmek de
+ * aynı ölçüde işe yaramaz.
+ */
+export function MultiSelect({
+  value,
+  onChange,
+  options,
+  className,
+  ...props
+}: Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  "value" | "onChange" | "multiple" | "size"
+> & {
+  value: readonly string[];
+  onChange: (next: string[]) => void;
+  options: ReadonlyArray<{ id: string; name: string }>;
+}) {
+  return (
+    <select
+      {...props}
+      multiple
+      size={Math.min(6, Math.max(3, options.length))}
+      value={value as string[]}
+      onChange={(e) =>
+        onChange(
+          [...e.target.selectedOptions].map((o) => o.value).filter(Boolean),
+        )
+      }
+      className={cn(CONTROL, "p-1 text-body-sm", className)}
+    >
+      {options.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function TextArea(
   props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
 ) {

@@ -79,12 +79,13 @@ Sayfa başlığı `headline-lg`, panel başlığı `headline-sm`, gövde `body-s
 ## Paylaşılan bileşenler
 
 `src/components/ui.tsx`
-: `Card`, `StatTile`, `Badge`, `PageHeader`, `Note`, `LoadingState`,
-`EmptyState`, `Tabs`, `Chips`, `Table`/`THead`/`TBody`/`Th`/`Td`/`TableEmpty`
+: `Card`, `StatTile`, `Meter`, `Field`, `DefRow`, `Badge`, `PageHeader`, `Note`,
+`LoadingState`, `EmptyState`, `Tabs`, `Chips`, `MultiChips`,
+`Table`/`THead`/`TBody`/`Th`/`Td`/`TableEmpty`
 
 `src/components/form.tsx`
-: `Label`, `TextInput`, `Select`, `TextArea`, `Checkbox`, `Button`,
-`LinkButton`, `Panel`, `Modal`, `ErrorLine`
+: `Label`, `TextInput`, `Select`, `MultiSelect`, `TextArea`, `Checkbox`,
+`Button`, `LinkButton`, `Panel`, `Modal`, `ErrorLine`
 
 `src/components/app-sidebar.tsx`
 : `SidebarShell` — uygulamanın tek kabuğu. `groups` (başlıksız grup = düz
@@ -107,6 +108,12 @@ Neden: "tokenlara taşındı" cümlesi bir ekranın doğru göründüğünü sö
 (`tailwind-merge` `text-body-sm`i punto değil renk sanıyordu) ve bazı
 rotalarda kabuğun düşmesi (sunucu bileşeni lucide ikonlarını istemci
 bileşenine geçiriyordu). İkisi de derlemeden, testlerden ve `tsc`den geçmişti.
+
+**Çekimden sonra dosyanın boyuna bakın.** Adım 4, 5 ve 6'da aynı hata üç kez
+çıktı: uzun bir liste sayfayı 6000 piksel sınırının ötesine taşıyor ve altındaki
+dipnot, sayfalama düğmesi ya da panel hiç görünmüyor. Ekran görüntüsü hata
+vermez — sadece kırpar. Bir PNG 3000 pikselden uzunsa o ekranda sınırlanmamış
+bir liste var demektir.
 
 ## İlerleme
 
@@ -485,12 +492,105 @@ kurye masası ve irsaliye adressiz görünüyor. Arayüz tarafı artık bunu do�
 söylüyor; asıl soru sipariş oluştururken firmanın varsayılan adresinin
 bağlanıp bağlanmayacağı ve bu bir sipariş kuralı kararı, tasarım kararı değil.
 
-### ▢ Adım 6 — Yapılandırma ve sistem
+### ✔ Adım 6 — Yapılandırma ve sistem (bitti)
 
 `admin/promotions`, `admin/categories`, `admin/customer-groups`,
 `admin/sayfa-duzeni`, `admin/kurulum`, `admin/organization`, `admin/erp`,
 `admin/announcements`, `admin/jobs`, `admin/surum`, `admin/users`,
-`admin/audit`, `admin/activity`, `admin/targets`.
+`admin/audit`, `admin/activity`, `admin/targets` — ve `admin/users` ile
+`portal/users`ın paylaştığı `user-manager` + `permission-picker`.
+
+**On sayfa başlığını kendi yazıyordu.** `<h1 className="mb-5 text-xl font-bold">`
+on bir dosyada tekrar ediyordu (biri Adım 7'ye ait, ona dokunulmadı) ve
+kategoriler ekranının hiç başlığı yoktu — kenar çubuğunda "Kategoriler" yazıyor,
+sayfada hiçbir şey. Hepsi `PageHeader`a geçti, hepsine bir alt satır yazıldı.
+Aynı şekilde ekran dibindeki sekiz `<p className="mt-4 text-sm text-neutral-500">`
+`Note` oldu.
+
+**Dört yeni ortak bileşen** — dördü de bu adımda en az iki ekranda tekrar
+ediyordu:
+
+- `Meter` (`ui.tsx`): doluluk çubuğu. Hedef kartı ve kurulum ilerlemesi bunu
+  ayrı ayrı yazmıştı ve **üç ayrı renk** seçmişti (`bg-brand-500`,
+  `bg-blue-500`, `bg-emerald-500`). Renk burada da işaret: varsayılan mürekkep,
+  kehribar "geride", yeşil "tamam".
+- `Field` / `DefRow` (`ui.tsx`): künye alanının iki yönü. `Field` etiketi üstte
+  yazar (kuruluş bilgileri, saklama sayıları), `DefRow` solda — değerler sağda
+  bir kolon oluşturur (sürüm ekranı, bakım işi kartı). Dört yerde dört farklı
+  puntoya oturmuşlardı.
+- `MultiChips` (`ui.tsx`): `Chips`in çoklu seçim hâli, duyurunun hedef grupları
+  için. Sınıflar `Chips` ile paylaşılıyor — aynı ekranda iki farklı "seçili
+  küçük düğme" görüntüsü olmasın diye.
+- `MultiSelect` (`form.tsx`): kampanya kuralının "şu kategorilerde" alanı.
+  `Select`ten ayrı, çünkü yüksekliği satır sayısından geliyor; `CONTROL_SIZE`
+  uygulanınca liste tek satıra iniyordu.
+
+**Uygulamanın tek radyo grubu kaldırıldı.** Kampanya formundaki VE/VEYA seçimi
+ham `<input type="radio">` çiftiydi — odak halkası yok, koyu tema yok, boy
+yok. İki seçenekli bir form alanı bu depoda her yerde `Select`; tek kullanım
+için beşinci bir kontrol çeşidi yazmak, o üç şeyi ikinci kez yazmak olurdu.
+
+**Beş liste tabloya geçti**: kampanyalar, kategoriler, kullanıcılar, güvenlik
+kaydı ve ERP eşitleme geçmişi. Beşi de zaten tablo istiyordu; ikisi (`audit`,
+`user-manager`) ham `<table>` yazmıştı, üçü kart listesiydi. Kategori ağacının
+girintisi ilk hücrede duruyor — hiyerarşi adres satırında tutulmadığı için
+sütunun kendisi taşıyor.
+
+**Üç liste hâlâ liste**: müşteri grupları, ajanlar, duyurular. Sebep belge
+serilerindekiyle aynı ve Adım 5'te yazılmıştı — satırın kendisi düzenleniyor ve
+üç satırlık bir tabloya form kutusu koymak, sütun hizasını satır içindeki
+kontrole feda ediyor.
+
+**Kurulum sihirbazında mavi kalmamıştı ama vardı.** "Sıradaki adım" mavi bir
+çerçeve + mavi bir halkayla işaretleniyordu; tasarım dilinde mavi hiçbir şey
+söylemiyor. Kenar `border-line-strong`a indi ve yön bir künyeyle söyleniyor:
+`Sıradaki`. "İsteğe bağlı" yuvarlak hapı `Badge` oldu (3. kural), paketin ham
+siyah düğmesi `Button`, adım bağlantısı `LinkButton`.
+
+**`Note` artık `<code>`u da biçimlendiriyor.** Dipnotların yarısı bir dosya adı
+ya da bir komut söylüyor; kutu iki ekranda elle yazılmış, gerisinde çıplak
+kalmıştı — aynı cümlenin iki görüntüsü.
+
+Ekran görüntüsü çekerken çıkan, `tsc`/lint/test/build'in dördünün de
+yakalamadığı yedi şey:
+
+- **İki ekranda başlık iki kez yazıyordu**: sayfa başlığı da panel başlığı da
+  "Kampanyalar", diğerinde ikisi de "Kullanıcılar". Adım 4'te vade ekranında
+  çıkan hatanın aynısı; paneller "Tanımlar" ve "Hesaplar" oldu.
+- **Güvenlik kaydı ve hareket akışı sayfayı 6000 piksel sınırında
+  kestiriyordu.** İkisi de `limit=100` istiyordu; güvenlik kaydında bu, altındaki
+  **sayfalama düğmelerinin** hiç görünmemesi demekti — yani listenin gerisine
+  gitmenin tek yolu ekranın kesilen kısmındaydı. İkisi de 50'ye indi ve altlarına
+  kaç satır gösterildiğini söyleyen bir satır kondu (Adım 5'teki stok
+  listelerinin aynısı).
+- **Bakım işleri de dipnotsuzdu**; sunucu zaten 50'de kesiyordu ama ekran bunu
+  söylemiyordu.
+- **Kullanıcı listesinde rol sütunu sarmalanıyordu.** Rol, hesap tipi künyesi,
+  firma sayısı ve yetki sayısı tek satıra diziliyordu ve sütun dar olduğu için
+  "10" ile "yetki" ayrı satırlara düşüyordu. İki satır oldu: üstte rol +
+  künye, altında sayılar.
+- **Elli satırın üstünde `dangerQuiet` bir sütuna dönüşüyor.** Kategoriler (55
+  satır) ve kullanıcılar (35) sağ kenarda kırmızı bir kolon çiziyordu — Adım
+  5'te stok partilerinde çıkan durum. İkisi `ghost` oldu; kısa ayar listeleri
+  (kampanya, grup, duyuru, ajan) `dangerQuiet` kaldı. Kural: **kırmızı yazı bir
+  satırda uyarıdır, elli satırda desendir.**
+- **Kurulum paketi kartlarında düğmeler hizasızdı** — özet metni uzun olan
+  pakette "Bu paketi uygula" aşağı kayıyordu.
+
+Ayrıca kod okunurken çıkan bir şey: **ajan silme onaysızdı.** Düğme dolu
+kırmızıydı ama `confirm` yoktu — tek tıklama, ERP köprüsünün tokeni anında
+geçersiz. `dangerQuiet` + onay penceresi oldu; Adım 4'ün kuralı gereği dolu
+kırmızı yalnızca gerekçesi yazılmış ve tetiği çekilen eylemde kalıyor.
+
+Sayaçlar (eşleşen satır sayısı, `app` + `components`): `dark:` 159 → **83**,
+`neutral-` 318 → **186**, `brand-` 15 → **13**.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti,
+`next build` başarılı, 14 ekran görüntüsü `adim-6/` altında.
+
+**Açık kalan:** `/admin/reports` ve `reports/**` Adım 7'de; `admin/reports`
+kenar çubuğundan bu adımın ekranlarıyla aynı grupta görünüyor ama içeriği rapor
+tasarımcısının parçası.
 
 ### ▢ Adım 7 — Rapor tasarımcısı ve panolar
 
@@ -509,9 +609,9 @@ bağlanıp bağlanmayacağı ve bu bir sipariş kuralı kararı, tasarım karar�
 
 - Kalan ham sınıfları anlamsala çevir. Sayaç: Adım 1 sonrası `dark:` 506,
   `neutral-` 1033, `brand-` 90 → Adım 2 sonrası 348 / 792 / 46 → Adım 3 sonrası
-  237 / 434 / 20 → Adım 4 sonrası 191 / 366 / 18 → Adım 5 sonrası
-  **159 / 318 / 15**. Hedef: üçü de sıfır — `documents/**` hariç, orada ham
-  `neutral-` bilerek duruyor (bkz. Adım 5).
+  237 / 434 / 20 → Adım 4 sonrası 191 / 366 / 18 → Adım 5 sonrası 159 / 318 / 15
+  → Adım 6 sonrası **83 / 186 / 13**. Hedef: üçü de sıfır — `documents/**`
+  hariç, orada ham `neutral-` bilerek duruyor (bkz. Adım 5).
 - Kiracı marka adını kabuğa bağla: `loadTenant()` →
   `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
   Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için

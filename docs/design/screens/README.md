@@ -11,6 +11,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-3` | Yönetim çekirdeği               |
 | `adim-4` | Finans                          |
 | `adim-5` | Operasyon                       |
+| `adim-6` | Yapılandırma ve sistem          |
 | `adim-8` | Giriş, bayilik başvurusu, hesap |
 
 ## Yeniden üretmek
@@ -23,8 +24,10 @@ Görüntüler elle alınmaz; `scripts/screenshots.mjs` üretir. Kayıt defteri
 #    (pnpm --filter @repo/database db:seed-demo)
 
 # 2. Uygulamayı çalıştırın. `next start` bu depoda işe yaramıyor
-#    (next.config: output "standalone"), o yüzden geliştirme sunucusu:
-pnpm --filter web dev -- -p 3100
+#    (next.config: output "standalone"), o yüzden geliştirme sunucusu.
+#    `--` KOYMAYIN: pnpm 9 onu komuta aynen geçiriyor ve next onu bir dizin
+#    adı sanıyor ("Invalid project directory provided, no such directory: …\-p").
+pnpm --filter web dev -p 3100
 
 # 3. Görüntüleri alın
 SHOT_BASE_URL=http://localhost:3100 pnpm shots            # hepsi
@@ -79,6 +82,15 @@ Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür
   ekranın iki çekimi birebir aynı olmayabilir — bu bir hata değil.
 - **Açık tema varsayılan.** `--theme dark` ya da `--theme both` ile koyu tema da
   alınır; koyu dosyalar `<slug>-dark.png` olur.
+- **3000 pikselden uzun bir dosya bir bulgudur.** Kırpma sınırı 6000 ve betik
+  sessizce kırpıyor; Adım 4, 5 ve 6'da üç kez aynı şey çıktı — sınırlanmamış bir
+  liste sayfayı uzatıyor ve altındaki dipnot, sayfalama düğmesi ya da panel hiç
+  görünmüyor. Çekimden sonra dosya boylarına bakın:
+
+  ```bash
+  python -c "import struct,glob;[print(struct.unpack('>II',open(f,'rb').read(24)[16:24])[1],f) for f in sorted(glob.glob('docs/design/screens/adim-6/*.png'))]"
+  ```
+
 - **Biçimsiz sayfa kaydedilmez** (`assertStyled`). Boş bir ekran kaydetmek
   serbest — boş ekran da bir ekrandır — ama **stilsiz** bir ekran kaydetmek
   betiğin tek işini boşa çıkarıyor. İki ölçüt, ikisi de temadan bağımsız:

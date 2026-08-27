@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Panel } from "@/components/form";
+import { Note } from "@/components/ui";
 
 // Ajanla konuşma — kurulum sırasında bakılan iki şey.
 //
@@ -45,6 +46,7 @@ export function CommandPanel() {
         {COMMANDS.map((c) => (
           <Button
             key={c.name}
+            size="sm"
             variant="secondary"
             onClick={() => run.mutate(c.name)}
             loading={run.isPending && run.variables === c.name}
@@ -58,12 +60,12 @@ export function CommandPanel() {
       <ErrorLine error={run.error} />
 
       {output && (
-        <pre className="mt-3 max-h-96 overflow-auto rounded-md bg-neutral-50 p-3 text-xs dark:bg-neutral-950">
+        <pre className="mt-3 max-h-96 overflow-auto rounded border border-line bg-sunken p-3 font-mono text-xs text-ink">
           {output}
         </pre>
       )}
 
-      <p className="mt-3 text-sm text-neutral-500">
+      <Note className="mt-4">
         Bu iki komut ERP&apos;yi yalnızca <strong>okur</strong>. Sipariş
         aktarımı buradan değil, siparişin kendi ekranından yapılır.{" "}
         <em>Sipariş tablolarını incele</em> çıktısında bakılacaklar:{" "}
@@ -72,7 +74,7 @@ export function CommandPanel() {
         önekimiz Vega&apos;nın serileriyle çakışmamalı) ve{" "}
         <code>sampleHeader</code> (Vega&apos;nın kendi yazdığı son sipariş neye
         benziyor).
-      </p>
+      </Note>
     </Panel>
   );
 }

@@ -69,22 +69,22 @@ export function PermissionPicker({
   const blockedCount = [...own].filter((p) => !inScope(p)).length;
 
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-800">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+    <div className="rounded-lg border border-line bg-panel">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-sunken px-3 py-2">
         <div>
-          <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+          <p className="text-xs font-medium text-ink">
             Yetkiler
-            <span className="ml-2 font-normal text-neutral-400">
+            <span className="ml-2 font-normal tabular-nums text-ink-faint">
               {selected.size} seçili
             </span>
           </p>
-          <p className="mt-0.5 text-[11px] text-neutral-500">
+          <p className="mt-0.5 text-[11px] text-ink-muted">
             Rol yalnızca hangi bölüme girileceğini belirler; ne yapılabileceğini
             bu tikler belirler.
             {blockedCount > 0 && (
               <>
                 {" "}
-                <span className="text-neutral-400">
+                <span className="text-ink-faint">
                   {blockedCount} yetki {familyLabel.toLowerCase()} hesabına
                   verilemediği için pasif.
                 </span>
@@ -124,10 +124,8 @@ export function PermissionPicker({
             // 15 pasif satır basmak yerine tek satır yazıyoruz.
             return (
               <fieldset key={group.title} className="min-w-0 opacity-60">
-                <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-                  {group.title}
-                </legend>
-                <p className="text-xs text-neutral-500">
+                <legend className="tech-label mb-1">{group.title}</legend>
+                <p className="text-xs text-ink-muted">
                   Bu bölümün yetkileri {familyLabel.toLowerCase()} hesabına
                   verilemez.
                 </p>
@@ -140,12 +138,12 @@ export function PermissionPicker({
 
           return (
             <fieldset key={group.title} className="min-w-0">
-              <legend className="mb-1 flex w-full items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              <legend className="tech-label mb-1 flex w-full items-center justify-between gap-2">
                 <span>{group.title}</span>
                 <button
                   type="button"
                   disabled={disabled}
-                  className="font-medium normal-case tracking-normal text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400"
+                  className="font-medium normal-case tracking-normal text-ink hover:underline disabled:opacity-50"
                   onClick={() => {
                     const next = new Set(selected);
                     // Grubun tamamı seçiliyse düğme "kaldır" gibi davranır.
@@ -175,16 +173,16 @@ export function PermissionPicker({
                       label={
                         <>
                           <span className="min-w-0">
-                            <span className="block text-neutral-800 dark:text-neutral-200">
+                            <span className="block text-ink">
                               {PERMISSION_LABELS[perm]}
                             </span>
                             {blocked ? (
-                              <span className="block text-[11px] leading-snug text-neutral-500">
+                              <span className="block text-[11px] leading-snug text-ink-faint">
                                 {familyLabel} hesabına verilemez
                               </span>
                             ) : (
                               hint && (
-                                <span className="block text-[11px] leading-snug text-neutral-500">
+                                <span className="block text-[11px] leading-snug text-ink-faint">
                                   {hint}
                                 </span>
                               )

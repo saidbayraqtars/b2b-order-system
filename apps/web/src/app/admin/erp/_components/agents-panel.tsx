@@ -41,46 +41,58 @@ export function AgentsPanel() {
   });
 
   return (
-    <Panel title="Ajanlar">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label>
-          <Label hint="hangi makinede çalışacaksa">Ajan adı</Label>
+    <Panel title="Ajanlar" bodyClassName="p-0">
+      {/* Ekleme şeridi gömük zeminde — belge serileri ve vade ekranlarıyla
+          aynı yer. */}
+      <div className="flex flex-wrap items-end gap-3 border-b border-line bg-sunken p-4">
+        <div>
+          <Label htmlFor="new-agent" hint="hangi makinede çalışacaksa">
+            Ajan adı
+          </Label>
           <TextInput
+            id="new-agent"
             value={name}
             placeholder="Merkez sunucu"
             onChange={(e) => setName(e.target.value)}
             className="w-56"
           />
-        </label>
+        </div>
         <Button
-          disabled={create.isPending || name.trim().length === 0}
+          loading={create.isPending}
+          disabled={name.trim().length === 0}
           onClick={() => create.mutate()}
         >
           Ajan aç
         </Button>
+        <div className="w-full">
+          <ErrorLine error={create.error} />
+        </div>
       </div>
-      <ErrorLine error={create.error} />
 
-      {issued && <TokenOnce agent={issued} onDismiss={() => setIssued(null)} />}
+      <div className="p-4">
+        {issued && (
+          <TokenOnce agent={issued} onDismiss={() => setIssued(null)} />
+        )}
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
+        {query.isLoading && <LoadingState />}
+        <ErrorLine error={query.error} />
 
-      {query.data &&
-        (query.data.agents.length === 0 ? (
-          <EmptyState label="Henüz ajan yok — ERP'den veri gelmesi için bir tane açın." />
-        ) : (
-          <ul className="space-y-2">
-            {query.data.agents.map((agent) => (
-              <AgentItem
-                key={agent.id}
-                agent={agent}
-                onChanged={invalidate}
-                onRotated={setIssued}
-              />
-            ))}
-          </ul>
-        ))}
+        {query.data &&
+          (query.data.agents.length === 0 ? (
+            <EmptyState label="Henüz ajan yok — ERP'den veri gelmesi için bir tane açın." />
+          ) : (
+            <ul className="space-y-2">
+              {query.data.agents.map((agent) => (
+                <AgentItem
+                  key={agent.id}
+                  agent={agent}
+                  onChanged={invalidate}
+                  onRotated={setIssued}
+                />
+              ))}
+            </ul>
+          ))}
+      </div>
     </Panel>
   );
 }
@@ -96,16 +108,16 @@ function TokenOnce({
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
-      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+    <div className="mb-4 rounded-lg border border-caution/30 bg-caution/10 p-4">
+      <p className="text-body-sm font-semibold text-caution">
         {agent.name} için token — bu ekranı kapatınca bir daha gösterilmez
       </p>
-      <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+      <p className="mt-1 text-xs text-caution">
         Ajanın <code>agent.config.json</code> dosyasındaki <code>token</code>{" "}
         alanına yazın. Kaybederseniz yenileyin; eskisi anında geçersiz olur.
       </p>
       <div className="mt-2 flex items-center gap-2">
-        <code className="flex-1 overflow-x-auto rounded-lg bg-white px-3 py-2 font-mono text-xs dark:bg-neutral-900">
+        <code className="flex-1 overflow-x-auto rounded border border-line bg-panel px-3 py-2 font-mono text-xs text-ink">
           {agent.token}
         </code>
         <Button
@@ -157,15 +169,15 @@ function AgentItem({
   });
 
   return (
-    <li className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <li className="rounded border border-line p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm">
-          <p className="flex items-center gap-2 font-medium">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-body-sm font-medium text-ink">
             {agent.name}
             <Badge tone="info">{agent.erp}</Badge>
             {!agent.isActive && <Badge tone="neutral">Kapalı</Badge>}
           </p>
-          <p className="text-neutral-500">
+          <p className="mt-1 text-xs text-ink-faint">
             {agent.lastSeenAt
               ? `Son görülme ${new Date(agent.lastSeenAt).toLocaleString("tr-TR")}`
               : "Hiç bağlanmadı"}
@@ -184,7 +196,7 @@ function AgentItem({
           </Button>
           <Button
             size="sm"
-            variant="secondary"
+            variant="ghost"
             loading={toggle.isPending}
             onClick={() => toggle.mutate()}
           >
@@ -192,9 +204,17 @@ function AgentItem({
           </Button>
           <Button
             size="sm"
-            variant="danger"
+            variant="dangerQuiet"
             loading={remove.isPending}
-            onClick={() => remove.mutate()}
+            onClick={() => {
+              if (
+                confirm(
+                  `"${agent.name}" ajanı silinsin mi? Tokeni anında geçersiz olur.`,
+                )
+              ) {
+                remove.mutate();
+              }
+            }}
           >
             Sil
           </Button>

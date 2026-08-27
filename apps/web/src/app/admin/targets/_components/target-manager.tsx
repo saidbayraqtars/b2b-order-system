@@ -17,6 +17,7 @@ import {
   Card,
   EmptyState,
   LoadingState,
+  Meter,
   Table,
   TBody,
   Td,
@@ -233,7 +234,7 @@ export function TargetManager({ reps }: { reps: Rep[] }) {
           >
             Kaydet
           </Button>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-ink-faint">
             Aynı dönem için ikinci hedef açılmaz; değer güncellenir.
           </p>
         </div>
@@ -286,10 +287,19 @@ export function TargetManager({ reps }: { reps: Rep[] }) {
                   <Td muted>{t.createdByName}</Td>
                   <Td align="right">
                     <Button
-                      variant="ghost"
+                      variant="dangerQuiet"
                       size="sm"
-                      className="text-red-600"
-                      onClick={() => remove.mutate(t.id)}
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `${t.salesRepName} için ${TARGET_PERIOD_LABELS[
+                              t.period
+                            ].toLowerCase()} hedef kaldırılsın mı?`,
+                          )
+                        ) {
+                          remove.mutate(t.id);
+                        }
+                      }}
                     >
                       Kaldır
                     </Button>
@@ -317,9 +327,9 @@ function ProgressCard({ row }: { row: ProgressRow }) {
   return (
     <Card>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">
+        <p className="text-body-sm font-medium text-ink">
           {TARGET_METRIC_LABELS[row.metric]} ·{" "}
-          <span className="text-neutral-500">
+          <span className="text-ink-muted">
             {TARGET_PERIOD_LABELS[row.period]}
           </span>
         </p>
@@ -330,26 +340,19 @@ function ProgressCard({ row }: { row: ProgressRow }) {
         </Badge>
       </div>
 
-      <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-        <div
-          className={
-            row.percent >= 100
-              ? "h-full bg-emerald-500"
-              : behind
-                ? "h-full bg-amber-500"
-                : "h-full bg-brand-500"
-          }
-          style={{ width: `${Math.min(100, row.percent)}%` }}
-        />
-      </div>
+      <Meter
+        value={row.percent}
+        tone={row.percent >= 100 ? "positive" : behind ? "caution" : "neutral"}
+        label={`${TARGET_METRIC_LABELS[row.metric]} hedefi`}
+      />
 
-      <p className="mt-2 text-sm tabular-nums">
+      <p className="mt-2 text-body-sm tabular-nums text-ink">
         {formatValue(row.metric, row.achieved)}{" "}
-        <span className="text-neutral-500">
+        <span className="text-ink-muted">
           / {formatValue(row.metric, row.targetValue)}
         </span>
       </p>
-      <p className="mt-0.5 text-xs text-neutral-500">
+      <p className="mt-0.5 text-xs text-ink-faint">
         {trDate(row.periodStart)} — {trDate(row.periodEnd)} · dönemin %
         {elapsedPct}&apos;i geçti
       </p>

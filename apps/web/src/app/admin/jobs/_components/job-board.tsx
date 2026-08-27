@@ -7,6 +7,7 @@ import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import {
   Badge,
   Card,
+  DefRow,
   EmptyState,
   LoadingState,
   Table,
@@ -16,6 +17,7 @@ import {
   THead,
 } from "@/components/ui";
 import { Button, Checkbox, ErrorLine, Panel, Select } from "@/components/form";
+import { cn } from "@/lib/utils";
 
 // Bakım işleri paneli.
 //
@@ -120,8 +122,8 @@ export function JobBoard() {
           <Card key={j.name}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-medium">{j.label}</p>
-                <p className="text-sm text-neutral-500">{j.description}</p>
+                <p className="font-medium text-ink">{j.label}</p>
+                <p className="text-body-sm text-ink-muted">{j.description}</p>
               </div>
               {j.lastStatus === "ERROR" ? (
                 <Badge tone="danger">Hata</Badge>
@@ -132,20 +134,19 @@ export function JobBoard() {
               )}
             </div>
 
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <dt className="text-neutral-500">Son çalışma</dt>
-              <dd className="tabular-nums">{trTime(j.lastRunAt)}</dd>
-              <dt className="text-neutral-500">Sıradaki</dt>
-              <dd className="tabular-nums">
+            <dl className="mt-3">
+              <DefRow label="Son çalışma">{trTime(j.lastRunAt)}</DefRow>
+              <DefRow label="Sıradaki">
                 {j.isEnabled ? trTime(j.nextRunAt) : "—"}
-              </dd>
+              </DefRow>
             </dl>
 
             {j.lastSummary && (
               <p
-                className={`mt-2 text-sm ${
-                  j.lastStatus === "ERROR" ? "text-red-600" : "text-neutral-500"
-                }`}
+                className={cn(
+                  "mt-2 text-body-sm",
+                  j.lastStatus === "ERROR" ? "text-critical" : "text-ink-muted",
+                )}
               >
                 {j.lastSummary}
               </p>
@@ -201,7 +202,7 @@ export function JobBoard() {
         ))}
       </div>
 
-      <Panel title="Son çalıştırmalar">
+      <Panel title="Son çalıştırmalar" bodyClassName="p-0">
         {runs.length === 0 ? (
           <EmptyState label="Henüz hiçbir iş çalışmadı." />
         ) : (
@@ -242,6 +243,13 @@ export function JobBoard() {
               ))}
             </TBody>
           </Table>
+        )}
+        {/* Kaç satır gösterildiğini yazmak, listenin dibine inip "hepsi bu mu"
+            diye düşünmekten iyi. Sunucu 50'de kesiyor. */}
+        {runs.length > 0 && (
+          <p className="px-4 py-3 text-xs text-ink-faint">
+            Son {runs.length} çalıştırma gösteriliyor.
+          </p>
         )}
       </Panel>
     </div>

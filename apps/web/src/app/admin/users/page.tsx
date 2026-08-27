@@ -1,5 +1,6 @@
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
+import { Note, PageHeader } from "@/components/ui";
 import { UserManager } from "@/components/user-manager";
 
 export default async function AdminUsersPage() {
@@ -13,7 +14,10 @@ export default async function AdminUsersPage() {
 
   return (
     <main className="mx-auto max-w-6xl">
-      <h1 className="mb-5 text-xl font-bold">Kullanıcılar</h1>
+      <PageHeader
+        title="Kullanıcılar"
+        subtitle="Her hesap tipi kendi ekranını görür; yetki roldan değil kişiden okunur"
+      />
       <UserManager
         currentUserId={user.id}
         allowedRoles={[
@@ -26,6 +30,12 @@ export default async function AdminUsersPage() {
         companies={companies}
         grantablePermissions={user.permissions}
       />
+      <Note>
+        Kendinizde olmayan bir yetkiyi veremezsiniz — liste zaten kendi
+        kümenizle sınırlı ve sunucu aynı kuralı yeniden uygular. Kendi
+        hesabınızı pasife alamaz, silemez ve kullanıcı yönetimi yetkisini kendi
+        üzerinizden kaldıramazsınız: aksi hâlde geri açacak kimse kalmazdı.
+      </Note>
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import { requirePage } from "@/lib/guard";
+import { Note, PageHeader } from "@/components/ui";
 import { ActivityClient } from "./_components/activity-client";
 
 export const dynamic = "force-dynamic";
@@ -8,14 +9,17 @@ export default async function ActivityPage() {
 
   return (
     <main className="mx-auto max-w-6xl">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold">Hareket Akışı</h1>
-        <p className="text-sm text-neutral-500">
-          Sipariş geçmişi, cari hareketler ve sistem kayıtları tek akışta.
-          Buradan bir şey değişmez — üç kaynağın da kendi kaydı esastır.
-        </p>
-      </div>
+      <PageHeader
+        title="Hareket akışı"
+        subtitle="Sipariş geçmişi, cari hareketler ve sistem kayıtları tek akışta"
+      />
       <ActivityClient />
+      <Note>
+        Buradan bir şey değişmez — üç kaynağın da kendi kaydı esastır ve bu
+        ekran onları yalnızca zaman sırasına dizer. Bir satırın ayrıntısı için
+        kaynağına gidin: sipariş numarası siparişe, cari hareketi ekstreye,
+        sistem kaydı güvenlik defterine bağlı.
+      </Note>
     </main>
   );
 }

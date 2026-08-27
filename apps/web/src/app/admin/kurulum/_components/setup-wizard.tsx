@@ -11,7 +11,9 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import type { SetupPack, SetupStatus, SetupStepKey } from "@repo/services";
-import { Card } from "@/components/ui";
+import { Badge, Card, Meter } from "@/components/ui";
+import { Button, LinkButton, Panel } from "@/components/form";
+import { cn } from "@/lib/utils";
 
 // Kurulum sihirbazı — boş bir kuruluma bakan kişinin yol haritası.
 //
@@ -171,21 +173,20 @@ export function SetupWizard({
     <div className="space-y-5">
       <Card>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm font-semibold">
+          <p className="text-body-sm font-semibold text-ink">
             {status.ready
               ? "Kurulum tamam — sistem sipariş alabilir."
               : `Sıradaki adım: ${next ? COPY[next.key].title : "—"}`}
           </p>
-          <p className="text-sm tabular-nums text-neutral-500">
+          <p className="text-body-sm tabular-nums text-ink-muted">
             {status.progress.done}/{status.progress.total} adım
           </p>
         </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-          <div
-            className={`h-full rounded-full transition-all ${
-              status.ready ? "bg-emerald-500" : "bg-blue-500"
-            }`}
-            style={{ width: `${pct}%` }}
+        <div className="mt-3">
+          <Meter
+            value={pct}
+            tone={status.ready ? "positive" : "neutral"}
+            label="Kurulum ilerlemesi"
           />
         </div>
       </Card>
@@ -228,59 +229,52 @@ function StepRow({
   isNext: boolean;
 }) {
   return (
+    // Sıradaki adım renkle değil kenarla ve bir künyeyle işaretleniyor: mavi bir
+    // çerçeve tasarım dilinde hiçbir şey söylemiyor, "sıradaki" ise bir durum
+    // değil bir yön — onu yazıyla söylemek gerekiyor.
     <li
-      className={`rounded-lg border bg-white p-4 dark:bg-neutral-900 ${
-        isNext
-          ? "border-blue-400 ring-1 ring-blue-400/40 dark:border-blue-500"
-          : "border-neutral-200 dark:border-neutral-800"
-      }`}
+      className={cn(
+        "rounded-lg border bg-panel p-4",
+        isNext ? "border-line-strong" : "border-line",
+      )}
     >
       <div className="flex items-start gap-3">
         <span
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-            done
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
-              : "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-          }`}
+          className={cn(
+            "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded text-xs font-semibold tabular-nums",
+            done ? "bg-positive/10 text-positive" : "bg-sunken text-ink-faint",
+          )}
         >
           {done ? <Check className="h-4 w-4" /> : index}
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold">{copy.title}</h3>
-            {optional && (
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 dark:bg-neutral-800">
-                isteğe bağlı
-              </span>
-            )}
+            <h3 className="text-headline-sm text-ink">{copy.title}</h3>
+            {isNext && <Badge tone="brand">Sıradaki</Badge>}
+            {optional && <Badge tone="neutral">İsteğe bağlı</Badge>}
             {done && (
-              <span className="text-xs tabular-nums text-neutral-500">
+              <span className="text-xs tabular-nums text-ink-faint">
                 {count} {copy.unit}
               </span>
             )}
           </div>
 
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
-            {copy.todo}
-          </p>
-          <p className="mt-1 text-xs text-neutral-500">{copy.why}</p>
+          <p className="mt-1 text-body-sm text-ink-muted">{copy.todo}</p>
+          <p className="mt-1 text-xs text-ink-faint">{copy.why}</p>
 
           {problem && (
-            <p className="mt-2 flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="mt-2 flex items-start gap-1.5 rounded border border-critical/30 bg-critical/10 px-2 py-1 text-xs text-critical">
               <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span className="whitespace-pre-wrap">{problem}</span>
             </p>
           )}
         </div>
 
-        <Link
-          href={copy.href}
-          className="flex shrink-0 items-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-        >
+        <LinkButton href={copy.href}>
           {copy.cta}
           <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+        </LinkButton>
       </div>
     </li>
   );
@@ -325,27 +319,28 @@ function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
   }
 
   return (
-    <Card>
-      <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-neutral-500" />
-        <h2 className="font-semibold">Hazır sektör paketi</h2>
-      </div>
-      <p className="mt-1 text-sm text-neutral-500">
+    <Panel title="Hazır sektör paketi" icon={<Package className="h-4 w-4" />}>
+      <p className="text-body-sm text-ink-muted">
         Grup, kategori ağacı, vade, depo, kasa ve hacim merdivenini tek seferde
-        kurar. <strong>Ürün ve müşteri taşımaz</strong> — onlar her firmada
-        başka. Tekrar çalıştırılabilir: var olan satıra dokunmaz, yalnızca
-        eksiği yazar.
+        kurar.{" "}
+        <strong className="font-semibold text-ink">
+          Ürün ve müşteri taşımaz
+        </strong>{" "}
+        — onlar her firmada başka. Tekrar çalıştırılabilir: var olan satıra
+        dokunmaz, yalnızca eksiği yazar.
       </p>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {packs.map((p) => (
+          // Kart bir sütun: özet metni uzun olan pakette düğme aşağı kayıp
+          // yanındakiyle hizasını kaybediyordu.
           <div
             key={p.key}
-            className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
+            className="flex flex-col rounded border border-line p-3"
           >
-            <p className="font-medium">{p.name}</p>
-            <p className="mt-0.5 text-xs text-neutral-500">{p.summary}</p>
-            <p className="mt-1.5 text-xs tabular-nums text-neutral-400">
+            <p className="text-body-sm font-medium text-ink">{p.name}</p>
+            <p className="mt-0.5 text-xs text-ink-muted">{p.summary}</p>
+            <p className="mt-1.5 flex-1 text-xs tabular-nums text-ink-faint">
               {p.customerGroups.length} grup ·{" "}
               {p.categories.reduce(
                 (n, c) => n + 1 + (c.children?.length ?? 0),
@@ -354,26 +349,27 @@ function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
               kategori · {p.paymentTerms.length} vade · {p.warehouses.length}{" "}
               depo · {p.cashAccounts.length} hesap
             </p>
-            <button
-              type="button"
-              onClick={() => void apply(p)}
+            <Button
+              size="sm"
+              className="mt-3 self-start"
+              loading={busy === p.key}
               disabled={busy !== null}
-              className="mt-2 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+              onClick={() => void apply(p)}
             >
-              {busy === p.key ? "Uygulanıyor…" : "Bu paketi uygula"}
-            </button>
+              Bu paketi uygula
+            </Button>
           </div>
         ))}
       </div>
 
       {error && (
-        <p className="mt-3 rounded-md bg-red-50 px-2.5 py-1.5 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+        <p className="mt-3 rounded border border-critical/30 bg-critical/10 px-2.5 py-1.5 text-body-sm text-critical">
           {error}
         </p>
       )}
 
       {result && (
-        <div className="mt-3 rounded-md bg-emerald-50 px-2.5 py-2 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+        <div className="mt-3 rounded border border-positive/30 bg-positive/10 px-2.5 py-2 text-body-sm text-positive">
           <p className="font-medium">Paket uygulandı.</p>
           <p className="mt-0.5 text-xs">
             Yazılan: {summarise(result.created)} · Dokunulmayan:{" "}
@@ -381,7 +377,7 @@ function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
           </p>
         </div>
       )}
-    </Card>
+    </Panel>
   );
 }
 
@@ -395,17 +391,17 @@ export function SetupHint({ done, total }: { done: number; total: number }) {
   return (
     <Link
       href="/admin/kurulum"
-      className="flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+      className="flex items-center gap-2 rounded-lg border border-line-strong bg-sunken px-3 py-2 text-body-sm text-ink transition-colors hover:bg-subtle"
     >
-      <CircleDashed className="h-4 w-4 shrink-0" />
+      <CircleDashed className="h-4 w-4 shrink-0 text-ink-faint" />
       <span>
         Kurulum sürüyor —{" "}
-        <strong>
+        <strong className="tabular-nums">
           {done}/{total}
         </strong>{" "}
         adım tamam. Sihirbazı aç.
       </span>
-      <ChevronRight className="ml-auto h-4 w-4 shrink-0" />
+      <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-ink-faint" />
     </Link>
   );
 }

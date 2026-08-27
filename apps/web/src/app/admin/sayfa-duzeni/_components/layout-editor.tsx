@@ -9,6 +9,7 @@ import type {
 } from "@repo/services";
 import { PAGE_KEY_LABELS, type PageKey } from "@repo/types";
 import { apiDelete, apiGet, apiPut } from "@/lib/fetcher";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import {
   Button,
   Checkbox,
@@ -96,7 +97,7 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
           {layout.isDefault ? (
             <Badge tone="neutral">varsayılan</Badge>
           ) : (
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-ink-faint">
               {layout.updatedByName ?? "bilinmiyor"} ·{" "}
               {new Date(layout.updatedAt!).toLocaleDateString("tr-TR")}
             </span>
@@ -131,18 +132,15 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
           const def = defOf(block.type);
           if (!def) return null;
           return (
-            <li
-              key={block.type}
-              className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
-            >
+            <li key={block.type} className="rounded border border-line p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-sm font-medium">
+                  <p className="flex items-center gap-2 text-body-sm font-medium text-ink">
                     {def.label}
                     <Badge tone="neutral">{REGION_LABEL[def.region]}</Badge>
                     {def.required && <Badge tone="brand">zorunlu</Badge>}
                   </p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     {def.description}
                   </p>
                 </div>
@@ -157,43 +155,49 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
                     }
                     label="açık"
                   />
+                  {/* Ok ve çarpı artık yazı karakteri değil ikon: ↑ ↓ ×
+                      yazı tipinden yazı tipine boy değiştiriyor ve üçü de
+                      düğmenin ortasında farklı yükseklikte oturuyordu. */}
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     className="w-8 px-0"
                     disabled={i === 0}
                     onClick={() => move(i, -1)}
+                    aria-label="Yukarı taşı"
                     title="Yukarı"
                   >
-                    ↑
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     className="w-8 px-0"
                     disabled={i === current.length - 1}
                     onClick={() => move(i, 1)}
+                    aria-label="Aşağı taşı"
                     title="Aşağı"
                   >
-                    ↓
+                    <ArrowDown className="h-3.5 w-3.5" />
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     className="w-8 px-0"
                     disabled={def.required}
                     onClick={() =>
                       setBlocks(current.filter((_, idx) => idx !== i))
                     }
+                    aria-label="Bloğu kaldır"
                     title="Kaldır"
                   >
-                    ×
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
 
               {def.params.length > 0 && (
-                <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
                   {def.params.map((p) => (
                     <ParamField
                       key={p.key}
@@ -214,8 +218,8 @@ export function LayoutEditor({ pageKey }: { pageKey: PageKey }) {
       </ul>
 
       {missing.length > 0 && (
-        <div className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-          <p className="mb-2 text-xs text-neutral-500">Eklenebilir bloklar</p>
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="tech-label mb-2">Eklenebilir bloklar</p>
           <div className="flex flex-wrap gap-2">
             {missing.map((c) => (
               <Button

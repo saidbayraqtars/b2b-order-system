@@ -1,4 +1,5 @@
 import { requirePage } from "@/lib/guard";
+import { Note, PageHeader } from "@/components/ui";
 import { PromotionsManager } from "./_components/promotions-manager";
 
 export default async function AdminPromotionsPage() {
@@ -6,14 +7,17 @@ export default async function AdminPromotionsPage() {
 
   return (
     <main className="mx-auto max-w-5xl">
-      <h1 className="mb-5 text-xl font-bold">Kampanyalar</h1>
+      <PageHeader
+        title="Kampanyalar"
+        subtitle="Koşul + aksiyon olarak tanımlanan indirimler; fiyatın üzerine uygulanır"
+      />
       <PromotionsManager />
-      <p className="mt-4 text-sm text-neutral-500">
+      <Note>
         Kampanya kod değil veri: koşullar ve aksiyonlar sunucudaki kural kayıt
         defterinden seçilir. İndirim, grup fiyatı ve firma iskontosunun üzerine
         uygulanır; KDV kampanya sonrası net tutardan hesaplanır. Öncelik
         sırasıyla çalışır, her kampanya bir öncekinin bıraktığı tutarı görür.
-      </p>
+      </Note>
     </main>
   );
 }

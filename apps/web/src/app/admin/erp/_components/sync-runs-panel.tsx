@@ -10,6 +10,12 @@ import {
   Badge,
   EmptyState,
   LoadingState,
+  StatTile,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
   type BadgeTone,
 } from "@/components/ui";
 
@@ -42,20 +48,30 @@ export function SyncRunsPanel() {
   });
 
   return (
-    <Panel title="Eşitleme">
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
+    <Panel title="Eşitleme" bodyClassName="p-0">
+      {query.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
+      {query.error ? (
+        <div className="p-4">
+          <ErrorLine error={query.error} />
+        </div>
+      ) : null}
 
       {query.data && (
         <>
-          <div className="mb-4 grid gap-3 sm:grid-cols-2">
-            <MappingCard
+          {/* Eşleme oranı köprünün yarısı: çalışan ama hiçbir şeyi eşleyemeyen
+              bir eşitleme de "başarılı" görünür. */}
+          <div className="grid gap-3 border-b border-line bg-sunken p-4 sm:grid-cols-2">
+            <MappingTile
               label="Eşlenmiş firma"
               mapped={query.data.mapping.companies.mapped}
               total={query.data.mapping.companies.total}
               hint="Cari kodu girilmemiş firmaya ERP'den veri inmez"
             />
-            <MappingCard
+            <MappingTile
               label="Eşlenmiş varyant"
               mapped={query.data.mapping.variants.mapped}
               total={query.data.mapping.variants.total}
@@ -66,54 +82,32 @@ export function SyncRunsPanel() {
           {query.data.runs.length === 0 ? (
             <EmptyState label="Henüz eşitleme yapılmadı — ajan hiç bağlanmamış olabilir." />
           ) : (
-            <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-              {query.data.runs.map((run) => (
-                <li key={run.id} className="py-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                    <div>
-                      <p className="flex flex-wrap items-center gap-2 font-medium">
-                        {ERP_SYNC_KIND_LABELS[run.kind]}
-                        <Badge tone={STATUS_TONE[run.status] ?? "neutral"}>
-                          {ERP_SYNC_STATUS_LABELS[run.status] ?? run.status}
-                        </Badge>
-                      </p>
-                      <p className="text-neutral-500">
-                        {run.received} okundu · {run.applied} uygulandı ·{" "}
-                        <span
-                          className={
-                            run.skipped > 0
-                              ? "font-medium text-amber-600 dark:text-amber-400"
-                              : ""
-                          }
-                        >
-                          {run.skipped} eşleşmedi
-                        </span>
-                        {" · "}
-                        {new Date(run.startedAt).toLocaleString("tr-TR")}
-                        {run.agentName ? ` · ${run.agentName}` : ""}
-                      </p>
-                      {run.error && (
-                        <p className="text-red-600 dark:text-red-400">
-                          {run.error}
-                        </p>
-                      )}
-                    </div>
-                    {run.skipped > 0 && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          setOpenRun(openRun === run.id ? null : run.id)
-                        }
-                      >
-                        {openRun === run.id ? "Gizle" : "Eşleşmeyenler"}
-                      </Button>
-                    )}
-                  </div>
-                  {openRun === run.id && <IssueList runId={run.id} />}
-                </li>
-              ))}
-            </ul>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Başlangıç</Th>
+                  <Th>Tür</Th>
+                  <Th>Durum</Th>
+                  <Th align="right">Okundu</Th>
+                  <Th align="right">Uygulandı</Th>
+                  <Th align="right">Eşleşmedi</Th>
+                  <Th>Ajan</Th>
+                  <Th />
+                </tr>
+              </THead>
+              <TBody>
+                {query.data.runs.map((run) => (
+                  <RunRow
+                    key={run.id}
+                    run={run}
+                    open={openRun === run.id}
+                    onToggle={() =>
+                      setOpenRun(openRun === run.id ? null : run.id)
+                    }
+                  />
+                ))}
+              </TBody>
+            </Table>
           )}
         </>
       )}
@@ -121,7 +115,71 @@ export function SyncRunsPanel() {
   );
 }
 
-function MappingCard({
+function RunRow({
+  run,
+  open,
+  onToggle,
+}: {
+  run: SyncRunRow;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr>
+        <Td numeric className="whitespace-nowrap">
+          {new Date(run.startedAt).toLocaleString("tr-TR")}
+        </Td>
+        <Td>{ERP_SYNC_KIND_LABELS[run.kind]}</Td>
+        <Td>
+          <Badge tone={STATUS_TONE[run.status] ?? "neutral"}>
+            {ERP_SYNC_STATUS_LABELS[run.status] ?? run.status}
+          </Badge>
+        </Td>
+        <Td align="right" numeric>
+          {run.received}
+        </Td>
+        <Td align="right" numeric>
+          {run.applied}
+        </Td>
+        <Td align="right" numeric>
+          {/* Sıfırdan büyük her değer bir iş: o satırlar ERP'de var, burada
+              karşılığı yok. */}
+          <span className={run.skipped > 0 ? "font-medium text-caution" : ""}>
+            {run.skipped}
+          </span>
+        </Td>
+        <Td muted>{run.agentName ?? "—"}</Td>
+        <Td align="right">
+          {run.skipped > 0 && (
+            <Button size="sm" variant="secondary" onClick={onToggle}>
+              {open ? "Gizle" : "Eşleşmeyenler"}
+            </Button>
+          )}
+        </Td>
+      </tr>
+
+      {/* Hata ve döküm hücreye değil alt satıra: hücreye konsaydı o sütunu
+          bütün tablo boyunca genişletirdi (kasa defterindeki çözümün aynısı). */}
+      {run.error && (
+        <tr>
+          <Td colSpan={8} className="pt-0 text-critical">
+            {run.error}
+          </Td>
+        </tr>
+      )}
+      {open && (
+        <tr>
+          <Td colSpan={8} className="bg-sunken">
+            <IssueList runId={run.id} />
+          </Td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function MappingTile({
   label,
   mapped,
   total,
@@ -135,14 +193,14 @@ function MappingCard({
   const percent = total === 0 ? 0 : Math.round((mapped / total) * 100);
 
   return (
-    <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className="text-lg font-semibold">
-        {mapped} / {total}{" "}
-        <span className="text-sm font-normal text-neutral-500">%{percent}</span>
-      </p>
-      <p className="text-xs text-neutral-500">{hint}</p>
-    </div>
+    <StatTile
+      label={label}
+      value={`${mapped} / ${total}`}
+      tone={
+        percent === 100 ? "positive" : percent === 0 ? "critical" : "caution"
+      }
+      hint={`%${percent} · ${hint}`}
+    />
   );
 }
 
@@ -159,35 +217,38 @@ function IssueList({ runId }: { runId: string }) {
   });
 
   return (
-    <div className="mt-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <div className="rounded border border-line bg-panel p-3">
       {query.isLoading && <LoadingState />}
       <ErrorLine error={query.error} />
-      {query.data && (
-        <div className="max-h-72 overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="text-left text-neutral-500">
-              <tr>
-                <th className="pb-1 pr-3">ERP kodu</th>
-                <th className="pb-1 pr-3">Ad</th>
-                <th className="pb-1">Sebep</th>
-              </tr>
-            </thead>
-            <tbody>
-              {query.data.issues.map((issue) => (
-                <tr
-                  key={issue.id}
-                  className="border-t border-neutral-100 dark:border-neutral-800"
-                >
-                  <td className="py-1 pr-3 font-mono">{issue.externalCode}</td>
-                  <td className="py-1 pr-3">{issue.label ?? "—"}</td>
-                  <td className="py-1 text-neutral-500">{issue.reason}</td>
+      {query.data &&
+        (query.data.issues.length === 0 ? (
+          <EmptyState label="Kayıt yok." />
+        ) : (
+          // Bu liste yüzlerce satır olabiliyor; kendi içinde kaydırıyor ki
+          // sayfanın altındaki paneller ekran dışına itilmesin.
+          <div className="max-h-72 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="tech-label">
+                <tr>
+                  <th className="pb-1 pr-3">ERP kodu</th>
+                  <th className="pb-1 pr-3">Ad</th>
+                  <th className="pb-1">Sebep</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {query.data.issues.length === 0 && <EmptyState label="Kayıt yok." />}
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-line">
+                {query.data.issues.map((issue) => (
+                  <tr key={issue.id}>
+                    <td className="py-1 pr-3 font-mono text-ink">
+                      {issue.externalCode}
+                    </td>
+                    <td className="py-1 pr-3 text-ink">{issue.label ?? "—"}</td>
+                    <td className="py-1 text-ink-muted">{issue.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </div>
   );
 }

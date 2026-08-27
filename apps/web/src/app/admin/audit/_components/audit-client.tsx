@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AUDIT_ACTION_LABELS,
   AuditActionEnum,
@@ -10,9 +11,25 @@ import {
   type AuditAction,
   type AuditEntry,
 } from "@repo/types";
-import { Button, Checkbox, Label, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  Checkbox,
+  ErrorLine,
+  Label,
+  Select,
+  TextInput,
+} from "@/components/form";
 import { apiGet } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  Badge,
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 interface Page {
   entries: AuditEntry[];
@@ -39,7 +56,10 @@ export function AuditClient() {
   if (from) params.set("from", from);
   if (to) params.set("to", to);
   if (cursor) params.set("cursor", cursor);
-  params.set("limit", "100");
+  // 50, 100 değil: yüz satır sayfayı altı bin pikselin ötesine taşıyor ve
+  // altındaki sayfalama düğmeleri ile dipnot hiç görünmüyordu. Aranan kayda
+  // giden yol kaydırmak değil, üstteki süzgeç ve İleri düğmesi.
+  params.set("limit", "50");
 
   const query = useQuery({
     queryKey: ["audit", params.toString()],
@@ -53,7 +73,9 @@ export function AuditClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 rounded-lg border border-neutral-200 p-3 sm:grid-cols-5 dark:border-neutral-800">
+      {/* Süzgeç şeridi gömük zeminde — aranan şeye giden yol kaydırmak
+          değil, buradan daraltmak. */}
+      <div className="grid gap-3 rounded-lg border border-line bg-sunken p-3 sm:grid-cols-5">
         <div>
           <Label>Olay</Label>
           <Select
@@ -104,84 +126,79 @@ export function AuditClient() {
             }}
           />
         </div>
-        <Checkbox
-          checked={securityOnly}
-          onChange={(e) => {
-            setSecurityOnly(e.target.checked);
-            resetPaging();
-          }}
-          label="Sadece güvenlik olayları"
-        />
+        <div className="pb-2.5 sm:self-end">
+          <Checkbox
+            checked={securityOnly}
+            onChange={(e) => {
+              setSecurityOnly(e.target.checked);
+              resetPaging();
+            }}
+            label="Sadece güvenlik olayları"
+          />
+        </div>
       </div>
 
       {query.isPending && <LoadingState />}
-      {query.isError && (
-        <p className="text-sm text-red-600">
-          {query.error instanceof Error ? query.error.message : "Hata"}
-        </p>
-      )}
+      <ErrorLine error={query.error} />
 
       {query.data && (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-neutral-500">
+          <div className="rounded-lg border border-line bg-panel">
+            <Table>
+              <THead>
                 <tr>
-                  <th className="py-2 pr-3">Zaman</th>
-                  <th className="py-2 pr-3">Kim</th>
-                  <th className="py-2 pr-3">Olay</th>
-                  <th className="py-2 pr-3">Açıklama</th>
-                  <th className="py-2 pr-3">IP</th>
+                  <Th>Zaman</Th>
+                  <Th>Kim</Th>
+                  <Th>Olay</Th>
+                  <Th>Açıklama</Th>
+                  <Th>IP</Th>
                 </tr>
-              </thead>
-              <tbody>
+              </THead>
+              <TBody>
                 {query.data.entries.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-neutral-500">
-                      Kayıt yok.
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={5} label="Bu süzgeçte kayıt yok." />
                 )}
                 {query.data.entries.map((e) => (
-                  <tr
-                    key={e.id}
-                    className="border-t border-neutral-100 dark:border-neutral-900"
-                  >
-                    <td className="whitespace-nowrap py-1.5 pr-3 text-neutral-500">
+                  <tr key={e.id}>
+                    <Td numeric muted className="whitespace-nowrap">
                       {new Date(e.createdAt).toLocaleString("tr-TR")}
-                    </td>
-                    <td className="py-1.5 pr-3">
-                      <span className="font-medium">{e.actorEmail}</span>
+                    </Td>
+                    <Td>
+                      <span className="font-medium text-ink">
+                        {e.actorEmail}
+                      </span>
                       {e.actorRole && (
-                        <span className="ml-1 text-xs text-neutral-400">
+                        <span className="ml-1 text-xs text-ink-faint">
                           {ROLE_LABELS[e.actorRole]}
                         </span>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap py-1.5 pr-3">
-                      <span
-                        className={
-                          ALERT_ACTIONS.has(e.action)
-                            ? "rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-                            : "text-xs text-neutral-600 dark:text-neutral-400"
-                        }
-                      >
-                        {AUDIT_ACTION_LABELS[e.action]}
-                      </span>
-                    </td>
-                    <td className="py-1.5 pr-3">{e.summary}</td>
-                    <td className="py-1.5 pr-3 text-xs text-neutral-400">
-                      {e.ip ?? "—"}
-                    </td>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {/* Yetki kazandıran ya da reddedilen olay künyeye
+                          çıkıyor; gerisi düz metin kalıyor ki kehribar,
+                          bakılması gereken satırı işaret etsin. */}
+                      {ALERT_ACTIONS.has(e.action) ? (
+                        <Badge tone="warning">
+                          {AUDIT_ACTION_LABELS[e.action]}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-ink-muted">
+                          {AUDIT_ACTION_LABELS[e.action]}
+                        </span>
+                      )}
+                    </Td>
+                    <Td>{e.summary}</Td>
+                    <Td muted>{e.ip ?? "—"}</Td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
+              size="sm"
               disabled={trail.length === 0}
               onClick={() => {
                 const next = [...trail];
@@ -190,10 +207,12 @@ export function AuditClient() {
                 setCursor(next[next.length - 1] ?? null);
               }}
             >
-              ← Geri
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Geri
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               disabled={!query.data.nextCursor}
               onClick={() => {
                 const c = query.data.nextCursor;
@@ -202,10 +221,14 @@ export function AuditClient() {
                 setCursor(c);
               }}
             >
-              İleri →
+              İleri
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-xs text-neutral-500">
-              {query.data.entries.length} kayıt
+            <span className="text-xs text-ink-faint">
+              {query.data.entries.length} kayıt gösteriliyor
+              {query.data.nextCursor
+                ? " — gerisi için İleri, aradığınız kayıt için süzgeç"
+                : ""}
             </span>
           </div>
         </>

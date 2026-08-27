@@ -1,4 +1,5 @@
 import { requirePage } from "@/lib/guard";
+import { Note, PageHeader } from "@/components/ui";
 import { AuditClient } from "./_components/audit-client";
 import { RetentionPanel } from "./_components/retention-panel";
 
@@ -9,17 +10,21 @@ export default async function AuditPage() {
 
   return (
     <main className="mx-auto max-w-6xl">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold">Güvenlik Kaydı</h1>
-        <p className="text-sm text-neutral-500">
-          Girişler, yetki değişiklikleri ve reddedilen istekler. Kayıtlar
-          silinemez ve değiştirilemez.
-        </p>
-      </div>
+      <PageHeader
+        title="Güvenlik kaydı"
+        subtitle="Girişler, yetki değişiklikleri ve reddedilen istekler"
+      />
       <div className="mb-6">
         <RetentionPanel />
       </div>
       <AuditClient />
+      <Note>
+        Kayıtlar <strong>silinemez ve değiştirilemez</strong>: defter yalnızca
+        büyür. Tek istisna yukarıdaki saklama süresi ve o da toptan siler, tek
+        tek değil — bir satırı seçip yok etmenin yolu yok. Silmeden önce CSV
+        alın; güvenlik olaylarını saklama seçeneği açıkken giriş denemeleri ve
+        yetki değişiklikleri temizlikten muaf kalır.
+      </Note>
     </main>
   );
 }

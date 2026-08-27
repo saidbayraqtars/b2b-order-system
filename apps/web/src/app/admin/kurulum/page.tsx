@@ -1,5 +1,6 @@
 import { getSetupStatus, listSetupPacks } from "@repo/services";
 import { requirePage } from "@/lib/guard";
+import { Note, PageHeader } from "@/components/ui";
 import { SetupWizard } from "./_components/setup-wizard";
 
 // Kurulum sihirbazı.
@@ -14,28 +15,22 @@ export default async function AdminKurulumPage() {
   const packs = listSetupPacks();
 
   return (
-    <div>
-      <main className="mx-auto max-w-4xl space-y-5 px-4 py-6">
-        <div>
-          <h1 className="text-xl font-bold">Kurulum</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Yeni bir kurulumun sırası. Her adımın durumu <strong>canlı</strong>{" "}
-            okunuyor — bir yerde &ldquo;tamamlandı&rdquo; kutucuğu tutulmuyor, o
-            yüzden sonradan silinen bir kayıt adımı kendiliğinden geri açar.
-          </p>
-        </div>
-
-        <SetupWizard status={status} packs={packs} />
-
-        <p className="text-sm text-neutral-500">
-          Sıra rastgele değil: kategorisiz ürün açılmaz, fiyatsız varyant
-          sipariş edilemez, grubu olmayan firma liste fiyatı görür. Paket, bu
-          iskeletin tekrar eden kısmını kurar; ürün, fiyat ve müşteri her
-          firmada başka olduğu için pakete girmiyor. Yedek dosyası yerine kod
-          olmasının sebebi de bu: yedek alındığı günün şemasına aittir, bir
-          sonraki sürümde yüklenmez — paket ise göçlerle birlikte güncellenir.
-        </p>
-      </main>
-    </div>
+    <main className="mx-auto max-w-4xl">
+      <PageHeader
+        title="Kurulum"
+        subtitle="Yeni bir kurulumun sırası — her adımın durumu canlı okunuyor"
+      />
+      <SetupWizard status={status} packs={packs} />
+      <Note>
+        Sıra rastgele değil: kategorisiz ürün açılmaz, fiyatsız varyant sipariş
+        edilemez, grubu olmayan firma liste fiyatı görür. Hiçbir yerde
+        &ldquo;tamamlandı&rdquo; kutucuğu tutulmuyor — tutulsaydı son firmayı
+        silen kişiye sistem hâlâ &ldquo;hazır&rdquo; derdi. Paket, bu iskeletin
+        tekrar eden kısmını kurar; ürün, fiyat ve müşteri her firmada başka
+        olduğu için pakete girmiyor. Yedek dosyası yerine kod olmasının sebebi
+        de bu: yedek alındığı günün şemasına aittir, bir sonraki sürümde
+        yüklenmez — paket ise göçlerle birlikte güncellenir.
+      </Note>
+    </main>
   );
 }

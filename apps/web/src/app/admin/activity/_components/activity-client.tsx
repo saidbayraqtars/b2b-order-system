@@ -5,9 +5,15 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ActivityEntry, ActivityKind, CompanyRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
-import { LoadingState } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  type BadgeTone,
+} from "@/components/ui";
 import { formatTRY } from "@/lib/format";
-import { Label, Select } from "@/components/form";
+import { ErrorLine, Label, Select } from "@/components/form";
+import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<ActivityKind, string> = {
   ORDER_STATUS: "Sipariş",
@@ -15,14 +21,19 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   AUDIT: "Sistem",
 };
 
-const KIND_CLASS: Record<ActivityKind, string> = {
-  ORDER_STATUS:
-    "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
-  LEDGER:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  AUDIT:
-    "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
+// Üç kaynağın künyesi. Renk burada da işaret: para hareketi yeşil, sistem
+// kaydı nötr, sipariş ise akışın kendisi — vurgulanmıyor, çünkü satırların
+// çoğu zaten sipariş.
+const KIND_TONE: Record<ActivityKind, BadgeTone> = {
+  ORDER_STATUS: "info",
+  LEDGER: "success",
+  AUDIT: "neutral",
 };
+
+// 50, 100 değil: yüz satır sayfayı altı bin pikselin ötesine taşıyor ve
+// altındaki dipnot hiç görünmüyordu. Akışta gezinmenin yolu kaydırmak değil,
+// üstteki iki süzgeç.
+const LIMIT = 50;
 
 function when(iso: string): string {
   return new Date(iso).toLocaleString("tr-TR", {
@@ -50,7 +61,7 @@ export function ActivityClient() {
     queryKey: ["activity", companyId],
     queryFn: () =>
       apiGet<{ entries: ActivityEntry[] }>(
-        `/api/activity?limit=100${companyId ? `&companyId=${companyId}` : ""}`,
+        `/api/activity?limit=${LIMIT}${companyId ? `&companyId=${companyId}` : ""}`,
       ),
     refetchInterval: 30_000,
   });
@@ -61,7 +72,7 @@ export function ActivityClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-sunken p-3">
         <label>
           <Label>Firma</Label>
           <Select
@@ -95,26 +106,20 @@ export function ActivityClient() {
       {activity.isLoading ? (
         <LoadingState />
       ) : activity.isError ? (
-        <p className="text-sm text-red-600">
-          {(activity.error as Error).message}
-        </p>
+        <ErrorLine error={activity.error} />
       ) : entries.length === 0 ? (
-        <p className="text-sm text-neutral-500">Bu aralıkta hareket yok.</p>
+        <EmptyState label="Bu aralıkta hareket yok." />
       ) : (
-        <ol className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+        <ol className="divide-y divide-line rounded-lg border border-line bg-panel">
           {entries.map((e) => (
             <li
               key={e.id}
-              className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-sm"
+              className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-body-sm text-ink"
             >
-              <span className="w-28 shrink-0 tabular-nums text-neutral-500">
+              <span className="w-28 shrink-0 tabular-nums text-ink-faint">
                 {when(e.at)}
               </span>
-              <span
-                className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${KIND_CLASS[e.kind]}`}
-              >
-                {KIND_LABEL[e.kind]}
-              </span>
+              <Badge tone={KIND_TONE[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
               <span className="min-w-0 flex-1">
                 {e.href ? (
                   <Link href={e.href} className="underline">
@@ -124,19 +129,19 @@ export function ActivityClient() {
                   e.summary
                 )}
                 {e.companyName && (
-                  <span className="text-neutral-500"> · {e.companyName}</span>
+                  <span className="text-ink-muted"> · {e.companyName}</span>
                 )}
                 {e.actorName && (
-                  <span className="text-neutral-400"> · {e.actorName}</span>
+                  <span className="text-ink-faint"> · {e.actorName}</span>
                 )}
               </span>
+              {/* Eksi bakiye hareketi = tahsilat, borcu azaltan tek şey. */}
               {e.amount && (
                 <span
-                  className={`shrink-0 tabular-nums font-medium ${
-                    e.amount.startsWith("-")
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : ""
-                  }`}
+                  className={cn(
+                    "shrink-0 font-medium tabular-nums",
+                    e.amount.startsWith("-") && "text-positive",
+                  )}
                 >
                   {formatTRY(e.amount)}
                 </span>
@@ -144,6 +149,13 @@ export function ActivityClient() {
             </li>
           ))}
         </ol>
+      )}
+
+      {entries.length > 0 && (
+        <p className="text-xs text-ink-faint">
+          Son {entries.length} hareket gösteriliyor. Daha eskisi için firma ya
+          da tür süzgecini daraltın.
+        </p>
       )}
     </div>
   );
