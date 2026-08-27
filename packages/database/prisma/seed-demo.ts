@@ -492,6 +492,71 @@ async function seedCatalogue(sourcePath: string): Promise<void> {
 }
 
 // ─────────────────────────────────────────────
+// BAYİ BAŞVURULARI
+// ─────────────────────────────────────────────
+
+/**
+ * Karar bekleyen birkaç başvuru.
+ *
+ * Gösterimde boş bir kuyruk hiçbir şey anlatmıyor: onay penceresi, kredi
+ * limiti alanı ve "onaylayınca ne oluyor" akışı ancak üzerinde bir satır varken
+ * görülebiliyor. Hepsi `PENDING` — onaylanmışını tohumlamak, olmayan bir firma
+ * ve hesaba işaret eden bir başvuru satırı bırakırdı.
+ */
+const APPLICATIONS = [
+  {
+    companyName: "Yıldız Market Gıda San. Tic. Ltd. Şti.",
+    taxNumber: "3450981276",
+    taxOffice: "Ataşehir",
+    city: "İstanbul",
+    district: "Ataşehir",
+    contactName: "Emre Doğan",
+    email: "emre.dogan@yildizmarket.local",
+    phone: "0532 411 22 33",
+    note: "Anadolu yakasında 4 şubemiz var, şarküteri ve süt grubuyla ilgileniyoruz.",
+  },
+  {
+    companyName: "Deniz Toptan Gıda",
+    taxNumber: "7789012345",
+    taxOffice: "Konak",
+    city: "İzmir",
+    district: "Konak",
+    contactName: "Selin Kaya",
+    email: "selin@deniztoptan.local",
+    phone: "0555 908 17 40",
+    note: "Ege bölgesinde bakkal ve büfelere dağıtım yapıyoruz.",
+  },
+  {
+    companyName: "Anadolu Gıda Pazarlama",
+    city: "Ankara",
+    contactName: "Hakan Şen",
+    email: "hakan.sen@anadolugida.local",
+    phone: "0312 440 55 66",
+    note: null,
+  },
+];
+
+async function seedApplications(): Promise<void> {
+  // Yeniden tohumlanabilir olsun: aynı e-postayla ikinci bir satır açmıyoruz.
+  await prisma.dealerApplication.deleteMany({
+    where: { email: { in: APPLICATIONS.map((a) => a.email) } },
+  });
+
+  await prisma.dealerApplication.createMany({
+    data: APPLICATIONS.map((a, i) => ({
+      ...a,
+      taxNumber: a.taxNumber ?? null,
+      taxOffice: a.taxOffice ?? null,
+      district: a.district ?? null,
+      // Kuyruk hep aynı sırada dursun diye tarihler geriye doğru dağıtılıyor.
+      createdAt: new Date(Date.now() - (i + 1) * 26 * 60 * 60_000),
+    })),
+  });
+
+  console.log(`✓ ${APPLICATIONS.length} bayi başvurusu (karar bekliyor)`);
+}
+
+// ─────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const sourcePath = path.resolve(
@@ -500,6 +565,7 @@ async function main(): Promise<void> {
 
   await seedUsers();
   await seedCatalogue(sourcePath);
+  await seedApplications();
 
   console.log(`\nTüm gösterim hesaplarının şifresi: ${DEMO_PASSWORD}`);
   console.log("Uyarı: bu şifre uygulamanın kendi kuralını (8+ karakter, harf+rakam) karşılamaz —");

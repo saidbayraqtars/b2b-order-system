@@ -113,8 +113,51 @@ body {
   animation-play-state: paused;
 }
 
+/* ── Giriş sahnesi ────────────────────────────────────────────────────────
+   `/login`, `/kayit` ve `/sifremi-unuttum` ekranlarının sol sütunu. Yalnızca
+   Tailwind ile yazılamayan iki şey burada: yinelenen ızgara deseni ve
+   kendini çizen SVG yolunun dasharray'i. Ritim ve süreler
+   `tailwind.config.ts`teki keyframe'lerde. */
+
+/* Teknik çizim kâğıdı: 32 piksellik ince kareler. Desen `background-image`
+   olduğu için tek bir elemana biniyor; kenarlarda maskeyle eriyor, böylece
+   ekranın dört kenarında kesilmiş bir tablo gibi durmuyor. */
+.auth-grid {
+  background-image:
+    linear-gradient(to right, rgb(var(--line) / 0.7) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--line) / 0.7) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 30%, transparent 100%);
+}
+
+/* Kendini çizen çizgi. `pathLength="1"` ile birlikte kullanılır: yolun
+   gerçek uzunluğu ne olursa olsun ilerleme 0→1 aralığında okunur. Hareket
+   kapatıldığında `animation: none` dashoffset'i 0'a bırakır ve çizgi olduğu
+   gibi görünür — yani kapalıyken sahne eksik değil, hareketsiz olur. */
+.auth-draw {
+  stroke-dasharray: 1;
+}
+
+/* Halka ve koli, kendi merkezleri etrafında ölçekleniyor. `fill-box` olmadan
+   SVG'de dönüşümün merkezi tuvalin sol üstü sayılır ve öğe sahneden dışarı
+   fırlar. */
+.auth-origin {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
     animation: none !important;
+  }
+
+  /* Sahne duruyor ama kaybolmuyor: `fade-up` ve `draw` "both" dolgusuyla
+     çalıştığı için animasyonu kaldırmak öğeyi son hâline değil, kendi
+     stiline döndürür — görünür ve tam. */
+  [data-scene] *,
+  [data-scene] {
+    animation: none !important;
+    transition: none !important;
   }
 }

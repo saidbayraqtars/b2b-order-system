@@ -227,6 +227,9 @@ model User {
   deliveries            Shipment[]           @relation("ShipmentCourier")
   returnsRequested      ReturnRequest[]      @relation("ReturnRequestedBy")
   returnsDecided        ReturnRequest[]      @relation("ReturnDecidedBy")
+  applicationsDecided   DealerApplication[]  @relation("DealerApplicationDecidedBy")
+  /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
+  originApplication     DealerApplication?   @relation("DealerApplicationUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -324,6 +327,8 @@ model Company {
   paymentIntents       PaymentIntent[]
   visitRequests        VisitRequest[]
   returnRequests       ReturnRequest[]
+  /// Bu firmayı doğuran bayi başvurusu (varsa). Elle açılan firmalarda boş.
+  originApplication    DealerApplication?    @relation("DealerApplicationCompany")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2357,6 +2362,13 @@ enum AuditAction {
   COMPANY_CREATED
   COMPANY_UPDATED
   COMPANY_DELETED
+
+  /// Bayi başvurusu. Gönderim kimliksiz bir olay (actor yok, e-posta
+  /// başvuranın yazdığı adres) — bu yüzden ayrı bir eylem: giriş denemesi gibi
+  /// dışarıdan gelen, henüz kimsenin doğrulanmadığı bir istek.
+  DEALER_APPLICATION_SUBMITTED
+  DEALER_APPLICATION_APPROVED
+  DEALER_APPLICATION_REJECTED
   MEDIA_UPLOADED // a file landed on the server's disk
   AUDIT_PURGED // old trail entries deleted under the retention policy
   AUDIT_EXPORTED // the trail was taken off the system as a file
@@ -2532,4 +2544,73 @@ model PushDevice {
   createdAt  DateTime @default(now())
 
   @@index([userId, disabledAt])
+}
+
+// ─────────────────────────────────────────────
+// BAYİ BAŞVURUSU
+// ─────────────────────────────────────────────
+
+/// Ziyaretçinin `/kayit` formundan gönderdiği talep.
+///
+/// Neden ayrı bir tablo, neden doğrudan `Company` + `User` değil: burada açılan
+/// her müşteri bir caridir, cariye kredi limiti ve vade tanımlanır, siparişi
+/// borç doğurur. Kendi kendine açılabilen bir cari, kimsenin onaylamadığı bir
+/// alacaktır. Bu satırın hiçbir yetkisi yok — kimseyi içeri almaz, hiçbir
+/// ekranı açmaz; yalnızca "şu firma başvurdu" der.
+///
+/// Karar verildiğinde satır **silinmiyor, güncelleniyor**. Reddedilen başvuru
+/// da duruyor: "biz başvurmuştuk" tartışmasının tek cevabı o satır ve
+/// `decisionNote`.
+model DealerApplication {
+  id String @id @default(cuid())
+
+  companyName String
+  /// TR: 10 haneli vergi no ya da 11 haneli TC kimlik. Tekil **değil**:
+  /// başvuru bir iddiadır, doğrulanmış bir kayıt değil. Aynı vergi numarasıyla
+  /// ikinci kez başvurulabilir (ilki reddedilmiş olabilir); çakışma denetimi
+  /// onay anında, gerçek `Company.taxNumber` tekilliğiyle yapılır.
+  taxNumber   String?
+  taxOffice   String?
+  city        String
+  district    String?
+
+  contactName String
+  email       String
+  phone       String
+  /// Başvuranın serbest notu: hangi ürün grubu, kaç şube, kimden duydu.
+  note        String?
+
+  status       DealerApplicationStatus @default(PENDING)
+  /// Onayda opsiyonel iç not, rette zorunlu gerekçe.
+  decisionNote String?
+
+  decidedById String?
+  decidedBy   User?     @relation("DealerApplicationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+
+  /// Onayda açılan kayıtlar. Tekil: bir başvuru bir firma ve bir yönetici
+  /// hesabı doğurur, ikinci kez onaylanamaz — bu iki alanın doluluğu
+  /// "onay zaten uygulandı" nın kanıtı.
+  createdCompanyId String?  @unique
+  createdCompany   Company? @relation("DealerApplicationCompany", fields: [createdCompanyId], references: [id], onDelete: SetNull)
+  createdUserId    String?  @unique
+  createdUser      User?    @relation("DealerApplicationUser", fields: [createdUserId], references: [id], onDelete: SetNull)
+
+  /// Formun geldiği adres ve tarayıcı. Denetim kaydında da var; burada
+  /// duruyor çünkü aynı adresten gelen başvuru yağmurunu görmenin en kısa
+  /// yolu listenin kendisi.
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+enum DealerApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

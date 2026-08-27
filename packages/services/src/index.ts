@@ -49,6 +49,7 @@ export * from "./push";
 export * from "./cart";
 export * from "./storage";
 export * from "./rma";
+export * from "./dealer-application";
 export * from "./media";
 export * from "./image";
 export * from "./rate-limit";

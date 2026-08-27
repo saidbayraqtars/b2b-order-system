@@ -22,4 +22,5 @@ export * from "./field-ops";
 export * from "./label";
 export * from "./cheque";
 export * from "./rma";
+export * from "./dealer-application";
 export * from "./currency";

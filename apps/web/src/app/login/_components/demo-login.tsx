@@ -150,16 +150,20 @@ export function DemoLogin() {
   }, [requested]);
 
   return (
-    <div className="mt-6 w-full max-w-sm rounded-xl border border-dashed border-amber-400/70 bg-amber-50/60 p-4 dark:border-amber-500/40 dark:bg-amber-950/20">
-      <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+    // Kartın içinde, formun altında ayrı bir blok. Kesik kenar ve kehribar ton
+    // bilerek: bu blok arayüzün parçası değil, geliştirme kolaylığı — üretimde
+    // hiç çizilmediği için burada tasarım diline uymak zorunda da değil, ama
+    // "buraya ait değil" demesi gerekiyor.
+    <div className="mt-5 rounded border border-dashed border-caution/50 bg-caution/[0.06] p-3">
+      <p className="tech-label text-caution">
         Gösterim girişi · yalnızca geliştirme
       </p>
-      <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/70">
+      <p className="mt-1 text-xs text-ink-muted">
         Tek tıkla gir. Üretim derlemesinde bu blok hiç çizilmez.
       </p>
 
       {error && (
-        <p className="mt-2 rounded-md bg-red-100 px-2 py-1 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+        <p className="mt-2 rounded bg-critical/10 px-2 py-1 text-xs text-critical">
           {error}
         </p>
       )}
@@ -171,17 +175,17 @@ export function DemoLogin() {
             type="button"
             onClick={() => void enter(account)}
             disabled={busy !== null}
-            className="flex items-center justify-between gap-2 rounded-md border border-amber-300/60 bg-white px-2.5 py-1.5 text-left text-sm text-neutral-800 transition hover:border-amber-500 hover:bg-amber-100/60 disabled:opacity-50 dark:border-amber-500/30 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-amber-950/40"
+            className="flex items-center justify-between gap-2 rounded border border-line bg-panel px-2.5 py-1.5 text-left text-body-sm text-ink transition-colors hover:border-line-strong hover:bg-subtle disabled:opacity-50"
           >
             <span className="min-w-0">
               <span className="block truncate font-medium">
                 {account.label}
               </span>
-              <span className="block truncate text-xs text-neutral-500">
+              <span className="block truncate text-xs text-ink-faint">
                 {account.role} · {account.landing}
               </span>
             </span>
-            <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">
+            <span className="shrink-0 text-xs font-medium text-ink-muted">
               {busy === account.key ? "…" : "Gir"}
             </span>
           </button>

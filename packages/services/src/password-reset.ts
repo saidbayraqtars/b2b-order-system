@@ -103,6 +103,45 @@ export async function requestPasswordReset(
 }
 
 /**
+ * Mint a set-password link for an account **without sending anything.**
+ *
+ * `requestPasswordReset` above answers "kullanıcı şifresini unuttu" and owns
+ * its own mail, its own throttle and its own silence about whether the address
+ * exists. Onaylanan bir bayi başvurusu bambaşka bir olay: kullanıcı hiçbir şey
+ * istememiştir, hesabı yeni açılmıştır ve gidecek e-posta "hoş geldiniz"
+ * metnidir. O akışa "şifre sıfırlama" e-postası göndermek, başvurusunun
+ * onaylandığını bilmeyen kişiye tek başına anlamsız bir bağlantı yollamak
+ * olurdu.
+ *
+ * Bilerek paylaşılan şey **jeton makinesi**: yalnızca SHA-256'sı saklanır,
+ * tek kullanımlıktır, süresi vardır ve yenisi eskisini iptal eder. Bunu ikinci
+ * kez yazmak, o üç kuralın iki yerde ayrışması demekti.
+ *
+ * Varsayılan süre burada 48 saat, "unuttum" akışındaki 60 dakika değil: onayı
+ * veren kişi ile e-postayı okuyan kişi aynı saatte masasında değil.
+ */
+export async function issueSetPasswordLink(
+  userId: string,
+  ttlMinutes = 48 * 60,
+): Promise<{ link: string; ttlMinutes: number }> {
+  await prisma.passwordResetToken.updateMany({
+    where: { userId, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+
+  const token = randomBytes(32).toString("hex");
+  await prisma.passwordResetToken.create({
+    data: {
+      userId,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
+    },
+  });
+
+  return { link: appUrl(`/sifremi-unuttum/yenile?token=${token}`), ttlMinutes };
+}
+
+/**
  * Finish a reset.
  *
  * Succeeding revokes every session the account had (tokenVersion bump) and

@@ -196,8 +196,11 @@ async function main() {
       }
 
       for (const [as, screens] of byAccount) {
-        const account = ACCOUNTS[as];
-        if (!account) throw new Error(`Tanımsız hesap: ${as}`);
+        // "anon": giriş yapılmadan çekilen ekranlar — giriş, bayi başvurusu,
+        // şifre sıfırlama. Bunlar için oturum açmak sayfayı hiç göstermezdi:
+        // giriş yapmış bir tarayıcı `/login`e uğramaz, uygulamaya döner.
+        const account = as === "anon" ? null : ACCOUNTS[as];
+        if (as !== "anon" && !account) throw new Error(`Tanımsız hesap: ${as}`);
 
         // Her hesap kendi yalıtılmış bağlamında: sekmeler varsayılan bağlamda
         // çerez paylaşıyor ve ikinci hesabın `/login` isteği, ilk hesabın hâlâ
@@ -207,7 +210,7 @@ async function main() {
         page.setDefaultNavigationTimeout(120_000);
         await page.setViewport(VIEWPORT);
         await setTheme(page, theme);
-        await signIn(page, account);
+        if (account) await signIn(page, account);
 
         for (const screen of screens) {
           const path =

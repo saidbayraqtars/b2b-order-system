@@ -40,6 +40,7 @@ export const PermissionEnum = z.enum([
   "companies.manage",
   "users.manage",
   "groups.manage",
+  "applications.manage",
   // sipariş
   "orders.view",
   "orders.create",
@@ -91,6 +92,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "companies.manage": "Firmaları yönet",
   "users.manage": "Kullanıcıları yönet",
   "groups.manage": "Müşteri gruplarını yönet",
+  "applications.manage": "Bayi başvurularını karara bağla",
   "orders.view": "Siparişleri görüntüle",
   "orders.create": "Sipariş gir",
   "orders.approve": "Sipariş ve kredi onayı",
@@ -132,6 +134,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "stock.manage":
     "Sayım, fire/numune girişi ve depolar arası aktarım kaydı açar — eldeki adedi değiştirir",
   "users.manage": "Hesap açar, yetki verir, şifre sıfırlar",
+  "applications.manage":
+    "Onaylayınca firma kartı ve yönetici hesabı açılır — kredi limitini de burada belirler",
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
@@ -171,7 +175,13 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
   },
   {
     title: "Müşteriler",
-    permissions: ["companies.view", "companies.manage", "groups.manage", "users.manage"],
+    permissions: [
+      "companies.view",
+      "companies.manage",
+      "groups.manage",
+      "users.manage",
+      "applications.manage",
+    ],
   },
   {
     title: "Sipariş",
@@ -389,6 +399,10 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // kimi yönetebileceğini servis ayrıca kısıtlıyor (kendi firması, iki rol).
   "users.manage": ["SELLER", "DEALER"],
   "groups.manage": ["SELLER"],
+  // Başvuruyu karara bağlamak firma ve hesap **açmak** demek. Bir bayi ya da
+  // saha hesabına verilseydi, kendi müşterisini kendi limitiyle sisteme
+  // sokabilirdi — `companies.manage` neden yalnızca satıcıdaysa bu da o yüzden.
+  "applications.manage": ["SELLER"],
 
   // Kurye taşıdığı siparişin içeriğini görmek zorunda — neyi teslim ettiğini
   // bilmeden imza alamaz. Gördüğü satırlar servis tarafında kendi

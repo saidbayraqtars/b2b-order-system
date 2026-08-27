@@ -24,6 +24,14 @@ export default auth((req) => {
     return NextResponse.redirect(new URL(defaultRouteForRole(user.role), nextUrl));
   }
 
+  // Aynısı bayilik başvurusu için: hesabı olan birinin başvuru formunu
+  // doldurması bir çıkmaz — sunucu, kayıtlı bir adresten gelen başvuruyu
+  // sessizce yok sayıyor (bkz. dealer-application.ts), yani kişi formu
+  // doldurup "alındı" ekranını görür ve hiçbir şey olmaz.
+  if (path === "/kayit" && isLoggedIn && user) {
+    return NextResponse.redirect(new URL(defaultRouteForRole(user.role), nextUrl));
+  }
+
   // Gate role-restricted areas.
   if (!canAccess(path, user?.role)) {
     if (!isLoggedIn) {

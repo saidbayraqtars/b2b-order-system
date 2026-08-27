@@ -2,8 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetPasswordSchema } from "@repo/types";
+import { Stagger } from "@/components/auth-shell";
+import { Button, ErrorLine, Label, TextInput } from "@/components/form";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -17,12 +20,15 @@ export function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-        Bağlantı eksik ya da bozuk.{" "}
-        <Link href="/sifremi-unuttum" className="underline">
-          Yeni bağlantı isteyin
-        </Link>
-        .
+      <p className="flex items-start gap-2 rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>
+          Bağlantı eksik ya da bozuk.{" "}
+          <Link href="/sifremi-unuttum" className="underline underline-offset-4">
+            Yeni bağlantı isteyin
+          </Link>
+          .
+        </span>
       </p>
     );
   }
@@ -63,41 +69,52 @@ export function ResetPasswordForm() {
 
   if (done) {
     return (
-      <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-        Şifreniz güncellendi. Giriş ekranına yönlendiriliyorsunuz…
-      </p>
+      <div className="animate-fade-up text-center">
+        <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-positive/30 bg-positive/10">
+          <CheckCircle2 className="h-5 w-5 text-positive" />
+        </span>
+        <h2 className="mt-4 text-headline-sm text-ink">Şifreniz güncellendi</h2>
+        <p className="mt-2 text-body-sm text-ink-muted">
+          Giriş ekranına yönlendiriliyorsunuz…
+        </p>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <input
-        type="password"
-        placeholder="Yeni şifre"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        autoComplete="new-password"
-      />
-      <input
-        type="password"
-        placeholder="Yeni şifre (tekrar)"
-        value={confirm}
-        onChange={(e) => setConfirm(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        autoComplete="new-password"
-      />
-      <p className="text-xs text-neutral-500">
-        En az 8 karakter, bir harf ve bir rakam içermeli.
-      </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-      >
-        {loading ? "Kaydediliyor…" : "Şifreyi güncelle"}
-      </button>
+      <Stagger index={0}>
+        <Label htmlFor="password">Yeni şifre</Label>
+        <TextInput
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+          autoFocus
+        />
+      </Stagger>
+      <Stagger index={1}>
+        <Label htmlFor="confirm">Yeni şifre (tekrar)</Label>
+        <TextInput
+          id="confirm"
+          type="password"
+          placeholder="••••••••"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          autoComplete="new-password"
+        />
+        <p className="mt-1.5 text-xs text-ink-faint">
+          En az 8 karakter, bir harf ve bir rakam içermeli.
+        </p>
+      </Stagger>
+      <ErrorLine error={error ? new Error(error) : null} />
+      <Stagger index={2} className="mt-1">
+        <Button type="submit" loading={loading} className="w-full">
+          {loading ? "Kaydediliyor…" : "Şifreyi güncelle"}
+        </Button>
+      </Stagger>
     </form>
   );
 }

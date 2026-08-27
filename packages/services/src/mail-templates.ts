@@ -168,3 +168,125 @@ export function invoiceIssuedMail(params: {
     ),
   };
 }
+
+// ─────────────────────────────────────────────
+// BAYİ BAŞVURUSU
+// ─────────────────────────────────────────────
+
+/**
+ * "Başvurunuz alındı" — formu dolduran kişiye giden alındı bilgisi.
+ *
+ * Bilerek hiçbir söz vermiyor ("en kısa sürede", "onaylanacaktır" yok): bu
+ * e-posta bir kabul değil, bir makbuz. Başvuranın elinde, aradığında
+ * söyleyeceği bir kayıt kalsın diye ünvan ve tarih tekrarlanıyor.
+ */
+export function dealerApplicationReceivedMail(params: {
+  contactName: string;
+  companyName: string;
+}): Omit<MailMessage, "to"> {
+  const subject = "Bayi başvurunuz alındı";
+  const text = [
+    `Merhaba ${params.contactName},`,
+    "",
+    `${params.companyName} adına yaptığınız bayilik başvurusu tarafımıza ulaştı.`,
+    "Başvurunuz değerlendirildiğinde sonucunu bu adrese bildireceğiz.",
+    "",
+    "Bu başvuruyu siz yapmadıysanız bu e-postayı yok sayabilirsiniz; başvuru",
+    "tek başına hiçbir hesap açmaz.",
+    "",
+    SIGNATURE,
+  ].join("\n");
+
+  return {
+    subject,
+    text,
+    html: layout(
+      subject,
+      `<p>Merhaba ${params.contactName},</p>
+       <p><strong>${params.companyName}</strong> adına yaptığınız bayilik başvurusu
+       tarafımıza ulaştı. Değerlendirildiğinde sonucunu bu adrese bildireceğiz.</p>
+       <p style="color:#737373">Bu başvuruyu siz yapmadıysanız bu e-postayı yok
+       sayabilirsiniz; başvuru tek başına hiçbir hesap açmaz.</p>`,
+    ),
+  };
+}
+
+/**
+ * Onay: firma kartı ve yönetici hesabı açıldı, şifre belirlenecek.
+ *
+ * Şifre e-postada **yok** ve hiç üretilmiyor. Hesap rastgele, kimsenin
+ * bilmediği bir özetle açılıyor; içeri giren tek yol bu bağlantı. Postaya
+ * yazılmış bir şifre, kutusu yıllarca açık duran kalıcı bir anahtardır.
+ */
+export function dealerApplicationApprovedMail(params: {
+  contactName: string;
+  companyName: string;
+  link: string;
+  ttlHours: number;
+}): Omit<MailMessage, "to"> {
+  const subject = "Bayi başvurunuz onaylandı";
+  const text = [
+    `Merhaba ${params.contactName},`,
+    "",
+    `${params.companyName} için bayilik başvurunuz onaylandı ve portal hesabınız açıldı.`,
+    "",
+    "Şifrenizi belirlemek için aşağıdaki bağlantıyı açın:",
+    params.link,
+    "",
+    `Bağlantı ${params.ttlHours} saat geçerli ve yalnızca bir kez kullanılabilir.`,
+    "Süresi dolarsa giriş ekranındaki \"Şifremi unuttum\" ile yenisini isteyebilirsiniz.",
+    "",
+    SIGNATURE,
+  ].join("\n");
+
+  return {
+    subject,
+    text,
+    html: layout(
+      subject,
+      `<p>Merhaba ${params.contactName},</p>
+       <p><strong>${params.companyName}</strong> için bayilik başvurunuz onaylandı ve
+       portal hesabınız açıldı. Giriş yapabilmek için önce şifrenizi belirleyin.</p>
+       <p style="color:#737373">Bağlantı <strong>${params.ttlHours} saat</strong> geçerli
+       ve yalnızca bir kez kullanılabilir. Süresi dolarsa giriş ekranındaki
+       “Şifremi unuttum” ile yenisini isteyebilirsiniz.</p>`,
+      { label: "Şifremi belirle", href: params.link },
+    ),
+  };
+}
+
+/**
+ * Ret.
+ *
+ * Gerekçe e-postaya **girmiyor**: karar notu iç bir kayıt ve çoğu zaman
+ * "cari riski", "bölge doluluğu" gibi müşteriye söylenmeyecek bir cümle.
+ * Başvurana giden şey kararın kendisi ve konuşulacak bir kapı.
+ */
+export function dealerApplicationRejectedMail(params: {
+  contactName: string;
+  companyName: string;
+}): Omit<MailMessage, "to"> {
+  const subject = "Bayi başvurunuz hakkında";
+  const text = [
+    `Merhaba ${params.contactName},`,
+    "",
+    `${params.companyName} adına yaptığınız bayilik başvurusu şu aşamada olumlu`,
+    "sonuçlanmadı. İlginiz için teşekkür ederiz.",
+    "",
+    "Koşullar değiştiğinde yeniden başvurabilirsiniz.",
+    "",
+    SIGNATURE,
+  ].join("\n");
+
+  return {
+    subject,
+    text,
+    html: layout(
+      subject,
+      `<p>Merhaba ${params.contactName},</p>
+       <p><strong>${params.companyName}</strong> adına yaptığınız bayilik başvurusu şu
+       aşamada olumlu sonuçlanmadı. İlginiz için teşekkür ederiz.</p>
+       <p style="color:#737373">Koşullar değiştiğinde yeniden başvurabilirsiniz.</p>`,
+    ),
+  };
+}

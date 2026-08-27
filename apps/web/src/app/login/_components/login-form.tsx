@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginSchema } from "@repo/types";
 import { Button, ErrorLine, Label, TextInput } from "@/components/form";
+import { Stagger } from "@/components/auth-shell";
 
 /**
  * Why the page guard sent the user back here. A session can die between two
@@ -86,12 +87,12 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {reason && (
-        <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+        <p className="flex items-start gap-2 rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {reason}
         </p>
       )}
-      <div>
+      <Stagger index={0}>
         <Label htmlFor="email">E-posta</Label>
         <TextInput
           id="email"
@@ -102,8 +103,8 @@ export function LoginForm() {
           autoComplete="email"
           autoFocus
         />
-      </div>
-      <div>
+      </Stagger>
+      <Stagger index={1}>
         <Label htmlFor="password">Şifre</Label>
         <TextInput
           id="password"
@@ -113,9 +114,12 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
         />
-      </div>
+      </Stagger>
       {needsTotp && (
-        <div>
+        // Gecikmesiz beliriyor: bu alan sayfa açılırken değil, kullanıcı
+        // gönderdikten sonra çıkıyor. Sıraya sokulmuş bir açılış, beklenen
+        // kutuyu geciktirmekten başka bir işe yaramazdı.
+        <div className="animate-fade-in">
           <Label htmlFor="totp">Doğrulama kodu</Label>
           <TextInput
             id="totp"
@@ -128,26 +132,30 @@ export function LoginForm() {
             autoComplete="one-time-code"
             autoFocus
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1.5 text-xs text-ink-faint">
             Authenticator uygulamanızdaki altı haneli kodu girin. Telefonunuza
             erişemiyorsanız yedek kodlarınızdan birini yazabilirsiniz.
           </p>
         </div>
       )}
       <ErrorLine error={error ? new Error(error) : null} />
-      <Button type="submit" loading={loading} className="mt-1 w-full">
-        {loading
-          ? "Giriş yapılıyor…"
-          : needsTotp
-            ? "Doğrula ve giriş yap"
-            : "Giriş yap"}
-      </Button>
-      <Link
-        href="/sifremi-unuttum"
-        className="text-center text-sm text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400"
-      >
-        Şifremi unuttum
-      </Link>
+      <Stagger index={2} className="mt-1">
+        <Button type="submit" loading={loading} className="w-full">
+          {loading
+            ? "Giriş yapılıyor…"
+            : needsTotp
+              ? "Doğrula ve giriş yap"
+              : "Giriş yap"}
+        </Button>
+      </Stagger>
+      <Stagger index={3}>
+        <Link
+          href="/sifremi-unuttum"
+          className="block text-center text-body-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          Şifremi unuttum
+        </Link>
+      </Stagger>
     </form>
   );
 }

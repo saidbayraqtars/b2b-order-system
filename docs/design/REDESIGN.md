@@ -234,6 +234,75 @@ ekran. Adım 3'ten önce de böyleydi. Düzeltmek rolü kabukla eşlemeyi gerekt
 (süper admin → `AdminShell`, plasiyer → `RepNav`, alıcı → `PortalNav` + firma
 bağlamı); ayrı bir karar olduğu için buraya not düşüldü.
 
+### ✔ Adım 8 — Giriş, kayıt ve şifre (sıradan atlandı, bitti)
+
+Sıradaki adım 4'tü; giriş ekranı öne alındı çünkü kurulumun ilk gördüğü ekran
+o ve tasarım dili değişeli beri eski indigo künyeyle duruyordu.
+
+**Ortak kabuk.** `src/components/auth-shell.tsx` — solda sahne, sağda form.
+`SidebarShell` burada kullanılamaz: kenar çubuğu bir gezinme aracı ve gezinecek
+yeri olmayan ziyaretçiye boş bir menü göstermek anlamsız. Ama kural aynı kaldı,
+dört ekran (`/login`, `/kayit`, `/sifremi-unuttum`, `/sifremi-unuttum/yenile`)
+tek kabuktan çiziliyor. Öncesinde ikisi ayrı ayrı yazılmıştı: biri `max-w-sm`
+ortalanmış bir kutu, diğeri sola dayalı bir sütun.
+
+**Sahne** (`auth-stage.tsx`): kayan teknik çizim ızgarası, kendini çizen
+izometrik koli yığını, depodan bayilere akan paketler, ters yönde dönen iki
+ölçek halkası, üstten geçen tarama ve sahneyle aynı sayaçtan beslenen üç
+adımlık liste. Tasarım dilinin dışına çıkılmadı — tek renk ailesi gri, hareket
+eden her şey ya bir çizgi ya bir nokta; hiçbir yerde degrade bir marka rengi
+yok. Anlattığı şey de gerçek: depodan çıkan mal, yoldaki sipariş, ucundaki bayi.
+
+- Keyframe'ler `tailwind.config.ts`te (`fade-up`, `draw`, `float`,
+  `grid-drift`, `scan`, `ring-pulse`, `caret`, `hairline`, `spin-slow`),
+  Tailwind ile yazılamayan iki şey (`auth-grid` deseni, `auth-draw` dasharray)
+  `globals.css`te.
+- **Kendini çizen çizgide `pathLength="1"`.** Yolun gerçek uzunluğu ne olursa
+  olsun ilerleme 0→1 aralığında okunuyor; her parçaya ayrı `dasharray`
+  hesaplamak gerekmiyor ve hareket kapatıldığında `animation: none` dashoffset'i
+  0'a bırakıyor — yani kapalıyken sahne **eksik değil, hareketsiz**.
+- **Akan paketler SMIL** (`animateMotion`), CSS `offset-path` değil: `offset-path`
+  Safari'de uzun süre yoktu ve bu, kimsenin tarayıcısını seçemediğimiz tek ekran.
+  SMIL'i CSS ile durduramadığınız için `prefers-reduced-motion` açıkken o düğüm
+  hiç basılmıyor (`useReducedMotion`).
+- **SVG'de `transform-box: fill-box`** olmadan dönüşümün merkezi tuvalin sol üstü
+  sayılıyor ve öğe sahneden dışarı fırlıyor — `.auth-origin` bu yüzden var.
+
+**Kayıt = bayilik başvurusu.** `/kayit` bir hesap açmıyor, bir talep gönderiyor.
+Gerekçe ticari: burada açılan her müşteri bir caridir, cariye kredi limiti ve
+vade tanımlanır, siparişi borç doğurur — kendi kendine açılabilen bir cari,
+kimsenin onaylamadığı bir alacaktır. Akış iki belgeye ayrıldı:
+
+1. `DealerApplication` — formun yazdığı satır. Hiçbir yetkisi yok, hiçbir
+   ekranı açmaz, kimseyi içeri almaz.
+2. Onayda `Company` + `COMPANY_ADMIN` kullanıcı — tek işlemde. Ayrı ayrı
+   yazılsaydı araya düşen bir hata, kullanıcısı olmayan bir cari bırakırdı.
+
+- **Şifre üretilmiyor.** Hesap rastgele, kimsenin bilmediği bir özetle açılıyor;
+  içeri giren tek yol 48 saatlik tek kullanımlık bağlantı
+  (`issueSetPasswordLink`). Postaya yazılmış bir şifre, kutusu yıllarca açık
+  duran kalıcı bir anahtardır.
+- **Uç kayıtlı adres sızdırmıyor.** Hız sınırına takılan, e-postasıyla zaten
+  başvurmuş olan ve zaten hesabı olan — üçü de aynı 202 ve aynı metni alıyor
+  (`sifremi-unuttum` ile aynı gerekçe). Sessizce düşen gönderim yine de denetim
+  kaydına yazılıyor: sessizlik başvurana karşı, operatöre karşı değil.
+- **Yetki kümesi onaylayandan türetilmiyor**, sabit COMPANY_ADMIN şablonu.
+  "Kendinde olmayanı veremezsin" kuralı personel hesapları arasındaki devri
+  sınırlar; buradaki hesap DEALER ailesinde ve o ailenin alabileceği izinlerin
+  tamamı `PERMISSION_SCOPE`ta zaten satıcıya kapalı. Kural buraya taşınsaydı
+  `reports.build` izni olmayan bir yönetici bayi açamazdı.
+- Yeni izin `applications.manage` (SELLER'a kapalı, ayrı göçle mevcut süper
+  adminlere veriliyor), yeni ekran `/admin/basvurular`, 15 yeni rota testi.
+
+**Ret gerekçesi başvurana gitmiyor.** Karar notu iç bir kayıt ve çoğu zaman
+"cari riski", "bölge doluluğu" gibi müşteriye söylenmeyecek bir cümle.
+Başvurana giden şey kararın kendisi.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti
+(218 → 233), `next build` başarılı, 8 ekran görüntüsü `adim-8/` altında.
+
+**Açık kalan:** `hesabim` ve `403` hâlâ eski hâlinde — Adım 8'in geri kalanı.
+
 ### ▢ Adım 4 — Finans
 
 `admin/kasa`, `admin/cekler`, `admin/iadeler`, `admin/kurlar`,
@@ -256,9 +325,9 @@ tema ve renk kuralları burada geçerli değil).
 
 `reports/**`, `admin/reports`.
 
-### ▢ Adım 8 — Giriş ve hesap
+### ▢ Adım 8 (kalan) — Hesap ekranları
 
-`login`, `sifremi-unuttum`, `hesabim`, `403`.
+`hesabim`, `403`. `login`, `kayit` ve `sifremi-unuttum` yukarıda bitti.
 
 ### ▢ Adım 9 — Mobil
 

@@ -9,7 +9,14 @@
 // Kimliği sabit yazmıyoruz: gösterim verisi `cuid` üretiyor ve her yeniden
 // tohumlamada değişiyor.
 
-/** Giriş yapılacak gösterim hesapları. Şifreler `DEMO-KULLANICILAR.md`de. */
+/**
+ * Giriş yapılacak gösterim hesapları. Şifreler `DEMO-KULLANICILAR.md`de.
+ *
+ * Buradaki anahtarlara ek olarak `as: "anon"` da geçerli: oturum açılmadan
+ * çekilen ekranlar (giriş, bayi başvurusu, şifre sıfırlama). Onlar için giriş
+ * yapmak sayfayı hiç göstermezdi — giriş yapmış bir tarayıcı `/login`e
+ * uğramaz, uygulamaya döner.
+ */
 export const ACCOUNTS = {
   admin: { email: "patron@bayraktar.local", password: "143688" },
   portal: { email: "yonetici@akbayi.local", password: "143688" },
@@ -145,5 +152,29 @@ export const SCREENS = [
       const id = await richestOrder(db);
       return id && `/orders/${id}`;
     },
+  },
+
+  // ── Adım 8 — giriş ve hesap ─────────────────────────────────────────────
+  { step: 8, slug: "giris", label: "Giriş ekranı", as: "anon", path: "/login" },
+  {
+    step: 8,
+    slug: "kayit",
+    label: "Bayilik başvurusu",
+    as: "anon",
+    path: "/kayit",
+  },
+  {
+    step: 8,
+    slug: "sifremi-unuttum",
+    label: "Şifremi unuttum",
+    as: "anon",
+    path: "/sifremi-unuttum",
+  },
+  {
+    step: 8,
+    slug: "admin-basvurular",
+    label: "Bayi başvuruları (yönetim)",
+    as: "admin",
+    path: "/admin/basvurular",
   },
 ];

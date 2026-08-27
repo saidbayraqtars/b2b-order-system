@@ -130,10 +130,74 @@ export default {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
         },
+
+        // ── Giriş ekranının sahnesi ────────────────────────────────────────
+        // Buradakiler tek bir ekran için: `/login`, `/kayit`, `/sifremi-unuttum`.
+        // Yine de config'te duruyorlar çünkü üçü de aynı sahneyi paylaşıyor ve
+        // süreleri birbirine göre ayarlı — bir dosyada `animation-duration`ı
+        // değiştirmek diğerlerinin ritmini bozar.
+
+        /** Alanların sırayla belirmesi. `both`: gecikme boyunca görünmez kalır. */
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        /**
+         * Çizginin kendini çizmesi. `pathLength="1"` + `stroke-dasharray:1` ile
+         * kullanılır: yolun gerçek uzunluğu ne olursa olsun 0→1 aralığında
+         * ilerler, yani her parçaya ayrı dasharray hesaplamak gerekmez.
+         */
+        draw: {
+          from: { strokeDashoffset: "1" },
+          to: { strokeDashoffset: "0" },
+        },
+        /** Koli yığınının nefes alması. Genlik küçük — sallanma değil, ağırlık. */
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
+        /** Zemin ızgarasının kayması. 32px, ızgaranın kendi adımı. */
+        "grid-drift": {
+          from: { transform: "translate(0, 0)" },
+          to: { transform: "translate(-32px, -32px)" },
+        },
+        /** Sahnenin üstünden geçen ince tarama. */
+        scan: {
+          from: { transform: "translateY(-110%)" },
+          to: { transform: "translateY(110%)" },
+        },
+        /** Düğüm halkası: dışarı doğru açılıp sönen tek atım. */
+        "ring-pulse": {
+          from: { transform: "scale(0.6)", opacity: "0.55" },
+          to: { transform: "scale(1.9)", opacity: "0" },
+        },
+        /** Yazının sonundaki imleç. `steps` ile: yumuşak sönme değil, kırpma. */
+        caret: {
+          "0%, 45%": { opacity: "1" },
+          "50%, 95%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        /** Kartın üstündeki saç teli çizginin soldan sağa uzaması. */
+        hairline: {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(1)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.15s ease-out",
         marquee: "marquee 30s linear infinite",
+
+        // Giriş sahnesi. `both`/`forwards` bilerek: gecikmeli başlayan bir
+        // öğe, gecikme boyunca son değerinde değil başlangıç değerinde durmalı.
+        "fade-up": "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        draw: "draw 1.4s cubic-bezier(0.65, 0, 0.35, 1) both",
+        float: "float 6s ease-in-out infinite",
+        "grid-drift": "grid-drift 8s linear infinite",
+        scan: "scan 7s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "ring-pulse": "ring-pulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite",
+        caret: "caret 1.1s steps(1, end) infinite",
+        hairline: "hairline 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both",
+        "spin-slow": "spin 42s linear infinite",
       },
     },
   },

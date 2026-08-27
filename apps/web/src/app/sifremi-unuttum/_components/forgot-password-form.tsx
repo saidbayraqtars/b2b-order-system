@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { MailCheck } from "lucide-react";
 import { forgotPasswordSchema } from "@repo/types";
+import { Stagger } from "@/components/auth-shell";
+import { Button, ErrorLine, Label, TextInput } from "@/components/form";
 
 /**
  * The success state is shown for every accepted submission, including addresses
@@ -42,30 +45,36 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-        {sent}
-      </p>
+      <div className="animate-fade-up text-center">
+        <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-positive/30 bg-positive/10">
+          <MailCheck className="h-5 w-5 text-positive" />
+        </span>
+        <h2 className="mt-4 text-headline-sm text-ink">Bağlantı yolda</h2>
+        <p className="mt-2 text-body-sm text-ink-muted">{sent}</p>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <input
-        type="email"
-        placeholder="E-posta"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        autoComplete="email"
-      />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
-      >
-        {loading ? "Gönderiliyor…" : "Sıfırlama bağlantısı gönder"}
-      </button>
+      <Stagger index={0}>
+        <Label htmlFor="email">E-posta</Label>
+        <TextInput
+          id="email"
+          type="email"
+          placeholder="ad@firma.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          autoFocus
+        />
+      </Stagger>
+      <ErrorLine error={error ? new Error(error) : null} />
+      <Stagger index={1} className="mt-1">
+        <Button type="submit" loading={loading} className="w-full">
+          {loading ? "Gönderiliyor…" : "Sıfırlama bağlantısı gönder"}
+        </Button>
+      </Stagger>
     </form>
   );
 }

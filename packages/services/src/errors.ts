@@ -139,6 +139,10 @@ export type BusinessErrorCode =
   | "INVALID_RETURN_TRANSITION"
   | "NOTHING_TO_RETURN"
   | "OVER_RETURN"
+  // ── bayi başvurusu ──
+  | "APPLICATION_NOT_FOUND"
+  | "APPLICATION_ALREADY_DECIDED"
+  | "APPLICATION_THROTTLED"
   // ── sayfa düzeni ──
   | "PAGE_NOT_FOUND"
   | "INVALID_BLOCK";

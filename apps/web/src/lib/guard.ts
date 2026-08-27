@@ -556,6 +556,13 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // zamanlanmış işler
   JOB_NOT_FOUND: 404,
   INVALID_JOB_INTERVAL: 422,
+  // bayi başvurusu
+  APPLICATION_NOT_FOUND: 404,
+  // 409: karar zaten verilmiş. İki yönetici aynı başvuruyu aynı anda açtığında
+  // ikincisinin gördüğü şey bu — girdisi geçerliydi, belge hareket etmişti.
+  APPLICATION_ALREADY_DECIDED: 409,
+  // 429: hız sınırı. Formun kendisi herkese açık olduğu için tek fren bu.
+  APPLICATION_THROTTLED: 429,
 };
 
 /**

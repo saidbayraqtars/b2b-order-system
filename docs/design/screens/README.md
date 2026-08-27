@@ -9,6 +9,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | -------- | --------------------------------- |
 | `adim-2` | Portal / vitrin                   |
 | `adim-3` | Yönetim çekirdeği                 |
+| `adim-8` | Giriş, bayilik başvurusu, hesap   |
 
 ## Yeniden üretmek
 
@@ -47,5 +48,12 @@ Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür
 - **Giriş form üzerinden.** Oturum çerezi elle üretilmiyor: jeton biçimi
   next-auth'un iç meselesi ve taklit edilirse kimlik doğrulama değiştiğinde
   betik sessizce yanlış ekranı çeker.
+- **`as: "anon"` — oturumsuz ekranlar.** Giriş, bayilik başvurusu ve şifre
+  sıfırlama için giriş yapılmıyor. Yapılsaydı o ekranlar hiç çekilemezdi:
+  oturumu olan bir tarayıcı `/login`e uğramaz, ara katman onu uygulamaya geri
+  yollar.
+- **Hareket ekranda donmuyor, olduğu yerde yakalanıyor.** Giriş sahnesi sürekli
+  hareket ediyor; betik `settle()` sonrası ne görüyorsa onu kaydediyor. Aynı
+  ekranın iki çekimi birebir aynı olmayabilir — bu bir hata değil.
 - **Açık tema varsayılan.** `--theme dark` ya da `--theme both` ile koyu tema da
   alınır; koyu dosyalar `<slug>-dark.png` olur.
