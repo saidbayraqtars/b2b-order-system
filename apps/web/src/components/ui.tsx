@@ -137,6 +137,35 @@ export function PageHeader({
   );
 }
 
+/**
+ * Ekranın altındaki kural açıklaması — "bu defter neyi takip eder", "bir vade
+ * tanımını değiştirmek geçmiş siparişi bozar mı" gibi metinler.
+ *
+ * Sekiz yönetim ekranı bunu kendi yazıyordu (`text-sm text-neutral-500`) ve üçü
+ * farklı puntoya oturmuştu. Blok kenar çizgisiyle ayrılıyor, kutuya
+ * konmuyor: okunması **gereken** bir uyarı değil, isteyenin okuyacağı bir
+ * dipnot — kutu ona hak etmediği bir ağırlık verirdi.
+ */
+export function Note({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <aside
+      className={cn(
+        "mt-8 border-l-2 border-line-strong pl-4 text-body-sm leading-relaxed text-ink-muted",
+        "[&_strong]:font-semibold [&_strong]:text-ink",
+        className,
+      )}
+    >
+      {children}
+    </aside>
+  );
+}
+
 /** Tam ekran değil, panel-içi bekleme durumu — "Yükleniyor…" düz metninin yerine. */
 export function LoadingState({ label = "Yükleniyor…" }: { label?: string }) {
   return (

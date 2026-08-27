@@ -20,8 +20,13 @@ import {
 } from "@/components/form";
 import {
   Badge,
-  EmptyState,
   LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
   type BadgeTone,
 } from "@/components/ui";
 
@@ -72,6 +77,7 @@ export function CardPaymentsPanel() {
   return (
     <Panel
       title="Kart tahsilatları"
+      bodyClassName="p-0"
       action={
         <label>
           <Label>Durum</Label>
@@ -93,7 +99,7 @@ export function CardPaymentsPanel() {
       }
     >
       {query.data && (
-        <p className="mb-3 text-xs text-neutral-500">
+        <p className="border-b border-line bg-sunken px-4 py-2.5 text-xs text-ink-faint">
           Sağlayıcı:{" "}
           <strong>{active?.label ?? query.data.activeProvider}</strong>
           {active?.capabilities.manual
@@ -102,19 +108,39 @@ export function CardPaymentsPanel() {
         </p>
       )}
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
+      {query.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
+      {query.error ? (
+        <div className="px-4 pb-4">
+          <ErrorLine error={query.error} />
+        </div>
+      ) : null}
 
-      {query.data &&
-        (query.data.intents.length === 0 ? (
-          <EmptyState label="Bu durumda kart tahsilatı yok." />
-        ) : (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+      {query.data && (
+        <Table>
+          <THead>
+            <tr>
+              <Th>Tarih</Th>
+              <Th>Firma</Th>
+              <Th>Durum</Th>
+              <Th>Not</Th>
+              <Th align="right">Tutar</Th>
+              <Th> </Th>
+            </tr>
+          </THead>
+          <TBody>
             {query.data.intents.map((intent) => (
               <IntentRow key={intent.id} intent={intent} onChanged={refresh} />
             ))}
-          </ul>
-        ))}
+            {query.data.intents.length === 0 && (
+              <TableEmpty colSpan={6} label="Bu durumda kart tahsilatı yok." />
+            )}
+          </TBody>
+        </Table>
+      )}
     </Panel>
   );
 }
@@ -147,71 +173,54 @@ function IntentRow({
   const open = intent.status === "PENDING" || intent.status === "AUTHORIZED";
 
   return (
-    <li className="py-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <div>
-          <p className="flex flex-wrap items-center gap-2 font-medium">
-            <span>{formatTRY(intent.amount)}</span>
+    <>
+      <tr>
+        <Td className="whitespace-nowrap text-xs text-ink-faint">
+          {new Date(intent.createdAt).toLocaleString("tr-TR")}
+        </Td>
+        <Td>
+          {intent.companyName}
+          {intent.orderNumber ? (
+            <span className="block text-xs tabular-nums text-ink-faint">
+              {intent.orderNumber}
+            </span>
+          ) : null}
+        </Td>
+        <Td>
+          <div className="flex flex-wrap gap-1">
             <Badge tone={STATUS_TONE[intent.status]}>
               {PAYMENT_INTENT_STATUS_LABELS[intent.status]}
             </Badge>
             {intent.installmentCount > 1 && (
               <Badge tone="neutral">{intent.installmentCount} taksit</Badge>
             )}
-          </p>
-          <p className="text-neutral-500">
-            {intent.companyName}
-            {intent.orderNumber ? ` · ${intent.orderNumber}` : ""} ·{" "}
-            {new Date(intent.createdAt).toLocaleString("tr-TR")}
-            {intent.providerRef ? ` · ${intent.providerRef}` : ""}
-          </p>
-          {intent.failureReason && (
-            <p className="text-red-600 dark:text-red-400">
-              {intent.failureReason}
-            </p>
+          </div>
+        </Td>
+        <Td muted>
+          {intent.failureReason ? (
+            <span className="text-critical">{intent.failureReason}</span>
+          ) : (
+            (intent.providerRef ?? "—")
           )}
-        </div>
-
-        {open && (
-          <div className="flex items-center gap-2">
-            {/* Only a manual provider gets this button. Declaring a real
-                provider's charge received by hand would be inventing money. */}
-            {intent.awaitingManualConfirmation && (
-              <Button
-                size="sm"
-                variant="success"
-                loading={capture.isPending}
-                onClick={() => capture.mutate()}
-              >
-                Tahsil edildi
-              </Button>
-            )}
-            {asking ? (
-              <>
-                <TextInput
-                  value={reason}
-                  placeholder="İptal gerekçesi"
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-52"
-                />
+        </Td>
+        <Td align="right" numeric className="font-medium">
+          {formatTRY(intent.amount)}
+        </Td>
+        <Td align="right">
+          {open && !asking && (
+            <div className="flex justify-end gap-1">
+              {/* Only a manual provider gets this button. Declaring a real
+                  provider's charge received by hand would be inventing money. */}
+              {intent.awaitingManualConfirmation && (
                 <Button
                   size="sm"
-                  variant="danger"
-                  disabled={reason.trim().length === 0}
-                  loading={cancel.isPending}
-                  onClick={() => cancel.mutate()}
+                  variant="success"
+                  loading={capture.isPending}
+                  onClick={() => capture.mutate()}
                 >
-                  İptal et
+                  Tahsil edildi
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setAsking(false)}
-                >
-                  Vazgeç
-                </Button>
-              </>
-            ) : (
+              )}
               <Button
                 size="sm"
                 variant="secondary"
@@ -219,11 +228,51 @@ function IntentRow({
               >
                 İptal
               </Button>
-            )}
-          </div>
-        )}
-      </div>
-      <ErrorLine error={capture.error ?? cancel.error} />
-    </li>
+            </div>
+          )}
+        </Td>
+      </tr>
+
+      {asking && (
+        <tr>
+          <Td colSpan={6} className="bg-sunken">
+            <div className="flex flex-wrap items-end gap-2">
+              <TextInput
+                size="sm"
+                value={reason}
+                placeholder="İptal gerekçesi"
+                onChange={(e) => setReason(e.target.value)}
+                className="w-64"
+              />
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={reason.trim().length === 0}
+                loading={cancel.isPending}
+                onClick={() => cancel.mutate()}
+              >
+                İptal et
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setAsking(false)}
+              >
+                Vazgeç
+              </Button>
+            </div>
+            <ErrorLine error={cancel.error} />
+          </Td>
+        </tr>
+      )}
+
+      {capture.error ? (
+        <tr>
+          <Td colSpan={6}>
+            <ErrorLine error={capture.error} />
+          </Td>
+        </tr>
+      ) : null}
+    </>
   );
 }

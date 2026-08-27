@@ -9,9 +9,8 @@ import {
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import {
-  Badge,
-  Card,
   LoadingState,
+  StatTile,
   Table,
   TableEmpty,
   TBody,
@@ -59,6 +58,21 @@ function trDateTime(iso: string): string {
   });
 }
 
+/** 24 saati geçmiş bir kur hâlâ satış yapıyor demektir — kutu bunu söyler. */
+function isStale(r: CurrentRate): boolean {
+  return r.staleHours !== null && r.staleHours >= 24;
+}
+
+/** Rakamın altındaki tek satır: birimin adı, kurun yaşı ve varsa eksikliği. */
+function hintFor(r: CurrentRate): string {
+  if (r.missing) return "kur girilmemiş — bu birimdeki ürünler fiyatlanamıyor";
+  const parts = [CURRENCY_LABELS[r.currency]];
+  if (r.validFrom) parts.push(trDateTime(r.validFrom));
+  if (isStale(r))
+    parts.push(`${Math.floor(r.staleHours! / 24)} gün önce girildi`);
+  return parts.join(" · ");
+}
+
 export function RateManager() {
   const qc = useQueryClient();
   const [currency, setCurrency] = useState<Currency>(FOREIGN_CURRENCIES[0]!);
@@ -90,37 +104,13 @@ export function RateManager() {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         {(data?.current ?? []).map((r) => (
-          <Card key={r.currency}>
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-medium">{r.currency}</span>
-              <span className="text-xs text-neutral-500">
-                {CURRENCY_LABELS[r.currency]}
-              </span>
-            </div>
-            {r.missing ? (
-              <>
-                <div className="mt-1 text-xl font-semibold text-red-600">—</div>
-                <Badge tone="danger">kur girilmemiş</Badge>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Bu para birimindeki ürünler fiyatlanamıyor.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="mt-1 text-xl font-semibold tabular-nums">
-                  {r.rate} ₺
-                </div>
-                <div className="text-xs text-neutral-500">
-                  {r.validFrom ? trDateTime(r.validFrom) : ""}
-                </div>
-                {r.staleHours !== null && r.staleHours >= 24 ? (
-                  <Badge tone="warning">
-                    {Math.floor(r.staleHours / 24)} gün önce
-                  </Badge>
-                ) : null}
-              </>
-            )}
-          </Card>
+          <StatTile
+            key={r.currency}
+            label={r.currency}
+            value={r.missing ? "—" : `${r.rate} ₺`}
+            tone={r.missing ? "critical" : isStale(r) ? "caution" : "neutral"}
+            hint={hintFor(r)}
+          />
         ))}
       </div>
 
@@ -168,7 +158,7 @@ export function RateManager() {
           </Button>
         </form>
         <ErrorLine error={error ? new Error(error) : null} />
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 text-xs text-ink-faint">
           Kur satırı güncellenmez, yenisi eklenir. Geçmiş siparişler kendi
           kurlarını taşıdığı için yeni kur onların tutarını değiştirmez. TCMB
           bülteni ayrıca saatlik bir bakım işiyle otomatik yazılıyor; elle
@@ -176,7 +166,7 @@ export function RateManager() {
         </p>
       </Panel>
 
-      <Panel title="Kur geçmişi">
+      <Panel title="Kur geçmişi" bodyClassName="p-0">
         <Table>
           <THead>
             <tr>

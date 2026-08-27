@@ -38,52 +38,56 @@ export function TermsManager() {
   const daysValid = days.trim() !== "" && Number.isFinite(Number(days));
 
   return (
-    <Panel title="Vade tanımları">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label>
-          <Label>Vade adı</Label>
-          <TextInput
-            value={name}
-            placeholder="30 gün, Peşin…"
-            onChange={(e) => setName(e.target.value)}
-            className="w-48"
-          />
-        </label>
-        <label>
-          <Label hint="0 = peşin">Gün</Label>
-          <TextInput
-            type="number"
-            min={0}
-            max={365}
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            className="w-24"
-          />
-        </label>
-        <Button
-          disabled={create.isPending || !name.trim() || !daysValid}
-          onClick={() => create.mutate()}
-        >
-          Ekle
-        </Button>
+    <Panel title="Tanımlar" bodyClassName="p-0">
+      {/* Ekleme şeridi gömük zeminde: tablo başlığıyla aynı yüzey, altındaki
+          listeden bir çizgiyle ayrılıyor. */}
+      <div className="border-b border-line bg-sunken px-4 py-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label>
+            <Label>Vade adı</Label>
+            <TextInput
+              value={name}
+              placeholder="30 gün, Peşin…"
+              onChange={(e) => setName(e.target.value)}
+              className="w-48"
+            />
+          </label>
+          <label>
+            <Label hint="0 = peşin">Gün</Label>
+            <TextInput
+              type="number"
+              min={0}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              className="w-24"
+            />
+          </label>
+          <Button
+            disabled={create.isPending || !name.trim() || !daysValid}
+            onClick={() => create.mutate()}
+          >
+            Ekle
+          </Button>
+        </div>
+        <ErrorLine error={create.error} />
       </div>
-      <ErrorLine error={create.error} />
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
+      <div className="p-4">
+        {query.isLoading && <LoadingState />}
+        <ErrorLine error={query.error} />
 
-      {query.data && (
-        <ul className="space-y-2">
-          {query.data.terms.map((t) => (
-            <TermRow key={t.id} term={t} onChanged={invalidate} />
+        {query.data &&
+          (query.data.terms.length === 0 ? (
+            <EmptyState label="Henüz vade tanımı yok." />
+          ) : (
+            <ul className="space-y-2">
+              {query.data.terms.map((t) => (
+                <TermRow key={t.id} term={t} onChanged={invalidate} />
+              ))}
+            </ul>
           ))}
-          {query.data.terms.length === 0 && (
-            <li>
-              <EmptyState label="Henüz vade tanımı yok." />
-            </li>
-          )}
-        </ul>
-      )}
+      </div>
     </Panel>
   );
 }
@@ -125,7 +129,7 @@ function TermRow({
   const locked = term.companyCount > 0;
 
   return (
-    <li className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <li className="rounded-lg border border-line p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {editing ? (
           <div className="flex flex-wrap items-end gap-2">
@@ -150,12 +154,12 @@ function TermRow({
             </Button>
           </div>
         ) : (
-          <div className="text-sm">
+          <div className="text-body-sm">
             <p className="flex items-center gap-2 font-medium">
               {term.name}
               {!term.isActive && <Badge tone="neutral">Pasif</Badge>}
             </p>
-            <p className="text-neutral-500">
+            <p className="text-ink-faint">
               {term.days === 0 ? "Peşin" : `${term.days} gün`} ·{" "}
               {term.companyCount} firmaya tanımlı
             </p>
@@ -175,7 +179,7 @@ function TermRow({
               {term.isActive ? "Pasife al" : "Aktifleştir"}
             </Button>
             <Button
-              variant="danger"
+              variant="dangerQuiet"
               disabled={locked || remove.isPending}
               title={
                 locked

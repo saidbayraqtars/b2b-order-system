@@ -23,7 +23,16 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
-import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 // The till ledger itself: what moved, filters over it, and the two entries a
 // human writes by hand — elle giriş/çıkış and hesaplar arası aktarım.
@@ -73,6 +82,7 @@ export function MovementsPanel() {
   return (
     <Panel
       title="Kasa hareketleri"
+      bodyClassName="p-0"
       action={
         <div className="flex items-end gap-2">
           <label>
@@ -110,24 +120,44 @@ export function MovementsPanel() {
         </div>
       }
     >
-      <div className="mb-4 grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 border-b border-line bg-sunken p-4 md:grid-cols-2">
         <ManualEntryForm accounts={openAccounts} onDone={refresh} />
         <TransferForm accounts={openAccounts} onDone={refresh} />
       </div>
 
-      {movements.isLoading && <LoadingState />}
-      <ErrorLine error={movements.error} />
+      {movements.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
+      {movements.error ? (
+        <div className="px-4 pb-4">
+          <ErrorLine error={movements.error} />
+        </div>
+      ) : null}
 
-      {movements.data &&
-        (movements.data.movements.length === 0 ? (
-          <EmptyState label="Bu filtrede hareket yok." />
-        ) : (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+      {movements.data && (
+        <Table>
+          <THead>
+            <tr>
+              <Th>Tarih</Th>
+              <Th>Hesap</Th>
+              <Th>Kaynak</Th>
+              <Th>Açıklama</Th>
+              <Th align="right">Tutar</Th>
+              <Th> </Th>
+            </tr>
+          </THead>
+          <TBody>
             {movements.data.movements.map((m) => (
               <MovementRow key={m.id} movement={m} onChanged={refresh} />
             ))}
-          </ul>
-        ))}
+            {movements.data.movements.length === 0 && (
+              <TableEmpty colSpan={6} label="Bu filtrede hareket yok." />
+            )}
+          </TBody>
+        </Table>
+      )}
     </Panel>
   );
 }
@@ -155,42 +185,57 @@ function MovementRow({
   const byHand = movement.source === "MANUAL" || movement.source === "TRANSFER";
   const canReverse = byHand && !movement.reversedById && !movement.reversalOfId;
   const sign = movement.direction === "IN" ? "+" : "−";
-  const color =
-    movement.direction === "IN"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : "text-red-600 dark:text-red-400";
+  const color = movement.direction === "IN" ? "text-positive" : "text-critical";
 
   return (
-    <li className="py-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <div>
-          <p className="flex flex-wrap items-center gap-2 font-medium">
-            <span className={color}>
-              {sign}
-              {formatTRY(movement.amount)}
-            </span>
+    <>
+      <tr>
+        <Td className="whitespace-nowrap text-xs text-ink-faint">
+          {new Date(movement.occurredAt).toLocaleString("tr-TR")}
+        </Td>
+        <Td>{movement.accountName}</Td>
+        <Td>
+          <div className="flex flex-wrap gap-1">
             <Badge tone="neutral">
               {CASH_MOVEMENT_SOURCE_LABELS[movement.source]}
             </Badge>
             {movement.reversedById && <Badge tone="danger">İptal edildi</Badge>}
             {movement.reversalOfId && <Badge tone="warning">İptal kaydı</Badge>}
-          </p>
-          <p className="text-neutral-500">
-            {movement.accountName} ·{" "}
-            {new Date(movement.occurredAt).toLocaleString("tr-TR")}
-            {movement.description ? ` · ${movement.description}` : ""}
-            {movement.recordedByName ? ` · ${movement.recordedByName}` : ""}
-          </p>
-        </div>
+          </div>
+        </Td>
+        <Td muted>
+          {movement.description ?? "—"}
+          {movement.recordedByName ? ` · ${movement.recordedByName}` : ""}
+        </Td>
+        <Td align="right" numeric className={`font-medium ${color}`}>
+          {sign}
+          {formatTRY(movement.amount)}
+        </Td>
+        <Td align="right">
+          {canReverse && !asking && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setAsking(true)}
+            >
+              İptal
+            </Button>
+          )}
+        </Td>
+      </tr>
 
-        {canReverse &&
-          (asking ? (
-            <div className="flex items-end gap-2">
+      {/* Gerekçe satırın altında soruluyor: hücreye sıkıştırılan bir kutu
+          tablodaki bütün sütunları genişletirdi. */}
+      {asking && (
+        <tr>
+          <Td colSpan={6} className="bg-sunken">
+            <div className="flex flex-wrap items-end gap-2">
               <TextInput
+                size="sm"
                 value={reason}
                 placeholder="İptal gerekçesi"
                 onChange={(e) => setReason(e.target.value)}
-                className="w-52"
+                className="w-64"
               />
               <Button
                 size="sm"
@@ -209,18 +254,11 @@ function MovementRow({
                 Vazgeç
               </Button>
             </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setAsking(true)}
-            >
-              İptal
-            </Button>
-          ))}
-      </div>
-      <ErrorLine error={reverse.error} />
-    </li>
+            <ErrorLine error={reverse.error} />
+          </Td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -257,10 +295,8 @@ function ManualEntryForm({
     description.trim().length > 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Elle giriş / çıkış
-      </h3>
+    <div className="rounded-lg border border-line p-3">
+      <h3 className="tech-label mb-2">Elle giriş / çıkış</h3>
       <div className="flex flex-wrap items-end gap-2">
         <label>
           <Label>Hesap</Label>
@@ -350,10 +386,8 @@ function TransferForm({
     Number(amount) > 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Hesaplar arası aktarım
-      </h3>
+    <div className="rounded-lg border border-line p-3">
+      <h3 className="tech-label mb-2">Hesaplar arası aktarım</h3>
       <div className="flex flex-wrap items-end gap-2">
         <label>
           <Label>Nereden</Label>

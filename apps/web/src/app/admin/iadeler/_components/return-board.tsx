@@ -16,8 +16,10 @@ import { formatTRY } from "@/lib/format";
 import {
   Badge,
   Card,
+  Chips,
   EmptyState,
   LoadingState,
+  StatTile,
   Table,
   TBody,
   Td,
@@ -67,6 +69,18 @@ const ACTION_LABELS: Record<ReturnStatus, string> = {
   CANCELLED: "İptal et",
 };
 
+/** "Açık" gerçek bir durum değil, karar ya da mal bekleyenlerin toplamı. */
+const STATUS_FILTERS: ReadonlyArray<{
+  key: "OPEN" | ReturnStatus;
+  label: string;
+}> = [
+  { key: "OPEN", label: "Açık" },
+  ...ReturnStatusEnum.options.map((s) => ({
+    key: s,
+    label: RETURN_STATUS_LABELS[s],
+  })),
+];
+
 function trDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString("tr-TR") : "—";
 }
@@ -115,36 +129,26 @@ export function ReturnBoard() {
     <div className="space-y-4">
       {statusFilter === "OPEN" ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Stat
+          <StatTile
             label="Karar bekleyen"
-            value={String(openCount)}
-            note="talep"
-            tone={openCount > 0 ? "warning" : "neutral"}
+            value={openCount}
+            hint="talep"
+            tone={openCount > 0 ? "caution" : "neutral"}
           />
-          <Stat
+          <StatTile
             label="Mal bekleyen"
-            value={String(waitingGoods)}
-            note="kabul edildi, gelmedi"
+            value={waitingGoods}
+            hint="kabul edildi, gelmedi"
           />
         </div>
       ) : null}
 
       <Card>
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterChip
-            active={statusFilter === "OPEN"}
-            onClick={() => setStatusFilter("OPEN")}
-            label="Açık"
-          />
-          {ReturnStatusEnum.options.map((s) => (
-            <FilterChip
-              key={s}
-              active={statusFilter === s}
-              onClick={() => setStatusFilter(s)}
-              label={RETURN_STATUS_LABELS[s]}
-            />
-          ))}
-        </div>
+        <Chips
+          value={statusFilter}
+          onChange={setStatusFilter}
+          items={STATUS_FILTERS}
+        />
       </Card>
 
       <ErrorLine error={error ? new Error(error) : null} />
@@ -154,16 +158,18 @@ export function ReturnBoard() {
       ) : rows.length === 0 ? (
         <EmptyState label="Bu süzgeçle iade talebi yok." />
       ) : (
-        <Panel title="Talepler">
+        <Panel title="Talepler" bodyClassName="p-0">
           <Table>
             <THead>
               <tr>
-                <Th>İade no</Th>
-                <Th>Firma</Th>
-                <Th>Sipariş</Th>
-                <Th>Gerekçe</Th>
-                <Th>Satır</Th>
-                <Th>Tutar</Th>
+                {/* Dokuz sütun 1440 pikselde sığmıyordu ve taşan sütun
+                    "İşlem" oluyordu — yani ekranın tek eylemi kaydırmadan
+                    görünmüyordu. Belge numarası siparişini, firma gerekçesini
+                    alt satırında taşıyor. */}
+                <Th>İade</Th>
+                <Th>Firma / gerekçe</Th>
+                <Th align="right">Satır</Th>
+                <Th align="right">Tutar</Th>
                 <Th>Durum</Th>
                 <Th>Tarih</Th>
                 <Th> </Th>
@@ -172,28 +178,32 @@ export function ReturnBoard() {
             <TBody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <Td>
+                  <Td className="whitespace-nowrap">
                     <span className="font-medium tabular-nums">
                       {row.rmaNumber}
                     </span>
+                    <span className="block text-xs tabular-nums text-ink-faint">
+                      {row.orderNumber}
+                    </span>
                   </Td>
-                  <Td>{row.companyName}</Td>
-                  <Td className="tabular-nums">{row.orderNumber}</Td>
                   <Td>
+                    <span className="block">{row.companyName}</span>
                     <span
-                      className="line-clamp-2 max-w-[22ch] text-neutral-600 dark:text-neutral-400"
+                      className="line-clamp-1 max-w-[28ch] text-xs text-ink-faint"
                       title={row.reason}
                     >
                       {row.reason}
                     </span>
                   </Td>
-                  <Td className="tabular-nums">{row.itemCount}</Td>
-                  <Td className="tabular-nums">
+                  <Td align="right" numeric>
+                    {row.itemCount}
+                  </Td>
+                  <Td align="right" numeric>
                     {/* Tutar teslim alınana kadar tahmin: gelen mal neyse o
                         yazılıyor, o yüzden RECEIVED öncesi bilerek soluk. */}
                     <span
                       className={
-                        row.status === "RECEIVED" ? "" : "text-neutral-500"
+                        row.status === "RECEIVED" ? "" : "text-ink-faint"
                       }
                     >
                       {formatTRY(row.refundTotal)}
@@ -204,11 +214,11 @@ export function ReturnBoard() {
                       {RETURN_STATUS_LABELS[row.status]}
                     </Badge>
                   </Td>
-                  <Td className="whitespace-nowrap tabular-nums">
+                  <Td className="whitespace-nowrap text-xs text-ink-faint">
                     {trDate(row.receivedAt ?? row.decidedAt ?? row.createdAt)}
                   </Td>
-                  <Td>
-                    <div className="flex flex-wrap justify-end gap-1">
+                  <Td align="right" className="whitespace-nowrap">
+                    <div className="flex justify-end gap-1">
                       {RETURN_TRANSITIONS[row.status].map((to) => (
                         <Button
                           key={to}
@@ -243,57 +253,6 @@ export function ReturnBoard() {
         />
       ) : null}
     </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  note,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "neutral" | "warning" | "danger";
-}) {
-  const color =
-    tone === "danger"
-      ? "text-red-600"
-      : tone === "warning"
-        ? "text-amber-600"
-        : "text-neutral-900 dark:text-neutral-100";
-  return (
-    <Card>
-      <div className="text-xs uppercase tracking-wide text-neutral-500">
-        {label}
-      </div>
-      <div className={`mt-1 text-xl font-semibold tabular-nums ${color}`}>
-        {value}
-      </div>
-      <div className="text-xs text-neutral-500">{note}</div>
-    </Card>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <Button
-      size="sm"
-      variant={active ? "primary" : "secondary"}
-      className="rounded-full"
-      onClick={onClick}
-    >
-      {label}
-    </Button>
   );
 }
 
@@ -375,19 +334,17 @@ function ActionModal({
           });
         }}
       >
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-body-sm text-ink-muted">
           {row.companyName} · sipariş {row.orderNumber}
         </p>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Gerekçe: {row.reason}
-        </p>
+        <p className="text-body-sm text-ink-muted">Gerekçe: {row.reason}</p>
 
         {receiving ? (
           isLoading ? (
             <LoadingState />
           ) : (
             <div className="space-y-2">
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-ink-faint">
                 Gelen mal neyse o yazılır. Adet 0 girilen satır düşer; hasarlı
                 işaretlenen stoka girmez ama bedeli yine alacak yazılır.
               </p>
@@ -397,10 +354,10 @@ function ActionModal({
                   className="grid grid-cols-[1fr_5rem_9rem] items-end gap-2"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
+                    <div className="truncate text-body-sm font-medium">
                       {item.productName}
                     </div>
-                    <div className="text-xs text-neutral-500">
+                    <div className="text-xs text-ink-faint">
                       {item.sku} · talep {item.quantity}
                     </div>
                   </div>

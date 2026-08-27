@@ -5,11 +5,12 @@ Amaç arşiv değil **kıyas**: bir adımı bitirdiğinizde önceki adımların 
 yan yana açıp aynı arayüze mi baktığınızı görebilmek. Yazıyla "tokenlara geçti"
 demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görüntü söylüyor.
 
-| Klasör   | Adım                              |
-| -------- | --------------------------------- |
-| `adim-2` | Portal / vitrin                   |
-| `adim-3` | Yönetim çekirdeği                 |
-| `adim-8` | Giriş, bayilik başvurusu, hesap   |
+| Klasör   | Adım                            |
+| -------- | ------------------------------- |
+| `adim-2` | Portal / vitrin                 |
+| `adim-3` | Yönetim çekirdeği               |
+| `adim-4` | Finans                          |
+| `adim-8` | Giriş, bayilik başvurusu, hesap |
 
 ## Yeniden üretmek
 

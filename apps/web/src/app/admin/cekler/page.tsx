@@ -1,6 +1,6 @@
 import { prisma } from "@repo/database";
 import { requirePage } from "@/lib/guard";
-import { PageHeader } from "@/components/ui";
+import { Note, PageHeader } from "@/components/ui";
 import { ChequeBoard } from "./_components/cheque-board";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,12 @@ export default async function ChequesPage() {
         subtitle="Vade takibi, tahsile verme, karşılıksız ve ciro"
       />
       <ChequeBoard accounts={accounts} />
+      <Note>
+        Çek kasaya <strong>tahsil edilince</strong> girer, alındığında değil:
+        elimizdeki kâğıt henüz harcanabilir para değil. Karşılıksız ve müşteriye
+        iade, kapattığı borcu <strong>cariye geri yazar</strong> — tahsilat
+        kaydı silinmez, ekstrede iki satır da görünür.
+      </Note>
     </main>
   );
 }

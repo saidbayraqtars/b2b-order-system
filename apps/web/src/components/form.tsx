@@ -159,6 +159,12 @@ const BUTTON_VARIANT = {
   secondary:
     "border border-line bg-panel text-ink-muted hover:bg-subtle hover:border-line-strong hover:text-ink",
   danger: "bg-critical text-white hover:opacity-90 active:opacity-80",
+  // Listedeki "Sil" için. Dolu kırmızı bir düğme, satırın *asıl* eylemi olan
+  // "Düzenle"den daha çok bakılıyor ve dört satırlık bir ayar ekranını kırmızı
+  // bir duvara çeviriyordu. Yıkıcılık kaybolmuyor, yalnızca üzerine gelene
+  // kadar sesini yükseltmiyor — onay penceresi ağırlığı zaten taşıyor.
+  dangerQuiet:
+    "border border-transparent text-critical hover:border-critical/30 hover:bg-critical/10",
   success: "bg-positive text-white hover:opacity-90 active:opacity-80",
   ghost: "text-ink-faint hover:bg-subtle hover:text-ink",
 } as const;

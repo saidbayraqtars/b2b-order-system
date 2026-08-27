@@ -74,33 +74,37 @@ export function TiersManager() {
   });
 
   return (
-    <Panel title="Hacim basamakları">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <DraftFields draft={draft} onChange={setDraft} />
-        <Button
-          disabled={create.isPending || !isComplete(draft)}
-          onClick={() => create.mutate()}
-        >
-          Ekle
-        </Button>
+    <Panel title="Hacim basamakları" bodyClassName="p-0">
+      {/* Ekleme şeridi gömük zeminde: tablo başlığıyla aynı yüzey, altındaki
+          listeden bir çizgiyle ayrılıyor. */}
+      <div className="border-b border-line bg-sunken px-4 py-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <DraftFields draft={draft} onChange={setDraft} />
+          <Button
+            disabled={create.isPending || !isComplete(draft)}
+            onClick={() => create.mutate()}
+          >
+            Ekle
+          </Button>
+        </div>
+        <ErrorLine error={create.error} />
       </div>
-      <ErrorLine error={create.error} />
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
+      <div className="p-4">
+        {query.isLoading && <LoadingState />}
+        <ErrorLine error={query.error} />
 
-      {query.data && (
-        <ul className="space-y-2">
-          {query.data.tiers.map((t) => (
-            <TierRow key={t.id} tier={t} onChanged={invalidate} />
+        {query.data &&
+          (query.data.tiers.length === 0 ? (
+            <EmptyState label="Henüz hacim basamağı yok — merdiven boşken kimse iskonto almaz." />
+          ) : (
+            <ul className="space-y-2">
+              {query.data.tiers.map((t) => (
+                <TierRow key={t.id} tier={t} onChanged={invalidate} />
+              ))}
+            </ul>
           ))}
-          {query.data.tiers.length === 0 && (
-            <li>
-              <EmptyState label="Henüz hacim basamağı yok — merdiven boşken kimse iskonto almaz." />
-            </li>
-          )}
-        </ul>
-      )}
+      </div>
     </Panel>
   );
 }
@@ -203,7 +207,7 @@ function TierRow({
   const locked = tier.companyCount > 0;
 
   return (
-    <li className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <li className="rounded-lg border border-line p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {editing ? (
           <div className="flex flex-wrap items-end gap-2">
@@ -219,13 +223,13 @@ function TierRow({
             </Button>
           </div>
         ) : (
-          <div className="text-sm">
+          <div className="text-body-sm">
             <p className="flex items-center gap-2 font-medium">
               {tier.name}
               <Badge tone="success">%{tier.discountPercent}</Badge>
               {!tier.isActive && <Badge tone="neutral">Pasif</Badge>}
             </p>
-            <p className="text-neutral-500">
+            <p className="text-ink-faint">
               Son {tier.windowMonths} ayda {formatTRY(tier.minRevenue)} ciro ·{" "}
               {tier.companyCount} firmaya elle atanmış
             </p>
@@ -245,7 +249,7 @@ function TierRow({
               {tier.isActive ? "Pasife al" : "Aktifleştir"}
             </Button>
             <Button
-              variant="danger"
+              variant="dangerQuiet"
               disabled={locked || remove.isPending}
               title={
                 locked

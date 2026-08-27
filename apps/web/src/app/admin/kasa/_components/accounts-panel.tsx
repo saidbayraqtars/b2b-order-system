@@ -78,101 +78,106 @@ export function AccountsPanel() {
   });
 
   return (
-    <Panel title="Hesaplar">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label>
-          <Label>Hesap adı</Label>
-          <TextInput
-            value={draft.name}
-            placeholder="Merkez Kasa, Ziraat TL…"
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            className="w-44"
-          />
-        </label>
-        <label>
-          <Label>Tür</Label>
-          <Select
-            value={draft.kind}
-            onChange={(e) =>
-              setDraft({ ...draft, kind: e.target.value as CashAccountKind })
-            }
-            className="w-40"
+    <Panel title="Hesaplar" bodyClassName="p-0">
+      {/* Hesap açma şeridi gömük zeminde: tablo başlığıyla aynı yüzey,
+          altındaki listeden bir çizgiyle ayrılıyor. */}
+      <div className="border-b border-line bg-sunken px-4 py-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label>
+            <Label>Hesap adı</Label>
+            <TextInput
+              value={draft.name}
+              placeholder="Merkez Kasa, Ziraat TL…"
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              className="w-44"
+            />
+          </label>
+          <label>
+            <Label>Tür</Label>
+            <Select
+              value={draft.kind}
+              onChange={(e) =>
+                setDraft({ ...draft, kind: e.target.value as CashAccountKind })
+              }
+              className="w-40"
+            >
+              {CashAccountKindEnum.options.map((k) => (
+                <option key={k} value={k}>
+                  {CASH_ACCOUNT_KIND_LABELS[k]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {draft.kind !== "CASH" && (
+            <>
+              <label>
+                <Label>Banka</Label>
+                <TextInput
+                  value={draft.bankName}
+                  onChange={(e) =>
+                    setDraft({ ...draft, bankName: e.target.value })
+                  }
+                  className="w-36"
+                />
+              </label>
+              <label>
+                <Label>IBAN</Label>
+                <TextInput
+                  value={draft.iban}
+                  onChange={(e) => setDraft({ ...draft, iban: e.target.value })}
+                  className="w-56"
+                />
+              </label>
+            </>
+          )}
+          <label>
+            <Label hint="sistem gelmeden önceki bakiye">Devir</Label>
+            <TextInput
+              type="number"
+              min={0}
+              step="0.01"
+              value={draft.openingBalance}
+              placeholder="0"
+              onChange={(e) =>
+                setDraft({ ...draft, openingBalance: e.target.value })
+              }
+              className="w-32"
+            />
+          </label>
+          <Button
+            disabled={create.isPending || draft.name.trim().length === 0}
+            onClick={() => create.mutate()}
           >
-            {CashAccountKindEnum.options.map((k) => (
-              <option key={k} value={k}>
-                {CASH_ACCOUNT_KIND_LABELS[k]}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {draft.kind !== "CASH" && (
+            Hesap aç
+          </Button>
+        </div>
+        <ErrorLine error={create.error} />
+      </div>
+
+      <div className="p-4">
+        {query.isLoading && <LoadingState />}
+        <ErrorLine error={query.error} />
+
+        {query.data && (
           <>
-            <label>
-              <Label>Banka</Label>
-              <TextInput
-                value={draft.bankName}
-                onChange={(e) =>
-                  setDraft({ ...draft, bankName: e.target.value })
-                }
-                className="w-36"
-              />
-            </label>
-            <label>
-              <Label>IBAN</Label>
-              <TextInput
-                value={draft.iban}
-                onChange={(e) => setDraft({ ...draft, iban: e.target.value })}
-                className="w-56"
-              />
-            </label>
+            {query.data.accounts.length === 0 ? (
+              <EmptyState label="Hiç hesap yok — peşin siparişlerin parası hiçbir yere yazılamaz." />
+            ) : (
+              <ul className="space-y-2">
+                {query.data.accounts.map((a) => (
+                  <AccountRow key={a.id} account={a} onChanged={invalidate} />
+                ))}
+              </ul>
+            )}
+
+            <BindingsEditor
+              bindings={query.data.bindings}
+              accounts={query.data.accounts.filter((a) => a.isActive)}
+              onChanged={invalidate}
+            />
           </>
         )}
-        <label>
-          <Label hint="sistem gelmeden önceki bakiye">Devir</Label>
-          <TextInput
-            type="number"
-            min={0}
-            step="0.01"
-            value={draft.openingBalance}
-            placeholder="0"
-            onChange={(e) =>
-              setDraft({ ...draft, openingBalance: e.target.value })
-            }
-            className="w-32"
-          />
-        </label>
-        <Button
-          disabled={create.isPending || draft.name.trim().length === 0}
-          onClick={() => create.mutate()}
-        >
-          Hesap aç
-        </Button>
       </div>
-      <ErrorLine error={create.error} />
-
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
-
-      {query.data && (
-        <>
-          <ul className="space-y-2">
-            {query.data.accounts.map((a) => (
-              <AccountRow key={a.id} account={a} onChanged={invalidate} />
-            ))}
-            {query.data.accounts.length === 0 && (
-              <li>
-                <EmptyState label="Hiç hesap yok — peşin siparişlerin parası hiçbir yere yazılamaz." />
-              </li>
-            )}
-          </ul>
-
-          <BindingsEditor
-            bindings={query.data.bindings}
-            accounts={query.data.accounts.filter((a) => a.isActive)}
-            onChanged={invalidate}
-          />
-        </>
-      )}
     </Panel>
   );
 }
@@ -202,16 +207,16 @@ function AccountRow({
   });
 
   return (
-    <li className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+    <li className="rounded-lg border border-line p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm">
+        <div className="text-body-sm">
           <p className="flex items-center gap-2 font-medium">
             {account.name}
             <Badge tone="info">{CASH_ACCOUNT_KIND_LABELS[account.kind]}</Badge>
             {account.isDefault && <Badge tone="brand">Varsayılan</Badge>}
             {!account.isActive && <Badge tone="neutral">Kapalı</Badge>}
           </p>
-          <p className="text-neutral-500">
+          <p className="text-ink-faint">
             Bakiye <strong>{formatTRY(account.currentBalance)}</strong> · devir{" "}
             {formatTRY(account.openingBalance)} · {account.movementCount}{" "}
             hareket
@@ -247,7 +252,7 @@ function AccountRow({
           {account.movementCount === 0 && !account.isDefault && (
             <Button
               size="sm"
-              variant="danger"
+              variant="dangerQuiet"
               loading={remove.isPending}
               onClick={() => remove.mutate()}
             >
@@ -284,11 +289,9 @@ function BindingsEditor({
   });
 
   return (
-    <div className="mt-5 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Ödeme yöntemi → hesap
-      </h3>
-      <p className="mb-3 text-xs text-neutral-500">
+    <div className="mt-5 border-t border-line pt-4">
+      <h3 className="tech-label mb-1">Ödeme yöntemi → hesap</h3>
+      <p className="mb-3 text-xs text-ink-faint">
         Peşin bir siparişin parası hangi hesaba yazılsın? Eşlenmemiş yöntem
         varsayılan hesaba düşer.
       </p>
@@ -296,8 +299,8 @@ function BindingsEditor({
         {bindings.map((b) => (
           <li key={b.method} className="flex items-center gap-2">
             <span
-              className={`w-40 shrink-0 text-sm ${
-                b.settles ? "" : "text-neutral-400 dark:text-neutral-600"
+              className={`w-40 shrink-0 text-body-sm ${
+                b.settles ? "" : "text-ink-faint"
               }`}
             >
               {PAYMENT_METHOD_LABELS[b.method]}
@@ -320,7 +323,7 @@ function BindingsEditor({
                 ))}
               </Select>
             ) : (
-              <span className="text-xs text-neutral-400 dark:text-neutral-600">
+              <span className="text-xs text-ink-faint">
                 Kasaya girmez — cariye borç yazar
               </span>
             )}

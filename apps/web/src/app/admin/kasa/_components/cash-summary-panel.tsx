@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowDownLeft, ArrowUpRight, Equal } from "lucide-react";
 import type { CashSummary } from "@repo/services";
 import {
   CASH_ACCOUNT_KIND_LABELS,
@@ -10,7 +11,7 @@ import {
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import { Button, Label, Panel, TextInput, ErrorLine } from "@/components/form";
-import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import { Badge, EmptyState, LoadingState, StatTile } from "@/components/ui";
 
 // Gün sonu. Opens on today, because that is the question this screen is
 // reached for: "bugün kasaya ne girdi".
@@ -71,35 +72,50 @@ export function CashSummaryPanel() {
       <ErrorLine error={query.error} />
 
       {query.data && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-3">
-            <Total label="Giriş" value={query.data.totalIn} tone="success" />
-            <Total label="Çıkış" value={query.data.totalOut} tone="danger" />
-            <Total label="Net" value={query.data.net} tone="brand" />
+            <StatTile
+              label="Giriş"
+              value={formatTRY(query.data.totalIn)}
+              hint="tahsilat, peşin sipariş, elle giriş"
+              tone="positive"
+              icon={<ArrowDownLeft className="h-4 w-4" />}
+            />
+            <StatTile
+              label="Çıkış"
+              value={formatTRY(query.data.totalOut)}
+              hint="ödeme ve elle çıkış"
+              tone="critical"
+              icon={<ArrowUpRight className="h-4 w-4" />}
+            />
+            <StatTile
+              label="Net"
+              value={formatTRY(query.data.net)}
+              hint="giriş − çıkış"
+              icon={<Equal className="h-4 w-4" />}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Hesaplara göre
-              </h3>
-              <ul className="space-y-1.5 text-sm">
+              <h3 className="tech-label mb-2">Hesaplara göre</h3>
+              <ul className="space-y-1.5 text-body-sm">
                 {query.data.byAccount.map((a) => (
                   <li
                     key={a.accountId}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
                   >
                     <span>
                       {a.accountName}{" "}
-                      <span className="text-xs text-neutral-500">
+                      <span className="text-xs text-ink-faint">
                         {CASH_ACCOUNT_KIND_LABELS[a.kind]}
                       </span>
                     </span>
                     <span className="text-right">
-                      <span className="block font-medium">
+                      <span className="block font-medium tabular-nums">
                         {formatTRY(a.currentBalance)}
                       </span>
-                      <span className="block text-xs text-neutral-500">
+                      <span className="block text-xs tabular-nums text-ink-faint">
                         dönem neti {formatTRY(a.net)}
                       </span>
                     </span>
@@ -109,27 +125,25 @@ export function CashSummaryPanel() {
             </div>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Kaynağa göre
-              </h3>
+              <h3 className="tech-label mb-2">Kaynağa göre</h3>
               {query.data.bySource.length === 0 ? (
                 <EmptyState label="Bu aralıkta hareket yok." />
               ) : (
-                <ul className="space-y-1.5 text-sm">
+                <ul className="space-y-1.5 text-body-sm">
                   {query.data.bySource.map((s) => (
                     <li
                       key={s.source}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
                     >
                       <Badge tone="neutral">
                         {CASH_MOVEMENT_SOURCE_LABELS[s.source]}
                       </Badge>
-                      <span className="text-right text-xs text-neutral-500">
-                        <span className="text-emerald-600 dark:text-emerald-400">
+                      <span className="text-right text-xs tabular-nums">
+                        <span className="text-positive">
                           +{formatTRY(s.in)}
                         </span>{" "}
-                        /{" "}
-                        <span className="text-red-600 dark:text-red-400">
+                        <span className="text-ink-faint">/</span>{" "}
+                        <span className="text-critical">
                           −{formatTRY(s.out)}
                         </span>
                       </span>
@@ -142,28 +156,5 @@ export function CashSummaryPanel() {
         </div>
       )}
     </Panel>
-  );
-}
-
-function Total({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "success" | "danger" | "brand";
-}) {
-  const color = {
-    success: "text-emerald-600 dark:text-emerald-400",
-    danger: "text-red-600 dark:text-red-400",
-    brand: "text-neutral-900 dark:text-neutral-100",
-  }[tone];
-
-  return (
-    <div className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className={`text-lg font-semibold ${color}`}>{formatTRY(value)}</p>
-    </div>
   );
 }

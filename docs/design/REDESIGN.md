@@ -79,8 +79,8 @@ Sayfa başlığı `headline-lg`, panel başlığı `headline-sm`, gövde `body-s
 ## Paylaşılan bileşenler
 
 `src/components/ui.tsx`
-: `Card`, `StatTile`, `Badge`, `PageHeader`, `LoadingState`, `EmptyState`,
-`Tabs`, `Chips`, `Table`/`THead`/`TBody`/`Th`/`Td`/`TableEmpty`
+: `Card`, `StatTile`, `Badge`, `PageHeader`, `Note`, `LoadingState`,
+`EmptyState`, `Tabs`, `Chips`, `Table`/`THead`/`TBody`/`Th`/`Td`/`TableEmpty`
 
 `src/components/form.tsx`
 : `Label`, `TextInput`, `Select`, `TextArea`, `Checkbox`, `Button`,
@@ -303,10 +303,58 @@ Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti
 
 **Açık kalan:** `hesabim` ve `403` hâlâ eski hâlinde — Adım 8'in geri kalanı.
 
-### ▢ Adım 4 — Finans
+### ✔ Adım 4 — Finans (bitti)
 
 `admin/kasa`, `admin/cekler`, `admin/iadeler`, `admin/kurlar`,
 `admin/payment-terms`, `admin/volume-tiers`.
+
+**Üç yerel `Stat` kutusu silindi.** Çek, iade ve gün sonu ekranlarının her biri
+kendi sayı kutusunu yazmıştı — üçü de aynı işi yapıyor, üçü de farklı puntoda.
+Hepsi `StatTile`a geçti. Kur ekranındaki para birimi kartları da aynı kutuya
+oturdu: eksik kur artık kırmızı bir künye değil, kırmızı bir kutu ipucu, ve
+"1 gün önce girildi" uyarısı kehribar.
+
+**İki yerel `FilterChip` silindi**, ikisi de `Chips`e geçti. Yuvarlak düğmeler
+(`rounded-full`) tasarım dilinin 3. kuralını çiğniyordu.
+
+**Yeni ortak bileşen `Note`** (`ui.tsx`): ekranın altındaki kural açıklaması.
+Sekiz yönetim ekranı bunu `text-sm text-neutral-500` diye kendi yazıyordu.
+Kutuya konmadı, kenar çizgisiyle ayrıldı — okunması _gereken_ bir uyarı değil,
+isteyenin okuyacağı bir dipnot; kutu ona hak etmediği bir ağırlık verirdi.
+
+**Yeni düğme çeşidi `dangerQuiet`** (`form.tsx`): listedeki "Sil" için. Ekran
+görüntüsü sebebi gösterdi — hacim iskontosu ekranında dört satırın dördünde de
+dolu kırmızı bir "Sil" düğmesi vardı ve ekran, satırın asıl eylemi olan
+"Düzenle"den çok o dört kırmızı bloğu okutuyordu. Yıkıcılık kaybolmadı, sesini
+üzerine gelene kadar yükseltmiyor; onay penceresi ağırlığı zaten taşıyor. Dolu
+kırmızı, gerekçesi yazılmış ve tetiği çekilen eylemde (`İptal et`) kaldı.
+
+**Ekleme şeritleri gömük zemine indi.** Vade, hacim ve hesap ekranlarında
+"ekle" formu listenin üstünde, `bg-sunken` bir şeritte ve altındaki listeden
+bir çizgiyle ayrılıyor — tablo başlığıyla aynı yüzey.
+
+Ekran görüntüsü çekerken çıkan, `tsc`/lint/test/build'in dördünün de
+yakalamadığı üç şey:
+
+- **Kasa hareketleri sayfayı yutuyordu.** Yüz satır, iki satırlık künyelerle
+  3000 pikselden uzun bir liste çiziyor ve altındaki "Hesaplar" paneli ile
+  dipnot hiç görünmüyordu. İki para listesi (hareketler, kart tahsilatları)
+  `Table`a geçti — defter zaten tablo istiyordu — ve uzun panel en alta alındı.
+  İptal gerekçesi hücreye sıkıştırılmıyor, satırın altında `colSpan`lı bir
+  satırda soruluyor: hücreye konsaydı bütün sütunları genişletirdi.
+- **İade tablosunun eylem sütunu ekrandan taşıyordu.** Dokuz sütun 1440
+  pikselde sığmıyor ve taşan sütun "İşlem" oluyordu; yani ekranın tek eylemi
+  yatay kaydırmadan görünmüyordu. Belge numarası siparişini, firma gerekçesini
+  alt satırına aldı — dokuz sütun yediye indi. Ayrıca `IAD-20260826-0017`
+  sarmalanıp satır boyunu üçe katlıyordu (`whitespace-nowrap`).
+- **Vade ekranı başlığını iki kez yazıyordu**: sayfa başlığı da panel başlığı
+  da "Vade tanımları"ydı. Panel "Tanımlar" oldu.
+
+Sayaçlar (eşleşen satır sayısı, `app` + `components`): `dark:` 220 → **191**,
+`neutral-` 417 → **366**, `brand-` 18 (değişmedi).
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti,
+`next build` başarılı, 6 ekran görüntüsü `adim-4/` altında.
 
 ### ▢ Adım 5 — Operasyon
 

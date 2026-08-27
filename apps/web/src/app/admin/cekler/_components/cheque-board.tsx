@@ -15,8 +15,10 @@ import { formatTRY } from "@/lib/format";
 import {
   Badge,
   Card,
+  Chips,
   EmptyState,
   LoadingState,
+  StatTile,
   Table,
   TBody,
   Td,
@@ -102,6 +104,18 @@ const ACTION_LABELS: Record<ChequeStatus, string> = {
   CANCELLED: "İptal",
 };
 
+/** "Elimizde" gerçek bir durum değil, iki durumun toplamı — bu yüzden başta. */
+const STATUS_FILTERS: ReadonlyArray<{
+  key: "OPEN" | ChequeStatus;
+  label: string;
+}> = [
+  { key: "OPEN", label: "Elimizde" },
+  ...ChequeStatusEnum.options.map((s) => ({
+    key: s,
+    label: CHEQUE_STATUS_LABELS[s],
+  })),
+];
+
 function trDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString("tr-TR") : "—";
 }
@@ -177,47 +191,39 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
     <div className="space-y-4">
       {summary ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
+          <StatTile
             label="Portföyde"
             value={formatTRY(summary.openTotal)}
-            note={`${summary.openCount} kâğıt`}
+            hint={`${summary.openCount} kâğıt`}
           />
-          <Stat
+          <StatTile
             label="Vadesi geçmiş"
             value={formatTRY(summary.overdueTotal)}
-            note={`${summary.overdueCount} kâğıt`}
-            tone={summary.overdueCount > 0 ? "danger" : "neutral"}
+            hint={`${summary.overdueCount} kâğıt`}
+            tone={summary.overdueCount > 0 ? "critical" : "neutral"}
           />
-          <Stat
+          <StatTile
             label="30 gün içinde"
             value={formatTRY(summary.dueSoonTotal)}
-            note={`${summary.dueSoonCount} kâğıt`}
-            tone={summary.dueSoonCount > 0 ? "warning" : "neutral"}
+            hint={`${summary.dueSoonCount} kâğıt`}
+            tone={summary.dueSoonCount > 0 ? "caution" : "neutral"}
           />
-          <Stat
+          <StatTile
             label="Vadesi girilmemiş"
-            value={String(summary.incompleteCount)}
-            note="künye eksik"
-            tone={summary.incompleteCount > 0 ? "warning" : "neutral"}
+            value={summary.incompleteCount}
+            hint="künye eksik"
+            tone={summary.incompleteCount > 0 ? "caution" : "neutral"}
           />
         </div>
       ) : null}
 
       <Card>
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterChip
-            active={statusFilter === "OPEN"}
-            onClick={() => setStatusFilter("OPEN")}
-            label="Elimizde"
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Chips
+            value={statusFilter}
+            onChange={setStatusFilter}
+            items={STATUS_FILTERS}
           />
-          {ChequeStatusEnum.options.map((s) => (
-            <FilterChip
-              key={s}
-              active={statusFilter === s}
-              onClick={() => setStatusFilter(s)}
-              label={CHEQUE_STATUS_LABELS[s]}
-            />
-          ))}
           <Checkbox
             checked={overdueOnly}
             onChange={(e) => setOverdueOnly(e.target.checked)}
@@ -233,7 +239,7 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
       ) : rows.length === 0 ? (
         <EmptyState label="Bu süzgeçle kâğıt yok." />
       ) : (
-        <Panel title="Kâğıtlar">
+        <Panel title="Kâğıtlar" bodyClassName="p-0">
           <Table>
             <THead>
               <tr>
@@ -253,14 +259,14 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
                     <Td className="whitespace-nowrap">
                       <div
                         className={
-                          r.isOverdue ? "font-semibold text-red-600" : ""
+                          r.isOverdue ? "font-semibold text-critical" : ""
                         }
                       >
                         {trDate(r.dueDate)}
                       </div>
                       {left !== null &&
                       (r.status === "PORTFOLIO" || r.status === "DEPOSITED") ? (
-                        <div className="text-xs text-neutral-500">
+                        <div className="text-xs text-ink-faint">
                           {left < 0
                             ? `${-left} gün geçti`
                             : `${left} gün kaldı`}
@@ -295,10 +301,13 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
                     </Td>
                     <Td>
                       <div className="flex flex-wrap gap-1">
+                        {/* Tahsil, kâğıdın gitmesi istenen yer — altı eşit
+                            ağırlıkta düğmenin arasında hangisinin mutlu yol
+                            olduğu görünmüyordu. */}
                         {CHEQUE_TRANSITIONS[r.status].map((to) => (
                           <Button
                             key={to}
-                            variant="secondary"
+                            variant={to === "CLEARED" ? "primary" : "secondary"}
                             size="sm"
                             onClick={() => {
                               setError(null);
@@ -308,10 +317,12 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
                             {ACTION_LABELS[to]}
                           </Button>
                         ))}
+                        {/* Künye bir durum geçişi değil, düzeltme — geçişlerle
+                            aynı ağırlıkta durmamalı. */}
                         {r.status === "PORTFOLIO" ||
                         r.status === "DEPOSITED" ? (
                           <Button
-                            variant="secondary"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setError(null);
@@ -353,57 +364,6 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
         />
       ) : null}
     </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  note,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "neutral" | "warning" | "danger";
-}) {
-  const color =
-    tone === "danger"
-      ? "text-red-600"
-      : tone === "warning"
-        ? "text-amber-600"
-        : "text-neutral-900 dark:text-neutral-100";
-  return (
-    <Card>
-      <div className="text-xs uppercase tracking-wide text-neutral-500">
-        {label}
-      </div>
-      <div className={`mt-1 text-xl font-semibold tabular-nums ${color}`}>
-        {value}
-      </div>
-      <div className="text-xs text-neutral-500">{note}</div>
-    </Card>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <Button
-      size="sm"
-      variant={active ? "primary" : "secondary"}
-      className="rounded-full"
-      onClick={onClick}
-    >
-      {label}
-    </Button>
   );
 }
 
@@ -452,7 +412,7 @@ function ActionDialog({
           });
         }}
       >
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-body-sm text-ink-muted">
           {row.companyName} · {formatTRY(row.amount)} ·{" "}
           {CHEQUE_KIND_LABELS[row.kind]}
           {row.serialNumber ? ` ${row.serialNumber}` : ""}
@@ -489,7 +449,7 @@ function ActionDialog({
         ) : null}
 
         {reopensDebt ? (
-          <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          <p className="rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
             Bu işlem {formatTRY(row.amount)} tutarında borcu{" "}
             <b>cariye geri yazar</b>. Tahsilat kaydı silinmez; ekstrede her iki
             satır da görünür.
@@ -557,7 +517,7 @@ function DetailsDialog({
           });
         }}
       >
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-body-sm text-ink-muted">
           {row.companyName} · {formatTRY(row.amount)}
         </p>
 

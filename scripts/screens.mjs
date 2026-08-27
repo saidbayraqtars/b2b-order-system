@@ -154,6 +154,50 @@ export const SCREENS = [
     },
   },
 
+  // ── Adım 4 — finans ─────────────────────────────────────────────────────
+  {
+    step: 4,
+    slug: "admin-kasa",
+    label: "Kasa & banka",
+    as: "admin",
+    path: "/admin/kasa",
+  },
+  {
+    step: 4,
+    slug: "admin-cekler",
+    label: "Çek & senet portföyü",
+    as: "admin",
+    path: "/admin/cekler",
+  },
+  {
+    step: 4,
+    slug: "admin-iadeler",
+    label: "İadeler",
+    as: "admin",
+    path: "/admin/iadeler",
+  },
+  {
+    step: 4,
+    slug: "admin-kurlar",
+    label: "Döviz kurları",
+    as: "admin",
+    path: "/admin/kurlar",
+  },
+  {
+    step: 4,
+    slug: "admin-vadeler",
+    label: "Vade tanımları",
+    as: "admin",
+    path: "/admin/payment-terms",
+  },
+  {
+    step: 4,
+    slug: "admin-hacim-iskontosu",
+    label: "Hacim iskontosu",
+    as: "admin",
+    path: "/admin/volume-tiers",
+  },
+
   // ── Adım 8 — giriş ve hesap ─────────────────────────────────────────────
   { step: 8, slug: "giris", label: "Giriş ekranı", as: "anon", path: "/login" },
   {
