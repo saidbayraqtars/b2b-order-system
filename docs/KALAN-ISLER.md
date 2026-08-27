@@ -15,13 +15,13 @@ Yeni bir sohbet açtığınızda önce bunu okutun.
 
 ## 1. Bugünün durumu
 
-| | |
-| --- | --- |
-| Commit | `bc4fe68`, `origin/main` ile eşit |
-| Test | 233 rota (apps/web) + servis paketi; `pnpm test` yeşil |
-| CI | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil |
-| Ham sınıf sayacı | `dark:` 83 · `neutral-` 186 · `brand-` 13 |
-| Yenileme | Adım 1-6 + 8 bitti; 7, 8-kalan, 9, 10 açık |
+|                  |                                                              |
+| ---------------- | ------------------------------------------------------------ |
+| Commit           | `bc4fe68`, `origin/main` ile eşit                            |
+| Test             | 233 rota (apps/web) + servis paketi; `pnpm test` yeşil       |
+| CI               | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil |
+| Ham sınıf sayacı | `dark:` 83 · `neutral-` 186 · `brand-` 13                    |
+| Yenileme         | Adım 1-6 + 8 bitti; 7, 8-kalan, 9, 10 açık                   |
 
 ---
 
@@ -31,15 +31,15 @@ Yeni bir sohbet açtığınızda önce bunu okutun.
 
 ### Adım 7 — Rapor tasarımcısı ve panolar (7 ekran, 53 ham satır)
 
-| Rota | Not |
-| --- | --- |
-| `/reports` | rapor listesi |
-| `/reports/new` | tasarımcı — ekranların en karmaşığı |
-| `/reports/[id]` | rapor görüntüleme |
-| `/reports/[id]/print` | yazdırma yüzeyi — `documents/**` gibi mi davranacak, karar ver |
-| `/reports/dashboards` | pano listesi |
-| `/reports/dashboards/[id]` | pano detayı |
-| `/admin/reports` | yönetim tarafı |
+| Rota                       | Not                                                            |
+| -------------------------- | -------------------------------------------------------------- |
+| `/reports`                 | rapor listesi                                                  |
+| `/reports/new`             | tasarımcı — ekranların en karmaşığı                            |
+| `/reports/[id]`            | rapor görüntüleme                                              |
+| `/reports/[id]/print`      | yazdırma yüzeyi — `documents/**` gibi mi davranacak, karar ver |
+| `/reports/dashboards`      | pano listesi                                                   |
+| `/reports/dashboards/[id]` | pano detayı                                                    |
+| `/admin/reports`           | yönetim tarafı                                                 |
 
 Paylaşılan bileşen: `components/report-preview.tsx` (11 ham satır).
 
@@ -56,12 +56,12 @@ diye atlamayın.
 **REDESIGN.md'nin Adım 1-10 listesinde bunlar yok.** Gözden kaçmış: Adım 1'de
 kabukları `SidebarShell`e döndü, içerikleri hiç elden geçmedi.
 
-| Rota | Ham satır |
-| --- | --- |
-| `/rep` (plasiyer panosu) | 16 |
-| `/rep/ziyaret` | 28 |
-| `/rep/tahsilat` | 13 |
-| `/` (kök giriş sayfası) | 5 |
+| Rota                     | Ham satır |
+| ------------------------ | --------- |
+| `/rep` (plasiyer panosu) | 16        |
+| `/rep/ziyaret`           | 28        |
+| `/rep/tahsilat`          | 13        |
+| `/` (kök giriş sayfası)  | 5         |
 
 Paylaşılan bileşen: `components/target-scorecard.tsx` (5).
 
@@ -109,11 +109,11 @@ Vega ekranında gözle doğrula.
 
 ### 3.3 Dış bağımlılık bekliyor
 
-| İş | Neyi bekliyor |
-| --- | --- |
+| İş                        | Neyi bekliyor                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Sanal POS gerçek adaptörü | Sağlayıcı seçimi + sözleşme + anahtar. Arayüz hazır, kalan tek dosyalık adaptör + 3-D Secure dönüş + webhook rotaları |
-| iOS | Mac yok, hiç koşmadı |
-| ~~E-fatura~~ | **b2b'nin işi değil** (2026-08-24 kararı): müşterinin ERP'si GİB'e gönderiyor, biz belgeyi ERP'ye doğru yazıyoruz |
+| iOS                       | Mac yok, hiç koşmadı                                                                                                  |
+| ~~E-fatura~~              | **b2b'nin işi değil** (2026-08-24 kararı): müşterinin ERP'si GİB'e gönderiyor, biz belgeyi ERP'ye doğru yazıyoruz     |
 
 ### 3.4 Canlıya çıkış turunda
 
@@ -143,9 +143,10 @@ Vega ekranında gözle doğrula.
 
 `b2b-backlog` hafıza notunda 14 başlık. Sıralanmadı, iş kararı. Öne çıkanlar:
 teklif yönetimi · vade farkı & erken ödeme iskontosu motoru · firma risk skoru
-+ otomatik blokaj · holding/şube konsolidasyonu · matrix katalog · çoklu dil ·
-dışa açık B2B API + webhook + OpenAPI · temsilci devir defteri · sunum/maskeleme
-modu.
+
+- otomatik blokaj · holding/şube konsolidasyonu · matrix katalog · çoklu dil ·
+  dışa açık B2B API + webhook + OpenAPI · temsilci devir defteri · sunum/maskeleme
+  modu.
 
 ---
 
@@ -256,8 +257,8 @@ zayıf olanı atın.
 yerde içe aktarma yok (`parseXlsx|readXlsx|importC|csvImport|bulkUpsert` → sıfır
 eşleşme).
 
-Kanıt kurulum sihirbazının kendisinde: *"Ürünler ve varyantlar — 2673 varyant"*,
-*"Fiyatlar — 10669 fiyat satırı"*. Sihirbaz "her varyanta liste fiyatı,
+Kanıt kurulum sihirbazının kendisinde: _"Ürünler ve varyantlar — 2673 varyant"_,
+_"Fiyatlar — 10669 fiyat satırı"_. Sihirbaz "her varyanta liste fiyatı,
 gerekiyorsa grup bazlı kademe gir" diyor. Gerçek bir müşteri 2673 varyanta 4'er
 fiyatı **ekrandan tek tek giremez** — ve toptancıda zam ayda bir gelir, toplu
 gelir.
@@ -304,17 +305,17 @@ oran + taban + dönem + (opsiyonel) hedefe bağlı çarpan.
 
 ### 5.5–5.9 Ucuz olanlar
 
-| Fikir | Durum | Neden |
-| --- | --- | --- |
-| **Minimum sipariş tutarı/koli** | yok | Toptanda standart. Firma başına ya da genel; tek alan + sepette tek kontrol |
-| **Sipariş kesim saati (cut-off)** | yok | Gıda toptanında "16:00'dan sonrası yarına". Sevkiyat planını o belirliyor |
-| **Zamanlı fiyat değişimi** | yok | "1 Eylül'den itibaren zam". `Price`'ta `validFrom` yok; `Job` zamanlayıcı hazır |
-| **Backorder / bekleyen bakiye** | yok | Kısmi sevkiyat var (`quantityShipped`), ama "40 koli bekliyor, mal gelince sevk et" takibi yok |
-| **`Order.source`** | yok | Sipariş web'den mi, mobilden mi, plasiyerden mi geldi — tek enum alanı, sonrası rapor kırılımında bedava |
+| Fikir                             | Durum | Neden                                                                                                    |
+| --------------------------------- | ----- | -------------------------------------------------------------------------------------------------------- |
+| **Minimum sipariş tutarı/koli**   | yok   | Toptanda standart. Firma başına ya da genel; tek alan + sepette tek kontrol                              |
+| **Sipariş kesim saati (cut-off)** | yok   | Gıda toptanında "16:00'dan sonrası yarına". Sevkiyat planını o belirliyor                                |
+| **Zamanlı fiyat değişimi**        | yok   | "1 Eylül'den itibaren zam". `Price`'ta `validFrom` yok; `Job` zamanlayıcı hazır                          |
+| **Backorder / bekleyen bakiye**   | yok   | Kısmi sevkiyat var (`quantityShipped`), ama "40 koli bekliyor, mal gelince sevk et" takibi yok           |
+| **`Order.source`**                | yok   | Sipariş web'den mi, mobilden mi, plasiyerden mi geldi — tek enum alanı, sonrası rapor kırılımında bedava |
 
 ### 5.10 Kampanya simülatörü
 
-*"Bu kampanyayı açsaydım geçen ayki siparişlerde ne kadar indirim verirdim?"*
+_"Bu kampanyayı açsaydım geçen ayki siparişlerde ne kadar indirim verirdim?"_
 
 Promosyon motoru **ve** sipariş geçmişi ikisi de var; motoru geçmiş siparişlere
 kuru kuruya koşturmak yetiyor. Pahalı bir hatayı yayına almadan yakalar.
@@ -330,17 +331,17 @@ katılmalı ki sonradan üçüncü bir kanal eklemek her çağrı yerine dokunma
 
 ## 6. Yönetici panosu — işletme zekâsı katmanı ★★★
 
-**Kullanıcının 2026-08-28 isteği:** *"şirketin anlık durumunu, büyüme
+**Kullanıcının 2026-08-28 isteği:** _"şirketin anlık durumunu, büyüme
 sistematiğini matematiksel olarak hesaplayıp master admin kullanıcısına rapor
-olarak ekranda versin — Vega'nın rapor sistemi gibi."*
+olarak ekranda versin — Vega'nın rapor sistemi gibi."_
 
 ### 6.1 Bu, rapor tasarımcısının yerine geçmez
 
-| | Rapor tasarımcısı (var) | Yönetici panosu (yeni) |
-| --- | --- | --- |
-| Ne | Kullanıcı tanımlı | Küratörlü |
-| Nerede | **Veri** (`ReportDefinition`) | **Kod** |
-| Soru | "Şu sütunları şuna göre grupla" | "Neden büyüdük?" |
+|        | Rapor tasarımcısı (var)         | Yönetici panosu (yeni) |
+| ------ | ------------------------------- | ---------------------- |
+| Ne     | Kullanıcı tanımlı               | Küratörlü              |
+| Nerede | **Veri** (`ReportDefinition`)   | **Kod**                |
+| Soru   | "Şu sütunları şuna göre grupla" | "Neden büyüdük?"       |
 
 Büyüme matematiği bir sütun listesi değil: kohort matrisi, regresyon eğimi ve
 köprü grafiği kullanıcının kuracağı şeyler değil. İkisini tek motora sıkıştırmak
@@ -353,8 +354,8 @@ olmayacak.
 
 ### 6.2 Marj hesaplanabilir
 
-`ProductVariant.costPrice` var (ERP'nin `ALISFIYATI`'ndan, şemada *"müşteriye
-gösterilmez — kâr raporu ve ..."* diye not düşülmüş). Yani panonun en değerli
+`ProductVariant.costPrice` var (ERP'nin `ALISFIYATI`'ndan, şemada _"müşteriye
+gösterilmez — kâr raporu ve ..."_ diye not düşülmüş). Yani panonun en değerli
 yarısı — **kâr, marj, ürün kârlılığı** — bugün hesaplanabilir. Çoğu B2B
 panosunun yapamadığı şey bu.
 
@@ -368,6 +369,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
 çek portföyünde bu ay tahsil edilecek · maliyetle stok değeri · brüt marj %.
 
 **B. Büyüme**
+
 - Aylık ciro serisi + 3 aylık hareketli ortalama (gürültüyü ayırmak için)
 - **YoY**, MoM değil — gerekçe §6.5
 - Trend eğimi (en küçük kareler): "aylık ortalama +X TL"
@@ -378,6 +380,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
   cevaplayan şey bu, toplam ciro çizgisi değil.
 
 **C. Müşteri**
+
 - **RFM segmentasyonu**: Recency / Frequency / Monetary → çeyrekliklere böl →
   şampiyon · sadık · riskli · uykuda · kayıp
 - **Kohort tutundurma**: ilk siparişini şu ayda veren firmaların kaçta kaçı
@@ -390,6 +393,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
   bildirir.
 
 **D. Ürün ve stok**
+
 - ABC analizi (ciro Pareto)
 - Stok devir hızı = SMM / ortalama stok · DIO = 365 / devir
 - Ölü stok: X gündür hareketsiz, **maliyet değeriyle** (`StockMovement` defteri
@@ -398,6 +402,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
   doğduğu yer burasıdır
 
 **E. Nakit ve alacak**
+
 - **DSO** = (ortalama alacak / dönem cirosu) × gün
 - Yaşlandırma dağılımı **ve trendi** — tek fotoğraf değil, kötüleşiyor mu
 - Tahsilat performansı: vadesinde ödenen oranı, firma bazlı ortalama gecikme
@@ -405,6 +410,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
 - Karşılıksız çek oranı
 
 **F. Gidişat**
+
 - Ay sonu projeksiyonu: ayın kaçıncı **iş gününde** ne kadar yapıldı →
   mevsimsel indeksle ay sonu tahmini
 - Hedefe göre pace (`SalesTarget` var; Adım 34'ün hedef kartı bunun kardeşi)
@@ -417,8 +423,8 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
    geceden olamaz. Hangi sayının bayat olabileceği ekranda yazmalı ("gece
    03:00 itibarıyla").
 2. **Toplama SQL'de, matematik JS'te.** Adım 18 deseni (`GROUP BY` veritabanında)
-   + Adım 56 kuralı (formül SQL'e gitmez). Regresyon, kohort matrisi ve HHI
-   JS'te.
+   - Adım 56 kuralı (formül SQL'e gitmez). Regresyon, kohort matrisi ve HHI
+     JS'te.
 3. **Yeni izin `analytics.view`, rol değil** (Adım 30 kuralı). Maliyet ve marj bu
    ekranda; `costPrice` müşteriye gösterilmiyor, plasiyere de gösterilmemeli —
    backlog'daki "sunum/maskeleme modu" bunun kardeşi.
@@ -430,7 +436,7 @@ sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiy
 
 **Az veriyle yalan söyleme.** Üç aylık veriyle CAGR göstermek uydurmadır. Her
 göstergenin bir **minimum veri şartı** olmalı ve karşılanmıyorsa sayı yerine
-*"yeterli veri yok — en az N ay gerekiyor"* yazmalı. Bir panonun en kolay yalan
+_"yeterli veri yok — en az N ay gerekiyor"_ yazmalı. Bir panonun en kolay yalan
 söylediği yer burasıdır: boş veriden çıkan bir yüzde de bir yüzde gibi görünür.
 
 **Mevsimsellik esas.** Toptan gıdada MoM karşılaştırma yanıltıcı — ramazan, yaz,
@@ -439,7 +445,7 @@ okul dönemi. Varsayılan karşılaştırma **YoY ve aynı dönem**. MoM göster
 
 ### 6.6 Açık soru — Vega
 
-Kullanıcı *"Vega'nın rapor sistemi gibi"* dedi. **Vega'nın rapor ekranları
+Kullanıcı _"Vega'nın rapor sistemi gibi"_ dedi. **Vega'nın rapor ekranları
 depoda yok** (`docs/` altında yalnızca kurulum/sunum/teklif var; `apps/erp-agent`
 şema okuyor, rapor değil). Hafızadaki `b2b-vegadb` doğrulanmış **tablo** şeması,
 rapor ekranı değil.
@@ -521,12 +527,12 @@ SHOT_BASE_URL=http://localhost:3100 pnpm shots -- --step <n>
 `Bilinen Eksikler` bölümü bitmiş dört işi hâlâ eksik gösteriyor. Bugün kodda
 doğrulandı:
 
-| FEATURES.md diyor | Gerçek |
-| --- | --- |
+| FEATURES.md diyor                           | Gerçek                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------- |
 | "Görsel işlenmiyor · S3/MinIO sürücüsü yok" | `packages/services/src/storage.ts` + `storage-config.ts` var (2026-08-26) |
-| "Hediye kademesi tek seviyeli" | `GIFT_TIER` + `PERCENT_OFF_TIER` var (Adım 55) |
-| backlog: "İade & değişim (RMA)" | `/admin/iadeler` var (2026-08-26) |
-| "Arayüz Faz 3 kalanı" | Adım 53'te kapandı |
+| "Hediye kademesi tek seviyeli"              | `GIFT_TIER` + `PERCENT_OFF_TIER` var (Adım 55)                            |
+| backlog: "İade & değişim (RMA)"             | `/admin/iadeler` var (2026-08-26)                                         |
+| "Arayüz Faz 3 kalanı"                       | Adım 53'te kapandı                                                        |
 
 Son güncelleme `d43dd65` (2026-08-26). Ondan sonraki işler (S3 sürücüsü, RMA
 ekranı, barkod okuyucu, 2FA artıkları) ve **yenilemenin Adım 1-6'sının tamamı**
@@ -549,7 +555,7 @@ Bağımlılık ve maliyet/etki sırası; söz değil.
    çıkar; erken yapmanın getirisi var.
 5. **Adım 10 temizlik** — ham sınıflar sıfıra, kiracı marka adı, §4.2/4.3/4.4.
 6. **FEATURES.md güncellemesi** (§9).
-7. **§6 yönetici panosu.** Adım 7 bittikten *sonra*: rapor ekranlarının ortak
+7. **§6 yönetici panosu.** Adım 7 bittikten _sonra_: rapor ekranlarının ortak
    dili ve grafik bileşenleri o adımda oturuyor, pano onların üstüne biniyor.
    Önce §6.4'teki dört mimari kararı yazıp öyle başlayın.
 8. **§5.1 Excel içe aktarma** — özellik önerilerinin en getirilisi, gözetim
