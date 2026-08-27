@@ -5,15 +5,16 @@ Amaç arşiv değil **kıyas**: bir adımı bitirdiğinizde önceki adımların 
 yan yana açıp aynı arayüze mi baktığınızı görebilmek. Yazıyla "tokenlara geçti"
 demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görüntü söylüyor.
 
-| Klasör   | Adım                            |
-| -------- | ------------------------------- |
-| `adim-2` | Portal / vitrin                 |
-| `adim-3` | Yönetim çekirdeği               |
-| `adim-4` | Finans                          |
-| `adim-5` | Operasyon                       |
-| `adim-6` | Yapılandırma ve sistem          |
-| `adim-7` | Rapor tasarımcısı ve panolar    |
-| `adim-8` | Giriş, bayilik başvurusu, hesap |
+| Klasör    | Adım                            |
+| --------- | ------------------------------- |
+| `adim-2`  | Portal / vitrin                 |
+| `adim-3`  | Yönetim çekirdeği               |
+| `adim-4`  | Finans                          |
+| `adim-5`  | Operasyon                       |
+| `adim-6`  | Yapılandırma ve sistem          |
+| `adim-7`  | Rapor tasarımcısı ve panolar    |
+| `adim-8`  | Giriş, bayilik başvurusu, hesap |
+| `adim-11` | Saha üçlüsü ve kök              |
 
 ## Yeniden üretmek
 

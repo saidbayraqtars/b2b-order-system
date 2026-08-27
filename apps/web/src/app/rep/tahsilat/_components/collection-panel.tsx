@@ -23,6 +23,13 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import {
+  Badge,
+  Chips,
+  EmptyState,
+  LoadingState,
+  StatTile,
+} from "@/components/ui";
 
 /**
  * Tekrar anahtarı üretici.
@@ -39,9 +46,12 @@ function newKey(): string {
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
-import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
 const METHODS = CollectionMethodEnum.options;
+const METHOD_CHIPS = METHODS.map((m) => ({
+  key: m,
+  label: COLLECTION_METHOD_LABELS[m],
+}));
 
 interface AccountOption {
   id: string;
@@ -145,16 +155,32 @@ export function CollectionPanel({
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Firma" value={companyName} />
-        <Stat
+        {/* Firma adı bir ölçü değil ama şeridin ilk kutusu: ekranın tamamı tek
+            bir carinin defterine yazıyor ve hangi cari olduğu her an
+            görünmeli. */}
+        <StatTile
+          label="Firma"
+          value={<span className="text-headline-md">{companyName}</span>}
+        />
+        <StatTile
           label="Güncel bakiye"
           value={company ? formatTRY(company.currentBalance) : "…"}
-          danger={balance !== null && balance > 0}
+          tone={balance !== null && balance > 0 ? "critical" : "neutral"}
+          hint={balance !== null && balance > 0 ? "borçlu" : undefined}
         />
-        <Stat
+        <StatTile
           label="Kullanılabilir limit"
           value={company ? formatTRY(company.availableCredit) : "…"}
-          danger={company ? Number(company.availableCredit) < 0 : false}
+          tone={
+            company && Number(company.availableCredit) < 0
+              ? "critical"
+              : "neutral"
+          }
+          hint={
+            company && Number(company.availableCredit) < 0
+              ? "limit aşıldı"
+              : undefined
+          }
         />
       </section>
 
@@ -189,24 +215,10 @@ export function CollectionPanel({
 
         <div className="mt-4">
           <Label>Tahsilat şekli</Label>
-          <div className="flex flex-wrap gap-2">
-            {METHODS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={m === method}
-                onClick={() => setMethod(m)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                  m === method
-                    ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
-                    : "border-neutral-300 text-neutral-600 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-400",
-                )}
-              >
-                {COLLECTION_METHOD_LABELS[m]}
-              </button>
-            ))}
-          </div>
+          {/* Ortak `Chips`: seçili olan siyah dolar. Bu şerit kendi seçili
+              görüntüsünü yazmıştı (marka çerçevesi + açık zemin) ve aynı
+              arayüzde ikinci bir "seçili küçük düğme" hâli üretiyordu. */}
+          <Chips value={method} onChange={setMethod} items={METHOD_CHIPS} />
         </div>
 
         {settles ? (
@@ -228,24 +240,27 @@ export function CollectionPanel({
             </Select>
           </div>
         ) : (
-          <p className="mt-4 text-xs text-neutral-500">
+          <p className="mt-4 text-xs text-ink-faint">
             {COLLECTION_METHOD_LABELS[method]} carinin borcunu kapatır, ancak
             tahsil edilene kadar kasaya girmez — kasa bakiyesi değişmez.
           </p>
         )}
 
         {confirming && valid ? (
-          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
-            <p className="text-sm text-amber-900 dark:text-amber-200">
+          // Onay kutusu `WarnLine` değil: içinde iki düğme var ve `WarnLine`
+          // tek satırlık bir cümle. Renk yine kehribar — "oldu bitti" demiyor,
+          // "şu olacak, emin misin" diyor.
+          <div className="mt-4 rounded-lg border border-caution/40 bg-caution/10 p-4">
+            <p className="text-body-sm text-caution">
               <span className="font-semibold">{companyName}</span> carisine{" "}
-              <span className="text-base font-bold tabular-nums">
+              <span className="text-body-lg font-bold tabular-nums">
                 {formatTRY(parsed)}
               </span>{" "}
               {COLLECTION_METHOD_LABELS[method].toLocaleLowerCase("tr")}{" "}
               tahsilat işlenecek.
             </p>
             {afterBalance !== null && (
-              <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+              <p className="mt-1 text-xs tabular-nums text-caution">
                 Bakiye {formatTRY(balance!)} → {formatTRY(afterBalance)}
               </p>
             )}
@@ -296,7 +311,7 @@ export function CollectionPanel({
         ) : payments.data!.payments.length === 0 ? (
           <EmptyState label="Henüz tahsilat kaydı yok." />
         ) : (
-          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <ul className="divide-y divide-line">
             {payments.data!.payments.map((p) => (
               <PaymentRow
                 key={p.id}
@@ -350,7 +365,7 @@ function PaymentRow({
     <li className="py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-semibold">
+          <p className="flex items-center gap-2 text-body-sm font-semibold text-ink">
             <span
               className={cn(
                 "tabular-nums",
@@ -366,7 +381,7 @@ function PaymentRow({
             )}
             {reversed && <Badge tone="danger">İptal edildi</Badge>}
           </p>
-          <p className="mt-0.5 text-xs text-neutral-500">
+          <p className="mt-0.5 text-xs text-ink-faint">
             {new Date(payment.createdAt).toLocaleString("tr-TR")}
             {payment.recordedByName ? ` · ${payment.recordedByName}` : ""}
             {payment.description ? ` · ${payment.description}` : ""}
@@ -381,7 +396,7 @@ function PaymentRow({
       </div>
 
       {open && (
-        <div className="mt-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+        <div className="mt-2 rounded border border-line bg-sunken p-3">
           <Label htmlFor={`iptal-${payment.id}`}>İptal gerekçesi</Label>
           <TextInput
             id={`iptal-${payment.id}`}
@@ -390,7 +405,7 @@ function PaymentRow({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
-          <p className="mt-1.5 text-xs text-neutral-500">
+          <p className="mt-1.5 text-xs text-ink-faint">
             Kayıt silinmez; aynı tutarda ters bir borç kaydı yazılır ve ikisi de
             ekstrede görünür.
           </p>
@@ -417,31 +432,5 @@ function PaymentRow({
         </div>
       )}
     </li>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  danger,
-}: {
-  label: string;
-  value: string;
-  danger?: boolean;
-}) {
-  return (
-    <Card>
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p
-        className={cn(
-          "mt-0.5 truncate text-lg font-semibold tabular-nums",
-          danger
-            ? "text-red-600 dark:text-red-400"
-            : "text-neutral-900 dark:text-neutral-50",
-        )}
-      >
-        {value}
-      </p>
-    </Card>
   );
 }

@@ -344,6 +344,65 @@ export const SCREENS = [
     path: "/403?perm=cash.manage",
   },
 
+  // ── Adım 11 — saha üçlüsü ve kök ────────────────────────────────────────
+  // Kök sayfa oturumsuz çekiliyor: giriş yapmış bir tarayıcı için ekran
+  // "Panele git" düğmesinden ibaret kalıyor ve ziyaretçinin gördüğü yüzey
+  // kaydedilmiş olmuyor.
+  {
+    step: 11,
+    slug: "kok",
+    label: "Ön kapı",
+    as: "anon",
+    path: "/",
+  },
+  {
+    step: 11,
+    slug: "rep-pano",
+    label: "Plasiyer panosu",
+    as: "rep",
+    path: "/rep",
+  },
+  {
+    step: 11,
+    slug: "rep-ziyaret",
+    label: "Ziyaret — gün planı ve geçmiş",
+    as: "rep",
+    path: "/rep/ziyaret",
+  },
+  // Firma seçilmemişken tahsilat ekranı bir seçiciden ibaret; girişin kendisi
+  // ancak cari belliyken görülüyor ve asıl fotoğraflanacak şey o.
+  {
+    step: 11,
+    slug: "rep-tahsilat-secim",
+    label: "Tahsilat — firma seçimi",
+    as: "rep",
+    path: "/rep/tahsilat",
+  },
+  {
+    step: 11,
+    slug: "rep-tahsilat",
+    label: "Tahsilat girişi",
+    as: "rep",
+    path: async (db) => {
+      const rep = await db.user.findFirst({
+        where: { email: "temsilci1@bayraktar.local" },
+        select: { id: true },
+      });
+      if (!rep) return null;
+      // Tahsilatı **olan** bir firma: liste boşken ekranın yarısı boş kutu
+      // olarak kaydediliyor ve o kutu ekranın nasıl çalıştığını söylemiyor.
+      const c = await db.company.findFirst({
+        where: {
+          salesRepId: rep.id,
+          transactions: { some: { type: "CREDIT" } },
+        },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return c && `/rep/tahsilat?companyId=${c.id}`;
+    },
+  },
+
   // ── Adım 7 — rapor tasarımcısı ve panolar ───────────────────────────────
   {
     step: 7,

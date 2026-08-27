@@ -1,42 +1,69 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { defaultRouteForRole } from "@repo/auth/rbac";
+import { ROLE_LABELS } from "@repo/types";
+import { AuthShell } from "@/components/auth-shell";
+import { LinkButton } from "@/components/form";
 
-// Link zaten tıklanabilir bir <a>; içine <button> koymak (Button bileşeni)
-// geçersiz HTML iç içeliği olurdu — o yüzden aynı görünüm burada elle verilir.
-const CTA =
-  "inline-flex h-10 items-center justify-center rounded-lg bg-brand-600 px-6 text-sm font-medium text-white shadow-sm shadow-brand-600/20 transition-colors hover:bg-brand-700 active:bg-brand-800";
-
+/**
+ * Ön kapı.
+ *
+ * Kendi kabuğunu çiziyordu — degrade bir marka karesi, elle yazılmış bir düğme
+ * ve `min-h-screen` ortalanmış bir sütun. Oysa oturumsuz üç ekranın (giriş,
+ * bayilik başvurusu, şifre sıfırlama) zaten ortak bir kabuğu var ve kök sayfa
+ * onların kardeşi: ziyaretçinin gördüğü ilk yüzey. `AuthShell`e alınınca sahne,
+ * tema düğmesi ve kart ölçüleri bedava geldi.
+ *
+ * Oturum açmış kullanıcı buraya iki yoldan geliyor: adresi elle yazarak ya da
+ * `/403`ün "ana sayfaya dön" bağlantısıyla. İkisinde de sorulan tek soru
+ * "nereye gideceğim" — cevabı rolünün varsayılan rotası.
+ */
 export default async function HomePage() {
   const session = await auth();
+  const user = session?.user;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl font-bold text-white shadow-sm shadow-brand-600/30">
-        B
-      </span>
-      <h1 className="font-display max-w-lg text-3xl font-bold text-neutral-900 dark:text-white">
-        B2B Sipariş &amp; Yönetim Sistemi
-      </h1>
-
-      {session?.user ? (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-neutral-500">
-            Hoş geldin,{" "}
-            <strong className="text-neutral-800 dark:text-neutral-200">
-              {session.user.name}
-            </strong>{" "}
-            ({session.user.role})
-          </p>
-          <Link href={defaultRouteForRole(session.user.role)} className={CTA}>
-            Panele git
-          </Link>
-        </div>
+    <AuthShell
+      eyebrow={user ? ROLE_LABELS[user.role] : "Hoş geldiniz"}
+      title={user ? `Merhaba, ${user.name}` : "B2B Sipariş & Yönetim Sistemi"}
+      subtitle={
+        user
+          ? "Kaldığınız yerden devam edin; hangi ekranların açılacağına yetkileriniz karar verir."
+          : "Bayi siparişi, cari takibi ve saha yönetimi tek yerde."
+      }
+      footer={
+        user ? undefined : (
+          <>
+            Bayi hesabınız yok mu?{" "}
+            <Link
+              href="/kayit"
+              className="font-medium text-ink underline underline-offset-4 transition-colors hover:text-ink-muted"
+            >
+              Bayilik başvurusu yapın
+            </Link>
+          </>
+        )
+      }
+    >
+      {user ? (
+        <LinkButton
+          href={defaultRouteForRole(user.role)}
+          variant="primary"
+          size="md"
+          className="w-full"
+        >
+          Panele git
+        </LinkButton>
       ) : (
-        <Link href="/login" className={CTA}>
+        <LinkButton
+          href="/login"
+          variant="primary"
+          size="md"
+          className="w-full"
+        >
           Giriş yap
-        </Link>
+        </LinkButton>
       )}
-    </main>
+    </AuthShell>
   );
 }

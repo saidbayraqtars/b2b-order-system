@@ -10,7 +10,11 @@ export default async function RepDashboardPage() {
 
   return (
     <RepNav userName={user.name} permissions={user.permissions} current="/rep">
-      <div className="mx-auto max-w-5xl">
+      {/* 6xl, 5xl değil: dört sayı kutusu 1024 piksele bölününce her biri 245
+          piksel kalıyor ve yedi haneli bir ciro 32 puntoyla oraya sığmayıp
+          ikinci satıra sarıyordu (ekran görüntüsünde görüldü). Portföy tablosu
+          da zaten altı sütun. */}
+      <div className="mx-auto max-w-6xl">
         {/* Hedef karnesi en üstte: günün ilk sorusu "nerede duruyorum". */}
         <TargetScorecard salesRepId={user.id} />
         <RepDashboard />

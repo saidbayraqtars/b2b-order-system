@@ -665,7 +665,7 @@ kimlikler) çok daha pahalı.
 
 - **Enum süzgeci gruplanmış raporda çalışmıyordu.** Postgres enum sütununu metin
   parametresiyle karşılaştırmıyor (`operator does not exist: "OrderStatus" <>
-  text`) ve ham SQL yolu sütunu `::text`e çevirmiyordu. Gruplamasız yol Prisma
+text`) ve ham SQL yolu sütunu `::text`e çevirmiyordu. Gruplamasız yol Prisma
   sorgu kurucusundan geçtiği için etkilenmiyordu — hata yalnızca `GROUP BY`
   varken görülüyordu. "İptal ve red hariç" diye başlayan her ciro raporu 500
   dönüyordu. Regresyon testi `apps/web/test/reports.test.ts`te.
@@ -698,7 +698,7 @@ oraya düşen kişinin yapabileceği tek şey geri dönmek.
 - **`Row` silindi, yerine `DefRow`.** Güvenlik durumu paneli künye satırını
   kendi yazmıştı ve ölçüleri ortaktan yarım punto farklıydı. İki sütuna
   dizilince alt sıradaki iki satırdan yalnızca biri kendi çizgisini
-  kaybediyordu (`last:border-0` ızgarada son *elemanı* biliyor, son *satırı*
+  kaybediyordu (`last:border-0` ızgarada son _elemanı_ biliyor, son _satırı_
   değil); `nth-last-child(-n+2)` ile ikisi birden.
 - **Ham `<ul>` hareket listesi tabloya geçti.** Kullanıcının kendi denetim
   kaydı, yönetimdeki güvenlik kaydının tek kişilik hâli — aynı veri iki ekranda
@@ -716,6 +716,57 @@ oraya düşen kişinin yapabileceği tek şey geri dönmek.
 
 QR karesi **her temada beyaz zeminde** kalıyor: okuyucu uygulamaların bir kısmı
 koyu zemindeki kareyi çözemiyor ve bu, temaya bırakılacak bir tercih değil.
+
+### ✔ Adım 11 — Saha üçlüsü ve kök (bitti)
+
+`/`, `/rep`, `/rep/ziyaret`, `/rep/tahsilat` ve `components/target-scorecard`.
+
+**Bu adım listede yoktu.** Adım 1'de bu dört ekranın _kabuğu_ `SidebarShell`e
+döndürülmüştü ve o yüzden "elden geçti" sayılmışlardı; içerikleri hiç
+açılmamıştı. Yeni bir numara açıldı, Adım 7'ye karıştırılmadı: sonraki devir
+teslimin "Adım 7 rapor ekranlarıydı" diye okuyabilmesi için.
+
+**Kök sayfa `AuthShell`e taşındı.** Kendi kabuğunu çiziyordu: degrade bir marka
+karesi, elle yazılmış bir düğme, ortalanmış bir sütun. Oysa oturumsuz üç ekranın
+zaten ortak bir kabuğu var ve kök sayfa onların kardeşi — ziyaretçinin gördüğü
+ilk yüzey. Sahne, tema düğmesi ve kart ölçüleri bedava geldi; üstüne **bayilik
+başvurusuna giden bağlantı** da geldi, ki ön kapıda hiç yoktu (`/kayit`e tek
+giriş `/login`in altındaki satırdı).
+
+- **`Meter` hedef kartına da girdi.** Adım 6'da üç ekranın üç ayrı doluluk
+  çubuğu tek bileşene indirilmişti; `target-scorecard` o turda gözden kaçmış ve
+  hâlâ kendi çubuğunu üç ayrı renkle (`emerald`, `amber`, `brand`) çiziyordu.
+- **Üç ekranın üç ayrı `Stat` kutusu `StatTile` oldu.** Plasiyer panosunda ve
+  tahsilat ekranında ikisi de yerel bir `Stat` yazmıştı, ikisi de farklı
+  puntoya oturmuştu.
+- **Tahsilat şekli şeridi `Chips`e geçti.** Kendi "seçili" görüntüsünü yazıyordu
+  (marka çerçevesi + açık zemin) ve aynı arayüzde ikinci bir seçili-küçük-düğme
+  hâli üretiyordu.
+- **Ziyaret planındaki dokuz ham `<button>`/`<a>` `Button`/`LinkButton` oldu.**
+  Çağrı iptali `dangerQuiet`: on kartlık bir günde dolu kırmızı bir sütun
+  çiziyordu.
+- **Portföy tablosu artık borca göre sıralı.** Sunucu ada göre döndürüyor ve o
+  sıra "bugün kimi arayacağım" sorusuna hiçbir şey söylemiyor. Liste
+  **kesilmiyor**: buradaki satır aynı zamanda sipariş girmenin yolu ve borcu
+  olmayan bir müşteriyi listenin dışına atmak, ona sipariş girmeyi
+  zorlaştırırdı — alacak yaşlandırma ekranındaki kararın tam tersi, çünkü
+  oradaki tablonun tek işi borç saymak.
+
+#### Ekran görüntüsünün yakaladığı iki şey
+
+- **Ziyaret ekranı 4992 piksele çıkıyordu.** Sunucu son 50 ziyareti gönderiyor
+  ve hepsi birden çiziliyordu; üstteki gün planı ve harita fotoğrafta
+  kayboluyordu. Kesme **çizimde** yapıldı, istekte değil: veri zaten elde, 15
+  satır gösteriliyor ve "Tümünü göster" yeni bir istek atmadan gerisini açıyor.
+- **`SON 30 GÜN CİRO` iki satıra sarıyordu.** Dört sayı kutusu 1024 piksele
+  bölününce her biri 245 piksel kalıyor ve 32 puntoluk yedi haneli bir tutar
+  oraya sığmıyor. Sayfa `max-w-6xl`e genişledi (portföy tablosu zaten altı
+  sütun). `StatTile`ın Adım 7'de aldığı `overflow-wrap` bu yüzden son çare
+  olarak duruyor: kesmiyor, sarıyor — ve sardığını görünce ızgarayı
+  düzeltiyorsunuz.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil,
+`next build` başarılı, 5 ekran görüntüsü `adim-11/` altında.
 
 ### ▢ Adım 9 — Mobil
 

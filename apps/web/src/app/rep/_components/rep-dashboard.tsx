@@ -7,7 +7,17 @@ import { MapPin, ShoppingBag, Wallet } from "lucide-react";
 import type { ReceivablesReport, SalesSummary } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Card, EmptyState, LoadingState } from "@/components/ui";
+import { ErrorLine, Panel } from "@/components/form";
+import {
+  LoadingState,
+  StatTile,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 // Web view of a rep's portfolio: what is owed and how the last 30 days went,
 // and the row from which each of the day's three jobs — order, collection,
@@ -26,69 +36,79 @@ export function RepDashboard() {
     return <LoadingState />;
   }
   if (receivables.isError) {
-    return (
-      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-        {(receivables.error as Error).message}
-      </p>
-    );
+    return <ErrorLine error={receivables.error} />;
   }
 
   const d = receivables.data!;
 
+  // Vadesi geçen önde, sonra bakiye, sonra ad. Sunucu ada göre sıralı
+  // döndürüyor ve o sıra "bugün kimi arayacağım" sorusuna hiçbir şey söylemiyor.
+  // Liste kesilmiyor: portföy plasiyerin bütün müşterileri ve buradaki satır
+  // aynı zamanda sipariş girmenin yolu — borcu olmayan bir müşteriyi listenin
+  // dışına atmak, ona sipariş girmeyi zorlaştırırdı.
+  const companies = [...d.companies].sort(
+    (a, b) =>
+      Number(b.overdue) - Number(a.overdue) ||
+      Number(b.balance) - Number(a.balance) ||
+      a.companyName.localeCompare(b.companyName, "tr"),
+  );
+
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Portföy" value={`${d.companies.length} firma`} />
-        <Stat label="Toplam alacak" value={formatTRY(d.totals.balance)} />
-        <Stat
+        <StatTile label="Portföy" value={d.companies.length} hint="firma" />
+        <StatTile label="Toplam alacak" value={formatTRY(d.totals.balance)} />
+        <StatTile
           label="Vadesi geçen"
           value={formatTRY(d.totals.overdue)}
-          danger={Number(d.totals.overdue) > 0}
+          tone={Number(d.totals.overdue) > 0 ? "critical" : "neutral"}
+          hint={Number(d.totals.overdue) > 0 ? "vadesi doldu" : undefined}
         />
-        <Stat
+        <StatTile
           label="Son 30 gün ciro"
           value={sales.data ? formatTRY(sales.data.revenue) : "…"}
         />
       </section>
 
-      <section className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
-        <header className="border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
-          <h2 className="text-sm font-semibold">Portföy alacakları</h2>
-        </header>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+      <Panel title="Portföy alacakları" bodyClassName="p-0 pb-1">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-3 py-2">Firma</th>
-              <th className="px-3 py-2 text-right">Limit</th>
-              <th className="px-3 py-2 text-right">Bakiye</th>
-              <th className="px-3 py-2 text-right">Vadesi geçen</th>
-              <th className="px-3 py-2">En eski vade</th>
-              <th className="px-3 py-2 text-right">İşlem</th>
+              <Th>Firma</Th>
+              <Th align="right">Limit</Th>
+              <Th align="right">Bakiye</Th>
+              <Th align="right">Vadesi geçen</Th>
+              <Th>En eski vade</Th>
+              <Th align="right">İşlem</Th>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            {d.companies.map((c) => (
+          </THead>
+          <TBody>
+            {companies.map((c) => (
               <tr key={c.companyId}>
-                <td className="px-3 py-2">{c.companyName}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-neutral-500">
+                <Td>{c.companyName}</Td>
+                <Td align="right" numeric muted>
                   {formatTRY(c.creditLimit)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </Td>
+                <Td align="right" numeric>
                   {formatTRY(c.balance)}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right tabular-nums ${
-                    Number(c.overdue) > 0 ? "text-red-600" : "text-neutral-400"
-                  }`}
+                </Td>
+                <Td
+                  align="right"
+                  numeric
+                  className={
+                    Number(c.overdue) > 0
+                      ? "font-medium text-critical"
+                      : "text-ink-faint"
+                  }
                 >
                   {Number(c.overdue) > 0 ? formatTRY(c.overdue) : "—"}
-                </td>
-                <td className="px-3 py-2 text-neutral-500">
+                </Td>
+                <Td muted>
                   {c.oldestDueDate
                     ? new Date(c.oldestDueDate).toLocaleDateString("tr-TR")
                     : "—"}
-                </td>
-                <td className="px-3 py-2">
+                </Td>
+                <Td align="right">
                   {/* Portföy satırından sahanın üç işi de tek tıkla açılır;
                       firma seçimi bağlantıda taşındığı için hedef ekran hangi
                       cariyle çalışıldığını sormaz. */}
@@ -109,54 +129,54 @@ export function RepDashboard() {
                       label="Ziyaret"
                     />
                   </div>
-                </td>
+                </Td>
               </tr>
             ))}
-            {d.companies.length === 0 && (
-              <tr>
-                <td colSpan={6}>
-                  <EmptyState label="Portföyünüzde firma yok." />
-                </td>
-              </tr>
+            {companies.length === 0 && (
+              <TableEmpty colSpan={6} label="Portföyünüzde firma yok." />
             )}
-          </tbody>
-        </table>
-      </section>
+          </TBody>
+        </Table>
+      </Panel>
 
       {sales.data && sales.data.topCompanies.length > 0 && (
-        <section className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-card dark:border-neutral-800 dark:bg-neutral-900">
-          <header className="border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
-            <h2 className="text-sm font-semibold">Son 30 günün en iyileri</h2>
-          </header>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+        <Panel title="Son 30 günün en iyileri" bodyClassName="p-0 pb-1">
+          <Table>
+            <THead>
               <tr>
-                <th className="px-3 py-2">Firma</th>
-                <th className="px-3 py-2 text-right">Sipariş</th>
-                <th className="px-3 py-2 text-right">Ciro</th>
+                <Th>Firma</Th>
+                <Th align="right">Sipariş</Th>
+                <Th align="right">Ciro</Th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            </THead>
+            <TBody>
               {sales.data.topCompanies.map((c) => (
                 <tr key={c.companyId}>
-                  <td className="px-3 py-2">{c.companyName}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <Td>{c.companyName}</Td>
+                  <Td align="right" numeric>
                     {c.orderCount}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  </Td>
+                  <Td align="right" numeric>
                     {formatTRY(c.revenue)}
-                  </td>
+                  </Td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </section>
+            </TBody>
+          </Table>
+        </Panel>
       )}
     </div>
   );
 }
 
-/** Portföy satırındaki kompakt işlem bağlantısı. */
+/**
+ * Portföy satırındaki kompakt işlem bağlantısı.
+ *
+ * `LinkButton` değil: o `sm` boyunda 32 piksel yüksekliğinde ve üç tanesi yan
+ * yana tablonun satır yüksekliğini iki katına çıkarıyor. Burada istenen şey
+ * satırın içine sığan bir künye-düğme; görünümün geri kalanı (kenar, köşe,
+ * üzerine gelince dolma) ortak `Chips` diliyle aynı.
+ */
 function RowAction({
   href,
   icon: Icon,
@@ -169,35 +189,10 @@ function RowAction({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-brand-500 dark:hover:text-white"
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-line bg-panel px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-on-accent"
     >
       <Icon className="h-3 w-3" />
       {label}
     </Link>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  danger,
-}: {
-  label: string;
-  value: string;
-  danger?: boolean;
-}) {
-  return (
-    <Card>
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p
-        className={`mt-0.5 text-lg font-semibold tabular-nums ${
-          danger
-            ? "text-red-600 dark:text-red-400"
-            : "text-neutral-900 dark:text-neutral-50"
-        }`}
-      >
-        {value}
-      </p>
-    </Card>
   );
 }

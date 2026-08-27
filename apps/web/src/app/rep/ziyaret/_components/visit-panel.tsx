@@ -6,8 +6,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crosshair, LogOut, MapPin } from "lucide-react";
 import type { CheckInRecord } from "@repo/services";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Panel,
+  TextInput,
+  WarnLine,
+} from "@/components/form";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
+
+/** Kapalıyken çizilen ziyaret satırı sayısı; sunucunun sınırı 50. */
+const VISIBLE_VISITS = 15;
 
 interface Coords {
   latitude: number;
@@ -33,6 +43,7 @@ export function VisitPanel({
 }) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoBusy, setGeoBusy] = useState(false);
@@ -116,16 +127,14 @@ export function VisitPanel({
       {!open && (
         <Panel title="Yeni ziyaret">
           {!companyId ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-body-sm text-ink-faint">
               Ziyaret açmak için üstteki seçiciden firma seçin. Aşağıdaki geçmiş
               firma seçilmeden de okunur.
             </p>
           ) : (
             <>
-              <p className="mb-3 text-sm text-neutral-500">
-                <span className="font-medium text-neutral-700 dark:text-neutral-300">
-                  {companyName}
-                </span>{" "}
+              <p className="mb-3 text-body-sm text-ink-muted">
+                <span className="font-medium text-ink">{companyName}</span>{" "}
                 ziyareti açılacak. Tarayıcıdan açılan ziyaretler kayıtta{" "}
                 <strong>WEB</strong> olarak işaretlenir.
               </p>
@@ -151,18 +160,14 @@ export function VisitPanel({
                   {coords ? "Konumu yenile" : "Konumu ekle"}
                 </Button>
                 {coords && (
-                  <span className="text-xs tabular-nums text-neutral-500">
+                  <span className="text-xs tabular-nums text-ink-faint">
                     {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{" "}
                     (±
                     {coords.accuracy} m)
                   </span>
                 )}
               </div>
-              {geoError && (
-                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                  {geoError}
-                </p>
-              )}
+              {geoError && <WarnLine className="mt-2">{geoError}</WarnLine>}
 
               <div className="mt-4">
                 <Button
@@ -185,7 +190,7 @@ export function VisitPanel({
           companyId ? (
             <Link
               href="/rep/ziyaret"
-              className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+              className="text-xs font-medium text-ink-muted underline underline-offset-4 transition-colors hover:text-ink"
             >
               Tümü
             </Link>
@@ -199,11 +204,37 @@ export function VisitPanel({
         ) : visits.data!.checkIns.length === 0 ? (
           <EmptyState label="Ziyaret kaydı yok." />
         ) : (
-          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            {visits.data!.checkIns.map((v) => (
-              <VisitRow key={v.id} visit={v} />
-            ))}
-          </ul>
+          <>
+            <ul className="divide-y divide-line">
+              {(showAll
+                ? visits.data!.checkIns
+                : visits.data!.checkIns.slice(0, VISIBLE_VISITS)
+              ).map((v) => (
+                <VisitRow key={v.id} visit={v} />
+              ))}
+            </ul>
+            {/* Sunucu son 50 ziyareti gönderiyor ve hepsi birden çizilince
+                sayfa beş bin pikseli geçiyordu — üstündeki gün planı ve harita
+                ekran görüntüsünde kayboluyordu. Veri zaten elde: kesme
+                *çizimde*, istekte değil, o yüzden açmak yeni bir istek
+                istemiyor. */}
+            {visits.data!.checkIns.length > VISIBLE_VISITS && (
+              <div className="mt-3 flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAll((v) => !v)}
+                >
+                  {showAll ? "Daha az göster" : "Tümünü göster"}
+                </Button>
+                <span className="text-xs tabular-nums text-ink-faint">
+                  {showAll
+                    ? `${visits.data!.checkIns.length} ziyaret`
+                    : `${VISIBLE_VISITS} / ${visits.data!.checkIns.length} ziyaret`}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </Panel>
     </div>
@@ -231,14 +262,14 @@ function OpenVisit({
   const elapsed = useElapsed(visit.checkInAt);
 
   return (
-    <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/40 dark:bg-emerald-500/10">
+    // Yeşil, çünkü bu bir uyarı değil bir *durum*: saat işliyor. Tasarım
+    // dilinde yeşilin anlamı da bu — "açık, çalışıyor".
+    <section className="rounded-lg border border-positive/40 bg-positive/10 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-            Açık ziyaret
-          </p>
-          <p className="mt-0.5 font-semibold">{visit.companyName}</p>
-          <p className="mt-0.5 text-xs text-emerald-800 tabular-nums dark:text-emerald-300">
+          <p className="text-label uppercase text-positive">Açık ziyaret</p>
+          <p className="mt-0.5 font-semibold text-ink">{visit.companyName}</p>
+          <p className="mt-0.5 text-xs tabular-nums text-positive">
             {new Date(visit.checkInAt).toLocaleString("tr-TR")} · {elapsed}
           </p>
         </div>
@@ -268,14 +299,14 @@ function VisitRow({ visit }: { visit: CheckInRecord }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-3">
       <div className="min-w-0">
-        <p className="flex items-center gap-2 text-sm font-semibold">
+        <p className="flex items-center gap-2 text-body-sm font-semibold text-ink">
           {visit.companyName}
           <Badge tone={visit.source === "MOBILE" ? "brand" : "neutral"}>
             {visit.source === "MOBILE" ? "Mobil" : "Web"}
           </Badge>
           {visit.checkOutAt === null && <Badge tone="success">Açık</Badge>}
         </p>
-        <p className="mt-0.5 text-xs text-neutral-500">
+        <p className="mt-0.5 text-xs text-ink-faint">
           {new Date(visit.checkInAt).toLocaleString("tr-TR")}
           {minutes !== null ? ` · ${minutes} dk` : ""}
           {visit.note ? ` · ${visit.note}` : ""}
@@ -286,7 +317,7 @@ function VisitRow({ visit }: { visit: CheckInRecord }) {
           href={`https://www.google.com/maps?q=${visit.latitude},${visit.longitude}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+          className="inline-flex items-center gap-1 text-xs font-medium text-ink-muted underline underline-offset-4 transition-colors hover:text-ink"
         >
           <MapPin className="h-3.5 w-3.5" />
           Haritada

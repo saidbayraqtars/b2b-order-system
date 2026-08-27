@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, MapPin, Navigation, Phone } from "lucide-react";
 import {
@@ -9,6 +8,7 @@ import {
   type VisitRequestStatus,
 } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { Button, ErrorLine, LinkButton } from "@/components/form";
 import { Badge, Card, EmptyState, LoadingState } from "@/components/ui";
 
 // Günün ziyaret planı: bayinin açtığı çağrılar, elle sıralama ve harita.
@@ -126,11 +126,7 @@ export function VisitPlan() {
   }
 
   if (list.isLoading) return <LoadingState />;
-  if (list.isError) {
-    return (
-      <p className="text-sm text-red-600">{(list.error as Error).message}</p>
-    );
-  }
+  if (list.isError) return <ErrorLine error={list.error} />;
 
   const route = routeUrl(rows);
   const focus = rows.find((r) => r.id === selected) ?? rows[0] ?? null;
@@ -139,37 +135,31 @@ export function VisitPlan() {
     <section className="mb-8 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">Bugünün ziyaret listesi</h2>
-          <p className="text-xs text-neutral-500">
+          <h2 className="text-headline-sm text-ink">Bugünün ziyaret listesi</h2>
+          <p className="text-xs text-ink-faint">
             Sizi çağıran bayiler. Sırayı siz belirlersiniz.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {order && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              loading={saveOrder.isPending}
               onClick={() => saveOrder.mutate(order)}
-              disabled={saveOrder.isPending}
-              className="h-8 rounded-md bg-brand-600 px-3 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {saveOrder.isPending ? "Kaydediliyor…" : "Sırayı kaydet"}
-            </button>
+              Sırayı kaydet
+            </Button>
           )}
           {route && (
-            <a
-              href={route}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-3 text-xs dark:border-neutral-700"
-            >
+            <LinkButton href={route} target="_blank" rel="noreferrer">
               <Navigation className="h-3.5 w-3.5" />
               Rotayı aç
-            </a>
+            </LinkButton>
           )}
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <ErrorLine error={error} />
 
       {rows.length === 0 ? (
         <EmptyState label="Bugün için çağrı yok." />
@@ -187,23 +177,25 @@ export function VisitPlan() {
                       onClick={() => setSelected(r.id)}
                       className="min-w-0 text-left"
                     >
-                      <p className="font-medium">
-                        <span className="mr-2 text-neutral-400">{i + 1}.</span>
+                      <p className="font-medium text-ink">
+                        <span className="mr-2 tabular-nums text-ink-faint">
+                          {i + 1}.
+                        </span>
                         {r.companyName}
                       </p>
                       {r.addressLine && (
-                        <p className="text-sm text-neutral-500">
+                        <p className="text-body-sm text-ink-muted">
                           {r.addressLine}
                           {r.district ? ` · ${r.district}` : ""}
                           {r.city ? ` / ${r.city}` : ""}
                         </p>
                       )}
                       {r.note && (
-                        <p className="mt-1 text-sm text-neutral-500">
+                        <p className="mt-1 text-body-sm text-ink-muted">
                           “{r.note}”
                         </p>
                       )}
-                      <p className="mt-1 text-xs text-neutral-400">
+                      <p className="mt-1 text-xs text-ink-faint">
                         İstenen gün: {trDate(r.requestedFor)}
                         {r.latitude == null && " · konum kayıtlı değil"}
                       </p>
@@ -213,70 +205,68 @@ export function VisitPlan() {
                       <Badge tone={r.status === "OPEN" ? "warning" : "info"}>
                         {VISIT_REQUEST_STATUS_LABELS[r.status]}
                       </Badge>
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         aria-label="Yukarı taşı"
                         onClick={() => move(i, -1)}
-                        className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
+                        className="w-8 px-0"
                       >
                         <ArrowUp className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         aria-label="Aşağı taşı"
                         onClick={() => move(i, 1)}
-                        className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
+                        className="w-8 px-0"
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <a
+                    <LinkButton
                       href={directionsUrl(r)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
                     >
                       <MapPin className="h-3.5 w-3.5" />
                       Yol tarifi
-                    </a>
+                    </LinkButton>
                     {r.phone && (
-                      <a
-                        href={`tel:${r.phone}`}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
-                      >
+                      <LinkButton href={`tel:${r.phone}`}>
                         <Phone className="h-3.5 w-3.5" />
                         {r.phone}
-                      </a>
+                      </LinkButton>
                     )}
-                    <Link
-                      href={`/rep/ziyaret?companyId=${r.companyId}`}
-                      className="inline-flex h-8 items-center rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
-                    >
+                    <LinkButton href={`/rep/ziyaret?companyId=${r.companyId}`}>
                       Ziyareti aç
-                    </Link>
+                    </LinkButton>
                     {r.status === "OPEN" && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() =>
                           setStatus.mutate({ id: r.id, status: "PLANNED" })
                         }
-                        className="h-8 rounded-md border border-neutral-300 px-2.5 text-xs dark:border-neutral-700"
                       >
                         Güne al
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      type="button"
+                    {/* Sessiz kırmızı: çağrıyı iptal etmek kartın asıl eylemi
+                        değil ve bir günde on kart varsa dolu kırmızı bir sütun
+                        çiziyordu (Adım 6 kuralı). */}
+                    <Button
+                      variant="dangerQuiet"
+                      size="sm"
                       onClick={() =>
                         setStatus.mutate({ id: r.id, status: "CANCELLED" })
                       }
-                      className="h-8 rounded-md px-2.5 text-xs text-red-600 hover:underline"
                     >
                       İptal
-                    </button>
+                    </Button>
                   </div>
                 </Card>
               </li>
@@ -306,10 +296,10 @@ function MapPanel({ row }: { row: VisitRequestRow | null }) {
   if (row.latitude == null || row.longitude == null) {
     return (
       <Card>
-        <p className="text-sm text-neutral-500">
-          <strong>{row.companyName}</strong> için konum kayıtlı değil. Firma
-          adresine koordinat girildiğinde harita burada görünür — yol tarifi
-          yazılı adresle yine çalışıyor.
+        <p className="text-body-sm text-ink-muted">
+          <strong className="font-semibold text-ink">{row.companyName}</strong>{" "}
+          için konum kayıtlı değil. Firma adresine koordinat girildiğinde harita
+          burada görünür — yol tarifi yazılı adresle yine çalışıyor.
         </p>
       </Card>
     );
@@ -324,14 +314,14 @@ function MapPanel({ row }: { row: VisitRequestRow | null }) {
   ].join(",");
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+    <div className="overflow-hidden rounded-lg border border-line">
       <iframe
         title={`${row.companyName} konumu`}
         className="h-64 w-full"
         loading="lazy"
         src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${row.latitude},${row.longitude}`}
       />
-      <p className="px-3 py-2 text-xs text-neutral-500">
+      <p className="border-t border-line bg-sunken px-3 py-2 text-xs text-ink-faint">
         {row.companyName} · {row.district ?? ""} {row.city ?? ""}
       </p>
     </div>

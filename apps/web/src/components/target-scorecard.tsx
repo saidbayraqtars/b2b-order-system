@@ -9,7 +9,7 @@ import {
 } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, Meter } from "@/components/ui";
 
 // Temsilcinin kendi hedef karnesi.
 //
@@ -49,7 +49,7 @@ export function TargetScorecard({ salesRepId }: { salesRepId: string }) {
 
   return (
     <section className="mb-6">
-      <h2 className="mb-3 text-sm font-semibold">Hedeflerim</h2>
+      <h2 className="mb-3 text-headline-sm text-ink">Hedeflerim</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {rows.map((r) => {
           const elapsedPct = Math.round(r.elapsed * 100);
@@ -57,7 +57,7 @@ export function TargetScorecard({ salesRepId }: { salesRepId: string }) {
           return (
             <Card key={r.id}>
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-ink-faint">
                   {TARGET_PERIOD_LABELS[r.period]} ·{" "}
                   {TARGET_METRIC_LABELS[r.metric]}
                 </p>
@@ -69,27 +69,23 @@ export function TargetScorecard({ salesRepId }: { salesRepId: string }) {
                   %{r.percent}
                 </Badge>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-                <div
-                  className={
-                    r.percent >= 100
-                      ? "h-full bg-emerald-500"
-                      : behind
-                        ? "h-full bg-amber-500"
-                        : "h-full bg-brand-500"
-                  }
-                  style={{ width: `${Math.min(100, r.percent)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-sm tabular-nums">
+              {/* Çubuğu kart kendi çiziyordu ve rengini kendi seçiyordu; ortak
+                  `Meter` üç ekranın üç ayrı çubuğunu bu yüzden tekleştirmişti
+                  (Adım 6) ama bu kart o turda gözden kaçmıştı. */}
+              <Meter
+                value={r.percent}
+                tone={r.percent >= 100 ? "positive" : behind ? "caution" : "neutral"}
+                label={`${TARGET_METRIC_LABELS[r.metric]} hedefi: %${r.percent}`}
+              />
+              <p className="mt-2 text-body-sm tabular-nums text-ink">
                 {formatValue(r.metric, r.achieved)}{" "}
-                <span className="text-neutral-500">
+                <span className="text-ink-faint">
                   / {formatValue(r.metric, r.targetValue)}
                 </span>
               </p>
               {/* Dönemin ne kadarı geçti: yüzde tek başına ayın 3'ü ile 28'ini
                   aynı gösterir. */}
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-ink-faint">
                 dönemin %{elapsedPct}&apos;i geçti
               </p>
             </Card>
