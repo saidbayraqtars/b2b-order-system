@@ -15,7 +15,7 @@ import {
   type LabelTemplateKind,
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
-import { Badge, LoadingState, Tabs } from "@/components/ui";
+import { Badge, Chips, EmptyState, LoadingState, Tabs } from "@/components/ui";
 import {
   Button,
   Checkbox,
@@ -145,6 +145,7 @@ export function LabelDesigner() {
   }
 
   const fields = LABEL_FIELDS[kind];
+  const templates = list.data?.templates ?? [];
 
   return (
     <div className="space-y-4">
@@ -160,21 +161,22 @@ export function LabelDesigner() {
       {list.isLoading ? (
         <LoadingState />
       ) : (
+        // Tasarım seçimi bir daraltma, sayfa değiştirme değil: aynı ekranda
+        // hangi tasarımın düzenlendiğini söylüyor. Sekme değil künye şeridi.
         <div className="flex flex-wrap items-center gap-2">
-          {(list.data?.templates ?? []).map((t) => (
-            <Button
-              key={t.id}
-              size="sm"
-              variant={t.id === selectedId ? "primary" : "secondary"}
-              onClick={() => {
-                setSelectedId(t.id);
-                setDraft({ ...t, blocks: [...t.blocks] });
-              }}
-            >
-              {t.name}
-              {t.isDefault && " ★"}
-            </Button>
-          ))}
+          <Chips
+            value={selectedId ?? ""}
+            onChange={(id) => {
+              const t = templates.find((x) => x.id === id);
+              if (!t) return;
+              setSelectedId(t.id);
+              setDraft({ ...t, blocks: [...t.blocks] });
+            }}
+            items={templates.map((t) => ({
+              key: t.id,
+              label: t.isDefault ? `${t.name} ★` : t.name,
+            }))}
+          />
           <Button size="sm" variant="ghost" onClick={startFromDefault}>
             <Plus className="h-3.5 w-3.5" />
             Hazır tasarımdan yeni
@@ -182,11 +184,22 @@ export function LabelDesigner() {
         </div>
       )}
 
-      <ErrorLine error={error ? new Error(error) : null} />
+      <ErrorLine error={error} />
+
+      {!list.isLoading && !draft && (
+        <EmptyState
+          label="Bu tür için tasarım yok."
+          action={
+            <Button size="sm" onClick={startFromDefault}>
+              Hazır tasarımdan başla
+            </Button>
+          }
+        />
+      )}
 
       {draft && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Panel title="Tasarım">
               <div className="grid gap-3 sm:grid-cols-4">
                 <div className="sm:col-span-2">
@@ -230,7 +243,7 @@ export function LabelDesigner() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+              <div className="mt-4 flex flex-wrap items-center gap-6">
                 <Checkbox
                   checked={draft.isDefault}
                   onChange={(e) =>
@@ -253,6 +266,7 @@ export function LabelDesigner() {
               action={
                 <Select
                   aria-label="Satır ekle"
+                  size="sm"
                   value=""
                   onChange={(e) => {
                     if (!e.target.value) return;
@@ -264,7 +278,7 @@ export function LabelDesigner() {
                       ],
                     });
                   }}
-                  className="h-8 w-auto text-xs"
+                  className="w-auto"
                 >
                   <option value="">Satır ekle…</option>
                   {BLOCK_KINDS.map((b) => (
@@ -275,105 +289,117 @@ export function LabelDesigner() {
                 </Select>
               }
             >
-              <ul className="space-y-2">
-                {draft.blocks.map((b, i) => (
-                  <li
-                    key={i}
-                    className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-800"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge>{LABEL_BLOCK_LABELS[b.kind]}</Badge>
+              {draft.blocks.length === 0 ? (
+                <EmptyState label="Satır yok — sağ üstten ekleyin." />
+              ) : (
+                <ul className="space-y-2">
+                  {draft.blocks.map((b, i) => (
+                    <li key={i} className="rounded border border-line p-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge>{LABEL_BLOCK_LABELS[b.kind]}</Badge>
 
-                      {(b.kind === "text" ||
+                        {/* İçeriği olmayan satırlarda (ayraç, boşluk, kalem
+                            tablosu) alanın yerine boş bir esneme duruyor:
+                            olmasaydı hizalama ve boyut kutuları o satırlarda
+                            sola kayıp sütun hizasını bozuyordu. */}
+                        {b.kind === "text" ||
                         b.kind === "barcode" ||
                         b.kind === "qr" ||
-                        b.kind === "signature") && (
-                        <TextInput
-                          value={b.value ?? ""}
+                        b.kind === "signature" ? (
+                          <TextInput
+                            size="sm"
+                            aria-label="Satır içeriği"
+                            value={b.value ?? ""}
+                            onChange={(e) =>
+                              patchBlock(i, { value: e.target.value })
+                            }
+                            placeholder="Metin ya da {{alan}}"
+                            className="min-w-[12rem] flex-1"
+                          />
+                        ) : (
+                          <span className="min-w-[12rem] flex-1" />
+                        )}
+
+                        <Select
+                          aria-label="Hizalama"
+                          size="sm"
+                          value={b.align}
                           onChange={(e) =>
-                            patchBlock(i, { value: e.target.value })
-                          }
-                          placeholder="Metin ya da {{alan}}"
-                          className="h-8 min-w-[12rem] flex-1"
-                        />
-                      )}
-
-                      <Select
-                        aria-label="Hizalama"
-                        value={b.align}
-                        onChange={(e) =>
-                          patchBlock(i, {
-                            align: e.target.value as LabelBlock["align"],
-                          })
-                        }
-                        className="h-8 w-auto text-xs"
-                      >
-                        <option value="left">sol</option>
-                        <option value="center">orta</option>
-                        <option value="right">sağ</option>
-                      </Select>
-
-                      <Select
-                        aria-label="Boyut"
-                        value={b.scale}
-                        onChange={(e) =>
-                          patchBlock(i, {
-                            scale: Number(
-                              e.target.value,
-                            ) as LabelBlock["scale"],
-                          })
-                        }
-                        className="h-8 w-auto text-xs"
-                      >
-                        <option value={1}>1x</option>
-                        <option value={2}>2x</option>
-                        <option value={3}>3x</option>
-                      </Select>
-
-                      <Checkbox
-                        checked={b.bold}
-                        onChange={(e) =>
-                          patchBlock(i, { bold: e.target.checked })
-                        }
-                        label="kalın"
-                      />
-
-                      <span className="ml-auto flex items-center gap-1">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          aria-label="Yukarı"
-                          onClick={() => moveBlock(i, -1)}
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          aria-label="Aşağı"
-                          onClick={() => moveBlock(i, 1)}
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          aria-label="Sil"
-                          className="text-red-600"
-                          onClick={() =>
-                            setDraft({
-                              ...draft,
-                              blocks: draft.blocks.filter((_, j) => j !== i),
+                            patchBlock(i, {
+                              align: e.target.value as LabelBlock["align"],
                             })
                           }
+                          className="w-auto"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                          <option value="left">sol</option>
+                          <option value="center">orta</option>
+                          <option value="right">sağ</option>
+                        </Select>
+
+                        <Select
+                          aria-label="Boyut"
+                          size="sm"
+                          value={b.scale}
+                          onChange={(e) =>
+                            patchBlock(i, {
+                              scale: Number(
+                                e.target.value,
+                              ) as LabelBlock["scale"],
+                            })
+                          }
+                          className="w-auto"
+                        >
+                          <option value={1}>1x</option>
+                          <option value={2}>2x</option>
+                          <option value={3}>3x</option>
+                        </Select>
+
+                        <Checkbox
+                          checked={b.bold}
+                          onChange={(e) =>
+                            patchBlock(i, { bold: e.target.checked })
+                          }
+                          label="kalın"
+                        />
+
+                        <span className="ml-auto flex items-center gap-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            aria-label="Yukarı"
+                            disabled={i === 0}
+                            onClick={() => moveBlock(i, -1)}
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            aria-label="Aşağı"
+                            disabled={i === draft.blocks.length - 1}
+                            onClick={() => moveBlock(i, 1)}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="dangerQuiet"
+                            size="sm"
+                            aria-label="Sil"
+                            onClick={() =>
+                              setDraft({
+                                ...draft,
+                                blocks: draft.blocks.filter((_, j) => j !== i),
+                              })
+                            }
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Panel>
 
             <div className="flex items-center gap-2">
@@ -386,8 +412,8 @@ export function LabelDesigner() {
               </Button>
               {draft.id && (
                 <Button
-                  variant="ghost"
-                  className="text-red-600"
+                  variant="dangerQuiet"
+                  loading={remove.isPending}
                   onClick={() => remove.mutate(draft.id)}
                 >
                   Sil
@@ -396,23 +422,21 @@ export function LabelDesigner() {
             </div>
           </div>
 
-          <aside className="space-y-3">
+          <aside className="space-y-4">
             <Panel title="Önizleme">
               <Preview template={draft} />
             </Panel>
 
             <Panel title="Kullanılabilir alanlar">
-              <p className="mb-2 text-xs text-neutral-500">
+              <p className="mb-3 text-xs text-ink-faint">
                 Metnin içine yazın; basımda dolar. Bu türde dolmayan alanlar
                 listede yok.
               </p>
-              <ul className="space-y-1 text-xs">
+              <ul className="space-y-1.5 text-xs">
                 {fields.map((f) => (
                   <li key={f.token} className="flex justify-between gap-2">
-                    <code className="text-brand-700 dark:text-brand-300">
-                      {f.token}
-                    </code>
-                    <span className="text-neutral-500">{f.label}</span>
+                    <code className="tech-num text-ink">{f.token}</code>
+                    <span className="text-right text-ink-faint">{f.label}</span>
                   </li>
                 ))}
               </ul>
@@ -429,12 +453,16 @@ export function LabelDesigner() {
  *
  * Alan işaretleri **doldurulmadan** gösteriliyor: tasarımcının görmesi gereken
  * şey hangi alanın nereye geldiği, örnek bir müşterinin adı değil.
+ *
+ * Beyaz zemin ve siyah yazı koyu temada da dönmüyor: bu bir arayüz yüzeyi değil,
+ * kâğıdın kendisi. Dönseydi tasarımcı ekranda göreceği şeyle yazıcıdan çıkacak
+ * şeyi karşılaştıramazdı.
  */
 function Preview({ template }: { template: TemplateRow }) {
   return (
     <div className="overflow-x-auto">
       <div
-        className="bg-white p-2 text-black shadow-inner"
+        className="border border-line-strong bg-white p-2 text-black"
         style={{ width: `${template.widthMm}mm` }}
       >
         {template.blocks.map((b, i) => {

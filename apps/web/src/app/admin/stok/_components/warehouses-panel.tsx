@@ -5,7 +5,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WarehouseRow } from "@repo/services";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
-import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  LoadingState,
+  Note,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 
 // Depolar. Tek depolu kurulumda hiç açılmaz ve ekranın geri kalanı depo
 // bilmeden çalışır — hareketin deposu isteğe bağlı.
@@ -43,94 +53,131 @@ export function WarehousesPanel() {
   const rows = warehouses.data?.warehouses ?? [];
 
   return (
-    <Panel title="Depolar">
-      <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-        <label>
-          <Label hint="ERP ambar kodu">Kod</Label>
-          <TextInput
-            value={code}
-            placeholder="MERKEZ"
-            onChange={(e) => setCode(e.target.value)}
-            className="w-32"
-          />
-        </label>
-        <label className="min-w-40 flex-1">
-          <Label>Ad</Label>
-          <TextInput
-            value={name}
-            placeholder="Merkez depo"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <Button
-          disabled={code.trim() === "" || name.trim() === ""}
-          loading={save.isPending}
-          onClick={() =>
-            save.mutate({
-              code: code.trim(),
-              name: name.trim(),
-              isDefault: rows.length === 0,
-            })
-          }
-        >
-          Kaydet
-        </Button>
-      </div>
-      <ErrorLine error={save.error} />
+    <>
+      <Panel title="Depolar" bodyClassName="p-0">
+        <div className="flex flex-wrap items-end gap-2 border-b border-line bg-sunken p-3">
+          <div>
+            <Label htmlFor="wh-code" hint="ERP ambar kodu">
+              Kod
+            </Label>
+            <TextInput
+              id="wh-code"
+              value={code}
+              placeholder="MERKEZ"
+              onChange={(e) => setCode(e.target.value)}
+              className="w-32"
+            />
+          </div>
+          <div className="min-w-40 flex-1">
+            <Label htmlFor="wh-name">Ad</Label>
+            <TextInput
+              id="wh-name"
+              value={name}
+              placeholder="Merkez depo"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <Button
+            disabled={code.trim() === "" || name.trim() === ""}
+            loading={save.isPending}
+            onClick={() =>
+              save.mutate({
+                code: code.trim(),
+                name: name.trim(),
+                isDefault: rows.length === 0,
+              })
+            }
+          >
+            Kaydet
+          </Button>
+        </div>
 
-      {warehouses.isLoading && <LoadingState />}
-      <ErrorLine error={warehouses.error} />
+        <div className="px-4">
+          <ErrorLine error={save.error} />
+          <ErrorLine error={warehouses.error} />
+        </div>
+        {warehouses.isLoading && (
+          <div className="px-4">
+            <LoadingState />
+          </div>
+        )}
 
-      {warehouses.data &&
-        (rows.length === 0 ? (
-          <EmptyState label="Depo tanımlı değil — tek depolu çalışıyorsunuz." />
-        ) : (
-          <ul className="divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
-            {rows.map((w) => (
-              <li
-                key={w.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-2.5"
-              >
-                <span className="flex flex-wrap items-center gap-2">
-                  <strong>{w.name}</strong>
-                  <span className="text-neutral-500">{w.code}</span>
-                  {w.isDefault && <Badge tone="success">Varsayılan</Badge>}
-                  {!w.isActive && <Badge tone="neutral">Kapalı</Badge>}
-                </span>
-                <span className="flex gap-2">
-                  {!w.isDefault && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() =>
-                        save.mutate({
-                          code: w.code,
-                          name: w.name,
-                          isDefault: true,
-                        })
-                      }
-                    >
-                      Varsayılan yap
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      save.mutate({
-                        code: w.code,
-                        name: w.name,
-                        isActive: !w.isActive,
-                      })
-                    }
-                  >
-                    {w.isActive ? "Kapat" : "Aç"}
-                  </Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        ))}
-    </Panel>
+        {warehouses.data && (
+          <Table>
+            <THead>
+              <tr>
+                <Th>Depo</Th>
+                <Th>Kod</Th>
+                <Th>Durum</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {rows.length === 0 ? (
+                <TableEmpty
+                  colSpan={4}
+                  label="Depo tanımlı değil — tek depolu çalışıyorsunuz."
+                />
+              ) : (
+                rows.map((w) => (
+                  <tr key={w.id}>
+                    <Td>{w.name}</Td>
+                    <Td className="tech-num">{w.code}</Td>
+                    <Td>
+                      <div className="flex flex-wrap gap-1">
+                        {w.isDefault && (
+                          <Badge tone="success">Varsayılan</Badge>
+                        )}
+                        {!w.isActive && <Badge tone="neutral">Kapalı</Badge>}
+                      </div>
+                    </Td>
+                    <Td align="right">
+                      <div className="flex justify-end gap-2">
+                        {!w.isDefault && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              save.mutate({
+                                code: w.code,
+                                name: w.name,
+                                isDefault: true,
+                              })
+                            }
+                          >
+                            Varsayılan yap
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            save.mutate({
+                              code: w.code,
+                              name: w.name,
+                              isActive: !w.isActive,
+                            })
+                          }
+                        >
+                          {w.isActive ? "Kapat" : "Aç"}
+                        </Button>
+                      </div>
+                    </Td>
+                  </tr>
+                ))
+              )}
+            </TBody>
+          </Table>
+        )}
+      </Panel>
+
+      <Note>
+        Depo <strong>silinmiyor, kapatılıyor</strong>: kapalı depo yeni
+        hareketlere açılmaz ama geçmiş hareketlerin üstünde adı yazılı kalır.
+        Kayıt anahtarı ad değil <strong>kod</strong> — aynı kodla kaydetmek yeni
+        depo açmaz, var olanın adını düzeltir; ERP ambarları o kodla eşleştiği
+        için ad değişikliği eşlemeyi bozmamalı.
+      </Note>
+    </>
   );
 }

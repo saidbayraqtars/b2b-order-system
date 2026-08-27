@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   StockCountResult,
@@ -22,20 +22,47 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
-import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import {
+  Badge,
+  Chips,
+  LoadingState,
+  Table,
+  TableEmpty,
+  TBody,
+  Td,
+  Th,
+  THead,
+} from "@/components/ui";
 import { VariantPicker } from "./variant-picker";
 
 // Defterin kendisi, üstünde insanın yazdığı üç hareket: elle giriş/çıkış, sayım
 // ve depolar arası aktarım.
 //
+// Üç form aynı anda değil, sırayla duruyor. Üçü birden açıkken panelin üstünde
+// on dört kontrollük bir duvar oluşuyor ve altındaki defter ekrandan taşıyordu;
+// oysa hiç kimse aynı anda hem sayım hem aktarım girmiyor. Şerit gömük zeminde,
+// tablo başlığıyla aynı yüzeyde.
+//
 // Sipariş kaynaklı satırlarda iptal düğmesi yok. Onların öbür yarısı siparişin
 // kendisi; yalnız stok bacağını geri almak, malı çıkmamış gösterip siparişi
 // olduğu yerde bırakırdı.
+
+type FormKey = "manual" | "count" | "transfer";
+
+/**
+ * Kaç hareket çizilir.
+ *
+ * Sunucunun varsayılanı 100'dü ve ekran görüntüsü onu altı bin pikselde
+ * kırptırdı: defter, sonu görünmeyen bir şerit değil son işlemlerin listesi.
+ * Daha eskisine giden yol kaydırmak değil, üstteki iki süzgeç.
+ */
+const PAGE_SIZE = 50;
 
 export function MovementsPanel() {
   const qc = useQueryClient();
   const [source, setSource] = useState<StockMovementSource | "">("");
   const [search, setSearch] = useState("");
+  const [form, setForm] = useState<FormKey>("manual");
 
   const warehouses = useQuery({
     queryKey: ["warehouses"],
@@ -46,7 +73,7 @@ export function MovementsPanel() {
   const movements = useQuery({
     queryKey: ["stock-movements", source, search],
     queryFn: () => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
       if (source) params.set("source", source);
       if (search.trim()) params.set("q", search.trim());
       return apiGet<{ movements: StockMovementRow[] }>(
@@ -64,24 +91,34 @@ export function MovementsPanel() {
   const openWarehouses = (warehouses.data?.warehouses ?? []).filter(
     (w) => w.isActive,
   );
+  const canTransfer = openWarehouses.length >= 2;
+
+  // Aktarım şeridi yalnızca iki açık depo varken var. Depo kapatılınca seçili
+  // kalmasın diye elle girişe düşülüyor.
+  const active: FormKey = form === "transfer" && !canTransfer ? "manual" : form;
 
   return (
     <Panel
       title="Stok hareketleri"
+      bodyClassName="p-0"
       action={
         <div className="flex items-end gap-2">
-          <label>
-            <Label>Ürün</Label>
+          <div>
+            <Label htmlFor="mv-q">Ürün</Label>
             <TextInput
+              id="mv-q"
+              size="sm"
               value={search}
               placeholder="SKU / ürün"
               onChange={(e) => setSearch(e.target.value)}
               className="w-40"
             />
-          </label>
-          <label>
-            <Label>Kaynak</Label>
+          </div>
+          <div>
+            <Label htmlFor="mv-source">Kaynak</Label>
             <Select
+              id="mv-source"
+              size="sm"
               value={source}
               onChange={(e) =>
                 setSource(e.target.value as StockMovementSource | "")
@@ -95,31 +132,75 @@ export function MovementsPanel() {
                 </option>
               ))}
             </Select>
-          </label>
+          </div>
         </div>
       }
     >
-      <div className="mb-4 grid gap-4 md:grid-cols-2">
-        <ManualEntryForm warehouses={openWarehouses} onDone={refresh} />
-        <CountForm warehouses={openWarehouses} onDone={refresh} />
-        {openWarehouses.length >= 2 && (
-          <TransferForm warehouses={openWarehouses} onDone={refresh} />
-        )}
+      <div className="border-b border-line bg-sunken p-3">
+        <Chips
+          value={active}
+          onChange={setForm}
+          items={[
+            { key: "manual" as const, label: "Elle giriş / çıkış" },
+            { key: "count" as const, label: "Sayım" },
+            ...(canTransfer
+              ? [{ key: "transfer" as const, label: "Depolar arası aktarım" }]
+              : []),
+          ]}
+        />
+        <div className="mt-3">
+          {active === "manual" && (
+            <ManualEntryForm warehouses={openWarehouses} onDone={refresh} />
+          )}
+          {active === "count" && (
+            <CountForm warehouses={openWarehouses} onDone={refresh} />
+          )}
+          {active === "transfer" && (
+            <TransferForm warehouses={openWarehouses} onDone={refresh} />
+          )}
+        </div>
       </div>
 
-      {movements.isLoading && <LoadingState />}
-      <ErrorLine error={movements.error} />
+      {movements.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
+      <div className="px-4">
+        <ErrorLine error={movements.error} />
+      </div>
 
-      {movements.data &&
-        (movements.data.movements.length === 0 ? (
-          <EmptyState label="Bu filtrede hareket yok." />
-        ) : (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {movements.data.movements.map((m) => (
-              <MovementRow key={m.id} movement={m} onChanged={refresh} />
-            ))}
-          </ul>
-        ))}
+      {movements.data && (
+        <Table>
+          <THead>
+            <tr>
+              <Th align="right">Hareket</Th>
+              <Th>Ürün</Th>
+              <Th>Kaynak</Th>
+              <Th align="right">Kalan</Th>
+              <Th>Tarih</Th>
+              <Th>Açıklama</Th>
+              <Th />
+            </tr>
+          </THead>
+          <TBody>
+            {movements.data.movements.length === 0 ? (
+              <TableEmpty colSpan={7} label="Bu filtrede hareket yok." />
+            ) : (
+              movements.data.movements.map((m) => (
+                <MovementRow key={m.id} movement={m} onChanged={refresh} />
+              ))
+            )}
+          </TBody>
+        </Table>
+      )}
+
+      {movements.data && movements.data.movements.length >= PAGE_SIZE && (
+        <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
+          Son {PAGE_SIZE} hareket gösteriliyor — daha eskisi için ürün ve kaynak
+          süzgeçlerini kullanın.
+        </p>
+      )}
     </Panel>
   );
 }
@@ -148,47 +229,82 @@ function MovementRow({
     movement.source === "ORDER" || movement.source === "ORDER_CANCEL";
   const canReverse =
     !byOrder && !movement.reversedById && !movement.reversalOfId;
-  const sign = movement.direction === "IN" ? "+" : "−";
-  const color =
-    movement.direction === "IN"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : "text-red-600 dark:text-red-400";
+
+  // Sipariş kaynaklı satırlarda açıklama zaten sipariş numarasıyla başlıyor
+  // ("ORD-2026… · Sipariş ORD-2026…"); ikisini yan yana yazmak hücreyi üç
+  // satıra çıkarıp bütün tabloyu uzatıyordu.
+  const description = movement.description ?? "";
+  const orderRef =
+    movement.orderNumber && !description.includes(movement.orderNumber)
+      ? movement.orderNumber
+      : null;
+  const note = [
+    movement.warehouseName,
+    orderRef,
+    description,
+    movement.recordedByName,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <li className="py-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <div>
-          <p className="flex flex-wrap items-center gap-2 font-medium">
-            <span className={color}>
-              {sign}
-              {movement.quantity}
-            </span>
-            <span>{movement.productName}</span>
-            <span className="text-neutral-500">{movement.sku}</span>
-            <Badge tone="neutral">
-              {STOCK_MOVEMENT_SOURCE_LABELS[movement.source]}
-            </Badge>
+    <Fragment>
+      <tr>
+        <Td align="right" numeric>
+          <span
+            className={
+              movement.direction === "IN"
+                ? "font-semibold text-positive"
+                : "font-semibold text-critical"
+            }
+          >
+            {movement.direction === "IN" ? "+" : "−"}
+            {movement.quantity}
+          </span>
+        </Td>
+        <Td>
+          <div className="text-ink">{movement.productName}</div>
+          <div className="text-xs text-ink-faint">{movement.sku}</div>
+        </Td>
+        <Td>
+          <div className="flex flex-wrap gap-1">
+            <Badge>{STOCK_MOVEMENT_SOURCE_LABELS[movement.source]}</Badge>
             {movement.reversedById && <Badge tone="danger">İptal edildi</Badge>}
             {movement.reversalOfId && <Badge tone="warning">İptal kaydı</Badge>}
-          </p>
-          <p className="text-neutral-500">
-            Kalan: <strong>{movement.balanceAfter}</strong> ·{" "}
-            {new Date(movement.occurredAt).toLocaleString("tr-TR")}
-            {movement.warehouseName ? ` · ${movement.warehouseName}` : ""}
-            {movement.orderNumber ? ` · ${movement.orderNumber}` : ""}
-            {movement.description ? ` · ${movement.description}` : ""}
-            {movement.recordedByName ? ` · ${movement.recordedByName}` : ""}
-          </p>
-        </div>
+          </div>
+        </Td>
+        <Td align="right" numeric>
+          {movement.balanceAfter}
+        </Td>
+        <Td className="whitespace-nowrap text-ink-muted">
+          {new Date(movement.occurredAt).toLocaleString("tr-TR")}
+        </Td>
+        <Td muted className="max-w-[28ch]">
+          <span className="line-clamp-2" title={note || undefined}>
+            {note || "—"}
+          </span>
+        </Td>
+        <Td align="right">
+          {canReverse && !asking && (
+            <Button size="sm" variant="ghost" onClick={() => setAsking(true)}>
+              İptal
+            </Button>
+          )}
+        </Td>
+      </tr>
 
-        {canReverse &&
-          (asking ? (
-            <div className="flex items-end gap-2">
+      {/* Gerekçe hücreye sığmıyor: oraya konsaydı bütün "Açıklama" sütununu
+          genişletirdi. Adım 4'te kasa defterinde aynı çözüm. */}
+      {asking && (
+        <tr>
+          <Td colSpan={7} className="bg-sunken">
+            <div className="flex flex-wrap items-center gap-2">
               <TextInput
+                size="sm"
                 value={reason}
                 placeholder="İptal gerekçesi"
                 onChange={(e) => setReason(e.target.value)}
-                className="w-52"
+                className="w-64"
               />
               <Button
                 size="sm"
@@ -207,18 +323,11 @@ function MovementRow({
                 Vazgeç
               </Button>
             </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setAsking(true)}
-            >
-              İptal
-            </Button>
-          ))}
-      </div>
-      <ErrorLine error={reverse.error} />
-    </li>
+            <ErrorLine error={reverse.error} />
+          </Td>
+        </tr>
+      )}
+    </Fragment>
   );
 }
 
@@ -233,7 +342,7 @@ function WarehouseField({
 }) {
   if (warehouses.length === 0) return null;
   return (
-    <label>
+    <div>
       <Label hint="isteğe bağlı">Depo</Label>
       <Select
         value={value}
@@ -247,7 +356,7 @@ function WarehouseField({
           </option>
         ))}
       </Select>
-    </label>
+    </div>
   );
 }
 
@@ -284,10 +393,7 @@ function ManualEntryForm({
     variantId !== "" && Number(quantity) > 0 && description.trim().length > 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Elle giriş / çıkış
-      </h3>
+    <div>
       <VariantPicker value={variantId} onChange={setVariantId} />
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <WarehouseField
@@ -295,7 +401,7 @@ function ManualEntryForm({
           value={warehouseId}
           onChange={setWarehouseId}
         />
-        <label>
+        <div>
           <Label>Yön</Label>
           <Select
             value={direction}
@@ -305,8 +411,8 @@ function ManualEntryForm({
             <option value="IN">Giriş</option>
             <option value="OUT">Çıkış</option>
           </Select>
-        </label>
-        <label>
+        </div>
+        <div>
           <Label>Adet</Label>
           <TextInput
             type="number"
@@ -316,15 +422,15 @@ function ManualEntryForm({
             onChange={(e) => setQuantity(e.target.value)}
             className="w-24"
           />
-        </label>
-        <label className="min-w-40 flex-1">
+        </div>
+        <div className="min-w-40 flex-1">
           <Label hint="zorunlu">Açıklama</Label>
           <TextInput
             value={description}
             placeholder="Fire, numune, hurda…"
             onChange={(e) => setDescription(e.target.value)}
           />
-        </label>
+        </div>
         <Button
           disabled={!ready}
           loading={submit.isPending}
@@ -367,10 +473,7 @@ function CountForm({
   const ready = variantId !== "" && counted !== "" && Number(counted) >= 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Sayım
-      </h3>
+    <div>
       <VariantPicker value={variantId} onChange={setVariantId} />
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <WarehouseField
@@ -378,7 +481,7 @@ function CountForm({
           value={warehouseId}
           onChange={setWarehouseId}
         />
-        <label>
+        <div>
           <Label hint="sayılan">Adet</Label>
           <TextInput
             type="number"
@@ -388,7 +491,7 @@ function CountForm({
             onChange={(e) => setCounted(e.target.value)}
             className="w-24"
           />
-        </label>
+        </div>
         <Button
           disabled={!ready}
           loading={submit.isPending}
@@ -398,7 +501,7 @@ function CountForm({
         </Button>
       </div>
       {result && (
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-ink-faint">
           {result.difference === 0
             ? `Defter zaten ${result.counted} diyordu — hareket yazılmadı.`
             : `${result.previous} → ${result.counted} (fark ${
@@ -445,13 +548,10 @@ function TransferForm({
     Number(quantity) > 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        Depolar arası aktarım
-      </h3>
+    <div>
       <VariantPicker value={variantId} onChange={setVariantId} />
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <label>
+        <div>
           <Label>Nereden</Label>
           <Select
             value={fromWarehouseId}
@@ -465,8 +565,8 @@ function TransferForm({
               </option>
             ))}
           </Select>
-        </label>
-        <label>
+        </div>
+        <div>
           <Label>Nereye</Label>
           <Select
             value={toWarehouseId}
@@ -480,8 +580,8 @@ function TransferForm({
               </option>
             ))}
           </Select>
-        </label>
-        <label>
+        </div>
+        <div>
           <Label>Adet</Label>
           <TextInput
             type="number"
@@ -491,7 +591,7 @@ function TransferForm({
             onChange={(e) => setQuantity(e.target.value)}
             className="w-24"
           />
-        </label>
+        </div>
         <Button
           disabled={!ready}
           loading={submit.isPending}

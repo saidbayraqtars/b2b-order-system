@@ -10,6 +10,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-2` | Portal / vitrin                 |
 | `adim-3` | Yönetim çekirdeği               |
 | `adim-4` | Finans                          |
+| `adim-5` | Operasyon                       |
 | `adim-8` | Giriş, bayilik başvurusu, hesap |
 
 ## Yeniden üretmek
@@ -64,6 +65,15 @@ Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür
   sıfırlama için giriş yapılmıyor. Yapılsaydı o ekranlar hiç çekilemezdi:
   oturumu olan bir tarayıcı `/login`e uğramaz, ara katman onu uygulamaya geri
   yollar.
+- **Sekme URL'de olmayan ekran fotoğraflanamaz.** Betik bir adrese gidip
+  resmini çekiyor; düğmelere basmıyor, sekme değiştirmiyor. Bu yüzden stok
+  defterinin dört sekmesi `?bolum=` ile adresleniyor ve dördü ayrı ayrı
+  kaydediliyor. Bir ekranın parçasını yalnızca tıklayarak görülebilir kılmak,
+  o parçanın doğru göründüğünü söyleyememek demek — yeni ekranlarda sekme ya da
+  kip eklerken bunu hesaba katın.
+- **Yazdırma yüzeyleri de çekiliyor.** `documents/**` tasarım dilinin renk ve
+  koyu tema kurallarının dışında (kâğıt her zaman beyaz). Görüntüleri yine de
+  alınıyor: kuralın dışında olduğunu görebilmenin tek yolu yan yana koymak.
 - **Hareket ekranda donmuyor, olduğu yerde yakalanıyor.** Giriş sahnesi sürekli
   hareket ediyor; betik `settle()` sonrası ne görüyorsa onu kaydediyor. Aynı
   ekranın iki çekimi birebir aynı olmayabilir — bu bir hata değil.

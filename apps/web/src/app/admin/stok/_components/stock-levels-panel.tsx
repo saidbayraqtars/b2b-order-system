@@ -19,9 +19,9 @@ import {
 } from "@/components/form";
 import {
   Badge,
-  EmptyState,
   LoadingState,
   Table,
+  TableEmpty,
   TBody,
   Td,
   Th,
@@ -33,6 +33,16 @@ import {
 // İkisi aynı ekranda çünkü sorunun tamamı bu: "12 adet görünüyor, ama neden 12".
 // Ayrı bir ekran, cevabı bir tık uzağa koyup kimsenin bakmadığı bir yere
 // gönderiyordu.
+
+/**
+ * Kaç satır çizilir.
+ *
+ * Önce 200'dü ve ekran görüntüsü sebebi gösterdi: 2.654 ürünlük bir katalogda
+ * 200 satır, altı bin pikselden uzun bir liste demek — kimsenin baktığı bir
+ * "stok durumu" değil, kimsenin okumadığı bir döküm. Aranan ürünü bulmanın yolu
+ * kaydırmak değil, üstteki arama kutusu.
+ */
+const PAGE_SIZE = 50;
 
 export function StockLevelsPanel() {
   const [search, setSearch] = useState("");
@@ -49,7 +59,7 @@ export function StockLevelsPanel() {
   const levels = useQuery({
     queryKey: ["stock-levels", "table", search, warehouseId, lowOnly],
     queryFn: () => {
-      const params = new URLSearchParams({ limit: "200" });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
       if (search.trim()) params.set("q", search.trim());
       if (warehouseId) params.set("warehouseId", warehouseId);
       if (lowOnly) params.set("lowOnly", "1");
@@ -57,24 +67,31 @@ export function StockLevelsPanel() {
     },
   });
 
+  const columns = warehouseId ? 7 : 6;
+
   return (
     <Panel
       title="Stok durumu"
+      bodyClassName="p-0"
       action={
         <div className="flex flex-wrap items-end gap-2">
-          <label>
-            <Label>Ara</Label>
+          <div>
+            <Label htmlFor="lvl-q">Ara</Label>
             <TextInput
+              id="lvl-q"
+              size="sm"
               value={search}
               placeholder="SKU, barkod, ürün"
               onChange={(e) => setSearch(e.target.value)}
               className="w-44"
             />
-          </label>
+          </div>
           {(warehouses.data?.warehouses.length ?? 0) > 0 && (
-            <label>
-              <Label>Depo</Label>
+            <div>
+              <Label htmlFor="lvl-wh">Depo</Label>
               <Select
+                id="lvl-wh"
+                size="sm"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
                 className="w-36"
@@ -86,11 +103,12 @@ export function StockLevelsPanel() {
                   </option>
                 ))}
               </Select>
-            </label>
+            </div>
           )}
           <Button
             variant={lowOnly ? "primary" : "secondary"}
             size="sm"
+            aria-pressed={lowOnly}
             onClick={() => setLowOnly((v) => !v)}
           >
             Kritik seviye
@@ -98,31 +116,40 @@ export function StockLevelsPanel() {
         </div>
       }
     >
-      {levels.isLoading && <LoadingState />}
-      <ErrorLine error={levels.error} />
+      {levels.isLoading && (
+        <div className="px-4">
+          <LoadingState />
+        </div>
+      )}
+      <div className="px-4">
+        <ErrorLine error={levels.error} />
+      </div>
 
-      {levels.data &&
-        (levels.data.levels.length === 0 ? (
-          <EmptyState
-            label={
-              lowOnly ? "Kritik seviyede ürün yok." : "Bu filtrede ürün yok."
-            }
-          />
-        ) : (
-          <Table>
-            <THead>
-              <tr>
-                <Th>Ürün</Th>
-                <Th>SKU</Th>
-                <Th align="right">Eldeki</Th>
-                {warehouseId && <Th align="right">Depoda</Th>}
-                <Th align="right">Kritik</Th>
-                <Th>Raf</Th>
-                <Th />
-              </tr>
-            </THead>
-            <TBody>
-              {levels.data.levels.map((row) => {
+      {levels.data && (
+        <Table>
+          <THead>
+            <tr>
+              <Th>Ürün</Th>
+              <Th>SKU</Th>
+              <Th align="right">Eldeki</Th>
+              {warehouseId && <Th align="right">Depoda</Th>}
+              <Th align="right">Kritik</Th>
+              <Th>Raf</Th>
+              <Th />
+            </tr>
+          </THead>
+          <TBody>
+            {levels.data.levels.length === 0 ? (
+              <TableEmpty
+                colSpan={columns}
+                label={
+                  lowOnly
+                    ? "Kritik seviyede ürün yok."
+                    : "Bu filtrede ürün yok."
+                }
+              />
+            ) : (
+              levels.data.levels.map((row) => {
                 const critical =
                   row.minStock !== null && row.stock <= row.minStock;
                 const open = openVariantId === row.variantId;
@@ -130,18 +157,12 @@ export function StockLevelsPanel() {
                   <Fragment key={row.variantId}>
                     <tr>
                       <Td>{row.productName}</Td>
-                      <Td>{row.sku}</Td>
+                      <Td className="tech-num">{row.sku}</Td>
                       <Td align="right" numeric>
-                        <span
-                          className={
-                            critical
-                              ? "font-semibold text-red-600 dark:text-red-400"
-                              : ""
-                          }
-                        >
+                        <span className={critical ? "text-critical" : ""}>
                           {row.stock}
                         </span>{" "}
-                        <span className="text-neutral-500">
+                        <span className="text-xs text-ink-faint">
                           {row.unit ?? "adet"}
                         </span>
                       </Td>
@@ -150,10 +171,10 @@ export function StockLevelsPanel() {
                           {row.warehouseOnHand ?? 0}
                         </Td>
                       )}
-                      <Td align="right" numeric>
+                      <Td align="right" numeric muted>
                         {row.minStock ?? "—"}
                       </Td>
-                      <Td>{row.shelfCode ?? "—"}</Td>
+                      <Td muted>{row.shelfCode ?? "—"}</Td>
                       <Td align="right">
                         <Button
                           size="sm"
@@ -168,17 +189,25 @@ export function StockLevelsPanel() {
                     </tr>
                     {open && (
                       <tr>
-                        <Td colSpan={warehouseId ? 7 : 6}>
+                        <Td colSpan={columns} className="bg-sunken">
                           <VariantLedger variantId={row.variantId} />
                         </Td>
                       </tr>
                     )}
                   </Fragment>
                 );
-              })}
-            </TBody>
-          </Table>
-        ))}
+              })
+            )}
+          </TBody>
+        </Table>
+      )}
+
+      {levels.data && levels.data.levels.length >= PAGE_SIZE && (
+        <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
+          İlk {PAGE_SIZE} satır gösteriliyor — aradığınız ürünü yukarıdaki arama
+          kutusuyla daraltın.
+        </p>
+      )}
     </Panel>
   );
 }
@@ -197,29 +226,31 @@ function VariantLedger({ variantId }: { variantId: string }) {
   if (ledger.error) return <ErrorLine error={ledger.error} />;
   if (!ledger.data || ledger.data.movements.length === 0) {
     return (
-      <p className="py-2 text-sm text-neutral-500">
+      <p className="py-2 text-body-sm text-ink-faint">
         Bu ürün için hareket yok — sayı defter kurulmadan önce yazılmış.
       </p>
     );
   }
 
   return (
-    <ul className="space-y-1 py-1 text-sm">
+    <ul className="space-y-1.5 py-1 text-body-sm">
       {ledger.data.movements.map((m) => (
         <li key={m.id} className="flex flex-wrap items-center gap-2">
           <span
             className={
               m.direction === "IN"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-red-600 dark:text-red-400"
+                ? "w-14 text-right font-semibold tabular-nums text-positive"
+                : "w-14 text-right font-semibold tabular-nums text-critical"
             }
           >
             {m.direction === "IN" ? "+" : "−"}
             {m.quantity}
           </span>
-          <span className="text-neutral-500">→ {m.balanceAfter}</span>
+          <span className="tabular-nums text-ink-faint">
+            → {m.balanceAfter}
+          </span>
           <Badge tone="neutral">{STOCK_MOVEMENT_SOURCE_LABELS[m.source]}</Badge>
-          <span className="text-neutral-500">
+          <span className="text-ink-faint">
             {new Date(m.occurredAt).toLocaleDateString("tr-TR")}
             {m.orderNumber ? ` · ${m.orderNumber}` : ""}
             {m.description ? ` · ${m.description}` : ""}

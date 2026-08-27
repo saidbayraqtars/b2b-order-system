@@ -21,6 +21,7 @@ export const ACCOUNTS = {
   admin: { email: "patron@bayraktar.local", password: "143688" },
   portal: { email: "yonetici@akbayi.local", password: "143688" },
   rep: { email: "temsilci1@bayraktar.local", password: "143688" },
+  courier: { email: "kurye1@bayraktar.local", password: "143688" },
 };
 
 /** Sipariş listesinde en çok kalemi olan sipariş — boş ekran kaydetmemek için. */
@@ -196,6 +197,96 @@ export const SCREENS = [
     label: "Hacim iskontosu",
     as: "admin",
     path: "/admin/volume-tiers",
+  },
+
+  // ── Adım 5 — operasyon ──────────────────────────────────────────────────
+  {
+    step: 5,
+    slug: "admin-dagitim",
+    label: "Dağıtım — kurye atama",
+    as: "admin",
+    path: "/admin/deliveries",
+  },
+  {
+    step: 5,
+    slug: "kurye-masasi",
+    label: "Kurye masası",
+    as: "courier",
+    path: "/kurye",
+  },
+  // Stok tezgâhının dört sekmesi dört ayrı adres: sekme `?bolum=` ile URL'de
+  // durduğu için hepsi ayrı ayrı çekilebiliyor. Bileşen durumunda tutulsaydı
+  // yalnızca ilki fotoğraflanabilirdi.
+  {
+    step: 5,
+    slug: "admin-stok-durum",
+    label: "Stok defteri — stok durumu",
+    as: "admin",
+    path: "/admin/stok?bolum=durum",
+  },
+  {
+    step: 5,
+    slug: "admin-stok-partiler",
+    label: "Stok defteri — partiler & SKT",
+    as: "admin",
+    path: "/admin/stok?bolum=partiler",
+  },
+  {
+    step: 5,
+    slug: "admin-stok-hareketler",
+    label: "Stok defteri — hareketler",
+    as: "admin",
+    path: "/admin/stok?bolum=hareketler",
+  },
+  {
+    step: 5,
+    slug: "admin-stok-depolar",
+    label: "Stok defteri — depolar",
+    as: "admin",
+    path: "/admin/stok?bolum=depolar",
+  },
+  {
+    step: 5,
+    slug: "admin-etiketler",
+    label: "Etiket & fiş tasarımcısı",
+    as: "admin",
+    path: "/admin/labels",
+  },
+  {
+    step: 5,
+    slug: "admin-belge-serileri",
+    label: "Belge serileri",
+    as: "admin",
+    path: "/admin/documents",
+  },
+  // Yazdırma yüzeyleri. Bunlar kâğıda basılıyor: beyaz zemin ve siyah yazı
+  // koyu temada da dönmüyor, o yüzden buradaki iki çekim tasarım dilinin
+  // renk kurallarına *uymadığını* göstermek için duruyor.
+  {
+    step: 5,
+    slug: "belge-irsaliye",
+    label: "İrsaliye (yazdırma)",
+    as: "admin",
+    path: async (db) => {
+      const s = await db.shipment.findFirst({
+        select: { id: true },
+        orderBy: { shippedAt: "desc" },
+      });
+      return s && `/documents/shipments/${s.id}`;
+    },
+  },
+  {
+    step: 5,
+    slug: "belge-kargo-etiketi",
+    label: "Kargo etiketi (yazdırma)",
+    as: "admin",
+    path: async (db) => {
+      const s = await db.shipment.findFirst({
+        select: { id: true },
+        orderBy: { shippedAt: "desc" },
+      });
+      return s && `/documents/labels?kind=CARGO_LABEL&shipments=${s.id}`;
+    },
   },
 
   // ── Adım 8 — giriş ve hesap ─────────────────────────────────────────────

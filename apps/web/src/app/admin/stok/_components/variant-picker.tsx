@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { StockLevelRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
@@ -32,24 +32,33 @@ export function VariantPicker({
   onChange: (variantId: string) => void;
   label?: string;
 }) {
+  // Seçici aynı ekranda üç kez çiziliyor (elle giriş, sayım, aktarım) ve
+  // dördüncüsü mal kabul penceresinde. Sabit bir kimlik verilseydi etiketler
+  // hep ilk kutuya bağlanırdı.
+  const id = useId();
   const [search, setSearch] = useState("");
   const levels = useVariantSearch(search);
   const rows = levels.data?.levels ?? [];
 
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <label>
-        <Label>Ara</Label>
+      <div>
+        <Label htmlFor={`${id}-q`}>Ara</Label>
         <TextInput
+          id={`${id}-q`}
           value={search}
           placeholder="SKU, barkod, ürün adı"
           onChange={(e) => setSearch(e.target.value)}
           className="w-44"
         />
-      </label>
-      <label className="min-w-56 flex-1">
-        <Label>{label}</Label>
-        <Select value={value} onChange={(e) => onChange(e.target.value)}>
+      </div>
+      <div className="min-w-56 flex-1">
+        <Label htmlFor={`${id}-v`}>{label}</Label>
+        <Select
+          id={`${id}-v`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
           <option value="">Seçin</option>
           {rows.map((r) => (
             <option key={r.variantId} value={r.variantId}>
@@ -57,7 +66,7 @@ export function VariantPicker({
             </option>
           ))}
         </Select>
-      </label>
+      </div>
     </div>
   );
 }

@@ -372,11 +372,118 @@ Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti
 `next build` başarılı, 6 ekran görüntüsü `adim-4/` altında (temiz sunucudan
 yeniden çekildi).
 
-### ▢ Adım 5 — Operasyon
+### ✔ Adım 5 — Operasyon (bitti)
 
-`admin/deliveries`, `admin/stok`, `admin/labels`, `admin/documents`,
-`kurye`, `documents/**` (yazdırma yüzeyleri — bunlar kâğıda basılıyor, koyu
-tema ve renk kuralları burada geçerli değil).
+`admin/deliveries`, `admin/stok`, `admin/labels`, `admin/documents`, `kurye`,
+`documents/**`.
+
+**Stok defteri beş panelden dört sekmeye indi.** Paneller alt alta duruyordu ve
+ikisi tek başına iki yüz satır çizebiliyor: sayfa altı bin pikseli aşınca
+alttaki depo paneline ve dipnota kimse ulaşmıyordu — Adım 4'te kasa ekranında
+çıkan hatanın aynısı. Dönemin üç sayısı (giren / çıkan / net) sekmenin
+**dışında**, hep görünen yerde: hangi sekmede olursanız olun sorulan ilk soru
+"bu ay defter ne kadar oynadı".
+
+- **Sekme URL'de** (`?bolum=durum|partiler|hareketler|depolar`). Bileşen
+  durumunda tutmak daha az kod olurdu ama o hâlde üç sekmenin ekran görüntüsü
+  hiç alınamazdı: betik bir adrese gidip resmini çekiyor, düğmelere basmıyor.
+  Fotoğraflanamayan ekran, doğru göründüğü söylenemeyen ekrandır. Sayfaya
+  `dynamic = "force-dynamic"` eklendi — `useSearchParams` ancak isteğe göre
+  çizilen bir sayfada Suspense sınırı istemiyor.
+- **Dipnot sekmenin içine indi.** Önce sayfanın altındaydı ve depolar
+  sekmesinde iki `Note` alt alta düşüyordu (ekran görüntüsü gösterdi). Artık
+  kural açıklaması hangi sekmeyi anlatıyorsa orada: bakiye tanımı stok
+  durumunda, ERP/ters kayıt hareketlerde, FEFO partilerde, "depo silinmez
+  kapatılır" depolarda.
+- **Üç liste de sınırlandı: 50 satır.** Stok durumu 200'dü (2.654 ürünlük
+  katalogda altı bin pikselden uzun bir döküm), hareketler sunucu varsayılanı
+  100, partiler sınırsızdı. Üçünün de altında kaç satır gösterildiğini ve
+  gerisine nasıl gidileceğini söyleyen bir satır var. Aranan şeye giden yol
+  kaydırmak değil, üstteki süzgeç.
+- **Hareket defteri tabloya geçti** (`Table`), kalem listesi değil — defter
+  zaten tablo istiyordu. İptal gerekçesi hücreye değil `colSpan`lı alt satıra
+  soruluyor (Adım 4'te kasa defterindeki çözümün aynısı). Açıklama sütunu
+  `line-clamp-2`: sipariş kaynaklı satırlarda açıklama zaten sipariş
+  numarasıyla başlıyordu ve numarayı bir de ayrı yazmak hücreyi üç satıra
+  çıkarıp bütün tabloyu uzatıyordu.
+- **Üç hareket formu aynı anda değil sırayla.** Elle giriş, sayım ve aktarım
+  üçü birden açıkken panelin üstünde on dört kontrollük bir duvar oluşuyordu;
+  oysa kimse aynı anda hem sayım hem aktarım girmiyor. `Chips` seçiyor, form
+  gömük zeminde tek şeritte duruyor. Aktarım şeridi yalnızca iki açık depo
+  varken var.
+- **Partilerde "Fire" `dangerQuiet` değil `ghost`.** Adım 4'ün `dangerQuiet`i
+  dört satırlık bir ayar ekranı içindi; burada elli satır var ve kırmızı yazı
+  sağ kenarda bir sütuna dönüşüyordu. Yıkıcılığı taşıyan şey zaten pencere:
+  gerekçe zorunlu, partinin tamamı düşülüyorsa ayrıca onay isteniyor.
+- Parti uyarıları (SKT'si geçmiş / 30 gün içinde / bloke / en yakın SKT) dört
+  `StatTile`a çıktı; depolar listesi `Table`a geçti.
+
+**Dağıtım ve kurye tek bileşenden çiziliyor** (`DeliveryBoard`), o yüzden ikisi
+birden elden geçti. Liste kart kaldı, tablo olmadı: satırın yarısı adres ve beş
+düğme, ve asıl iş kuryenin telefonunda yapılıyor — tablo orada yatay kaydırmaya
+dönüşürdü.
+
+- **Sayı kutuları yalnızca dağıtımı yapanda** (`orders.fulfil`). Kuryenin
+  telefonunda tek bir liste var ve ekranın üstünü kutulara vermek o listeyi
+  ekran dışına iter. "Teslim edildi" kutusu, süzgeç kapalıyken sayı değil tire
+  gösteriyor: sıfır yazsaydı bugün hiç teslimat yapılmadığını söylerdi, oysa
+  söyleyebileceği tek şey o satırların hiç indirilmemiş olduğu.
+- Yola çıkaran iki eylem (yol tarifi, telefon) çerçeveli; üç kâğıt bağlantısı
+  arkalarında `ghost`. Beşi de aynı görünseydi kurye, kapıda hangisine
+  basacağını her seferinde okumak zorunda kalırdı.
+
+**Etiket tasarımcısı**: tasarım seçimi düğme dizisinden `Chips`e geçti (bu bir
+daraltma, sayfa değiştirme değil), satır silme `dangerQuiet` oldu, önizleme
+kâğıdı `shadow-inner` yerine 1px çizgiyle ayrıldı. İçeriği olmayan satırlarda
+(ayraç, boşluk) metin alanının yerine boş bir esneme kondu — olmasaydı
+hizalama ve boyut kutuları o satırlarda sola kayıp sütun hizasını bozuyordu.
+Önizleme beyaz zemin ve siyah yazıyla kalıyor, koyu temada dönmüyor: bu bir
+arayüz yüzeyi değil kâğıdın kendisi.
+
+**Belge serileri** `PageHeader` + `Note` + gömük ekleme şeridi aldı; ham yeşil
+ve kehribar `<span>`lar `Badge` oldu, "Sil" `dangerQuiet`e geçti. Liste tabloya
+**alınmadı**: kurulum başına iki üç seri var ve her satırın içinde düzenlenen
+bir sayaç alanı duruyor — üç satırlık bir tabloya form kutusu koymak, tablonun
+sütun hizasını satırın içindeki kontrole feda ediyordu.
+
+**Yazdırma yüzeyleri (`documents/**`) bilerek ham `neutral-` kaldı.** Anlamsal
+tokenlar koyu temada dönüyor; bu sayfalar kâğıda basılıyor ve zemin her zaman
+beyaz. `bg-panel` yazsaydık, tarayıcısı koyu temada olan birinin çıktısı
+beyaz üstüne beyaz olurdu. Yalnızca ölçüler tasarım dilinden alındı (yazdır
+düğmesi 32 piksel, 4px köşe). Adım 10'un "`neutral-` sıfır olsun" hedefi bu
+dizini kapsamıyor. İki yazdırma ekranı yine de kayıt defterine eklendi —
+kuralın dışında olduğunu görebilmek için.
+
+Ekran görüntüsü çekerken çıkan, `tsc`/lint/test/build'in dördünün de
+yakalamadığı şeyler:
+
+- **"Yol tarifi" boş bir haritaya gidiyordu.** Gösterim siparişlerinde sevk
+  adresi yok; adres de koordinat da boş olunca bağlantı hedefsiz kuruluyor ve
+  kurye kapıda düğmeye basınca hiçbir yeri göstermeyen bir arama açılıyordu.
+  Artık adressiz sevkiyatta düğme hiç çizilmiyor, yerine kehribar bir
+  &ldquo;Sevk adresi yok&rdquo; künyesi çıkıyor: söylenecek şey "yol tarifi"
+  değil, adresin olmadığı.
+- **Üç liste de sayfayı 6000 piksel sınırında kestiriyordu** (yukarıda).
+- **Depolar sekmesinde iki dipnot alt alta** (yukarıda).
+- Etiket tasarımcısında ayraç satırlarının kontrolleri sola kayıyordu
+  (yukarıda).
+
+`DEMO-KULLANICILAR.md`de kurye hesapları eksikti (`kurye1@bayraktar.local`,
+`kurye2@bayraktar.local`) — kurye masasının görüntüsü onlarla çekiliyor, bölüm
+eklendi.
+
+Sayaçlar (eşleşen satır sayısı, `app` + `components`): `dark:` 191 → **159**,
+`neutral-` 366 → **318**, `brand-` 18 → **15**.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti,
+`next build` başarılı (sunucu durdurulup `.next` silindikten sonra, ayrı
+sırada), 10 ekran görüntüsü `adim-5/` altında.
+
+**Açık kalan:** gösterim siparişlerinin hiçbirinde `shippingAddressId` yok —
+firmaların adresi var ama sipariş onu taşımıyor. Bu yüzden dağıtım ekranı,
+kurye masası ve irsaliye adressiz görünüyor. Arayüz tarafı artık bunu doğru
+söylüyor; asıl soru sipariş oluştururken firmanın varsayılan adresinin
+bağlanıp bağlanmayacağı ve bu bir sipariş kuralı kararı, tasarım kararı değil.
 
 ### ▢ Adım 6 — Yapılandırma ve sistem
 
@@ -402,7 +509,9 @@ tema ve renk kuralları burada geçerli değil).
 
 - Kalan ham sınıfları anlamsala çevir. Sayaç: Adım 1 sonrası `dark:` 506,
   `neutral-` 1033, `brand-` 90 → Adım 2 sonrası 348 / 792 / 46 → Adım 3 sonrası
-  **237 / 434 / 20**. Hedef: üçü de sıfır.
+  237 / 434 / 20 → Adım 4 sonrası 191 / 366 / 18 → Adım 5 sonrası
+  **159 / 318 / 15**. Hedef: üçü de sıfır — `documents/**` hariç, orada ham
+  `neutral-` bilerek duruyor (bkz. Adım 5).
 - Kiracı marka adını kabuğa bağla: `loadTenant()` →
   `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
   Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için

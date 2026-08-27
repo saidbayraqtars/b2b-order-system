@@ -16,13 +16,15 @@ import {
 } from "@/components/form";
 import {
   Badge,
-  EmptyState,
-  LoadingState,
+  Note,
+  StatTile,
   Table,
+  TableEmpty,
   TBody,
   Td,
   Th,
   THead,
+  LoadingState,
 } from "@/components/ui";
 import { VariantPicker } from "./variant-picker";
 
@@ -32,7 +34,7 @@ import { VariantPicker } from "./variant-picker";
 // bakan kişinin sorusu "hangi mal önce çıkmalı" — ve o soruya cevap veren tek
 // sıralama budur. Tarihi bilinmeyen partiler sona iniyor.
 //
-// Uyarı şeridi listeden ayrı bir sayı kümesi (`summary`) okuyor: süzgeç
+// Uyarı kutuları listeden ayrı bir sayı kümesi (`summary`) okuyor: süzgeç
 // değiştikçe listedeki satırlar değişir ama "kaç parti bozulmuş" sabit kalmalı,
 // yoksa süzgeç uyarıyı gizleyebilirdi.
 
@@ -59,6 +61,9 @@ const STATE_BADGE: Record<
   UNKNOWN: { tone: "neutral", label: "Tarihsiz" },
 };
 
+/** Bir ekranda okunabilecek satır sayısı — gerisi süzgeçle bulunur. */
+const PAGE_SIZE = 50;
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("tr-TR");
@@ -75,6 +80,7 @@ export function LotsPanel() {
     queryKey: ["stock-lots", filter, search],
     queryFn: () => {
       const params = new URLSearchParams(FILTER_QUERY[filter]);
+      params.set("limit", String(PAGE_SIZE));
       if (search.trim()) params.set("q", search.trim());
       return apiGet<LotsResponse>(`/api/admin/stock-lots?${params}`);
     },
@@ -94,145 +100,168 @@ export function LotsPanel() {
   const summary = query.data?.summary;
 
   return (
-    <Panel
-      title="Partiler & son kullanma"
-      action={
-        <div className="flex flex-wrap items-end gap-2">
-          <label>
-            <Label>Ara</Label>
-            <TextInput
-              value={search}
-              placeholder="Parti kodu, SKU, ürün"
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-44"
-            />
-          </label>
-          <label>
-            <Label>Süzgeç</Label>
-            <Select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as Filter)}
-              className="w-40"
-            >
-              <option value="ALL">Elde duran hepsi</option>
-              <option value="SOON">30 gün içinde</option>
-              <option value="EXPIRED">SKT&apos;si geçmiş</option>
-            </Select>
-          </label>
-          <Button size="sm" onClick={() => setEntryOpen(true)}>
-            Mal kabul
-          </Button>
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          label="SKT'si geçmiş"
+          value={summary ? summary.expiredLots : "—"}
+          tone="critical"
+          hint={summary ? `${summary.expiredUnits} adet` : undefined}
+        />
+        <StatTile
+          label="30 gün içinde"
+          value={summary ? summary.warningLots : "—"}
+          tone="caution"
+          hint={summary ? `${summary.warningUnits} adet` : undefined}
+        />
+        <StatTile label="Bloke" value={summary ? summary.blockedLots : "—"} />
+        <StatTile
+          label="En yakın SKT"
+          value={summary ? formatDate(summary.nextExpiryDate) : "—"}
+        />
+      </div>
+
+      <Panel
+        title="Partiler & son kullanma"
+        className="mt-4"
+        bodyClassName="p-0"
+        action={
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <Label htmlFor="lot-q">Ara</Label>
+              <TextInput
+                id="lot-q"
+                size="sm"
+                value={search}
+                placeholder="Parti kodu, SKU, ürün"
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-44"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lot-filter">Süzgeç</Label>
+              <Select
+                id="lot-filter"
+                size="sm"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as Filter)}
+                className="w-40"
+              >
+                <option value="ALL">Elde duran hepsi</option>
+                <option value="SOON">30 gün içinde</option>
+                <option value="EXPIRED">SKT&apos;si geçmiş</option>
+              </Select>
+            </div>
+            <Button size="sm" onClick={() => setEntryOpen(true)}>
+              Mal kabul
+            </Button>
+          </div>
+        }
+      >
+        {query.isLoading && (
+          <div className="px-4">
+            <LoadingState />
+          </div>
+        )}
+        <div className="px-4">
+          <ErrorLine error={query.error} />
+          <ErrorLine error={block.error} />
         </div>
-      }
-    >
-      {summary && (
-        <div className="mb-3 flex flex-wrap gap-4 text-sm">
-          <span>
-            SKT&apos;si geçmiş:{" "}
-            <strong className="text-red-600 dark:text-red-400">
-              {summary.expiredLots}
-            </strong>{" "}
-            parti / {summary.expiredUnits} adet
-          </span>
-          <span>
-            30 gün içinde:{" "}
-            <strong className="text-amber-600 dark:text-amber-400">
-              {summary.warningLots}
-            </strong>{" "}
-            parti / {summary.warningUnits} adet
-          </span>
-          <span>
-            Bloke: <strong>{summary.blockedLots}</strong>
-          </span>
-          <span className="text-neutral-500">
-            En yakın SKT: {formatDate(summary.nextExpiryDate)}
-          </span>
-        </div>
-      )}
 
-      {query.isLoading && <LoadingState />}
-      <ErrorLine error={query.error} />
-      <ErrorLine error={block.error} />
+        {query.data && (
+          <Table>
+            <THead>
+              <tr>
+                <Th>Ürün</Th>
+                <Th>Parti</Th>
+                <Th>SKT</Th>
+                <Th align="right">Kalan gün</Th>
+                <Th align="right">Adet</Th>
+                <Th>Durum</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {rows.length === 0 ? (
+                <TableEmpty colSpan={7} label="Parti kaydı yok." />
+              ) : (
+                rows.map((lot) => {
+                  const badge = STATE_BADGE[lot.state];
+                  return (
+                    <tr key={lot.id}>
+                      <Td>
+                        <div className="text-ink">{lot.productName}</div>
+                        <div className="text-xs text-ink-faint">{lot.sku}</div>
+                      </Td>
+                      <Td className="tech-num">{lot.code}</Td>
+                      <Td className="whitespace-nowrap">
+                        {formatDate(lot.expiryDate)}
+                      </Td>
+                      <Td align="right" numeric>
+                        {lot.daysLeft === null ? "—" : lot.daysLeft}
+                      </Td>
+                      <Td align="right" numeric>
+                        {lot.onHand}
+                      </Td>
+                      <Td>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge tone={badge.tone}>{badge.label}</Badge>
+                          {lot.isBlocked && <Badge tone="neutral">Bloke</Badge>}
+                        </div>
+                      </Td>
+                      <Td align="right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => block.mutate(lot)}
+                            disabled={block.isPending}
+                          >
+                            {lot.isBlocked ? "Blokeyi kaldır" : "Bloke et"}
+                          </Button>
+                          {/* Adım 4'ün dangerQuiet'i dört satırlık bir ayar
+                              ekranı içindi; burada elli satır var ve kırmızı
+                              yazı sağ kenarda bir sütuna dönüşüyor. Yıkıcılığı
+                              taşıyan şey zaten pencere: gerekçe zorunlu, tüm
+                              parti düşülüyorsa ayrıca onay isteniyor. */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setWriteOff(lot)}
+                          >
+                            Fire
+                          </Button>
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })
+              )}
+            </TBody>
+          </Table>
+        )}
 
-      {query.data && rows.length === 0 && (
-        <EmptyState label="Parti kaydı yok" />
-      )}
+        {rows.length >= PAGE_SIZE && (
+          <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
+            SKT&apos;si en yakın {PAGE_SIZE} parti gösteriliyor — gerisi için
+            süzgeci ya da aramayı kullanın.
+          </p>
+        )}
+      </Panel>
 
-      {rows.length > 0 && (
-        <Table>
-          <THead>
-            <tr>
-              <Th>Ürün</Th>
-              <Th>Parti</Th>
-              <Th>SKT</Th>
-              <Th align="right">Kalan gün</Th>
-              <Th align="right">Adet</Th>
-              <Th>Durum</Th>
-              <Th align="right">İşlem</Th>
-            </tr>
-          </THead>
-          <TBody>
-            {rows.map((lot) => {
-              const badge = STATE_BADGE[lot.state];
-              return (
-                <tr key={lot.id}>
-                  <Td>
-                    <div className="font-medium">{lot.productName}</div>
-                    <div className="text-xs text-neutral-500">{lot.sku}</div>
-                  </Td>
-                  <Td className="tech-num">{lot.code}</Td>
-                  <Td>{formatDate(lot.expiryDate)}</Td>
-                  <Td align="right" className="tech-num">
-                    {lot.daysLeft === null ? "—" : lot.daysLeft}
-                  </Td>
-                  <Td align="right" className="tech-num">
-                    {lot.onHand}
-                  </Td>
-                  <Td>
-                    <div className="flex gap-1">
-                      <Badge tone={badge.tone}>{badge.label}</Badge>
-                      {lot.isBlocked && <Badge tone="neutral">Bloke</Badge>}
-                    </div>
-                  </Td>
-                  <Td align="right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => block.mutate(lot)}
-                        disabled={block.isPending}
-                      >
-                        {lot.isBlocked ? "Blokeyi kaldır" : "Bloke et"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setWriteOff(lot)}
-                      >
-                        Fire
-                      </Button>
-                    </div>
-                  </Td>
-                </tr>
-              );
-            })}
-          </TBody>
-        </Table>
-      )}
-
-      <p className="mt-3 text-sm text-neutral-500">
+      <Note>
         Sipariş malı <strong>FEFO</strong> ile ayırır: son kullanma tarihi en
         yakın parti önce çıkar. SKT&apos;si geçmiş ve bloke partiler bu sıraya
         hiç girmez — onlar bir <strong>fire kararıdır</strong>, satış anında
         sessizce çözülecek bir şey değil. Hangi siparişe hangi partinin gittiği
         stok defterinde duruyor; geri çağırmada aranacak yer orası.
-      </p>
+      </Note>
 
       {entryOpen && <LotEntryModal onClose={() => setEntryOpen(false)} />}
       {writeOff && (
         <WriteOffModal lot={writeOff} onClose={() => setWriteOff(null)} />
       )}
-    </Panel>
+    </>
   );
 }
 
@@ -281,66 +310,72 @@ function LotEntryModal({ onClose }: { onClose: () => void }) {
         <VariantPicker value={variantId} onChange={setVariantId} />
 
         <div className="grid grid-cols-2 gap-3">
-          <label>
-            <Label>Parti kodu</Label>
+          <div>
+            <Label htmlFor="lot-code">Parti kodu</Label>
             <TextInput
+              id="lot-code"
               value={code}
               placeholder="Boş bırakılırsa üretilir"
               onChange={(e) => setCode(e.target.value)}
             />
-          </label>
-          <label>
-            <Label>Adet</Label>
+          </div>
+          <div>
+            <Label htmlFor="lot-qty">Adet</Label>
             <TextInput
+              id="lot-qty"
               type="number"
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
             />
-          </label>
-          <label>
-            <Label>Son kullanma tarihi</Label>
+          </div>
+          <div>
+            <Label htmlFor="lot-exp">Son kullanma tarihi</Label>
             <TextInput
+              id="lot-exp"
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
             />
-          </label>
-          <label>
-            <Label>Üretim tarihi</Label>
+          </div>
+          <div>
+            <Label htmlFor="lot-prod">Üretim tarihi</Label>
             <TextInput
+              id="lot-prod"
               type="date"
               value={producedAt}
               onChange={(e) => setProducedAt(e.target.value)}
             />
-          </label>
+          </div>
         </div>
 
-        <label className="block">
-          <Label>Not</Label>
+        <div>
+          <Label htmlFor="lot-note">Not</Label>
           <TextInput
+            id="lot-note"
             value={note}
             placeholder="Tedarikçi, irsaliye no…"
             onChange={(e) => setNote(e.target.value)}
           />
-        </label>
+        </div>
 
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-ink-faint">
           SKT boş bırakılırsa ve kalemde raf ömrü tanımlıysa üretim tarihinden
           hesaplanır.
         </p>
 
         <ErrorLine error={save.error} />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Vazgeç
           </Button>
           <Button
             type="submit"
-            disabled={!variantId || !quantity || save.isPending}
+            disabled={!variantId || !quantity}
+            loading={save.isPending}
           >
-            {save.isPending ? "Kaydediliyor…" : "Girişi yaz"}
+            Girişi yaz
           </Button>
         </div>
       </form>
@@ -386,14 +421,15 @@ function WriteOffModal({
           save.mutate();
         }}
       >
-        <p className="text-sm text-neutral-600 dark:text-neutral-300">
+        <p className="text-body-sm text-ink-muted">
           {lot.productName} · {lot.sku} · elde {lot.onHand} adet · SKT{" "}
           {formatDate(lot.expiryDate)}
         </p>
 
-        <label className="block">
-          <Label>Düşülecek adet</Label>
+        <div>
+          <Label htmlFor="wo-qty">Düşülecek adet</Label>
           <TextInput
+            id="wo-qty"
             type="number"
             min={1}
             max={lot.onHand}
@@ -401,17 +437,18 @@ function WriteOffModal({
             onChange={(e) => setQuantity(e.target.value)}
             required
           />
-        </label>
+        </div>
 
-        <label className="block">
-          <Label>Gerekçe</Label>
+        <div>
+          <Label htmlFor="wo-reason">Gerekçe</Label>
           <TextInput
+            id="wo-reason"
             value={reason}
             placeholder="SKT geçti, kırık, iade edildi…"
             onChange={(e) => setReason(e.target.value)}
             required
           />
-        </label>
+        </div>
 
         {wholeLot && (
           <Checkbox
@@ -423,16 +460,16 @@ function WriteOffModal({
 
         <ErrorLine error={save.error} />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Vazgeç
           </Button>
           <Button
             type="submit"
-            disabled={
-              !reason.trim() || save.isPending || (wholeLot && !confirmAll)
-            }
+            variant="danger"
+            disabled={!reason.trim() || (wholeLot && !confirmAll)}
+            loading={save.isPending}
           >
-            {save.isPending ? "Kaydediliyor…" : "Fire yaz"}
+            Fire yaz
           </Button>
         </div>
       </form>
