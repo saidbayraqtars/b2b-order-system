@@ -6,7 +6,7 @@ import type {
   SelectHTMLAttributes,
   InputHTMLAttributes,
 } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Ekranların paylaştığı form/panel bileşenleri. Plan büyük bir bileşen
@@ -370,6 +370,36 @@ export function Modal({
         <div className="p-4">{children}</div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Uyarı satırı — hata değil ama sonucu değiştiren bir koşul: "tarama sınırına
+ * ulaşıldı", "bu kart çalışmadı", "geçici şifreniz süresini doldurmak üzere".
+ *
+ * `ErrorLine`ın kardeşi ve aynı ölçülerde: dört ekran bu kutuyu kendi yazmıştı
+ * (giriş, şifre sıfırlama, çek tahtası, pano) ve ikisi kehribarı ham
+ * `amber-*` sınıflarıyla, ikisi anlamsal `caution` ile çizmişti — aynı cümlenin
+ * iki görüntüsü. Kırmızı "işlem olmadı" der, kehribar "oldu ama şunu bilin".
+ */
+export function WarnLine({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  if (!children) return null;
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-2 rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution",
+        className,
+      )}
+    >
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      {children}
+    </p>
   );
 }
 

@@ -206,6 +206,67 @@ suite("rapor tasarımcısı (HTTP)", () => {
     });
   });
 
+  // Gruplanmış rapor ayrı bir yoldan gidiyor: toplama veritabanında yapıldığı
+  // için sorgu Prisma kurucusuyla değil ham SQL ile kuruluyor. O yolun kendi
+  // hataları var ve gruplamasız testler onları hiç görmüyor.
+  describe("gruplanmış rapor veritabanında toplanır", () => {
+    it("enum süzgeci gruplanmış sorguda da çalışır", async () => {
+      // Postgres enum sütununu metin parametresiyle karşılaştırmıyor. Ham SQL
+      // yolunda sütun `::text`e çevrilmezse bu istek 500 dönüyordu:
+      // `operator does not exist: "OrderStatus" <> text`. Ciro raporlarının
+      // yarısı "iptal ve red hariç" diye başlıyor, yani bu tek satır gösterim
+      // raporlarının üçünü birden düşürüyordu.
+      const res = await callRoute(runReport, {
+        url: "/api/reports/run",
+        method: "POST",
+        body: {
+          dataset: "ORDERS",
+          config: {
+            ...ORDER_COLUMNS,
+            columns: [
+              { field: "status" },
+              { field: "grandTotal", aggregate: "SUM" },
+            ],
+            filters: [
+              { field: "status", operator: "notIn", value: ["CANCELLED", "REJECTED"] },
+            ],
+            groupBy: ["status"],
+          },
+        },
+        token: await bearer(admin),
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.grouped).toBe(true);
+      const statuses = res.body.rows.map((r: Record<string, unknown>) => r.status);
+      expect(statuses).toContain("CONFIRMED");
+      expect(statuses).not.toContain("CANCELLED");
+    });
+
+    it("gruplanmış rapor kapsamı da veritabanında uygular", async () => {
+      // Kapsam iki yolda ayrı ayrı yazılsaydı, biri unutulduğunda yalnızca
+      // gruplayan rapor sızdırırdı — en zor fark edilen sızıntı türü.
+      const res = await callRoute(runReport, {
+        url: "/api/reports/run",
+        method: "POST",
+        body: {
+          dataset: "ORDERS",
+          config: {
+            ...ORDER_COLUMNS,
+            columns: [
+              { field: "companyName" },
+              { field: "grandTotal", aggregate: "SUM" },
+            ],
+            groupBy: ["companyName"],
+          },
+        },
+        token: await bearer(rep),
+      });
+      expect(res.status).toBe(200);
+      const names = res.body.rows.map((r: Record<string, unknown>) => r.companyName);
+      expect(names.some((n: string) => n?.includes("Yabanci"))).toBe(false);
+    });
+  });
+
   describe("kaydedilen rapor kimin adına koşar", () => {
     let sharedId: string;
 

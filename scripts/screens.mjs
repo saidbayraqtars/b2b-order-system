@@ -35,6 +35,21 @@ async function richestOrder(db) {
   return best?.id;
 }
 
+/**
+ * Gösterim rapor tanımını adıyla bul.
+ *
+ * Kimlik yazılmıyor (`cuid`, her tohumlamada değişiyor) ve tanımın kendisi
+ * `demo-reports.ts`ten geliyor. Tanım yoksa ekran atlanıyor — betik boş bir
+ * rapor sayfası kaydetmektense o satırı hiç çekmiyor.
+ */
+async function reportId(db, name) {
+  const row = await db.reportDefinition.findFirst({
+    where: { name },
+    select: { id: true },
+  });
+  return row?.id;
+}
+
 export const SCREENS = [
   // ── Adım 2 — portal / vitrin ────────────────────────────────────────────
   {
@@ -311,6 +326,101 @@ export const SCREENS = [
     label: "Bayi başvuruları (yönetim)",
     as: "admin",
     path: "/admin/basvurular",
+  },
+
+  // ── Adım 7 — rapor tasarımcısı ve panolar ───────────────────────────────
+  {
+    step: 7,
+    slug: "rapor-listesi",
+    label: "Raporlarım",
+    as: "admin",
+    path: "/reports",
+  },
+  {
+    step: 7,
+    slug: "rapor-tasarimci",
+    label: "Rapor tasarımcısı (boş)",
+    as: "admin",
+    path: "/reports/new",
+  },
+  {
+    step: 7,
+    slug: "rapor-detay",
+    label: "Kayıtlı rapor — tasarım + önizleme",
+    as: "admin",
+    path: async (db) => {
+      const id = await reportId(db, "Aylık ciro");
+      return id && `/reports/${id}`;
+    },
+  },
+  // Yazdırma yüzeyi. `documents/**` gibi davranıyor: kâğıt her zaman beyaz,
+  // koyu tema dönmüyor. Görüntüsü tam da bunu göstermek için burada.
+  {
+    step: 7,
+    slug: "rapor-yazdir",
+    label: "Rapor (yazdırma)",
+    as: "admin",
+    path: async (db) => {
+      const id = await reportId(db, "Firma bazında ciro");
+      return id && `/documents/reports/${id}`;
+    },
+  },
+  {
+    step: 7,
+    slug: "rapor-panolar",
+    label: "Pano listesi",
+    as: "admin",
+    path: "/reports/dashboards",
+  },
+  {
+    step: 7,
+    slug: "rapor-pano",
+    label: "Pano — dört rapor tek ekranda",
+    as: "admin",
+    path: async (db) => {
+      const row = await db.reportDashboard.findFirst({
+        where: { name: "Yönetim özeti" },
+        select: { id: true },
+      });
+      return row && `/reports/dashboards/${row.id}`;
+    },
+  },
+  // Hazır raporların beş sekmesi beş ayrı adres — stok defterindeki kararın
+  // aynısı: sekme URL'de olmayan ekran fotoğraflanamaz.
+  {
+    step: 7,
+    slug: "admin-hazir-satis",
+    label: "Hazır raporlar — satış",
+    as: "admin",
+    path: "/admin/reports?bolum=satis",
+  },
+  {
+    step: 7,
+    slug: "admin-hazir-urunler",
+    label: "Hazır raporlar — ürünler",
+    as: "admin",
+    path: "/admin/reports?bolum=urunler",
+  },
+  {
+    step: 7,
+    slug: "admin-hazir-plasiyerler",
+    label: "Hazır raporlar — plasiyerler",
+    as: "admin",
+    path: "/admin/reports?bolum=plasiyerler",
+  },
+  {
+    step: 7,
+    slug: "admin-hazir-tahsilat",
+    label: "Hazır raporlar — tahsilat",
+    as: "admin",
+    path: "/admin/reports?bolum=tahsilat",
+  },
+  {
+    step: 7,
+    slug: "admin-hazir-alacak",
+    label: "Hazır raporlar — alacak yaşlandırma",
+    as: "admin",
+    path: "/admin/reports?bolum=alacak",
   },
 
   // ── Adım 6 — yapılandırma ve sistem ─────────────────────────────────────

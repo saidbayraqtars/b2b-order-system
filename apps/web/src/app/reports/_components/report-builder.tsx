@@ -27,10 +27,10 @@ import {
   Checkbox,
   ErrorLine,
   Label,
-  LinkButton,
   Panel,
   Select,
   TextInput,
+  WarnLine,
 } from "@/components/form";
 import { Badge, LoadingState } from "@/components/ui";
 import type { CatalogDataset, CatalogField } from "./types";
@@ -244,7 +244,11 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      {/* Künye şeridi: raporun kim olduğu. Gömük zemin ve ince kenar, stok
+          defterinin aralık şeridiyle aynı — "bu, aşağıdaki tasarımın ayarı"
+          demenin bu depodaki hâli. Sayfa başlığı ayrı bir şey söylüyor
+          (ekranın adı), bu şerit düzenlenen alanları taşıyor. */}
+      <header className="flex flex-wrap items-end justify-between gap-3 rounded border border-line bg-sunken p-3">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <Label htmlFor="report-name">Rapor adı</Label>
@@ -293,22 +297,24 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
               </Select>
             )}
           </div>
-          <Checkbox
-            checked={isShared}
-            disabled={readOnly}
-            onChange={(e) => setIsShared(e.target.checked)}
-            label="Paylaş"
-            className="mb-3"
-          />
+          {/* Boşluk sarmalayıcıda: `className` onay kutusunun *kendisine*
+              gidiyor ve `mb-3` orada kutuyu etiketinden yukarı kaydırıyordu. */}
+          <div className="mb-2.5">
+            <Checkbox
+              checked={isShared}
+              disabled={readOnly}
+              onChange={(e) => setIsShared(e.target.checked)}
+              label="Paylaş"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <LinkButton href="/reports" size="md">
-            Raporlar
-          </LinkButton>
+          {/* Sessiz kırmızı: silme bu şeridin *asıl* eylemi değil, kaydetme o.
+              Ağırlığı onay penceresi taşıyor (Adım 4 kuralı). */}
           {saved && saved.canEdit && (
             <Button
-              variant="danger"
+              variant="dangerQuiet"
               loading={remove.isPending}
               onClick={() => {
                 if (confirm(`"${saved.name}" raporu silinsin mi?`))
@@ -331,9 +337,10 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
       <ErrorLine error={save.error} />
       <ErrorLine error={remove.error} />
       {readOnly && (
-        <p className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+        <p className="rounded border border-line bg-sunken px-3 py-2 text-body-sm text-ink-muted">
           Bu rapor {saved!.ownerName} tarafından paylaşıldı — salt okunur.
-          Sonuçlar sizin yetkinize göre filtrelenir.
+          Sonuçlar <strong className="font-semibold text-ink">sizin</strong>{" "}
+          yetkinize göre filtrelenir.
         </p>
       )}
 
@@ -346,21 +353,29 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
       */}
       <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_minmax(380px,0.95fr)]">
         {/* ── field palette ── */}
-        <Panel title="Alanlar" bodyClassName="p-0">
-          <ul className="max-h-[28rem] divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
+        {/* `self-start`: ızgara varsayılan olarak hücreyi geriyor ve palet,
+            tasarım sütunu uzadıkça iki bin piksellik boş bir kutuya
+            dönüşüyordu. */}
+        <Panel title="Alanlar" bodyClassName="p-0" className="self-start">
+          <ul className="max-h-[28rem] divide-y divide-line overflow-y-auto">
             {fieldGroups.map(([source, fields]) => (
               <li key={source}>
-                <p className="sticky top-0 bg-neutral-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:bg-neutral-900">
+                {/* Kaynak başlığı yapışkan: palet kaydırılırken hangi tablonun
+                    alanlarına bakıldığı görünür kalsın. */}
+                <p className="tech-label sticky top-0 z-10 bg-sunken px-3 py-1">
                   {source}
                 </p>
-                <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                <ul className="divide-y divide-line">
                   {fields.map((f) => (
-                    <li
-                      key={f.key}
-                      className="flex items-center justify-between px-3 py-1.5"
-                    >
-                      <span className="text-sm">{f.label}</span>
-                      <span className="flex gap-1">
+                    // Etiket üstte, düğmeler altta. Tek satırda duruyorlardı ve
+                    // 260 piksellik sütunda "Hacim basamağı" gibi iki kelimelik
+                    // her alan adı düğmelerin altına giriyordu — ekran
+                    // görüntüsünde görüldü. Palet listesinin tek işi alanın
+                    // adını okutmak; kısaltmak da, üzerine düğme bindirmek de o
+                    // işi bozuyor.
+                    <li key={f.key} className="px-3 py-2">
+                      <p className="mb-1.5 text-body-sm text-ink">{f.label}</p>
+                      <span className="flex flex-wrap gap-1">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -434,7 +449,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                   </Badge>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-neutral-500">
+              <p className="mt-2 text-xs text-ink-faint">
                 Gruplarken her sütun ya gruplama alanı olmalı ya da bir özet
                 fonksiyonu almalı.
               </p>
@@ -443,7 +458,7 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
 
           <Panel title={`Sütunlar (${config.columns.length})`}>
             {config.columns.length === 0 ? (
-              <p className="text-sm text-neutral-500">
+              <p className="text-body-sm text-ink-faint">
                 Soldaki listeden sütun ekleyin.
               </p>
             ) : (
@@ -453,9 +468,9 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                   return (
                     <li
                       key={`${c.field}-${i}`}
-                      className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2 dark:border-neutral-800"
+                      className="flex flex-wrap items-center gap-2 rounded border border-line p-2"
                     >
-                      <span className="min-w-32 text-sm font-medium">
+                      <span className="min-w-32 text-body-sm font-medium text-ink">
                         {f?.label ?? c.field}
                       </span>
                       <Select
@@ -779,9 +794,10 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
                 <ReportPreview result={result} title={name || "rapor"} />
               </div>
             ) : (
-              <p className="text-sm text-neutral-500">
-                Soldaki alan listesinden <strong>sütun</strong> ekleyin — sonuç
-                anında burada görünür.
+              <p className="text-body-sm text-ink-faint">
+                Soldaki alan listesinden{" "}
+                <strong className="font-semibold text-ink">sütun</strong>{" "}
+                ekleyin — sonuç anında burada görünür.
               </p>
             )}
           </Panel>
@@ -847,13 +863,13 @@ function ComputedPanel({
 
   return (
     <Panel title={`Hesaplanmış sütunlar (${computed.length})`}>
-      <p className="mb-3 text-xs text-neutral-500">
+      <p className="mb-3 text-xs text-ink-faint">
         Diğer sütunlar üzerinde dört işlem: <code>+ - * / ( )</code>. Sıralama
         veritabanında yapıldığı için hesaplanmış sütuna göre sıralanamaz.
       </p>
 
       {computed.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-body-sm text-ink-faint">
           Örnek: iskonto tutarı ÷ ciro, ciro ÷ sipariş adedi.
         </p>
       ) : (
@@ -867,7 +883,7 @@ function ComputedPanel({
             return (
               <li
                 key={i}
-                className="rounded-md border border-neutral-200 p-2 dark:border-neutral-800"
+                className="rounded border border-line p-2"
                 onFocus={() => setFocused(i)}
               >
                 <div className="flex flex-wrap items-center gap-2">
@@ -923,9 +939,9 @@ function ComputedPanel({
                   </span>
                 </div>
                 {unknown.length > 0 && (
-                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                  <WarnLine className="mt-2 text-xs">
                     Tanınmayan sütun: {unknown.join(", ")}
-                  </p>
+                  </WarnLine>
                 )}
               </li>
             );
@@ -952,7 +968,7 @@ function ComputedPanel({
                 insert(Math.min(focused, computed.length - 1), a.key)
               }
               title={a.label}
-              className="rounded border border-neutral-300 px-1.5 py-0.5 font-mono text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="rounded border border-line bg-panel px-1.5 py-0.5 font-mono text-xs text-ink-muted transition-colors hover:border-line-strong hover:bg-subtle hover:text-ink disabled:opacity-50"
             >
               {a.key}
             </button>
@@ -990,8 +1006,10 @@ function FilterRow({
     filter.operator !== "isNull" && filter.operator !== "notNull";
 
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2 dark:border-neutral-800">
-      <span className="min-w-32 text-sm font-medium">{field.label}</span>
+    <li className="flex flex-wrap items-center gap-2 rounded border border-line p-2">
+      <span className="min-w-32 text-body-sm font-medium text-ink">
+        {field.label}
+      </span>
       <Select
         size="sm"
         value={filter.operator}

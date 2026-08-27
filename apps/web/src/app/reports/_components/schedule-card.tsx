@@ -128,10 +128,12 @@ export function ScheduleCard({
         <LoadingState />
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-body-sm text-ink-muted">
             Rapor belirtilen sıklıkta çalıştırılıp dosya eki olarak gönderilir.
-            Rapor <strong>sahibinin</strong> yetkisiyle çalışır — alıcılar
-            sahibinin görebildiğinden fazlasını görmez.
+            Rapor{" "}
+            <strong className="font-semibold text-ink">sahibinin</strong>{" "}
+            yetkisiyle çalışır — alıcılar sahibinin görebildiğinden fazlasını
+            görmez.
           </p>
 
           <Checkbox
@@ -216,9 +218,9 @@ export function ScheduleCard({
                     {currentRecipients.map((r) => (
                       <li
                         key={r}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1 text-xs dark:bg-neutral-800"
+                        className="inline-flex items-center gap-1.5 rounded border border-line bg-sunken px-2.5 py-1 text-xs text-ink"
                       >
-                        <Mail className="h-3 w-3 text-neutral-400" />
+                        <Mail className="h-3 w-3 text-ink-faint" />
                         {r}
                         {canEdit && (
                           <button
@@ -229,7 +231,7 @@ export function ScheduleCard({
                                 currentRecipients.filter((x) => x !== r),
                               )
                             }
-                            className="text-neutral-400 hover:text-red-600"
+                            className="text-ink-faint transition-colors hover:text-critical"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -238,7 +240,7 @@ export function ScheduleCard({
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-xs text-neutral-500">
+                  <p className="mt-2 text-xs text-ink-faint">
                     En az bir alıcı ekleyin.
                   </p>
                 )}
@@ -246,16 +248,16 @@ export function ScheduleCard({
             </>
           )}
 
-          <dl className="grid gap-x-6 gap-y-1 text-xs text-neutral-500 sm:grid-cols-2">
+          <dl className="grid gap-x-6 gap-y-1 text-xs text-ink-faint sm:grid-cols-2">
             <div className="flex gap-2">
               <dt>Sıradaki gönderim:</dt>
-              <dd className="font-medium text-neutral-700 dark:text-neutral-300">
+              <dd className="font-medium tabular-nums text-ink-muted">
                 {formatMoment(schedule?.nextRunAt ?? null)}
               </dd>
             </div>
             <div className="flex gap-2">
               <dt>Son gönderim:</dt>
-              <dd className="font-medium text-neutral-700 dark:text-neutral-300">
+              <dd className="font-medium tabular-nums text-ink-muted">
                 {formatMoment(schedule?.lastRunAt ?? null)}
               </dd>
             </div>

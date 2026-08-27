@@ -12,6 +12,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-4` | Finans                          |
 | `adim-5` | Operasyon                       |
 | `adim-6` | Yapılandırma ve sistem          |
+| `adim-7` | Rapor tasarımcısı ve panolar    |
 | `adim-8` | Giriş, bayilik başvurusu, hesap |
 
 ## Yeniden üretmek
@@ -29,10 +30,11 @@ Görüntüler elle alınmaz; `scripts/screenshots.mjs` üretir. Kayıt defteri
 #    adı sanıyor ("Invalid project directory provided, no such directory: …\-p").
 pnpm --filter web dev -p 3100
 
-# 3. Görüntüleri alın
+# 3. Görüntüleri alın. Burada da `--` KOYMAYIN: pnpm 9 onu betiğe aynen
+#    geçiriyor ve betik "Bilinmeyen argüman: --" deyip duruyor.
 SHOT_BASE_URL=http://localhost:3100 pnpm shots            # hepsi
-SHOT_BASE_URL=http://localhost:3100 pnpm shots -- --step 3
-SHOT_BASE_URL=http://localhost:3100 pnpm shots -- --theme both
+SHOT_BASE_URL=http://localhost:3100 pnpm shots --step 3
+SHOT_BASE_URL=http://localhost:3100 pnpm shots --theme both
 ```
 
 Tarayıcı indirilmez: sistemde kurulu Chrome ya da Edge sürülür

@@ -490,7 +490,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 # 3. Ekran görüntüsü (derlemeden AYRI sırada!)
 pnpm --filter web dev -p 3100          # `--` KOYMAYIN
-SHOT_BASE_URL=http://localhost:3100 pnpm shots -- --step <n>
+SHOT_BASE_URL=http://localhost:3100 pnpm shots --step <n>   # burada da `--` YOK
 
 # 4. Görüntüleri GERÇEKTEN AÇ ve bak. Dosya boylarına da bak:
 #    3000 pikselden uzun PNG = sınırlanmamış liste var.

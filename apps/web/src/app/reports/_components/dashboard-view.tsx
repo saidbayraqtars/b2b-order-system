@@ -15,12 +15,14 @@ import {
   Button,
   Checkbox,
   ErrorLine,
+  Label,
   LinkButton,
   Panel,
   Select,
   TextInput,
+  WarnLine,
 } from "@/components/form";
-import { LoadingState, PageHeader } from "@/components/ui";
+import { EmptyState, LoadingState, PageHeader } from "@/components/ui";
 import type { DefinitionSummary } from "./types";
 
 /**
@@ -74,12 +76,23 @@ export function DashboardView({ id }: { id: string }) {
       )}
 
       {board.tiles.length === 0 ? (
-        <p className="text-sm text-neutral-500">
-          Bu panoda henüz rapor yok.{" "}
-          {board.canEdit ? "“Düzenle” ile ekleyin." : ""}
-        </p>
+        <EmptyState
+          label={
+            board.canEdit
+              ? "Bu panoda henüz rapor yok."
+              : "Bu panoda henüz rapor yok — sahibi kart eklemedi."
+          }
+          action={
+            board.canEdit ? (
+              <Button onClick={() => setEditing(true)}>Rapor ekle</Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        // `items-start`: yan yana duran iki kart farklı boyda ve ızgara
+        // onları eşitlemeye çalışınca kısa olanın altında yarım ekran boşluk
+        // kalıyordu.
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
           {board.tiles.map((tile, i) => (
             <Tile key={`${tile.definitionId}-${i}`} tile={tile} />
           ))}
@@ -104,13 +117,13 @@ function Tile({ tile }: { tile: DashboardTileResult }) {
       >
         {tile.error ? (
           // A broken tile says so where it stands. The other tiles ran.
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            {tile.error}
-          </p>
+          <WarnLine>{tile.error}</WarnLine>
         ) : (
-          <div className="max-h-96 overflow-y-auto">
-            <ReportPreview result={tile.result!} title={tile.title} compact />
-          </div>
+          // Kaydırma kutusu yok: `compact` kip zaten satırı sekizde kesiyor ve
+          // kaç satır olduğunu yazıyor. `max-h` + `overflow-y-auto` kartı
+          // rastgele bir yerden kesiyordu — bir kartta geriye tablonun yalnızca
+          // başlığı kalmıştı.
+          <ReportPreview result={tile.result!} title={tile.title} compact />
         )}
       </Panel>
     </div>
@@ -190,15 +203,15 @@ function DashboardEditor({
     <div className="mb-4">
       <Panel title="Pano ayarları">
         <div className="mb-4 flex flex-wrap items-end gap-3">
-          <label className="block">
-            <span className="text-xs text-neutral-500">Pano adı</span>
+          <div>
+            <Label htmlFor="dashboard-name">Pano adı</Label>
             <TextInput
+              id="dashboard-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-64"
-              aria-label="Pano adı"
             />
-          </label>
+          </div>
           <Checkbox
             checked={isShared}
             onChange={(e) => setIsShared(e.target.checked)}
@@ -210,7 +223,7 @@ function DashboardEditor({
           {tiles.map((tile, i) => (
             <li
               key={`${tile.definitionId}-${i}`}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2 dark:border-neutral-800"
+              className="flex flex-wrap items-center gap-2 rounded border border-line p-2"
             >
               <Select
                 size="sm"
@@ -323,7 +336,7 @@ function DashboardEditor({
             Vazgeç
           </Button>
           <Button
-            variant="danger"
+            variant="dangerQuiet"
             className="ml-auto"
             loading={remove.isPending}
             onClick={() => {
@@ -338,7 +351,7 @@ function DashboardEditor({
 
         <ErrorLine error={save.error ?? remove.error} />
         {tiles.length >= 12 && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-ink-faint">
             Bir panoda en fazla 12 rapor olabilir.
           </p>
         )}

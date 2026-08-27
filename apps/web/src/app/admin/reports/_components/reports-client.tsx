@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type {
   CollectionsReport,
@@ -14,8 +15,10 @@ import { PAYMENT_METHOD_LABELS, type OrderStatus } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import {
-  Card,
   LoadingState,
+  Note,
+  PageHeader,
+  StatTile,
   Table,
   TableEmpty,
   Tabs,
@@ -28,6 +31,11 @@ import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 
 // Reporting dashboard. One shared date range drives every tab, so switching
 // tabs compares the same window instead of silently changing it.
+//
+// Sekme URL'de duruyor (`?bolum=`), bileşen durumunda değil: ekran görüntüsü
+// betiği bir adrese gidip resmini çekiyor, düğmelere basmıyor. Bileşen
+// durumunda kalsaydı beş sekmenin dördü hiç fotoğraflanamazdı — stok
+// defterinde verilen kararın aynısı.
 
 type Tab = "sales" | "products" | "reps" | "collections" | "receivables";
 
@@ -38,6 +46,19 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "collections", label: "Tahsilat" },
   { key: "receivables", label: "Alacak yaşlandırma" },
 ];
+
+/** Adres çubuğunda okunan şey ekrandaki sekmenin adı. */
+const SLUG: Record<Tab, string> = {
+  sales: "satis",
+  products: "urunler",
+  reps: "plasiyerler",
+  collections: "tahsilat",
+  receivables: "alacak",
+};
+
+function tabFromSlug(slug: string | null): Tab {
+  return (Object.keys(SLUG) as Tab[]).find((k) => SLUG[k] === slug) ?? "sales";
+}
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   DRAFT: "Taslak",
@@ -69,7 +90,11 @@ function daysAgo(n: number): string {
 }
 
 export function ReportsClient() {
-  const [tab, setTab] = useState<Tab>("sales");
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const tab = tabFromSlug(params.get("bolum"));
+
   const [from, setFrom] = useState(daysAgo(29));
   const [to, setTo] = useState(daysAgo(0));
 
@@ -77,7 +102,14 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end gap-3">
+      <PageHeader
+        title="Hazır raporlar"
+        subtitle="Satış, ürün, plasiyer, tahsilat ve alacak — tek tarih aralığıyla"
+      />
+
+      {/* Aralık şeridi: gömük zemin, tablo başlığıyla aynı yüzey. Sekmenin
+          üstünde, çünkü beş sekmenin beşini de o tarihler belirliyor. */}
+      <div className="flex flex-wrap items-end gap-3 rounded border border-line bg-sunken p-3">
         <div>
           <Label htmlFor="report-from">Başlangıç</Label>
           <TextInput
@@ -121,7 +153,13 @@ export function ReportsClient() {
         </div>
       </div>
 
-      <Tabs value={tab} onChange={setTab} items={TABS} />
+      <Tabs
+        value={tab}
+        onChange={(next) =>
+          router.replace(`${pathname}?bolum=${SLUG[next]}`, { scroll: false })
+        }
+        items={TABS}
+      />
 
       {tab === "sales" && <SalesTab range={range} />}
       {tab === "products" && <ProductsTab range={range} />}
@@ -148,12 +186,16 @@ function SalesTab({ range }: { range: string }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Ciro" value={formatTRY(d.revenue)} strong />
-        <Stat label="Sipariş" value={String(d.orderCount)} />
-        <Stat label="Ortalama sepet" value={formatTRY(d.averageOrderValue)} />
-        <Stat
+        <StatTile label="Ciro" value={formatTRY(d.revenue)} />
+        <StatTile label="Sipariş" value={d.orderCount} />
+        <StatTile
+          label="Ortalama sepet"
+          value={formatTRY(d.averageOrderValue)}
+        />
+        <StatTile
           label="Bekleyen"
-          value={`${d.pendingCount} · ${formatTRY(d.pendingTotal)}`}
+          value={formatTRY(d.pendingTotal)}
+          hint={`${d.pendingCount} sipariş`}
         />
       </div>
 
@@ -165,21 +207,24 @@ function SalesTab({ range }: { range: string }) {
               <div
                 key={p.date}
                 title={`${p.date}: ${formatTRY(p.revenue)} (${p.orderCount} sipariş)`}
-                className="flex-1 rounded-t bg-brand-500/80 hover:bg-brand-600"
+                className="flex-1 rounded-t bg-ink/70 transition-colors hover:bg-ink"
                 style={{
                   height: `${Math.max(4, (Number(p.revenue) / peak) * 100)}%`,
                 }}
               />
             ))}
           </div>
-          <p className="mt-2 flex justify-between text-xs text-neutral-500">
+          <p className="mt-2 flex justify-between text-xs text-ink-faint">
             <span>{d.daily[0]?.date}</span>
             <span>{d.daily[d.daily.length - 1]?.date}</span>
           </p>
         </Panel>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {/* `items-start`: ızgara varsayılan olarak iki paneli aynı boya geriyor
+          ve beş satırlık tablo, on satırlık komşusunun altında yarım ekran boş
+          alan çiziyordu. */}
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         <SummaryTable
           title="Duruma göre"
           head={["Durum", "Adet", "Tutar"]}
@@ -201,7 +246,7 @@ function SalesTab({ range }: { range: string }) {
       </div>
 
       {d.lostCount > 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-body-sm text-ink-faint">
           Bu aralıkta {d.lostCount} sipariş iptal/red edildi ·{" "}
           {formatTRY(d.lostTotal)} — ciroya dahil değil.
         </p>
@@ -289,11 +334,11 @@ function CollectionsTab({ range }: { range: string }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Stat label="Toplam tahsilat" value={formatTRY(d.total)} strong />
-        <Stat label="Kayıt" value={String(d.count)} />
+        <StatTile label="Toplam tahsilat" value={formatTRY(d.total)} />
+        <StatTile label="Kayıt" value={d.count} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         <SummaryTable
           title="Ödeme yöntemine göre"
           head={["Yöntem", "Adet", "Tutar"]}
@@ -337,6 +382,9 @@ function CollectionsTab({ range }: { range: string }) {
 
 // ── Alacak yaşlandırma ──
 
+/** Yaşlandırma tablosunda gösterilen en fazla satır. */
+const AGING_LIMIT = 50;
+
 function ReceivablesTab() {
   const q = useQuery({
     queryKey: ["report", "receivables"],
@@ -346,26 +394,38 @@ function ReceivablesTab() {
   if (q.isError) return <Failed error={q.error} />;
   const d = q.data!;
 
+  // Sunucu her aktif firmayı ada göre döndürüyor; ekranın sorusu ise "kim
+  // borçlu". Bakiyesi sıfır olan firma o soruya cevap vermiyor ama satırı
+  // kaplıyordu — gösterim verisinde otuz satırın on üçü sıfırdı. Sıralama
+  // tutara göre, liste elli satırda kesiliyor: sunucu sayıyı sınırlamıyor ve
+  // iki yüz müşterili bir kurulumda bu tablo sayfayı altı bin pikselin ötesine
+  // taşırdı (Adım 5 ve 6'da üç kez çıkan hata).
+  const owing = d.companies
+    .filter((c) => Number(c.balance) !== 0)
+    .sort((a, b) => Number(b.balance) - Number(a.balance));
+  const shown = owing.slice(0, AGING_LIMIT);
+  const zeroCount = d.companies.length - owing.length;
+
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat
-          label="Toplam alacak"
-          value={formatTRY(d.totals.balance)}
-          strong
-        />
-        <Stat
+      {/* Altı değil üç sütun: altı kutuya bölününce her biri 170 piksele
+          düşüyor ve yedi haneli bir tutar 32 puntoyla oraya sığmıyor. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <StatTile label="Toplam alacak" value={formatTRY(d.totals.balance)} />
+        <StatTile
           label="Vadesi geçen"
           value={formatTRY(d.totals.overdue)}
-          danger={Number(d.totals.overdue) > 0}
+          tone={Number(d.totals.overdue) > 0 ? "critical" : "neutral"}
+          hint={Number(d.totals.overdue) > 0 ? "vadesi doldu" : undefined}
         />
-        <Stat label="1-30 gün" value={formatTRY(d.totals.d1_30)} />
-        <Stat label="31-60 gün" value={formatTRY(d.totals.d31_60)} />
-        <Stat label="61-90 gün" value={formatTRY(d.totals.d61_90)} />
-        <Stat
+        <StatTile label="1-30 gün" value={formatTRY(d.totals.d1_30)} />
+        <StatTile label="31-60 gün" value={formatTRY(d.totals.d31_60)} />
+        <StatTile label="61-90 gün" value={formatTRY(d.totals.d61_90)} />
+        <StatTile
           label="90+ gün"
           value={formatTRY(d.totals.d90_plus)}
-          danger={Number(d.totals.d90_plus) > 0}
+          tone={Number(d.totals.d90_plus) > 0 ? "critical" : "neutral"}
+          hint={Number(d.totals.d90_plus) > 0 ? "takip gerekiyor" : undefined}
         />
       </div>
 
@@ -384,12 +444,12 @@ function ReceivablesTab() {
             </tr>
           </THead>
           <TBody>
-            {d.companies.map((c) => (
+            {shown.map((c) => (
               <tr key={c.companyId}>
                 <Td>
                   <Link
                     href={`/admin/companies/${c.companyId}/statement`}
-                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+                    className="font-medium text-ink hover:underline"
                   >
                     {c.companyName}
                   </Link>
@@ -401,66 +461,58 @@ function ReceivablesTab() {
                 <Aged value={c.buckets.d1_30} />
                 <Aged value={c.buckets.d31_60} />
                 <Aged value={c.buckets.d61_90} />
-                <Aged value={c.buckets.d90_plus} />
+                <Aged value={c.buckets.d90_plus} worst />
                 <Td align="right" numeric className="font-medium">
                   {formatTRY(c.balance)}
                 </Td>
               </tr>
             ))}
-            {d.companies.length === 0 && (
-              <TableEmpty colSpan={8} label="Kayıt yok." />
+            {shown.length === 0 && (
+              <TableEmpty colSpan={8} label="Bakiyesi olan firma yok." />
             )}
           </TBody>
         </Table>
+        <p className="mt-3 text-xs tabular-nums text-ink-faint">
+          {shown.length} / {owing.length} borçlu firma gösteriliyor
+          {zeroCount > 0 ? ` · bakiyesi sıfır ${zeroCount} firma listelenmedi` : ""}
+        </p>
       </Panel>
 
-      <p className="text-xs text-neutral-500">
+      <Note>
         Tahsilatlar en eski borçtan başlayarak (FIFO) mahsup edilir; vade,
-        borcun oluştuğu tarihe firmanın vade günü eklenerek bulunur.
-      </p>
+        borcun oluştuğu tarihe firmanın vade günü eklenerek bulunur. Kırmızı
+        yalnızca <strong>90+</strong> sütununda: elli satırlık bir tabloda her
+        gecikmeyi kırmızıya boyamak uyarı değil desen olur (Adım 6 kuralı).
+      </Note>
     </div>
   );
 }
 
-function Aged({ value }: { value: string }) {
+/**
+ * Yaşlandırma hücresi. `worst` yalnızca 90+ sütununda: kırmızı bir sayı bir
+ * satırda uyarıdır, dört sütun x elli satırda desendir — göz onu okumaz.
+ */
+function Aged({ value, worst = false }: { value: string; worst?: boolean }) {
   const n = Number(value);
+  if (n <= 0) {
+    return (
+      <Td align="right" numeric className="text-ink-faint">
+        —
+      </Td>
+    );
+  }
   return (
     <Td
       align="right"
       numeric
-      className={n > 0 ? "text-red-600" : "text-neutral-400"}
+      className={worst ? "font-medium text-critical" : ""}
     >
-      {n > 0 ? formatTRY(value) : "—"}
+      {formatTRY(value)}
     </Td>
   );
 }
 
 // ── shared bits ──
-
-function Stat({
-  label,
-  value,
-  strong,
-  danger,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-  danger?: boolean;
-}) {
-  return (
-    <Card className="p-3">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p
-        className={`tabular-nums ${strong ? "text-lg font-bold" : "text-lg"} ${
-          danger ? "text-red-600" : ""
-        }`}
-      >
-        {value}
-      </p>
-    </Card>
-  );
-}
 
 /**
  * Başlıklı özet tablosu: ilk sütun etiket, geri kalanı sayı.

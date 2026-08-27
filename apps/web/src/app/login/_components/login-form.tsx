@@ -2,11 +2,16 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loginSchema } from "@repo/types";
-import { Button, ErrorLine, Label, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  TextInput,
+  WarnLine,
+} from "@/components/form";
 import { Stagger } from "@/components/auth-shell";
 
 /**
@@ -86,12 +91,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {reason && (
-        <p className="flex items-start gap-2 rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          {reason}
-        </p>
-      )}
+      {reason && <WarnLine>{reason}</WarnLine>}
       <Stagger index={0}>
         <Label htmlFor="email">E-posta</Label>
         <TextInput

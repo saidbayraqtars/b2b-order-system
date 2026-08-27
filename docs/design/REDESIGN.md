@@ -85,7 +85,7 @@ Sayfa başlığı `headline-lg`, panel başlığı `headline-sm`, gövde `body-s
 
 `src/components/form.tsx`
 : `Label`, `TextInput`, `Select`, `MultiSelect`, `TextArea`, `Checkbox`,
-`Button`, `LinkButton`, `Panel`, `Modal`, `ErrorLine`
+`Button`, `LinkButton`, `Panel`, `Modal`, `ErrorLine`, `WarnLine`
 
 `src/components/app-sidebar.tsx`
 : `SidebarShell` — uygulamanın tek kabuğu. `groups` (başlıksız grup = düz
@@ -100,7 +100,7 @@ kendi `px-4 py-6`sını yazmaz; yalnızca `mx-auto max-w-*` ile genişlik seçer
 
 Bir adım bittiğinde o adımın ekranları `docs/design/screens/adim-<n>/` altına
 çekilir. Elle değil: ekranı `scripts/screens.mjs` kayıt defterine bir satır
-olarak ekleyip `pnpm shots -- --step <n>` çalıştırın. Ayrıntı ve kararlar
+olarak ekleyip `pnpm shots --step <n>` çalıştırın. Ayrıntı ve kararlar
 `docs/design/screens/README.md`de.
 
 Neden: "tokenlara taşındı" cümlesi bir ekranın doğru göründüğünü söylemiyor.
@@ -592,9 +592,96 @@ Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 233/233 geçti
 kenar çubuğundan bu adımın ekranlarıyla aynı grupta görünüyor ama içeriği rapor
 tasarımcısının parçası.
 
-### ▢ Adım 7 — Rapor tasarımcısı ve panolar
+### ✔ Adım 7 — Rapor tasarımcısı ve panolar (bitti)
 
-`reports/**`, `admin/reports`.
+`reports`, `reports/new`, `reports/[id]`, `reports/dashboards`,
+`reports/dashboards/[id]`, `admin/reports` ve yazdırma yüzeyi — artı ikisinin
+paylaştığı `components/report-preview.tsx`.
+
+**Yazdırma yüzeyi `documents/**` ailesine taşındı — adresiyle birlikte.**
+`/reports/[id]/print` → **`/documents/reports/[id]`**. Sebep ekran
+görüntüsünde çıktı: sayfa `reports/layout.tsx`in kabuğunu miras alıyordu, yani
+kâğıda basılacak sayfanın solunda 256 piksellik gezinme çubuğu duruyordu ve
+`@media print` onu gizlemiyordu. Bir yazdırma yüzeyi kabuk altında duramaz;
+`documents/**` zaten kabuksuz. Ham `neutral-*` sınıfları orada **bilerek**
+kalıyor (kâğıt her zaman beyaz), ama `DocumentShell` kullanılmıyor: o kabuk
+kiracı klasörü yoksa belgeyi "geçersiz" ilan ediyor — irsaliye için doğru,
+rapor için değil. Bir rapor hukuki bir kayıt değil, bir çıktı.
+
+**Grafiklerin sekiz renkli paleti kaldırıldı.** `report-preview` indigo, teal,
+kehribar, kırmızı… diziyordu ve tasarım dilinin 1. kuralını tek başına çiğneyen
+yer orasıydı. Yerine `--ink` üzerine sekiz basamaklı bir **saydamlık rampası**
+geldi: dilimler zaten büyüklüğe göre sıralı, göz koyudan açığa okuyor. Rampa
+CSS değişkeninden beslendiği için koyu temada `dark:` ikizi olmadan dönüyor.
+
+**Hazır raporların beş sekmesi adrese taşındı** (`?bolum=satis|urunler|
+plasiyerler|tahsilat|alacak`). Stok defterindeki kararın aynısı: fotoğraflanamayan
+ekranın doğru göründüğü söylenemez, ve betik düğmelere basmıyor.
+
+**Yeni ortak bileşen — `WarnLine`** (`form.tsx`). `ErrorLine`ın kardeşi:
+kırmızı "işlem olmadı" der, kehribar "oldu ama şunu bilin". Dört ekran bu
+kutuyu kendi yazmıştı (giriş, şifre sıfırlama, çek tahtası, pano) ve ikisi ham
+`amber-*`, ikisi anlamsal `caution` kullanıyordu — aynı cümlenin iki görüntüsü.
+Dördü de bileşene geçti.
+
+`formatCell` `report-preview`den **`lib/format`a** taşındı: yazdırma yüzeyi bir
+sunucu bileşeni ve tek bir yardımcı için `"use client"` bir modülden içe aktarım
+yapıyordu.
+
+**Gösterim rapor tanımları eklendi** (`packages/services/src/demo-reports.ts`,
+`pnpm --filter @repo/services demo:reports`). Kurulumda tek bir rapor tanımı
+yoktu; yedi ekranın dördü boş kutu olarak fotoğraflanıyordu ve boş bir rapor
+ekranı, ekranın kendisi hakkında hiçbir şey söylemiyor. Dört tanım (aylık ciro ·
+firma bazında ciro · kategori kırılımı · plasiyer cirosu) ve bir pano, ada göre
+upsert. `demo-seed`in "zaten yüklü" kapısının **üstünde** duruyor: bir rapor
+tasarımı siparişlerden bağımsız ve gösterim verisini sıfırlamak (`cuid`
+kimlikler) çok daha pahalı.
+
+#### Ekran görüntüsünün yakaladığı, dördünün de kaçırdığı beş şey
+
+- **Alan paletinde etiket düğmelerin altına giriyordu.** 260 piksellik sütunda
+  "Hacim basamağı" gibi iki kelimelik her alan adı, yanındaki üç düğmeyle aynı
+  satıra sığmıyordu. Etiket üste alındı, düğmeler altına. Kısaltmak seçenek
+  değildi: paletin tek işi alanın adını okutmak.
+- **Palet paneli iki bin piksellik boş bir kutuydu.** Izgara hücreyi geriyor;
+  `self-start` ile içeriği kadar yükseliyor. Aynı hata hazır raporların iki
+  panelli ızgaralarında ve pano kartlarında da vardı.
+- **Yaşlandırma kutularında rakamlar kenardan kesiliyordu.** Altı `StatTile`
+  1130 piksele bölününce her biri 170 piksel; 32 punto "₺1.583.469,02" oraya
+  sığmıyor. Izgara üçe indi ve `StatTile` bir daha sessizce kesmesin diye
+  `overflow-wrap: anywhere` aldı — para bir kutuya sığmadı diye basamak
+  kaybedemez.
+- **Yaşlandırma tablosu sınırsızdı ve yarısı sıfırdı.** Sunucu her aktif firmayı
+  ada göre döndürüyor; ekranın sorusu ise "kim borçlu". Sıralama tutara göre,
+  bakiyesi sıfır olanlar listeden çıktı, liste 50 satırda kesiliyor ve altına
+  kaç firmanın gösterildiği yazıldı.
+- **Pano kartı tabloyu rastgele bir yerden kesiyordu.** `max-h` + kaydırma
+  kutusu bir kartta geriye yalnızca tablonun başlık satırını bırakmıştı.
+  Kaydırma kutusu kaldırıldı: `compact` kip **veriyi** sekiz satırda kesiyor ve
+  üstündeki tarama satırı kaç satır olduğunu söylüyor. Fotoğraf kaydırmıyor;
+  kart neyi gösterecekse tamamını göstermeli.
+
+#### Yol boyunca çıkan iki gerçek hata
+
+- **Enum süzgeci gruplanmış raporda çalışmıyordu.** Postgres enum sütununu metin
+  parametresiyle karşılaştırmıyor (`operator does not exist: "OrderStatus" <>
+  text`) ve ham SQL yolu sütunu `::text`e çevirmiyordu. Gruplamasız yol Prisma
+  sorgu kurucusundan geçtiği için etkilenmiyordu — hata yalnızca `GROUP BY`
+  varken görülüyordu. "İptal ve red hariç" diye başlayan her ciro raporu 500
+  dönüyordu. Regresyon testi `apps/web/test/reports.test.ts`te.
+- **Gün/ay kovası üç saat geriye kayıyordu.** Prisma `DateTime`ı
+  `timestamp without time zone` olarak yazıp içine UTC koyuyor; çıplak bir
+  damgaya `AT TIME ZONE 'Europe/Istanbul'` uygulamak "bu duvar saati İstanbul
+  saatidir" demek, yani dönüşüm ters yöne çalışıyordu. Akşam 21:00'den sonra
+  girilen her sipariş bir önceki günün cirosuna yazılıyordu. Doğrusu iki adım:
+  `AT TIME ZONE 'UTC' AT TIME ZONE ${REPORT_TIMEZONE}`.
+
+Ayrıca iki test kendi saat dilimi hatasıyla gece yarısından sonra kırılıyordu
+(`stock-lots`, `stock-ledger`): gün dizgisini `toISOString()` ile UTC'den
+üretip, yerel gün sınırıyla çalışan servise gönderiyorlardı.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 235 rota + 553
+servis testi geçti, `next build` başarılı, 11 ekran görüntüsü `adim-7/` altında.
 
 ### ▢ Adım 8 (kalan) — Hesap ekranları
 

@@ -71,7 +71,18 @@ function columnOf(ds: DatasetDef, def: ReportFieldDef): Prisma.Sql {
   const base = Prisma.sql`${Prisma.raw(alias)}.${ident(column)}`;
 
   if (!def.trunc) return base;
-  return Prisma.sql`to_char(${base} AT TIME ZONE ${REPORT_TIMEZONE}, ${TRUNC_FORMAT[def.trunc]})`;
+  // İki dönüşüm de gerekiyor ve sırası önemli.
+  //
+  // Prisma `DateTime`ı `timestamp without time zone` olarak yazıyor ve içine
+  // UTC değeri koyuyor. Çıplak bir zaman damgasına `AT TIME ZONE 'Europe/
+  // Istanbul'` uygulamak "bu duvar saati İstanbul saatidir" demek — yani
+  // dönüşüm ters yöne çalışıyor ve kova üç saat **geriye** kayıyordu. Akşam
+  // 21:00'den sonra girilen her sipariş bir önceki güne yazılıyordu; günlük
+  // ciro raporunun gecesi eksik, sabahı fazla çıkıyordu.
+  //
+  // Önce `AT TIME ZONE 'UTC'` damgayı olduğu şeye çeviriyor (çıplak → mutlak),
+  // sonra `AT TIME ZONE ${REPORT_TIMEZONE}` onu raporun takvimine indiriyor.
+  return Prisma.sql`to_char(${base} AT TIME ZONE 'UTC' AT TIME ZONE ${REPORT_TIMEZONE}, ${TRUNC_FORMAT[def.trunc]})`;
 }
 
 function fromClause(ds: DatasetDef): Prisma.Sql {
@@ -146,35 +157,60 @@ export function whereToSql(
   return parts;
 }
 
+/**
+ * Karşılaştırılabilir sütun ifadesi.
+ *
+ * Bağlanan değer bir **metin** ise sütun `::text`e çevriliyor. Sebep: Postgres
+ * enum sütunu ile metin parametresini karşılaştırmıyor —
+ * `operator does not exist: "OrderStatus" <> text`. Prisma `$queryRaw`
+ * parametreleri metin olarak gönderdiği için gruplanmış her rapor, durumu ya da
+ * ödeme yöntemini süzdüğü anda bu hatayla düşüyordu. (Gruplanmamış yol Prisma
+ * sorgu kurucusundan geçtiği için etkilenmiyordu; hata yalnızca `GROUP BY`
+ * varken görülüyordu ve o yüzden uzun süre fark edilmedi.)
+ *
+ * Metin sütununda `::text` işlemsiz; tarih, sayı ve boolean değerler zaten
+ * kendi tipleriyle bağlanıyor (bkz. `leafCondition`'daki `typed`), o yüzden
+ * onlara dokunulmuyor — tarihi metne çevirmek sıralamayı bozardı.
+ */
+function comparable(col: Prisma.Sql, arg: unknown): Prisma.Sql {
+  return typeof arg === "string" ? Prisma.sql`${col}::text` : col;
+}
+
 function comparisonToSql(col: Prisma.Sql, value: unknown): Prisma.Sql[] {
   if (value === null) return [Prisma.sql`${col} IS NULL`];
 
   if (!isPlainObject(value)) {
-    return [Prisma.sql`${col} = ${value}`];
+    return [Prisma.sql`${comparable(col, value)} = ${value}`];
   }
 
   const out: Prisma.Sql[] = [];
   for (const [op, arg] of Object.entries(value)) {
     switch (op) {
       case "equals":
-        out.push(arg === null ? Prisma.sql`${col} IS NULL` : Prisma.sql`${col} = ${arg}`);
+        out.push(
+          arg === null
+            ? Prisma.sql`${col} IS NULL`
+            : Prisma.sql`${comparable(col, arg)} = ${arg}`,
+        );
         break;
       case "not":
         out.push(
-          arg === null ? Prisma.sql`${col} IS NOT NULL` : Prisma.sql`${col} <> ${arg}`,
+          arg === null
+            ? Prisma.sql`${col} IS NOT NULL`
+            : Prisma.sql`${comparable(col, arg)} <> ${arg}`,
         );
         break;
       case "gt":
-        out.push(Prisma.sql`${col} > ${arg}`);
+        out.push(Prisma.sql`${comparable(col, arg)} > ${arg}`);
         break;
       case "gte":
-        out.push(Prisma.sql`${col} >= ${arg}`);
+        out.push(Prisma.sql`${comparable(col, arg)} >= ${arg}`);
         break;
       case "lt":
-        out.push(Prisma.sql`${col} < ${arg}`);
+        out.push(Prisma.sql`${comparable(col, arg)} < ${arg}`);
         break;
       case "lte":
-        out.push(Prisma.sql`${col} <= ${arg}`);
+        out.push(Prisma.sql`${comparable(col, arg)} <= ${arg}`);
         break;
       case "in":
         out.push(inClause(col, asArray(arg), false));
@@ -207,8 +243,9 @@ function comparisonToSql(col: Prisma.Sql, value: unknown): Prisma.Sql[] {
 function inClause(col: Prisma.Sql, values: unknown[], negate: boolean): Prisma.Sql {
   // An empty IN () is a syntax error in SQL and matches nothing in Prisma.
   if (values.length === 0) return negate ? Prisma.sql`TRUE` : Prisma.sql`FALSE`;
+  const lhs = comparable(col, values[0]);
   const list = Prisma.join(values.map((v) => Prisma.sql`${v}`), ", ");
-  return negate ? Prisma.sql`${col} NOT IN (${list})` : Prisma.sql`${col} IN (${list})`;
+  return negate ? Prisma.sql`${lhs} NOT IN (${list})` : Prisma.sql`${lhs} IN (${list})`;
 }
 
 function escapeLike(value: string): string {

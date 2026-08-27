@@ -26,10 +26,20 @@ let manager: TestUser;
 let companyId: string;
 
 /** Bugünden `days` gün sonrası, ISO gün biçiminde. */
+/**
+ * `yyyy-mm-dd`, **yerel** takvimden.
+ *
+ * `toISOString()` yazıyordu ve o UTC'ye çeviriyor: Türkiye'de gece yarısı ile
+ * 03:00 arasında koşan test bir önceki günü gönderiyor, servis ise günü yerel
+ * gece yarısına indiriyordu. Raf ömrü testi yalnızca o üç saatte kırılıyordu —
+ * ürün hatası değil, testin kendi saat dilimi hatası.
+ */
 function isoDay(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  const month = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 }
 
 async function createLot(

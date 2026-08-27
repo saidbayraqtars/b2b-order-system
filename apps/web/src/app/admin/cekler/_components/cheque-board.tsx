@@ -34,6 +34,7 @@ import {
   Panel,
   Select,
   TextInput,
+  WarnLine,
 } from "@/components/form";
 
 // Çek/senet portföyü ekranı.
@@ -449,11 +450,13 @@ function ActionDialog({
         ) : null}
 
         {reopensDebt ? (
-          <p className="rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
-            Bu işlem {formatTRY(row.amount)} tutarında borcu{" "}
-            <b>cariye geri yazar</b>. Tahsilat kaydı silinmez; ekstrede her iki
-            satır da görünür.
-          </p>
+          <WarnLine>
+            <span>
+              Bu işlem {formatTRY(row.amount)} tutarında borcu{" "}
+              <b>cariye geri yazar</b>. Tahsilat kaydı silinmez; ekstrede her
+              iki satır da görünür.
+            </span>
+          </WarnLine>
         ) : null}
 
         <div>

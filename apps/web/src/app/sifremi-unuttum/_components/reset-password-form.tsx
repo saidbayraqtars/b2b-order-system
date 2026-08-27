@@ -2,11 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetPasswordSchema } from "@repo/types";
 import { Stagger } from "@/components/auth-shell";
-import { Button, ErrorLine, Label, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  TextInput,
+  WarnLine,
+} from "@/components/form";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -20,16 +26,18 @@ export function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <p className="flex items-start gap-2 rounded border border-caution/30 bg-caution/10 px-3 py-2 text-body-sm text-caution">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <WarnLine>
         <span>
           Bağlantı eksik ya da bozuk.{" "}
-          <Link href="/sifremi-unuttum" className="underline underline-offset-4">
+          <Link
+            href="/sifremi-unuttum"
+            className="underline underline-offset-4"
+          >
             Yeni bağlantı isteyin
           </Link>
           .
         </span>
-      </p>
+      </WarnLine>
     );
   }
 

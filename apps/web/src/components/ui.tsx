@@ -64,7 +64,13 @@ export function StatTile({
         <span className="tech-label">{label}</span>
         {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
       </div>
-      <div className="text-headline-lg tabular-nums text-ink">{value}</div>
+      {/* `overflow-wrap: anywhere`: altı kutuluk bir şeritte 32 punto
+          "₺1.583.469,27" kutuyu taşırıyor ve rakamlar kenardan kesiliyordu
+          (alacak yaşlandırma ekranında görüldü). Kesmek yerine sarmalıyor —
+          para bir kutuya sığmadı diye basamak kaybedemez. */}
+      <div className="text-headline-lg tabular-nums text-ink [overflow-wrap:anywhere]">
+        {value}
+      </div>
       {hint && <div className={cn("mt-1 text-xs", hintTone)}>{hint}</div>}
     </div>
   );

@@ -100,7 +100,7 @@ export function DashboardsList() {
                     {d.name}
                   </Link>
                   {d.description && (
-                    <p className="text-xs text-neutral-500">{d.description}</p>
+                    <p className="mt-0.5 text-xs text-ink-faint">{d.description}</p>
                   )}
                 </Td>
                 <Td align="right" numeric>

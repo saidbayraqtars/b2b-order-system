@@ -60,3 +60,46 @@ export function formatRate(rate: number | string): string {
 export function isForeign(currency: string | null | undefined): boolean {
   return !!currency && currency.toUpperCase() !== BASE_CURRENCY;
 }
+
+/**
+ * Rapor motorunun döndürdüğü ham hücreyi sütunun biçimine göre yazıya çevirir.
+ *
+ * `lib/format`ta duruyor, `report-preview`de değil: yazdırma yüzeyi bir sunucu
+ * bileşeni ve tek bir yardımcı için `"use client"` bir modülden içe aktarım
+ * yapıyordu. Fonksiyonun tarayıcıyla hiç işi yok.
+ */
+export function formatCell(
+  value: string | number | boolean | null,
+  format: string,
+): string {
+  if (value === null || value === undefined) return "—";
+  switch (format) {
+    case "money":
+      return formatTRY(Number(value));
+    case "percent":
+      return `%${Number(value).toLocaleString("tr-TR")}`;
+    case "number":
+      return Number(value).toLocaleString("tr-TR");
+    case "date":
+      return new Date(String(value)).toLocaleDateString("tr-TR");
+    case "datetime":
+      return new Date(String(value)).toLocaleString("tr-TR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    default:
+      return typeof value === "boolean"
+        ? value
+          ? "Evet"
+          : "Hayır"
+        : String(value);
+  }
+}
+
+/** Sağa yaslanan, sekmeli rakamla yazılan sütun mu. */
+export function isNumericFormat(format: string): boolean {
+  return format === "money" || format === "number" || format === "percent";
+}

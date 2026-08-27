@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { getReportDefinition } from "@repo/services";
+import { REPORT_DATASET_LABELS } from "@repo/types";
 import { requirePage } from "@/lib/guard";
 import { LinkButton } from "@/components/form";
+import { PageHeader } from "@/components/ui";
 import { REPORT_BUILDER_ROLES, reportContext } from "@/lib/report-context";
 import { ReportBuilder } from "../_components/report-builder";
 import { ScheduleCard } from "../_components/schedule-card";
@@ -24,27 +26,36 @@ export default async function ReportPage({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">{definition.name}</h1>
-        {/* Server-built downloads: the file someone saves and the file that
-            arrives by e-mail are then the same bytes. The designer's own CSV
-            button stays for previews that were never saved. */}
-        <div className="flex items-center gap-2">
-          <LinkButton
-            href={`/api/reports/definitions/${definition.id}/export?format=XLSX`}
-          >
-            Excel indir
-          </LinkButton>
-          <LinkButton
-            href={`/api/reports/definitions/${definition.id}/export?format=CSV`}
-          >
-            CSV indir
-          </LinkButton>
-          <LinkButton href={`/reports/${definition.id}/print`}>
-            Yazdır / PDF
-          </LinkButton>
-        </div>
-      </div>
+      {/* Başlık sayfanın, künye şeridi tasarımcının: ad burada bir *etiket*,
+          aşağıdaki şeritte düzenlenen bir alan. İkisi de "Rapor adı" diye
+          yazsaydı Adım 6'daki çift başlık hatası tekrarlanırdı. */}
+      <PageHeader
+        title={definition.name}
+        subtitle={`${REPORT_DATASET_LABELS[definition.dataset]} · ${
+          definition.canEdit ? "sizin" : `${definition.ownerName} tarafından paylaşıldı`
+        }`}
+        back={{ href: "/reports", label: "Raporlarım" }}
+        actions={
+          // Server-built downloads: the file someone saves and the file that
+          // arrives by e-mail are then the same bytes. The designer's own CSV
+          // button stays for previews that were never saved.
+          <>
+            <LinkButton
+              href={`/api/reports/definitions/${definition.id}/export?format=XLSX`}
+            >
+              Excel indir
+            </LinkButton>
+            <LinkButton
+              href={`/api/reports/definitions/${definition.id}/export?format=CSV`}
+            >
+              CSV indir
+            </LinkButton>
+            <LinkButton href={`/documents/reports/${definition.id}`}>
+              Yazdır / PDF
+            </LinkButton>
+          </>
+        }
+      />
       <ReportBuilder
         saved={{
           id: definition.id,

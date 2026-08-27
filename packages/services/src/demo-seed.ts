@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { prisma } from "@repo/database";
 import type { CollectionMethod, PaymentMethod } from "@repo/types";
+import { seedDemoReports } from "./demo-reports";
 import { assignCourier, confirmDelivery } from "./delivery";
 import { createInvoice } from "./invoice";
 import { changeOrderStatus } from "./order-lifecycle";
@@ -1262,6 +1263,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const repIds = [reps[0]!.id, reps[1]?.id ?? reps[0]!.id, reps[2]?.id ?? reps[0]!.id];
+
+  // Rapor tanımları "zaten yüklü" kapısının ustunde: bir rapor tasarimi
+  // siparişlerden bağımsız bir şey ve hepsi ada göre upsert ediliyor. Kapının
+  // altında kalsaydı, gösterim verisi duran bir kurulumda rapor ekranları hiç
+  // dolmazdı — ve o kurulumu sıfırlamak (`cuid` kimlikler) çok daha pahalı.
+  await seedDemoReports(admin.id);
 
   const already = await prisma.company.count({
     where: { externalCode: { startsWith: "DMO-" } },

@@ -413,9 +413,13 @@ suite("stok hareket defteri integration", () => {
 
   describe("özet", () => {
     it("splits the period by why the goods moved", async () => {
+      // Gün dizgisi **yerel** takvimden: `getStockSummary` gün sınırlarını
+      // yerel gece yarısına göre kuruyor, `toISOString()` ise UTC veriyor.
+      // Türkiye'de gece yarısı ile 03:00 arasında koşan test bir önceki günü
+      // istiyor ve az önce yazdığı hareketleri hiç göremiyordu.
       const summary = await getStockSummary({
-        from: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10),
-        to: new Date().toISOString().slice(0, 10),
+        from: localDay(-1),
+        to: localDay(0),
       });
 
       const sources = summary.bySource.map((s) => s.source);
@@ -427,3 +431,12 @@ suite("stok hareket defteri integration", () => {
     });
   });
 });
+
+/** `yyyy-mm-dd`, yerel takvimden — `toISOString()` UTC verir. */
+function localDay(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const month = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
