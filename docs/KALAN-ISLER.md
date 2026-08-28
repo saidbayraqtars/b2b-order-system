@@ -526,26 +526,20 @@ SHOT_BASE_URL=http://localhost:3100 pnpm shots --step <n>   # burada da `--` YOK
 
 ---
 
-## 9. FEATURES.md bayat
+## 9. ~~FEATURES.md bayat~~ ✔ (2026-08-28)
 
-`Bilinen Eksikler` bölümü bitmiş dört işi hâlâ eksik gösteriyor. Bugün kodda
-doğrulandı:
+Bir tur atıldı:
 
-| FEATURES.md diyor                           | Gerçek                                                                    |
-| ------------------------------------------- | ------------------------------------------------------------------------- |
-| "Görsel işlenmiyor · S3/MinIO sürücüsü yok" | `packages/services/src/storage.ts` + `storage-config.ts` var (2026-08-26) |
-| "Hediye kademesi tek seviyeli"              | `GIFT_TIER` + `PERCENT_OFF_TIER` var (Adım 55)                            |
-| backlog: "İade & değişim (RMA)"             | `/admin/iadeler` var (2026-08-26)                                         |
-| "Arayüz Faz 3 kalanı"                       | Adım 53'te kapandı                                                        |
-
-Son güncelleme `d43dd65` (2026-08-26). Ondan sonraki işler (S3 sürücüsü, RMA
-ekranı, barkod okuyucu, 2FA artıkları) ve **yenilemenin Adım 1-6'sının tamamı**
-FEATURES.md'ye hiç girmemiş.
-
-**Bir tur güncelleyin** — devir teslim dosyası olarak tutuluyor ve şu hâliyle
-yanlış yönlendiriyor.
-
----
+- Tarih satırı ve **adım durumu tablosu** güncellendi; 61, 63, 64 ve depo
+  sürücüsü satırları eklendi, arayüz yenilemesinin 11 adımı kendi tablosuna
+  girdi.
+- `Bilinen Eksikler`teki dört bayat madde kapatıldı (görsel işleme + S3
+  sürücüsü, hediye kademesi, RMA, arayüz Faz 3) ve test boşluğu satırı
+  bugünkü rakamlarla yazıldı.
+- Üç yeni bölüm: **§58 iki adımlı doğrulama**, **§59 arayüz yenilemesi**,
+  **§60 test yalıtımı**. API tablosuna arama ve 2FA uçları eklendi.
+- `Sonraki Adımlar`ın "yakın plan"ı üç bitmiş işi sayıyordu; yerine mobil
+  yenileme, yönetici panosu, Excel içe aktarma ve test boşluğu yazıldı.
 
 ## 10. Önerilen sıra
 

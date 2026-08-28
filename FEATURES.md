@@ -6,75 +6,98 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
+Son güncelleme: 2026-08-28 · Adım 64 + arayüz yenilemesi (Adım 1-11) sonu
 
 ---
 
 ## Adım Durumu
 
-| Adım | Kapsam | Durum |
-|------|--------|-------|
-| 1 | Mimari + monorepo iskeleti | ✅ |
-| 2 | Altyapı: Postgres, Prisma şema, seed | ✅ |
-| 3 | Kimlik doğrulama + RBAC | ✅ |
-| 4 | Web portal: fiyatlama, katalog, sepet, sipariş, onay akışı, admin panel | ✅ |
-| 5 | Mobil (Expo): plasiyer + müşteri, GPS ziyaret, tahsilat | ✅ |
-| 6 | Katalog yönetimi: ürün/varyant/fiyat/kategori/iskonto CRUD | ✅ |
-| 7 | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı | ✅ |
-| 8 | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları | ✅ |
-| 9 | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması | ✅ |
-| 10 | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti) | ✅ |
-| 11 | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı | ✅ |
-| 12 | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması | ✅ |
-| 13 | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI | ✅ |
-| 14 | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli | ✅ |
-| 15 | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri | ✅ |
-| 16 | Sunucu tarafı sepet + ürün görseli yükleme | ✅ |
-| 17 | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon | ✅ |
-| 18 | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları | ✅ |
-| 19 | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği | ✅ |
-| 20 | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu | ✅ |
-| 21 | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları | ✅ |
-| 22 | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu) | ✅ |
-| 23 | Saha işlemleri web'de: tahsilat girişi + iptal kaydı, ziyaret aç/kapat, tahsilat şekli ayrı enum | ✅ |
-| 24 | Ödeme yöntemi + vade: 5 yöntem, isimli vade tanımları, firmaya özel menü, ödemede seçim | ✅ |
-| 25 | Hacim iskontosu: ciroyla hak edilen genel merdiven, firma başına otomatik/elle mod, siparişte anlık görüntü | ✅ |
-| 26 | Kuruluş kimliği + kiracı klasörü: `tenants/<slug>/tenant.json`, belgede satıcı bloğu, marka dosyaları | ✅ |
-| 27 | Kasa & banka defteri: peşin siparişin ve tahsilatın hesaba girmesi, elle giriş/çıkış, aktarım, gün sonu | ✅ |
-| 28 | Sanal POS: ödeme sağlayıcı kayıt defteri, ödeme niyeti, kart parası tahsil edilene kadar kasaya girmez | ✅ |
-| 29 | ERP köprüsü: müşterinin makinesindeki ajan, eşler-oluşturmaz, ERP bakiyesi ayrı kolonda | ✅ |
-| 30 | Kullanıcı bazlı yetki (29 adlandırılmış izin, tik tik seçim) + yönetim panelinde gruplu kenar çubuğu | ✅ |
-| 31 | Yetki kapsamı: izin ↔ hesap tipi (bayi/şirket/saha), kullanıcı ekranı hesap tipine göre ayrıldı | ✅ |
-| 32 | Rapor tasarımcısına rol kabuğu (menü kaybolmuyor) + önizleme kendi sütununda | ✅ |
-| 33 | Cari ekstre yazdırma görünümü (PDF olarak kaydet) | ✅ |
-| 34 | Temsilci hedefleri: ziyaret + ciro, günlük/haftalık/aylık/yıllık, `targets.manage` izni | ✅ |
-| 35 | Ziyaret çağrısı: bayi çağırır, plasiyerin gününe düşer, elle sıralanır | ✅ |
-| 36 | Adres koordinatı + ziyaret ekranında harita ve sıralı rota / yol tarifi | ✅ |
-| 37 | Etiket & fiş motoru: kargo etiketi + 80 mm fişler, tek/toplu basım, şablon tasarımcısı | ✅ |
-| 38 | Kurye rolü: teslim listesi, imzalı belge fotoğrafı, teslim fişi, dağıtım ekranı | ✅ |
-| 39 | Stok kartı alanları: alış fiyatı, birim, kritik stok, raf, pasif kart + depo bazlı stok | ✅ |
-| 40 | Dağıtım: üretim imajı, göç konteyneri, sağlık ucu, kurulum/yedek/güncelleme betikleri | ✅ |
-| 41 | Çek & senet portföyü: tahsilattan doğar, vade/banka/durum takibi, karşılıksızda borç geri açılır | ✅ |
-| 42 | Döviz: liste fiyatı yabancı para olabilir, kur siparişe donar, defter TL kalır | ✅ |
-| 43 | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı | ✅ |
-| 44 | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3 | ✅ |
-| 45 | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme | ✅ |
-| 46 | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş | ↩ geri alındı (2026-08-10) |
-| 47 | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı | ✅ |
-| 48 | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi | ✅ |
-| 49 | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma | ✅ |
-| 50 | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı | ✅ |
-| 51 | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır | ✅ |
-| 52 | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı | ✅ |
-| 53 | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı | ✅ |
-| 54 | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni | ✅ |
-| 55 | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven | ✅ |
-| 56 | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili | ✅ |
-| 57 | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez | ✅ |
-| 58 | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası | ✅ |
-| 59 | Görsel işleme: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi, sharp yoksa orijinale düşme | ✅ |
-| 60 | Gıda paketi: parti (lot) + son kullanma takibi, FEFO sevkiyat, fire/bloke, kasa/kg çift birim | ✅ |
-| 62 | ERP'ye sipariş aktarımı: ajanda adlı komut çalıştırıcı (SQL gitmez), Cloudflare Tunnel, siparişte "ERP'ye aktar" onayı — alınan sipariş (BELGETIPI 60), üç katmanlı kilit | ✅ |
+| Adım | Kapsam                                                                                                                                                                    | Durum                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| 1    | Mimari + monorepo iskeleti                                                                                                                                                | ✅                         |
+| 2    | Altyapı: Postgres, Prisma şema, seed                                                                                                                                      | ✅                         |
+| 3    | Kimlik doğrulama + RBAC                                                                                                                                                   | ✅                         |
+| 4    | Web portal: fiyatlama, katalog, sepet, sipariş, onay akışı, admin panel                                                                                                   | ✅                         |
+| 5    | Mobil (Expo): plasiyer + müşteri, GPS ziyaret, tahsilat                                                                                                                   | ✅                         |
+| 6    | Katalog yönetimi: ürün/varyant/fiyat/kategori/iskonto CRUD                                                                                                                | ✅                         |
+| 7    | Sipariş yaşam döngüsü: sevkiyat akışı, iptal, durum geçmişi, sipariş detayı                                                                                               | ✅                         |
+| 8    | Cari ekstre + yaşlandırma + satış/ürün/plasiyer/tahsilat raporları                                                                                                        | ✅                         |
+| 9    | Rapor tasarımcısı: kullanıcının kendi raporunu kurması, kaydetmesi, paylaşması                                                                                            | ✅                         |
+| 10   | Firma, adres, kullanıcı ve müşteri grubu yönetimi (seed bağımlılığı bitti)                                                                                                | ✅                         |
+| 11   | Güvenlik: her istekte canlı yetki kontrolü, oturum iptali, hesap self-servis, denetim kaydı                                                                               | ✅                         |
+| 12   | Promosyon motoru: kural tabanlı kampanya (koşul + aksiyon + kupon), sunucu tarafı sepet fiyatlaması                                                                       | ✅                         |
+| 13   | Kalite altyapısı: ESLint, birim + entegrasyon testleri, GitHub Actions CI                                                                                                 | ✅                         |
+| 14   | Belgeler: irsaliye/fatura numaralandırma, kısmi sevkiyat, kısmi faturalama, fatura bazlı vade, nakliye bedeli                                                             | ✅                         |
+| 15   | E-posta altyapısı, "şifremi unuttum", sipariş/durum/fatura bildirimleri                                                                                                   | ✅                         |
+| 16   | Sunucu tarafı sepet + ürün görseli yükleme                                                                                                                                | ✅                         |
+| 17   | Kampanya v2: hediye ürün, nakliye indirimi, koşullarda VEYA, mobilde kupon                                                                                                | ✅                         |
+| 18   | Rapor v2: veritabanı tarafında gruplama, ilişkili tablo alanları                                                                                                          | ✅                         |
+| 19   | Güvenlik sertleştirme: IP hız sınırı, denetim saklama/dışa aktarma, hareket akışı, principal önbelleği                                                                    | ✅                         |
+| 20   | Arayüz yenilemesi Faz 1: tasarım token'ları, koyu tema, paylaşılan bileşenler, tek uygulama kabuğu                                                                        | ✅                         |
+| 21   | Vitrin Faz 2: endüstriyel/teknik kimlik, ürün detay sayfası, kategori+sıralama, vitrin duyuruları                                                                         | ✅                         |
+| 22   | Vekaleten sipariş: plasiyer/süper admin müşteri adına sipariş girer (firma seçici + portföy izolasyonu)                                                                   | ✅                         |
+| 23   | Saha işlemleri web'de: tahsilat girişi + iptal kaydı, ziyaret aç/kapat, tahsilat şekli ayrı enum                                                                          | ✅                         |
+| 24   | Ödeme yöntemi + vade: 5 yöntem, isimli vade tanımları, firmaya özel menü, ödemede seçim                                                                                   | ✅                         |
+| 25   | Hacim iskontosu: ciroyla hak edilen genel merdiven, firma başına otomatik/elle mod, siparişte anlık görüntü                                                               | ✅                         |
+| 26   | Kuruluş kimliği + kiracı klasörü: `tenants/<slug>/tenant.json`, belgede satıcı bloğu, marka dosyaları                                                                     | ✅                         |
+| 27   | Kasa & banka defteri: peşin siparişin ve tahsilatın hesaba girmesi, elle giriş/çıkış, aktarım, gün sonu                                                                   | ✅                         |
+| 28   | Sanal POS: ödeme sağlayıcı kayıt defteri, ödeme niyeti, kart parası tahsil edilene kadar kasaya girmez                                                                    | ✅                         |
+| 29   | ERP köprüsü: müşterinin makinesindeki ajan, eşler-oluşturmaz, ERP bakiyesi ayrı kolonda                                                                                   | ✅                         |
+| 30   | Kullanıcı bazlı yetki (29 adlandırılmış izin, tik tik seçim) + yönetim panelinde gruplu kenar çubuğu                                                                      | ✅                         |
+| 31   | Yetki kapsamı: izin ↔ hesap tipi (bayi/şirket/saha), kullanıcı ekranı hesap tipine göre ayrıldı                                                                           | ✅                         |
+| 32   | Rapor tasarımcısına rol kabuğu (menü kaybolmuyor) + önizleme kendi sütununda                                                                                              | ✅                         |
+| 33   | Cari ekstre yazdırma görünümü (PDF olarak kaydet)                                                                                                                         | ✅                         |
+| 34   | Temsilci hedefleri: ziyaret + ciro, günlük/haftalık/aylık/yıllık, `targets.manage` izni                                                                                   | ✅                         |
+| 35   | Ziyaret çağrısı: bayi çağırır, plasiyerin gününe düşer, elle sıralanır                                                                                                    | ✅                         |
+| 36   | Adres koordinatı + ziyaret ekranında harita ve sıralı rota / yol tarifi                                                                                                   | ✅                         |
+| 37   | Etiket & fiş motoru: kargo etiketi + 80 mm fişler, tek/toplu basım, şablon tasarımcısı                                                                                    | ✅                         |
+| 38   | Kurye rolü: teslim listesi, imzalı belge fotoğrafı, teslim fişi, dağıtım ekranı                                                                                           | ✅                         |
+| 39   | Stok kartı alanları: alış fiyatı, birim, kritik stok, raf, pasif kart + depo bazlı stok                                                                                   | ✅                         |
+| 40   | Dağıtım: üretim imajı, göç konteyneri, sağlık ucu, kurulum/yedek/güncelleme betikleri                                                                                     | ✅                         |
+| 41   | Çek & senet portföyü: tahsilattan doğar, vade/banka/durum takibi, karşılıksızda borç geri açılır                                                                          | ✅                         |
+| 42   | Döviz: liste fiyatı yabancı para olabilir, kur siparişe donar, defter TL kalır                                                                                            | ✅                         |
+| 43   | Bakım işleri: uygulama içi zamanlayıcı + tahsilatta tekrar anahtarı                                                                                                       | ✅                         |
+| 44   | Rapor otomasyonu: ziyaret/kampanya veri kümeleri, zamanlanmış e-posta gönderimi, TCMB kuru + yönetim arayüzü Faz 3                                                        | ✅                         |
+| 45   | Mobil tamamlama: sunucu sepeti, sipariş aksiyonları, ziyaret planı, hedefler, kurye ekranı, çek künyesi + kasa seçimi, yetkiye göre gezinme                               | ✅                         |
+| 46   | Tema motoru: isimli tasarım paketleri, çalışma zamanında geçiş                                                                                                            | ↩ geri alındı (2026-08-10) |
+| 47   | Rota testleri: uçların kendisi test altında — kimlik, yetki sınırı, firma kapsamı, sipariş/tahsilat/rapor davranışı                                                       | ✅                         |
+| 48   | Kurulabilir APK: sunucu adresi cihaz ayarı, uzaktan güncelleme (OTA), release imzası, EAS bulut derlemesi                                                                 | ✅                         |
+| 49   | Saha üçlemesi: barkod/QR okuyucu, push bildirim, çevrimdışı çalışma                                                                                                       | ✅                         |
+| 50   | Merkezden güncelleme: sürüm akışı, güncelleme ajanı, sürüm ekranı                                                                                                         | ✅                         |
+| 51   | Stok hareket defteri: eldeki adet artık defterin bakiyesi — sipariş/iptal/sayım/aktarım/ERP farkı iz bırakır                                                              | ✅                         |
+| 52   | Döviz belgede: sipariş ve faturada "100,00 USD × 34,2150", firmanın sahte para birimi kaldırıldı                                                                          | ✅                         |
+| 53   | Arayüz Faz 3 kapandı: `Checkbox` + `LinkButton` + yoğun kontrol boyu, rapor tasarımcısı ve sipariş detayı ortak dile taşındı                                              | ✅                         |
+| 54   | Sayfa düzeni: vitrinin blok dizilimi veri, blok kayıt defteri, `/admin/sayfa-duzeni`, `design.manage` izni                                                                | ✅                         |
+| 55   | Kampanya v3: adet kademesi — `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven                                                      | ✅                         |
+| 56   | Rapor v3 (1/2): hesaplanmış sütun — çıktı sütunları üzerinde dört işlem, veritabanına gitmeyen formül dili                                                                | ✅                         |
+| 57   | Rapor v3 (2/2): pano — kayıtlı raporlar tek ekranda, her kart çalıştıranın kapsamıyla, kırık kart panoyu düşürmez                                                         | ✅                         |
+| 58   | Rapor v3 tamam: XLSX çıktısı (bağımlılıksız yazıcı), sunucu tarafı indirme ucu, yazdırma/PDF sayfası                                                                      | ✅                         |
+| 59   | Görsel işleme: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi, sharp yoksa orijinale düşme                                                            | ✅                         |
+| 60   | Gıda paketi: parti (lot) + son kullanma takibi, FEFO sevkiyat, fire/bloke, kasa/kg çift birim                                                                             | ✅                         |
+| 61   | Kurulum sihirbazı + sektör paketi: eksik olanı sırayla soran ekran, "gıda toptan" paketi, gösterim veritabanı                                                             | ✅                         |
+| 62   | ERP'ye sipariş aktarımı: ajanda adlı komut çalıştırıcı (SQL gitmez), Cloudflare Tunnel, siparişte "ERP'ye aktar" onayı — alınan sipariş (BELGETIPI 60), üç katmanlı kilit | ✅                         |
+| 63   | İki adımlı doğrulama (TOTP): kurulum sihirbazı, yedek kodlar, zorunlu kapsam, yönetici sıfırlaması, mobil akış                                                            | ✅                         |
+| 64   | İade & değişim (RMA): talep → karar → teslim alma, ters cari + ters stok, `returns.manage` izni                                                                           | ✅                         |
+| depo | Görsel deposu sürücüsü: disk ya da S3/MinIO, SigV4 elle imzalanmış                                                                                                        | ✅                         |
+
+### Arayüz yenilemesi
+
+Ayrı bir numaralandırma; ayrıntısı `docs/design/REDESIGN.md`de, ekran
+görüntüleri `docs/design/screens/` altında.
+
+| Adım | Kapsam                                                                                                                                              | Durum |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| 1    | Temel katman ve tek kabuk: tasarım token'ları, `SidebarShell`, sayfa boşluğu kabuğa                                                                 | ✅    |
+| 2    | Portal / vitrin: arama üst şeritte, ürün kartı, sepet iki kutuya ayrıldı                                                                            | ✅    |
+| 3    | Yönetim çekirdeği: pano, firmalar, ürünler, sipariş detayı                                                                                          | ✅    |
+| 4    | Finans: kasa, çek, iade, kur, vade, hacim iskontosu                                                                                                 | ✅    |
+| 5    | Operasyon: dağıtım, kurye, stok defteri (sekmeler URL'de), etiket, belge serileri                                                                   | ✅    |
+| 6    | Yapılandırma ve sistem: 14 ekran, `Meter`/`Field`/`DefRow`/`MultiChips` ortak dile                                                                  | ✅    |
+| 7    | Rapor tasarımcısı ve panolar: 7 ekran, grafik rampası tek renk ailesine, yazdırma yüzeyi `documents/**`e                                            | ✅    |
+| 8    | Giriş, bayilik başvurusu ve hesap ekranları (`AuthShell` + giriş sahnesi)                                                                           | ✅    |
+| 9    | Mobil — aynı palet ve tipografi                                                                                                                     | ▢     |
+| 10   | Temizlik: ham sınıf sayacı sıfır, kiracı adı kabukta, genel arama (Ctrl+K), yapışkan başlık, sıralanabilir tablo, kaydetme onayı, uzun liste kuralı | ✅    |
+| 11   | Saha üçlüsü ve kök: `/rep`, `/rep/ziyaret`, `/rep/tahsilat`, `/`                                                                                    | ✅    |
 
 ---
 
@@ -88,37 +111,37 @@ Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
 
 ## 2. Veri Modeli
 
-| Model | İşlev |
-|-------|-------|
-| `User` | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`), oturum sürümü (`tokenVersion`), giriş telemetrisi ve kilit alanları |
-| `AuditLog` | Salt-ekleme güvenlik kaydı: kim, ne yaptı, hangi kayda, IP + tarayıcı. Kullanıcı silinse de e-posta denormalize saklandığı için okunabilir kalır |
-| `Company` | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer, ödeme yöntemi/vade menüsü, hacim iskontosu modu |
-| `PaymentTerm` | İsimli vade tanımı ("30 gün"); firmalara m-n bağlanır, sipariş gün sayısını kopyalar |
-| `VolumeTier` | Hacim iskontosu basamağı: dönem (ay), alt ciro sınırı, oran. Merdiven geneldir, firma hak ettiği en yüksek oranı alır |
-| `Address` | Firma adresleri, varsayılan adres işareti |
-| `CustomerGroup` | Fiyat kademesi grubu (Bayi, Toptancı, Zincir Market) |
-| `Category` | Ağaç yapılı kategori (self-referans `parentId`) |
-| `Product` / `ProductVariant` | Ürün + varyant (SKU, barkod, renk, beden, koli adedi, min sipariş, stok) |
-| `Price` | Varyant × müşteri grubu × miktar kademesi fiyatı |
-| `CompanyDiscount` | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) — pazarlıkla verilen oran; cirodan kazanılan `VolumeTier` |
-| `Order` / `OrderItem` | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; nakliye bedeli/indirimi, kargo/takip no, sevk/teslim/iptal zaman damgaları. Kalemde sevk edilen/faturalanan miktar ve hediye işareti |
-| `OrderStatusHistory` | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only) |
-| `DocumentSeries` | Belge serisi: tür (irsaliye/fatura), ön ek, basamak, son verilen numara, varsayılan mı, numarayı ERP mi veriyor (`externalOnly`) |
-| `Shipment` / `ShipmentItem` | İrsaliye başlığı + sevk edilen miktarlar; sipariş durumu buradan türetilir |
-| `Invoice` / `InvoiceItem` | Fatura başlığı + faturalanan miktarlar; para yeniden hesaplanmaz, sipariş satırından pay alınır. Vade tarihi burada doğar |
-| `Transaction` | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır. Tahsilatta `collectionMethod` (nakit/havale/çek…), iptal kaydında `reversalOfId` (tekil — bir tahsilat iki kez iptal edilemez) |
-| `CheckIn` | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) + `source` (MOBILE/WEB — sunucu belirler) |
-| `CashAccount` | Kasa / banka hesabı / POS: para birimi, devir bakiyesi, güncel bakiye, varsayılan işareti. Cari defterden **ayrı** — bu bizim paramız |
-| `CashMovement` | Kasa defteri satırı: yön (IN/OUT), kaynak (sipariş/tahsilat/elle/aktarım), `occurredAt` (girildiği gün değil, olduğu gün), siparişe ve cari satırına bağ, `reversalOfId` + `counterpartId` (ikisi de tekil) |
-| `PaymentMethodAccount` | Ödeme yöntemi → hesap eşlemesi. Birincil anahtar yöntemin kendisi: yöntem başına tek hesap, veritabanı garantisi |
-| `PaymentIntent` | Kart tahsilatı: sağlayıcı (düz metin — kayıt defteri anahtarı), durum, tutar, taksit, sağlayıcı referansı, 3-D Secure yönlendirmesi. `cashMovementId` **tekil**: tahsilat iki kez deftere yazılamaz |
-| `PaymentIntentEvent` | Bir ödemenin geçtiği her durum (ekle-only). Sağlayıcı yanıtı kart verisi ayıklanmış hâlde saklanır — PAN/CVV asla |
-| `ReportDefinition` | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım |
-| `ReportDashboard` | Pano: kayıtlı raporlara işaretçi listesi (JSON), sahip, paylaşım — rapor yapılandırması kopyalanmaz |
-| `Promotion` | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları |
-| `PromotionRedemption` | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı |
-| `Cart` / `CartItem` | Sunucudaki sepet: **(firma, sahip)** başına tek satır, yalnızca varyant + adet tutar. Fiyat okurken çözülür |
-| `PasswordResetToken` | "Şifremi unuttum" bileti: yalnızca token'ın SHA-256'sı, son kullanma ve harcanma zamanı |
+| Model                        | İşlev                                                                                                                                                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `User`                       | 4 rol, bcrypt şifre, firma üyeliği, plasiyer portföyü (`managedCompanies`), oturum sürümü (`tokenVersion`), giriş telemetrisi ve kilit alanları                                                                                           |
+| `AuditLog`                   | Salt-ekleme güvenlik kaydı: kim, ne yaptı, hangi kayda, IP + tarayıcı. Kullanıcı silinse de e-posta denormalize saklandığı için okunabilir kalır                                                                                          |
+| `Company`                    | Cari hesap: kredi limiti, güncel bakiye, **vade günü**, para birimi, sipariş onayı zorunluluğu, müşteri grubu, atanmış plasiyer, ödeme yöntemi/vade menüsü, hacim iskontosu modu                                                          |
+| `PaymentTerm`                | İsimli vade tanımı ("30 gün"); firmalara m-n bağlanır, sipariş gün sayısını kopyalar                                                                                                                                                      |
+| `VolumeTier`                 | Hacim iskontosu basamağı: dönem (ay), alt ciro sınırı, oran. Merdiven geneldir, firma hak ettiği en yüksek oranı alır                                                                                                                     |
+| `Address`                    | Firma adresleri, varsayılan adres işareti                                                                                                                                                                                                 |
+| `CustomerGroup`              | Fiyat kademesi grubu (Bayi, Toptancı, Zincir Market)                                                                                                                                                                                      |
+| `Category`                   | Ağaç yapılı kategori (self-referans `parentId`)                                                                                                                                                                                           |
+| `Product` / `ProductVariant` | Ürün + varyant (SKU, barkod, renk, beden, koli adedi, min sipariş, stok)                                                                                                                                                                  |
+| `Price`                      | Varyant × müşteri grubu × miktar kademesi fiyatı                                                                                                                                                                                          |
+| `CompanyDiscount`            | Firmaya özel iskonto (ürün veya kategori bazlı, yüzde ya da sabit) — pazarlıkla verilen oran; cirodan kazanılan `VolumeTier`                                                                                                              |
+| `Order` / `OrderItem`        | Sipariş başlığı + kalemler, fiyat anlık görüntüsü ile; nakliye bedeli/indirimi, kargo/takip no, sevk/teslim/iptal zaman damgaları. Kalemde sevk edilen/faturalanan miktar ve hediye işareti                                               |
+| `OrderStatusHistory`         | Her durum geçişi: nereden nereye, kim, ne zaman, not (append-only)                                                                                                                                                                        |
+| `DocumentSeries`             | Belge serisi: tür (irsaliye/fatura), ön ek, basamak, son verilen numara, varsayılan mı, numarayı ERP mi veriyor (`externalOnly`)                                                                                                          |
+| `Shipment` / `ShipmentItem`  | İrsaliye başlığı + sevk edilen miktarlar; sipariş durumu buradan türetilir                                                                                                                                                                |
+| `Invoice` / `InvoiceItem`    | Fatura başlığı + faturalanan miktarlar; para yeniden hesaplanmaz, sipariş satırından pay alınır. Vade tarihi burada doğar                                                                                                                 |
+| `Transaction`                | Cari defter (DEBIT/CREDIT), siparişe ve kaydeden kullanıcıya bağlı; `dueDate` fatura kesilince damgalanır. Tahsilatta `collectionMethod` (nakit/havale/çek…), iptal kaydında `reversalOfId` (tekil — bir tahsilat iki kez iptal edilemez) |
+| `CheckIn`                    | Plasiyer saha ziyareti (GPS, giriş/çıkış saati, not) + `source` (MOBILE/WEB — sunucu belirler)                                                                                                                                            |
+| `CashAccount`                | Kasa / banka hesabı / POS: para birimi, devir bakiyesi, güncel bakiye, varsayılan işareti. Cari defterden **ayrı** — bu bizim paramız                                                                                                     |
+| `CashMovement`               | Kasa defteri satırı: yön (IN/OUT), kaynak (sipariş/tahsilat/elle/aktarım), `occurredAt` (girildiği gün değil, olduğu gün), siparişe ve cari satırına bağ, `reversalOfId` + `counterpartId` (ikisi de tekil)                               |
+| `PaymentMethodAccount`       | Ödeme yöntemi → hesap eşlemesi. Birincil anahtar yöntemin kendisi: yöntem başına tek hesap, veritabanı garantisi                                                                                                                          |
+| `PaymentIntent`              | Kart tahsilatı: sağlayıcı (düz metin — kayıt defteri anahtarı), durum, tutar, taksit, sağlayıcı referansı, 3-D Secure yönlendirmesi. `cashMovementId` **tekil**: tahsilat iki kez deftere yazılamaz                                       |
+| `PaymentIntentEvent`         | Bir ödemenin geçtiği her durum (ekle-only). Sağlayıcı yanıtı kart verisi ayıklanmış hâlde saklanır — PAN/CVV asla                                                                                                                         |
+| `ReportDefinition`           | Kullanıcı tanımlı rapor: veri kümesi + sütun/filtre/gruplama/dizayn (JSON), sahip, paylaşım                                                                                                                                               |
+| `ReportDashboard`            | Pano: kayıtlı raporlara işaretçi listesi (JSON), sahip, paylaşım — rapor yapılandırması kopyalanmaz                                                                                                                                       |
+| `Promotion`                  | Kampanya: koşul + aksiyon listeleri (JSON), koşul modu (VE/VEYA), kupon kodu, tarih penceresi, öncelik, tekillik, kullanım kotaları                                                                                                       |
+| `PromotionRedemption`        | Hangi kampanya hangi siparişe ne kadar indirim verdi — aynı zamanda kota sayacı                                                                                                                                                           |
+| `Cart` / `CartItem`          | Sunucudaki sepet: **(firma, sahip)** başına tek satır, yalnızca varyant + adet tutar. Fiyat okurken çözülür                                                                                                                               |
+| `PasswordResetToken`         | "Şifremi unuttum" bileti: yalnızca token'ın SHA-256'sı, son kullanma ve harcanma zamanı                                                                                                                                                   |
 
 - Para birimi alanları `Decimal(14,2)`; hesaplamalar `Prisma.Decimal` ile, float yok.
 - `Price` varsayılan kademesi için **kısmi unique index** (`Price_variant_default_tier_key`) — Prisma ifade edemediği için elle SQL migration. Aynı gerekçeyle `CashAccount_single_default_key`: varsayılan kasa tek olmak zorunda.
@@ -159,11 +182,13 @@ Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
 - Tamamı tek transaction içinde — stok, borç ve bakiye asla birbirinden ayrışmaz.
 
 ### Onay akışı
+
 - `PENDING_APPROVAL` → firma yöneticisi (kendi firması) veya süper admin onaylar → kredi kontrolü → `CONFIRMED` ya da `PENDING_CREDIT`.
 - `PENDING_CREDIT` → **sadece süper admin** onaylayabilir (limit aşımı override).
 - Red → `REJECTED` + stok iadesi.
 
 ### Sevkiyat akışı (Adım 7)
+
 - Geçiş haritası: `CONFIRMED → PROCESSING → SHIPPED → DELIVERED`. `CONFIRMED` ve `PROCESSING` iptal edilebilir; **sevk edildikten sonra iptal yok**. `DELIVERED`, `CANCELLED`, `REJECTED` uçtur.
 - `DRAFT` buradan `CONFIRMED` yapılamaz — onay kredi kontrolü gerektirir, o da sipariş/onay servisinde.
 - **Yetki:** sevkiyat durumlarını yalnızca süper admin değiştirir. İptali süper admin ya da siparişi veren firmanın yöneticisi (sadece sevkten önce) yapabilir.
@@ -181,6 +206,7 @@ Son güncelleme: 2026-08-21 · Adım 60 (parti/SKT + çift birim) sonu
 - Kullanılabilir limit = kredi limiti − güncel bakiye; katalog ve müşteri listesinde görünür.
 
 ### Cari ekstre & yaşlandırma (Adım 8)
+
 - **Ekstre:** tarih aralığı filtreli hareket listesi; açılış bakiyesi, satır satır yürüyen bakiye, borç/alacak toplamları ve kapanış bakiyesi. Sipariş kaynaklı satırlar sipariş detayına linkli.
 - Ekstre **yalnız defteri okur** — kapanış bakiyesi ile `currentBalance` önbelleği ekranda yan yana durur, sapma olursa görünür.
 - **Yaşlandırma (FIFO):** fatura tablosu olmadığı için açık kalemler DEBIT satırlarının kendisidir; tahsilatlar **en eski borçtan başlayarak** mahsup edilir (Türkiye'deki açık hesap mutabakatı böyle yapılır).
@@ -414,11 +440,11 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 
 ### Bildirimler
 
-| Olay | Kime | Not |
-|------|------|-----|
-| Sipariş oluştu | firma yöneticileri + siparişi giren + (onay beklemiyorsa) firmanın plasiyeri | Onay bekleyen siparişte metin "onayınızı bekliyor" olur |
-| Durum değişti | firma yöneticileri + siparişi giren | Yalnızca `CONFIRMED`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `REJECTED`; ara durumlar sessiz |
-| Fatura kesildi | firma yöneticileri + siparişi giren | Vade tarihi ve fatura no ile |
+| Olay           | Kime                                                                         | Not                                                                                        |
+| -------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Sipariş oluştu | firma yöneticileri + siparişi giren + (onay beklemiyorsa) firmanın plasiyeri | Onay bekleyen siparişte metin "onayınızı bekliyor" olur                                    |
+| Durum değişti  | firma yöneticileri + siparişi giren                                          | Yalnızca `CONFIRMED`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `REJECTED`; ara durumlar sessiz |
+| Fatura kesildi | firma yöneticileri + siparişi giren                                          | Vade tarihi ve fatura no ile                                                               |
 
 - Alıcılar **veriden çözülür**, parametre olarak geçilmez — yanlış kutuya sipariş sızdırmak çağıranın elinde değil.
 - Bildirim **işlem (transaction) dışında**, iş tamamlandıktan sonra gönderilir: SMTP gidiş-dönüşü boyunca veritabanı bağlantısı tutulmaz, geri alınabilecek bir durum duyurulmaz.
@@ -443,6 +469,7 @@ saklanır; yeni bir kampanya türü için kod yazılmaz, ekrandan kural seçilir
 - İstemcinin dosya adı diske **hiç yazılmıyor** — ad rastgele üretiliyor: geçilecek yol, üzerine yazılacak dosya ve tahmin edilecek URL yok.
 - URL parçaları `normalizeKey` ile tek bir anahtara çevriliyor; `..`, ters bölü ve boş parça reddediliyor. Disk sürücüsü ayrıca çözümlenmiş yolun kökün içinde kaldığını bir daha kontrol ediyor.
 - Sınır 5 MB. Yükleme denetim kaydına `MEDIA_UPLOADED` olarak düşüyor.
+
 ### Depo sürücüsü: disk ya da S3/MinIO
 
 `packages/services/src/storage.ts` tek karar noktası; `media.ts` ve küçültme
@@ -561,12 +588,12 @@ Ekranlar tek tek yamanmadı; önce ortak bir katman kuruldu, ekranlar onun
 
 ### Paylaşılan bileşenler
 
-| Dosya | İçerik |
-|-------|--------|
-| `components/form.tsx` | `Button` (primary/secondary/danger/success/ghost + `loading`), `TextInput`, `Select`, `TextArea`, `Label` (artık gerçek `<label>`), `Panel`, `ErrorLine` |
-| `components/ui.tsx` | `Card`, `Badge` (ton bazlı), `PageHeader`, `LoadingState`, `EmptyState` |
-| `components/app-shell.tsx` | `AppHeader` — marka işareti, ikonlu gezinme, aktif sekme vurgusu, tema anahtarı, çıkış |
-| `components/portal-nav.tsx` | Portalın rol bazlı link listesi (`AppHeader`'ı sarar) |
+| Dosya                       | İçerik                                                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/form.tsx`       | `Button` (primary/secondary/danger/success/ghost + `loading`), `TextInput`, `Select`, `TextArea`, `Label` (artık gerçek `<label>`), `Panel`, `ErrorLine` |
+| `components/ui.tsx`         | `Card`, `Badge` (ton bazlı), `PageHeader`, `LoadingState`, `EmptyState`                                                                                  |
+| `components/app-shell.tsx`  | `AppHeader` — marka işareti, ikonlu gezinme, aktif sekme vurgusu, tema anahtarı, çıkış                                                                   |
+| `components/portal-nav.tsx` | Portalın rol bazlı link listesi (`AppHeader`'ı sarar)                                                                                                    |
 
 - `form.tsx` zaten 20 yönetim dosyası tarafından içe aktarılıyordu; oradaki değişiklik o ekranlara kendiliğinden yansıdı.
 - **Üç rolün kabuğu tek bileşen oldu:** admin, portal ve plasiyer panelleri artık aynı `AppHeader`'ı kullanıyor — önceden her biri kendi başlığını elle çiziyordu.
@@ -617,11 +644,11 @@ değiştirmez. Fiyatı değiştiren tek yer promosyon motorudur; bu katman yaln�
 "ne yazsın, nerede dursun, kime görünsün" sorusunu cevaplar. İkisi tek modelde
 olsaydı bir metin düzeltmesi fiyat mantığına dokunan bir yazma hâline gelirdi.
 
-| Konum | Görünüm |
-|-------|---------|
+| Konum    | Görünüm                                                                        |
+| -------- | ------------------------------------------------------------------------------ |
 | `TICKER` | Üstte kayan şerit; birden fazlası arka arkaya akar, fare üzerine gelince durur |
-| `BANNER` | Katalog üstünde duran kart, çarpıyla kapatılır |
-| `MODAL` | Girişte bir kez açılan pencere; Escape ve arka plan tıklaması da kapatır |
+| `BANNER` | Katalog üstünde duran kart, çarpıyla kapatılır                                 |
+| `MODAL`  | Girişte bir kez açılan pencere; Escape ve arka plan tıklaması da kapatır       |
 
 - **Kapatma tarayıcıda hatırlanır**, sunucuya yazılmaz. Bu bir tercih değil "gördüm" işareti: kullanıcı başka bir cihazda duyuruyu tekrar görsün — kaçırılmış bir kampanya duyurusu, iki kez gösterilmiş olandan pahalıdır.
 - **Kapsam veritabanında uygulanır:** "yalnızca bayilere" işaretli duyuru başka gruptaki firmaya hiç gönderilmez, istemcide gizlenmez.
@@ -639,12 +666,12 @@ sipariş giremiyordu. Adım 22 o boşluğu kapatır.
 
 ### İki tür kullanıcı, tek vitrin
 
-| | Alıcı (firma yön./personel) | Vekil (plasiyer / süper admin) |
-|--|--|--|
-| Firma | Hesabından gelir | **URL'den seçilir** (`?companyId=`) |
-| Seçmeden | Katalog açılır | Firma seçim ekranı çıkar |
-| Üst bar | Sade | Firma seçici + uyarı şeridi |
-| Gezinme | Linkler sade | Her link seçili firmayı taşır |
+|          | Alıcı (firma yön./personel) | Vekil (plasiyer / süper admin)      |
+| -------- | --------------------------- | ----------------------------------- |
+| Firma    | Hesabından gelir            | **URL'den seçilir** (`?companyId=`) |
+| Seçmeden | Katalog açılır              | Firma seçim ekranı çıkar            |
+| Üst bar  | Sade                        | Firma seçici + uyarı şeridi         |
+| Gezinme  | Linkler sade                | Her link seçili firmayı taşır       |
 
 - **Seçim URL'de taşınır, tarayıcı hafızasında değil.** Yanlış cariye sipariş girmek pahalı bir hatadır ve gizli bir durumdan beslenmemeli: adres çubuğunda görünür, yenilemede korunur, sekmeler bağımsız kalır ve sunucu her istekte aynı değeri yetkilendirir.
 - **`ActingAsBar`** — "X firması adına sipariş giriyorsunuz" + kullanılabilir limit, katalogun üstünde dikkat çeken renkte. Limit doluysa "sipariş onaya düşer" uyarısı; plasiyer bunu siparişi tamamlamadan önce görür, sonra değil.
@@ -712,10 +739,10 @@ yazılır ve orijinali işaret eder.
 
 ### Ekranlar
 
-| Ekran | İçerik |
-|-------|--------|
+| Ekran           | İçerik                                                                                                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/rep/tahsilat` | Firma seçimi (URL'de) → bakiye/limit kartları → tutar + tahsilat şekli + açıklama → **onay adımı** → kayıt. Altında o firmanın tüm tahsilatları (kimin girdiği dahil) ve satır bazında iptal. |
-| `/rep/ziyaret` | Açık ziyaret kartı (canlı süre + kapat), yeni ziyaret formu (not + "Konumu ekle"), geçmiş listesi (Mobil/Web rozeti, süre, haritada) |
+| `/rep/ziyaret`  | Açık ziyaret kartı (canlı süre + kapat), yeni ziyaret formu (not + "Konumu ekle"), geçmiş listesi (Mobil/Web rozeti, süre, haritada)                                                          |
 
 - **Onay adımı bilinçli:** tutar yazılıp kaydet denince önce "X firmasına Y ₺ işlenecek, bakiye A → B" büyük puntoyla gösterilir. Bu ekranda en pahalı iki hata fazladan bir sıfır ve çift tıklamadır.
 - **Liste ofisin girdiklerini de gösterir** — plasiyer yalnızca kendi kayıtlarını görseydi merkezden işlenmiş bir ödemeyi ikinci kez isterdi. Firma verilmeden çağrılırsa uç "benim kaydettiklerim"e döner; kapsamsız listeleme yok.
@@ -740,11 +767,11 @@ Sipariş "nasıl kapanacak" sorusunun cevabı. Önceki hâlde iki yöntem vardı
 Asıl soru şu: hangisi **cari borç doğurur**? Cevap tek yerde —
 `paymentMethodMeta()` (`payment-terms.ts`):
 
-| Yöntem | Cari borç doğurur | Neden |
-|--------|-------------------|-------|
-| Açık hesap | ✅ | Tanımı bu |
-| **Çek** | ✅ | İleri tarihli ödeme sözü — çekin tahsil edilip edilmeyeceği tahsilatın sorunu, siparişin değil |
-| Nakit · Havale · Kredi kartı | ❌ | Para sipariş anında alınmış; cari hiç duymaz |
+| Yöntem                       | Cari borç doğurur | Neden                                                                                          |
+| ---------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| Açık hesap                   | ✅                | Tanımı bu                                                                                      |
+| **Çek**                      | ✅                | İleri tarihli ödeme sözü — çekin tahsil edilip edilmeyeceği tahsilatın sorunu, siparişin değil |
+| Nakit · Havale · Kredi kartı | ❌                | Para sipariş anında alınmış; cari hiç duymaz                                                   |
 
 Bu tabloyu okuyan üç yer var: **kredi limiti kontrolü** (yalnız vadeli satış
 limite sayılır), **cari kaydı** (borç yalnız vadeli satışta yazılır) ve
@@ -787,12 +814,12 @@ kazandırmıyor.
 
 ### Ekranlar
 
-| Yer | Ne yapılır |
-|-----|------------|
-| `/admin/payment-terms` | Vade tanımı ekle/düzenle/pasife al. Firmalara tanımlı vade **silinemez** — pasife alınır, o vadeyle satılmış siparişler açıklanabilir kalsın diye |
-| `/admin/companies/[id]` | Bu firmaya sunulacak yöntemler + vade menüsü |
-| Sepet paneli | Ödeme yöntemi ve vade seçimi. Vade yalnız cari borç doğuran yöntemlerde çıkar; yöntem peşine dönünce seçili vade düşer. Panelde "cari hesaba işlenir · 60 gün vade" satırı, siparişten **önce** ne olacağını söyler |
-| Mobil sepet | Aynı menü, aynı kurallar — yöntem listesi `GET /api/payment-options`'tan geliyor. Cihaz listeyi tahmin etmiyor: nakit/havale ile kısıtlı bir müşteriye açık hesap göstermek, alıcının çözemeyeceği bir 422'den başka bir şey üretmezdi |
+| Yer                     | Ne yapılır                                                                                                                                                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/payment-terms`  | Vade tanımı ekle/düzenle/pasife al. Firmalara tanımlı vade **silinemez** — pasife alınır, o vadeyle satılmış siparişler açıklanabilir kalsın diye                                                                                      |
+| `/admin/companies/[id]` | Bu firmaya sunulacak yöntemler + vade menüsü                                                                                                                                                                                           |
+| Sepet paneli            | Ödeme yöntemi ve vade seçimi. Vade yalnız cari borç doğuran yöntemlerde çıkar; yöntem peşine dönünce seçili vade düşer. Panelde "cari hesaba işlenir · 60 gün vade" satırı, siparişten **önce** ne olacağını söyler                    |
+| Mobil sepet             | Aynı menü, aynı kurallar — yöntem listesi `GET /api/payment-options`'tan geliyor. Cihaz listeyi tahmin etmiyor: nakit/havale ile kısıtlı bir müşteriye açık hesap göstermek, alıcının çözemeyeceği bir 422'den başka bir şey üretmezdi |
 
 **Ödeme yöntemi etiketleri tek yerde** (`PAYMENT_METHOD_LABELS`, `@repo/types`).
 Mobil uygulama bir zamanlar kendi kopyasını tutuyordu; enum ikiden beşe
@@ -852,10 +879,10 @@ ayrı alanlarda: `companyDiscountPerUnit` / `volumeDiscountPerUnit`.
 
 `Company.volumeDiscountMode`:
 
-| Mod | Davranış |
-|-----|----------|
+| Mod                 | Davranış                                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `AUTO` (varsayılan) | Her fiyatlamada cirodan yeniden hesaplanır. Merdiven boşken herkes %0 alır, yani özellik açılmadan önce hiçbir fiyat değişmez |
-| `MANUAL` | `volumeTierId` neyse odur; ciroya **hiç bakılmaz**. Boş bırakmak "bu cari hacim iskontosu almaz" demektir |
+| `MANUAL`            | `volumeTierId` neyse odur; ciroya **hiç bakılmaz**. Boş bırakmak "bu cari hacim iskontosu almaz" demektir                     |
 
 `MANUAL` pasife alınmış bir basamağı da onurlandırır: basamağı merdivenden
 kaldırmak, onu bir müşteriye söz vermiş olmakla aynı şey değil — sözleşme
@@ -869,13 +896,13 @@ kesilmiş bir siparişin fiyatını açıklayamaz hâle getirmemeli.
 
 ### Ekranlar
 
-| Yer | Ne yapılır |
-|-----|------------|
-| `/admin/volume-tiers` | Basamak ekle/düzenle/pasife al. Firmaya atanmış basamak **silinemez** — pasife alınır, o müşteri söz verilen oranı kaybetmesin diye |
-| `/admin/companies/[id]` | Mod seçimi + elle basamak ataması. Başlıkta **canlı** durum: hangi oran geçerli, son N ayın cirosu ne, bir üst basamağa ne kadar kaldı |
+| Yer                        | Ne yapılır                                                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/volume-tiers`      | Basamak ekle/düzenle/pasife al. Firmaya atanmış basamak **silinemez** — pasife alınır, o müşteri söz verilen oranı kaybetmesin diye                      |
+| `/admin/companies/[id]`    | Mod seçimi + elle basamak ataması. Başlıkta **canlı** durum: hangi oran geçerli, son N ayın cirosu ne, bir üst basamağa ne kadar kaldı                   |
 | Sepet paneli (web + mobil) | "Hacim iskontosu — Altın (%5), ara toplama dahil: −1.240 ₺". Ayrı bir indirim satırı değil: ara toplam zaten net, ikinci kez düşülüyormuş gibi okunmasın |
-| Sipariş detayı | O gün geçerli olan basamağın adı ve oranı |
-| Rapor tasarımcısı | `volumeTierName`, `volumeDiscountPercent`, satır bazında `volumeDiscount` |
+| Sipariş detayı             | O gün geçerli olan basamağın adı ve oranı                                                                                                                |
+| Rapor tasarımcısı          | `volumeTierName`, `volumeDiscountPercent`, satır bazında `volumeDiscount`                                                                                |
 
 Ciro `GET /api/volume-status` ile de okunabilir — yalnızca **gösterim**:
 fiyatlanan oran her istekte sunucuda çözülüyor, bu uç atlanarak ya da
@@ -954,10 +981,10 @@ süreç ne okuyabiliyorsa okurdu). Logo genelde SVG ve SVG script taşıyabilir 
 
 ### Ekranlar
 
-| Yer | Ne yapılır |
-|-----|------------|
+| Yer                   | Ne yapılır                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `/admin/organization` | Kuruluş bilgileri **salt okunur** + dosyanın tam yolu. Düzenleme formu bilerek yok: ikinci bir kaynak yaratırdı, operatör ekranda değiştirir, dosya başka şey söylemeye devam ederdi |
-| Fatura / irsaliye | Başlıkta logo + unvan + adres + V.D./VKN + MERSİS/sicil + iletişim |
+| Fatura / irsaliye     | Başlıkta logo + unvan + adres + V.D./VKN + MERSİS/sicil + iletişim                                                                                                                   |
 
 **Doğrulama:** 16 birim testi (toplam **218**) + betikli uçtan uca kontrol
 **26/26**. Betik scratchpad'de: `verify-tenant.mjs`. Bozuk yapılandırma yolu da
@@ -974,13 +1001,13 @@ duruyor.**
 
 ### İki tablo, iki soru
 
-| Tablo | Cevapladığı soru |
-|-------|------------------|
-| `Transaction` | Bu müşteri ne kadar borçlu? |
+| Tablo          | Cevapladığı soru                           |
+| -------------- | ------------------------------------------ |
+| `Transaction`  | Bu müşteri ne kadar borçlu?                |
 | `CashMovement` | Elimizde ne kadar para var, hangi hesapta? |
 
 `CashAccount` üç türde olur: **kasa** (elde nakit), **banka hesabı**, **POS**.
-POS ayrı bir tür çünkü kart satışı *kazanılmış ama henüz elde olmayan* paradır;
+POS ayrı bir tür çünkü kart satışı _kazanılmış ama henüz elde olmayan_ paradır;
 bankaya karıştırmak, banka satırını bankanın kendi ekstresiyle çelişir hâle
 getirirdi.
 
@@ -992,12 +1019,12 @@ soruları cevaplar (biri borç, diğeri eldeki para) ve bir yöntem **ikisine bi
 hayır** diyebilir — konsinye ya da teminatlı satış gibi. Ayrı tutmak, böyle bir
 yöntemin bir satır olarak eklenmesini sağlar, her yerde istisna olmasını değil.
 
-| Yöntem | Cariye borç | Kasaya giriş |
-|--------|-------------|--------------|
-| Açık hesap | ✅ | — |
-| Çek | ✅ | — |
-| Nakit / Havale | — | ✅ sipariş onayında |
-| Kredi kartı | — | ✅ **tahsilat onayında** (Adım 28) |
+| Yöntem         | Cariye borç | Kasaya giriş                       |
+| -------------- | ----------- | ---------------------------------- |
+| Açık hesap     | ✅          | —                                  |
+| Çek            | ✅          | —                                  |
+| Nakit / Havale | —           | ✅ sipariş onayında                |
+| Kredi kartı    | —           | ✅ **tahsilat onayında** (Adım 28) |
 
 > Kredi kartı satırı Adım 27'de "sipariş onayında" idi ve **yanlıştı**: kimse
 > kartı çekmeden para deftere giriyordu. Adım 28 araya ödeme niyetini koydu.
@@ -1044,20 +1071,21 @@ iptali diğerini de iptal eder.
 
 ### Ekranlar
 
-| Yer | Ne yapılır |
-|-----|------------|
-| `/admin/kasa` → Gün sonu | Tarih aralığı, toplam giriş/çıkış/net, hesaba ve kaynağa göre kırılım |
-| `/admin/kasa` → Hareketler | Filtreli defter, elle giriş/çıkış (açıklama zorunlu), hesaplar arası aktarım, ters kayıtla iptal |
-| `/admin/kasa` → Hesaplar | Hesap açma (devir bakiyesiyle), varsayılan seçimi, kapatma, yöntem → hesap eşlemesi |
-| `/rep/tahsilat` | "Hangi kasaya girdi?" seçici; çek/senet seçilince yerine "kasaya girmez" açıklaması |
-| Rapor tasarımcısı | **Kasa defteri** veri kümesi (yön, kaynak, hesap, hesap türü, sipariş, firma, kaydeden) — yalnız süper admin |
+| Yer                        | Ne yapılır                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/admin/kasa` → Gün sonu   | Tarih aralığı, toplam giriş/çıkış/net, hesaba ve kaynağa göre kırılım                                        |
+| `/admin/kasa` → Hareketler | Filtreli defter, elle giriş/çıkış (açıklama zorunlu), hesaplar arası aktarım, ters kayıtla iptal             |
+| `/admin/kasa` → Hesaplar   | Hesap açma (devir bakiyesiyle), varsayılan seçimi, kapatma, yöntem → hesap eşlemesi                          |
+| `/rep/tahsilat`            | "Hangi kasaya girdi?" seçici; çek/senet seçilince yerine "kasaya girmez" açıklaması                          |
+| Rapor tasarımcısı          | **Kasa defteri** veri kümesi (yön, kaynak, hesap, hesap türü, sipariş, firma, kaydeden) — yalnız süper admin |
 
 Devir bakiyesi (`openingBalance`) hesap açılırken **bir kez** verilir ve
 düzenlenemez: bakiyeye doğrudan toplanır, hareketi yoktur; sonradan değiştirmek
 izsiz para oynatmak olurdu. Yanlış devir, elle bir düzeltme kaydıyla düzeltilir.
 
 **Doğrulama:** 4 birim + 13 entegrasyon testi (toplam **240**), typecheck + lint
-+ build temiz.
+
+- build temiz.
 
 ## 28. Sanal POS & Ödeme Sağlayıcı (Adım 28)
 
@@ -1071,12 +1099,12 @@ Sipariş ile paranın arasına giren adım. Kart siparişi onaylandığında **k
 hiçbir şey yazılmaz**; bir niyet açılır ve kasa ancak tahsilat gerçekleşince
 haberdar olur.
 
-| Durum | Anlamı |
-|-------|--------|
-| `PENDING` | Açıldı, çekilmedi. Elden POS'ta insan bekler; 3-D Secure'da müşteri bankadadır |
-| `AUTHORIZED` | Kartta bloke var, para alınmadı |
-| `CAPTURED` | Para alındı — **kasaya yazan tek durum** |
-| `FAILED` / `CANCELLED` / `REFUNDED` | Reddedildi / vazgeçildi / iade edildi |
+| Durum                               | Anlamı                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `PENDING`                           | Açıldı, çekilmedi. Elden POS'ta insan bekler; 3-D Secure'da müşteri bankadadır |
+| `AUTHORIZED`                        | Kartta bloke var, para alınmadı                                                |
+| `CAPTURED`                          | Para alındı — **kasaya yazan tek durum**                                       |
+| `FAILED` / `CANCELLED` / `REFUNDED` | Reddedildi / vazgeçildi / iade edildi                                          |
 
 `PaymentIntentEvent` her geçişi saklar. Ödeme, sistemdeki **en çok tartışılan
 kayıttır** — müşteri "ödedim" der, banka "gelmedi" der — bu yüzden son durum
@@ -1145,10 +1173,10 @@ ikinci kez yazamaz.
 
 ### Sipariş iptali
 
-| Niyetin hâli | Sonuç |
-|--------------|-------|
+| Niyetin hâli                        | Sonuç                                            |
+| ----------------------------------- | ------------------------------------------------ |
 | Çekilmemiş (`PENDING`/`AUTHORIZED`) | `CANCELLED` — kasaya dokunulmaz, ortada para yok |
-| Çekilmiş (`CAPTURED`) | `REFUNDED` + kasa kaydı ters kayıtla geri alınır |
+| Çekilmiş (`CAPTURED`)               | `REFUNDED` + kasa kaydı ters kayıtla geri alınır |
 
 İptal edilmiş siparişin tahsilatı **alınamaz**: sevk edilmeyecek mal için para
 çekmek olurdu.
@@ -1182,9 +1210,9 @@ satırındaki `User.permissions` kümesidir.
 
 ### Yetki devrinin iki sınırı
 
-| Koruma | Kural |
-|--------|-------|
-| `assertMayGrant` | **Kendinde olmayanı veremezsin.** Aksi hâlde kasaya erişimi olmayan firma yöneticisi kendine ikinci hesap açıp `cash.manage` verirdi. |
+| Koruma                 | Kural                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assertMayGrant`       | **Kendinde olmayanı veremezsin.** Aksi hâlde kasaya erişimi olmayan firma yöneticisi kendine ikinci hesap açıp `cash.manage` verirdi.        |
 | `assertNotSelfLockout` | Kendi `users.manage` iznini kaldıramazsın — geri verecek kimse kalmaz. Rol/pasife alma tarafındaki `SELF_TARGET` korumasının izin karşılığı. |
 
 Yetki kümesi değişince hedefin **oturumları sonlandırılır** (`tokenVersion`
@@ -1229,7 +1257,7 @@ typecheck + lint temiz.
 
 ## 30. Yetki Kapsamı — Hangi İzin Hangi Hesaba (Adım 31)
 
-Adım 30 yetkiyi rolden ayırdı ama yetki *verme* tarafında tek sınır vardı:
+Adım 30 yetkiyi rolden ayırdı ama yetki _verme_ tarafında tek sınır vardı:
 "kendinde olmayanı veremezsin". Süper adminde her izin olduğu için bu, bir bayi
 personeline `organization.manage` ya da `orders.fulfil` vermeyi engellemiyordu.
 Rol kapısı zararın bir kısmını tutuyordu (`/admin` yalnızca `SUPER_ADMIN`), ama
@@ -1239,11 +1267,11 @@ erişebiliyordu.
 
 ### Hesap tipi (rol ailesi)
 
-| Aile | Roller | Ne demek |
-|------|--------|----------|
-| `SELLER` | SUPER_ADMIN | Kurulumun sahibi, satıcının iç ekibi |
-| `DEALER` | COMPANY_ADMIN, COMPANY_STAFF | Müşteri tarafı |
-| `FIELD` | SALES_REP | Saha |
+| Aile     | Roller                       | Ne demek                             |
+| -------- | ---------------------------- | ------------------------------------ |
+| `SELLER` | SUPER_ADMIN                  | Kurulumun sahibi, satıcının iç ekibi |
+| `DEALER` | COMPANY_ADMIN, COMPANY_STAFF | Müşteri tarafı                       |
+| `FIELD`  | SALES_REP                    | Saha                                 |
 
 `PERMISSION_SCOPE` her izne verilebileceği aileleri yazar. Yalnızca `SELLER`
 olanlar satıcıya aittir: katalog ve fiyatlandırma, kasa **yönetimi** dışındaki
@@ -1256,7 +1284,7 @@ personel onaylamaz) rol kapısının işi ve orada kalıyor.
 ### Üç yerde aynı kural
 
 - **Servis:** `assertMayGrant(ctx, izinler, hedefRol)` artık iki şeye bakıyor —
-  çağıranın kendi kümesi *ve* hedefin hesap tipi. İhlal 403 döner ve hangi izinler
+  çağıranın kendi kümesi _ve_ hedefin hesap tipi. İhlal 403 döner ve hangi izinler
   olduğunu söyler.
 - **Rol değişimi arka kapıyı kapatır:** rol satıcıdan bayiye çekilirken izin
   listesi gönderilmezse, yeni tipe verilemeyen izinler **düşürülür** ve denetim
@@ -1306,13 +1334,13 @@ düğmesi kalıyordu.
   "aynı dönem" demek. Aksi hâlde aynı ay iki farklı aralıkla iki kez tanımlanır ve
   hangisinin geçerli olduğu belirsiz kalırdı.
 - **Gerçekleşen saklanmıyor**, her okunuşta hareketlerden hesaplanıyor: ziyaret =
-  *kapanmış* check-in sayısı (açık check-in henüz ziyaret değil), ciro = temsilcinin
+  _kapanmış_ check-in sayısı (açık check-in henüz ziyaret değil), ciro = temsilcinin
   girdiği iptal/ret/taslak dışı siparişlerin genel toplamı. Saklansaydı iptal edilen
   bir sipariş hedefi olduğundan iyi göstermeye devam ederdi.
 - **`elapsed` ayrı bir sayı**: ayın 3'ünde %10 iyi, 28'inde felakettir; yüzde tek
   başına bu farkı gizler. Kart dönemin yüzde kaçının geçtiğini yanında yazıyor ve
   geride kalan hedefi sarıya çeviriyor.
-- **Yeni izin `targets.manage`** (kapsam: yalnızca şirket). Hedefini *görmek* izin
+- **Yeni izin `targets.manage`** (kapsam: yalnızca şirket). Hedefini _görmek_ izin
   gerektirmiyor — temsilcinin paneli kendi karnesini her hâlükârda gösteriyor.
 
 Ekranlar: `/admin/targets` (koyma + liste + dönem durumu), `/rep` üstünde karne.
@@ -1331,7 +1359,7 @@ Ekranlar: `/admin/targets` (koyma + liste + dönem durumu), `/rep` üstünde kar
   gün içinde telefonda aynı sırayla görünmeli. Sıralama isteği listenin tamamını
   gönderiyor; tek tek taşıma olsaydı araya giren bir değişiklikte sıra bozulurdu.
 - **Adres koordinatı** (`Address.latitude/longitude`) eklendi. `CheckIn` zaten konum
-  taşıyordu ama o *ziyaret olduktan sonraki* kanıt — güne başlarken haritada
+  taşıyordu ama o _ziyaret olduktan sonraki_ kanıt — güne başlarken haritada
   gösterilecek nokta yoktu.
 - Ziyaret ekranında seçili durağın haritası (OpenStreetMap gömme görünümü), tek durak
   için yol tarifi ve **listedeki sırayla** çok duraklı rota bağlantısı. Harita
@@ -1367,14 +1395,14 @@ basım görünümü.
 Yeni rol `COURIER`, yeni rol ailesi `DELIVERY`.
 
 - **Neden ayrı aile**: kurye sahaya değil dağıtıma ait. Plasiyerle aynı ailede olsaydı
-  sipariş girme, tahsilat ve ziyaret yetkileri ona da *verilebilir* hâle gelirdi; oysa
+  sipariş girme, tahsilat ve ziyaret yetkileri ona da _verilebilir_ hâle gelirdi; oysa
   kuryenin eline müşteri fiyatı bile geçmemeli. Kapsamı üç izin: `orders.view`,
   `documents.view`, `delivery.confirm`.
 - `Shipment.courierId / deliveredAt / receivedByName / proofPhotoUrl / deliveryNote`.
   Depodan çıkaran (`shippedBy`) ile kapıya götüren ayrı: **teslim kanıtı götürene ait**.
 - Teslim **bir kez** yazılıyor; teslim edilmiş sevkiyat yeniden teslim edilemiyor —
   imza kanıtının üstüne yazılabilmesi kanıt olmasını bitirirdi.
-- Siparişin *tüm* sevkiyatları teslim edildiğinde sipariş `DELIVERED`'a geçiyor. Kısmi
+- Siparişin _tüm_ sevkiyatları teslim edildiğinde sipariş `DELIVERED`'a geçiyor. Kısmi
   teslimde durum değişmiyor: yarısı kapıda olan sipariş "teslim edildi" sayılamaz.
 - İmzalı belge fotoğrafı zorunlu değil (bazı teslimatlarda kâğıt hiç imzalanmıyor ve
   zorunlu alan sahte kayda iter), **teslim alanın adı zorunlu**. Yükleme kendi ucundan
@@ -1478,15 +1506,15 @@ sevkiyat yapamaz.
 
 ### Betikler
 
-| Betik | Ne yapar |
-|---|---|
+| Betik        | Ne yapar                                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | `install.sh` | Yapılandırmayı doğrular → derler → şemayı kurar → yönetici hesabını sorar → web'i açar. Herhangi bir adım düşerse orada durur |
-| `backup.sh` | Veritabanı (`pg_dump -Fc`) + görseller + kiracı klasörü, tek dizinde; eski yedekleri süreye göre siler |
-| `restore.sh` | Yedekten döner; veritabanını **siler**, `--force` yoksa onay ister |
-| `update.sh` | Yedek → derle → göç → geçir → sağlığı bekle; tutmazsa eski imaja döner |
+| `backup.sh`  | Veritabanı (`pg_dump -Fc`) + görseller + kiracı klasörü, tek dizinde; eski yedekleri süreye göre siler                        |
+| `restore.sh` | Yedekten döner; veritabanını **siler**, `--force` yoksa onay ister                                                            |
+| `update.sh`  | Yedek → derle → göç → geçir → sağlığı bekle; tutmazsa eski imaja döner                                                        |
 
-**Şema göçü geri alınamaz.** `update.sh`'ın geri aldığı şey *uygulama
-sürümüdür*; yeni sürüm bir kolon düşürdüyse eski imaja dönmek onu geri
+**Şema göçü geri alınamaz.** `update.sh`'ın geri aldığı şey _uygulama
+sürümüdür_; yeni sürüm bir kolon düşürdüyse eski imaja dönmek onu geri
 getirmez. Yedek adımı bu yüzden varsayılan, `SKIP_BACKUP=1` açık bir tercih.
 Göç düşerse betik web'e **hiç dokunmadan** duruyor: eski sürüm çalışmaya devam
 eder, şema da eskidir.
@@ -1673,14 +1701,14 @@ Kırılan bir yetki sınırı ancak elle fark ediliyordu.
 
 ### Ne doğrulanıyor
 
-| Dosya | Kapsam |
-|-------|--------|
-| `guard.test.ts` (18) | Kimliksiz istek; bozuk, başka anahtarla imzalanmış, başka issuer'lı jeton; silinmiş / pasif / sürümü geçmiş hesap; çerezin rolü, firması ve tokenVersion'ı yerine satırın okunması; izin reddinin eksik izni söylemesi; süper adminin izin kapısından muaf olmaması; rol reddi ile izin reddinin ayrı kaydedilmesi; "en az biri" izin kapısı |
-| `route-scope.test.ts` (27) | Plasiyerin portföy sınırı (katalog, sepet, sipariş listesi, ekstre); bayi kullanıcısının kendi firmasına çivilenmesi — sorgu dizesinde **ve** JSON gövdede; firması olmayan hesap; kuryenin firma ekranlarına kapalı olması; saha parasının yalnız sahaya açık olması; yalnız süper admine açık uçlar; kullanıcı yönetiminin iki rolde iki ayrı kapsamı |
-| `order-flow.test.ts` (20) | Fiyatın sunucuda hesaplanması, alıcının navlun ve vade uyduramaması; onay akışı (kimin onaylayabildiği, ikinci onayın rolüne göre 403 mü 409 mu); iptalde stoğun geri gelmesi ve cari borcun ters kayıtla kapanması; sipariş verilince sepetin boşalması |
-| `field-money.test.ts` (13) | Tahsilatın bakiyeyi düşürmesi; tekrar anahtarının ikinci kaydı engellemesi; iptalin ters kayıt yazması ve iki kez yapılamaması; ziyaretin kaynağının **taşıdığı kimlikten** belirlenmesi (telefon → MOBILE, tarayıcı → WEB); başkasının ziyaretinin kapatılamaması |
-| `account-admin.test.ts` (14) | Mobil giriş: jeton üretimi, yanlış şifre ile bilinmeyen e-postanın aynı cevabı vermesi, pasif hesap, sayaç; yetki devrinin kendinden büyük olamaması; kendini kilitleme korumaları; yetkisi kısılan hesabın elindeki jetonun bir sonraki istekte ölmesi |
-| `reports.test.ts` (15) | Kayıt defterinde olmayan alanın sütunda/süzgeçte/gruplamada reddi; satır kapsamının kullanıcının süzgecinden sonra eklenmesi; paylaşılan raporun **koşanın** kapsamıyla çalışması; paylaşılmayan raporun kimliği bilinse bile koşmaması |
+| Dosya                        | Kapsam                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guard.test.ts` (18)         | Kimliksiz istek; bozuk, başka anahtarla imzalanmış, başka issuer'lı jeton; silinmiş / pasif / sürümü geçmiş hesap; çerezin rolü, firması ve tokenVersion'ı yerine satırın okunması; izin reddinin eksik izni söylemesi; süper adminin izin kapısından muaf olmaması; rol reddi ile izin reddinin ayrı kaydedilmesi; "en az biri" izin kapısı            |
+| `route-scope.test.ts` (27)   | Plasiyerin portföy sınırı (katalog, sepet, sipariş listesi, ekstre); bayi kullanıcısının kendi firmasına çivilenmesi — sorgu dizesinde **ve** JSON gövdede; firması olmayan hesap; kuryenin firma ekranlarına kapalı olması; saha parasının yalnız sahaya açık olması; yalnız süper admine açık uçlar; kullanıcı yönetiminin iki rolde iki ayrı kapsamı |
+| `order-flow.test.ts` (20)    | Fiyatın sunucuda hesaplanması, alıcının navlun ve vade uyduramaması; onay akışı (kimin onaylayabildiği, ikinci onayın rolüne göre 403 mü 409 mu); iptalde stoğun geri gelmesi ve cari borcun ters kayıtla kapanması; sipariş verilince sepetin boşalması                                                                                                |
+| `field-money.test.ts` (13)   | Tahsilatın bakiyeyi düşürmesi; tekrar anahtarının ikinci kaydı engellemesi; iptalin ters kayıt yazması ve iki kez yapılamaması; ziyaretin kaynağının **taşıdığı kimlikten** belirlenmesi (telefon → MOBILE, tarayıcı → WEB); başkasının ziyaretinin kapatılamaması                                                                                      |
+| `account-admin.test.ts` (14) | Mobil giriş: jeton üretimi, yanlış şifre ile bilinmeyen e-postanın aynı cevabı vermesi, pasif hesap, sayaç; yetki devrinin kendinden büyük olamaması; kendini kilitleme korumaları; yetkisi kısılan hesabın elindeki jetonun bir sonraki istekte ölmesi                                                                                                 |
+| `reports.test.ts` (15)       | Kayıt defterinde olmayan alanın sütunda/süzgeçte/gruplamada reddi; satır kapsamının kullanıcının süzgecinden sonra eklenmesi; paylaşılan raporun **koşanın** kapsamıyla çalışması; paylaşılmayan raporun kimliği bilinse bile koşmaması                                                                                                                 |
 
 ### İki paket aynı veritabanını paylaşıyor
 
@@ -1690,45 +1718,45 @@ kırıldı. `turbo.json`'da `web#test` artık `@repo/services#test`'i bekliyor.
 
 ## 43. Web Portal (`apps/web`)
 
-| Sayfa | Rol | İçerik |
-|-------|-----|--------|
-| `/login` | herkes | Giriş; role göre ana sayfaya yönlendirir |
-| `/sifremi-unuttum` | herkes | Sıfırlama bağlantısı talebi (yanıt her zaman aynı) |
-| `/sifremi-unuttum/yenile` | bağlantı sahibi | Yeni şifre; kaydedince tüm oturumlar kapanır |
-| `/portal` | 4 rol | **Vitrin:** kategori kenar çubuğu, arama (ad/marka/SKU/barkod), sıralama, stok filtresi, duyurular, sepet. Plasiyer/admin için önce firma seçimi |
-| `/portal/urun/[id]` | 4 rol | Ürün detayı: görsel galerisi, künye, varyant tablosu (adet + satır toplamı) |
-| `/portal/orders` | 4 rol | Firmanın sipariş listesi (personel salt okunur; vekil için seçili firma) |
-| `/portal/statement` | 4 rol | Cari ekstre + yaşlandırma + CSV (vekil için seçili firma) |
-| `/portal/users` | firma yöneticisi | Kendi firmasının kullanıcıları |
-| `/portal/approvals` | firma yöneticisi | Onay bekleyen siparişler, onayla/reddet |
-| `/orders/[id]` | 4 rol | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları, irsaliye/fatura paneli |
-| `/documents/shipments/[id]` | 4 rol (belgenin firması) | Yazdırılabilir irsaliye — fiyat yok |
-| `/documents/invoices/[id]` | 4 rol (belgenin firması) | Yazdırılabilir fatura — vade, tutar, KDV kırılımı |
-| `/admin` | süper admin | Cari hesap tablosu + tüm siparişler, limit override onayı |
-| `/admin/products` | süper admin | Ürün listesi: arama, kategori filtresi, stok/varyant/fiyatsız uyarısı |
-| `/admin/products/new` | süper admin | Yeni ürün formu |
-| `/admin/products/[id]` | süper admin | Ürün düzenleme + varyantlar + fiyat kademeleri |
-| `/admin/categories` | süper admin | Kategori ağacı yönetimi |
-| `/admin/companies` | süper admin | Firma listesi: arama, pasif filtresi, bakiye/limit/vade |
-| `/admin/companies/new` | süper admin | Yeni firma formu |
-| `/admin/companies/[id]` | süper admin | Firma düzenleme + adresler + kullanıcılar + iskontolar |
-| `/admin/users` | süper admin | Tüm kullanıcılar: oluştur, düzenle, şifre, pasife al, sil |
-| `/admin/customer-groups` | süper admin | Müşteri grubu CRUD |
-| `/admin/promotions` | süper admin | Kampanya listesi + kural tabanlı kampanya formu, kullanım/indirim özeti |
-| `/admin/announcements` | süper admin | Vitrin duyuruları: şerit/bant/pencere, ton, öncelik, gruba özel hedefleme |
-| `/admin/documents` | süper admin | Belge serileri: ön ek, basamak, sayaç, varsayılan, ERP serisi |
-| `/admin/companies/[id]/statement` | süper admin | Herhangi bir firmanın cari ekstresi |
-| `/admin/reports` | süper admin | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar) |
-| `/reports` | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar |
-| `/reports/new` · `/reports/[id]` | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme |
-| `/admin/audit` | süper admin | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli |
-| `/admin/activity` | süper admin | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda |
-| `/admin/surum` | süper admin (`system.update`) | Çalışan sürüm, kanalın yayımladığı sürüm, son güncelleme sonucu — salt okunur |
-| `/hesabim` | 4 rol | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri |
-| `/rep` | plasiyer, süper admin | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **Sipariş · Tahsilat · Ziyaret** |
-| `/rep/tahsilat` | plasiyer, süper admin | Tahsilat girişi (onay adımlı), firmanın tahsilat geçmişi, satır bazında iptal |
-| `/rep/ziyaret` | plasiyer, süper admin | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi |
-| `/403` | — | Yetkisiz erişim sayfası |
+| Sayfa                             | Rol                               | İçerik                                                                                                                                           |
+| --------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/login`                          | herkes                            | Giriş; role göre ana sayfaya yönlendirir                                                                                                         |
+| `/sifremi-unuttum`                | herkes                            | Sıfırlama bağlantısı talebi (yanıt her zaman aynı)                                                                                               |
+| `/sifremi-unuttum/yenile`         | bağlantı sahibi                   | Yeni şifre; kaydedince tüm oturumlar kapanır                                                                                                     |
+| `/portal`                         | 4 rol                             | **Vitrin:** kategori kenar çubuğu, arama (ad/marka/SKU/barkod), sıralama, stok filtresi, duyurular, sepet. Plasiyer/admin için önce firma seçimi |
+| `/portal/urun/[id]`               | 4 rol                             | Ürün detayı: görsel galerisi, künye, varyant tablosu (adet + satır toplamı)                                                                      |
+| `/portal/orders`                  | 4 rol                             | Firmanın sipariş listesi (personel salt okunur; vekil için seçili firma)                                                                         |
+| `/portal/statement`               | 4 rol                             | Cari ekstre + yaşlandırma + CSV (vekil için seçili firma)                                                                                        |
+| `/portal/users`                   | firma yöneticisi                  | Kendi firmasının kullanıcıları                                                                                                                   |
+| `/portal/approvals`               | firma yöneticisi                  | Onay bekleyen siparişler, onayla/reddet                                                                                                          |
+| `/orders/[id]`                    | 4 rol                             | Sipariş detayı: kalemler, toplamlar, adres, durum geçmişi, yetkiye göre durum butonları, irsaliye/fatura paneli                                  |
+| `/documents/shipments/[id]`       | 4 rol (belgenin firması)          | Yazdırılabilir irsaliye — fiyat yok                                                                                                              |
+| `/documents/invoices/[id]`        | 4 rol (belgenin firması)          | Yazdırılabilir fatura — vade, tutar, KDV kırılımı                                                                                                |
+| `/admin`                          | süper admin                       | Cari hesap tablosu + tüm siparişler, limit override onayı                                                                                        |
+| `/admin/products`                 | süper admin                       | Ürün listesi: arama, kategori filtresi, stok/varyant/fiyatsız uyarısı                                                                            |
+| `/admin/products/new`             | süper admin                       | Yeni ürün formu                                                                                                                                  |
+| `/admin/products/[id]`            | süper admin                       | Ürün düzenleme + varyantlar + fiyat kademeleri                                                                                                   |
+| `/admin/categories`               | süper admin                       | Kategori ağacı yönetimi                                                                                                                          |
+| `/admin/companies`                | süper admin                       | Firma listesi: arama, pasif filtresi, bakiye/limit/vade                                                                                          |
+| `/admin/companies/new`            | süper admin                       | Yeni firma formu                                                                                                                                 |
+| `/admin/companies/[id]`           | süper admin                       | Firma düzenleme + adresler + kullanıcılar + iskontolar                                                                                           |
+| `/admin/users`                    | süper admin                       | Tüm kullanıcılar: oluştur, düzenle, şifre, pasife al, sil                                                                                        |
+| `/admin/customer-groups`          | süper admin                       | Müşteri grubu CRUD                                                                                                                               |
+| `/admin/promotions`               | süper admin                       | Kampanya listesi + kural tabanlı kampanya formu, kullanım/indirim özeti                                                                          |
+| `/admin/announcements`            | süper admin                       | Vitrin duyuruları: şerit/bant/pencere, ton, öncelik, gruba özel hedefleme                                                                        |
+| `/admin/documents`                | süper admin                       | Belge serileri: ön ek, basamak, sayaç, varsayılan, ERP serisi                                                                                    |
+| `/admin/companies/[id]/statement` | süper admin                       | Herhangi bir firmanın cari ekstresi                                                                                                              |
+| `/admin/reports`                  | süper admin                       | Satış / ürün / plasiyer / tahsilat / alacak yaşlandırma (hazır raporlar)                                                                         |
+| `/reports`                        | süper admin, plasiyer, firma yön. | Kayıtlı raporlar ve paylaşılanlar                                                                                                                |
+| `/reports/new` · `/reports/[id]`  | süper admin, plasiyer, firma yön. | Rapor tasarımcısı: alan seçimi, filtre, gruplama, dizayn, önizleme                                                                               |
+| `/admin/audit`                    | süper admin                       | Güvenlik kaydı: olay/tarih/metin filtreleri, "sadece güvenlik olayları", sayfalama + saklama/CSV paneli                                          |
+| `/admin/activity`                 | süper admin                       | Birleşik hareket akışı: sipariş durumu + cari + sistem kayıtları tek sütunda                                                                     |
+| `/admin/surum`                    | süper admin (`system.update`)     | Çalışan sürüm, kanalın yayımladığı sürüm, son güncelleme sonucu — salt okunur                                                                    |
+| `/hesabim`                        | 4 rol                             | Kendi profili, güvenlik durumu (son giriş + IP, şifre tarihi), şifre değiştirme, kendi hareketleri                                               |
+| `/rep`                            | plasiyer, süper admin             | Portföy alacakları, vadesi geçenler, son 30 günün en iyileri, her firmadan **Sipariş · Tahsilat · Ziyaret**                                      |
+| `/rep/tahsilat`                   | plasiyer, süper admin             | Tahsilat girişi (onay adımlı), firmanın tahsilat geçmişi, satır bazında iptal                                                                    |
+| `/rep/ziyaret`                    | plasiyer, süper admin             | Açık ziyaret + kapatma, yeni ziyaret (not + konum), ziyaret geçmişi                                                                              |
+| `/403`                            | —                                 | Yetkisiz erişim sayfası                                                                                                                          |
 
 ## 44. Mobil Uygulama (`apps/mobile`)
 
@@ -1846,13 +1874,13 @@ uygulama açılışında değil.
 Taşıyıcı Expo'nun push servisi; uygulama zaten Expo ile derlendiği için jetonu o
 üretiyor ve FCM anahtarı/sertifika döngüsü bizde durmuyor.
 
-| Olay | Kime | Neden ona |
-|------|------|-----------|
-| Yeni sipariş (onay bekliyor) | Firma yöneticileri | Onay onların işi |
-| Yeni sipariş (canlı) | Plasiyer | Kendi müşterisinin hareketi |
-| Sipariş durum değişimi | Siparişi giren + firma yöneticileri | Bekledikleri cevap |
-| Ziyaret çağrısı açıldı | Portföy temsilcisi | Çağrı ona düşüyor |
-| Teslimat ataması | Atanan kurye | Ekranı sürekli açık tutmuyor |
+| Olay                         | Kime                                | Neden ona                    |
+| ---------------------------- | ----------------------------------- | ---------------------------- |
+| Yeni sipariş (onay bekliyor) | Firma yöneticileri                  | Onay onların işi             |
+| Yeni sipariş (canlı)         | Plasiyer                            | Kendi müşterisinin hareketi  |
+| Sipariş durum değişimi       | Siparişi giren + firma yöneticileri | Bekledikleri cevap           |
+| Ziyaret çağrısı açıldı       | Portföy temsilcisi                  | Çağrı ona düşüyor            |
+| Teslimat ataması             | Atanan kurye                        | Ekranı sürekli açık tutmuyor |
 
 İşi **yapan kişiye** bildirim gitmiyor: kendi girdiğin siparişi sana duyuran bir
 uygulama, bir hafta içinde bildirimleri kapattırır.
@@ -1878,7 +1906,7 @@ bilinsin). 8 rota testi bu sınırları koruyor.
   olabilir; bu gizlenmiyor, üstte turuncu bir şerit "çevrimdışı" yazıyor.
 - **Saha yazmaları (tahsilat, ziyaret aç/kapat, teslim onayı)** — kuyruğa
   alınıyor, şebeke gelince kendiliğinden gidiyor, uygulama kapanıp açılsa bile
-  duruyor. Üçü de *olmuş bir şeyin kaydı*: para alındı, kapıya gidildi, mal
+  duruyor. Üçü de _olmuş bir şeyin kaydı_: para alındı, kapıya gidildi, mal
   teslim edildi. On dakika geç düşmesi işi bozmuyor, hiç düşmemesi bozuyor.
   Tahsilatın kuyruğa girebilmesinin sebebi Adım 43'teki **tekrar anahtarı**:
   kuyruk aynı kaydı iki kez gönderse de sunucu ikincisini yazmıyor.
@@ -1955,11 +1983,11 @@ tazeleniyor, güncelleme yalnızca bakım penceresinde uygulanıyor. Ekranda "ü
 gündür bakılmadı" yazan bir kurulum, penceresi gecede olduğu için öyle
 görünmemeli.
 
-| Politika | Ne yapar |
-|---|---|
-| `off` | Akışa bakmaz |
+| Politika | Ne yapar                                           |
+| -------- | -------------------------------------------------- |
+| `off`    | Akışa bakmaz                                       |
 | `notify` | Bakar, ekranda gösterir, **dokunmaz** — varsayılan |
-| `auto` | Bakım penceresinde kendisi günceller |
+| `auto`   | Bakım penceresinde kendisi günceller               |
 
 Varsayılan bilerek `notify`. Müşterinin ERP'ye bağlı sipariş sistemini haberi
 olmadan yeniden başlatan bir yazılım, kazandığından çok güven kaybettirir.
@@ -2010,7 +2038,7 @@ bekleyen güncellemenin önüne geçiyor: ikisi aynı anda doğrudur ve operatö
 
 Ajan durumu geçici ada yazıp taşıyarak güncelliyor — web yarısı yazılmış bir
 JSON okumasın diye. Bu yüzden Compose'da bağlanan şey **dizin**
-(`UPDATE_STATE_DIR` → `/data/state:ro`): bind ile bağlanan tek bir *dosya* eski
+(`UPDATE_STATE_DIR` → `/data/state:ro`): bind ile bağlanan tek bir _dosya_ eski
 inode'a takılı kalır ve taşımadan sonra bir daha hiç değişmez. Ekran ilk günün
 verisini sonsuza kadar gösterirdi.
 
@@ -2070,23 +2098,23 @@ hâlde toplam da.
 
 Yazma `increment`/`decrement` ile yapılıyor, oku-sonra-yaz ile değil: iki
 eşzamanlı siparişin aynı varyantı okuyup aynı sonucu yazması (lost update) böyle
-imkânsız. `balanceAfter` satırdan geri okunuyor, dolayısıyla gerçekten *o
-hareketten sonraki* bakiye.
+imkânsız. `balanceAfter` satırdan geri okunuyor, dolayısıyla gerçekten _o
+hareketten sonraki_ bakiye.
 
 ### Altı sebep
 
-| Kaynak | Ne zaman | Kim yazar |
-|--------|----------|-----------|
-| `ORDER` | Sipariş **oluşturulduğunda** — sevkte değil | `order.ts` |
-| `ORDER_CANCEL` | İptal ve ret malı geri verir | `order-lifecycle.ts`, `order-approval.ts` |
-| `MANUAL` | Fire, numune, hurda, bulunan fazla mal | `/admin/stok` |
-| `COUNT` | Sayım farkı | `/admin/stok` |
-| `TRANSFER` | Depolar arası aktarım (iki bacak) | `/admin/stok` |
-| `ERP` | Gecelik senkronun farkı | ERP ajanı |
+| Kaynak         | Ne zaman                                    | Kim yazar                                 |
+| -------------- | ------------------------------------------- | ----------------------------------------- |
+| `ORDER`        | Sipariş **oluşturulduğunda** — sevkte değil | `order.ts`                                |
+| `ORDER_CANCEL` | İptal ve ret malı geri verir                | `order-lifecycle.ts`, `order-approval.ts` |
+| `MANUAL`       | Fire, numune, hurda, bulunan fazla mal      | `/admin/stok`                             |
+| `COUNT`        | Sayım farkı                                 | `/admin/stok`                             |
+| `TRANSFER`     | Depolar arası aktarım (iki bacak)           | `/admin/stok`                             |
+| `ERP`          | Gecelik senkronun farkı                     | ERP ajanı                                 |
 
 Sipariş **girildiği anda** düşüyor: satılabilir adet bu sistemde "sipariş
 edilmemiş olan"dır, yoksa aynı son kutu iki müşteriye satılırdı. Hareket sipariş
-satırından *sonra* yazılıyor ki `orderId`'yi taşıyabilsin — en büyük kaynağı
+satırından _sonra_ yazılıyor ki `orderId`'yi taşıyabilsin — en büyük kaynağı
 isimsiz "ORDER" olan bir defter hiçbir soruyu cevaplamaz.
 
 İptal, siparişin satırlarından okuyor; defterdeki çıkış hareketlerinden değil.
@@ -2186,12 +2214,12 @@ yapılacak tartışmayı çözmüyor.
 
 `CurrencyNote` tek bileşen, dört yüzeyde:
 
-| Yer | Ne basar | Neden |
-|-----|----------|-------|
-| Vitrin kartı ve ürün detayı | `12,50 USD` | Müşteri hangi sayıdan çevrildiğini görür |
-| Sepet satırı | `birim 12,50 USD` | Sipariş öncesi son kontrol |
-| Sipariş detayı | `100,00 USD × 34,2150` | Kur artık donmuş, gösterilebilir |
-| Fatura | `100,00 USD × 34,2150` | Faturayı kontrol eden çarpımı kendi yapar |
+| Yer                         | Ne basar               | Neden                                     |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Vitrin kartı ve ürün detayı | `12,50 USD`            | Müşteri hangi sayıdan çevrildiğini görür  |
+| Sepet satırı                | `birim 12,50 USD`      | Sipariş öncesi son kontrol                |
+| Sipariş detayı              | `100,00 USD × 34,2150` | Kur artık donmuş, gösterilebilir          |
+| Fatura                      | `100,00 USD × 34,2150` | Faturayı kontrol eden çarpımı kendi yapar |
 
 Sepette **kur yok**, ötekilerde var: sepetteki kur henüz donmadı, sipariş
 verildiğinde donacak. Orada bir kur göstermek, tutulmayacak bir söz verirdi.
@@ -2793,13 +2821,13 @@ Talep açmak ve kabul etmek kayıt işi. **Stok girişi ile cari alacak yalnızc
 `RECEIVED` adımında**, tek işlemin içinde yazılıyor. Kabul anında stok
 artırılsaydı, yola çıkmamış — belki hiç çıkmayacak — mal satılabilir görünürdü.
 
-| Durum | Anlamı | Defter etkisi |
-|---|---|---|
-| `REQUESTED` | Talep açıldı | yok |
-| `APPROVED` | Kabul edildi, mal bekleniyor | yok |
-| `RECEIVED` | Teslim alındı | stok girişi + cari alacak |
-| `REJECTED` | Reddedildi | yok (hak geri döner) |
-| `CANCELLED` | Vazgeçildi | yok (hak geri döner) |
+| Durum       | Anlamı                       | Defter etkisi             |
+| ----------- | ---------------------------- | ------------------------- |
+| `REQUESTED` | Talep açıldı                 | yok                       |
+| `APPROVED`  | Kabul edildi, mal bekleniyor | yok                       |
+| `RECEIVED`  | Teslim alındı                | stok girişi + cari alacak |
+| `REJECTED`  | Reddedildi                   | yok (hak geri döner)      |
+| `CANCELLED` | Vazgeçildi                   | yok (hak geri döner)      |
 
 `REQUESTED → RECEIVED` geçişi **yok**: mal kabul edilmeden teslim alınamaz.
 Kabul ile teslim aynı dakikada olsa bile iki ayrı kayıt — "kim kabul etti" ile
@@ -2846,126 +2874,201 @@ ikisinin arasında çıkıyor.
 21 rota testi (`apps/web/test/returns.test.ts`) bu kuralların defter tarafını
 sınıyor.
 
-## 58. API Uçları
+## 58. İki Adımlı Doğrulama (Adım 63)
 
-| Method | Yol | Roller |
-|--------|-----|--------|
-| GET | `/api/health` | herkes (kimliksiz; yalnızca evet/hayır, 200/503) |
-| POST | `/api/auth/[...nextauth]` | herkes (web cookie oturumu) |
-| POST | `/api/auth/forgot-password` | herkes (yanıt her zaman aynı — hesap ifşa etmez) |
-| POST | `/api/auth/reset-password` | bağlantı sahibi (token'ın kendisi kimlik) |
-| POST | `/api/mobile/login` | herkes (bearer token üretir) |
-| GET | `/api/mobile/me` | kimliği doğrulanmış |
-| POST/DELETE | `/api/mobile/push-token` | kimliği doğrulanmış (sahip oturumdan, gövdeden değil) |
-| GET | `/api/catalog?companyId&categoryId&search` | 4 rol |
-| GET | `/api/categories` | 4 rol |
-| GET | `/api/companies` | kimliği doğrulanmış (role göre kapsam) |
-| GET | `/api/companies/:id/statement?from&to` | kendi firması / portföy / hepsi |
-| GET | `/api/companies/:id/aging` | kendi firması / portföy / hepsi |
-| GET | `/api/orders/:id/returnable` | 4 rol (kapsam hesaptan; sevk edilmemişte 409) |
-| GET/POST | `/api/returns` | 4 rol (`orders.view`; POST talep açar) |
-| GET/POST | `/api/returns/:id` | 4 rol (karar `returns.manage` ister, serviste) |
-| GET | `/api/reports/sales?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
-| GET | `/api/reports/products?from&to&companyId&limit` | süper admin, plasiyer (kendi portföyü) |
-| GET | `/api/reports/collections?from&to&companyId&limit` | süper admin, plasiyer (kendi kaydettikleri) |
-| GET | `/api/reports/receivables` | süper admin, plasiyer (kendi portföyü) |
-| GET | `/api/reports/reps?from&to` | süper admin |
-| GET | `/api/reports/datasets` | süper admin, plasiyer, firma yöneticisi |
-| POST | `/api/reports/run` | süper admin, plasiyer, firma yöneticisi (kaydetmeden çalıştır) |
-| GET · POST | `/api/reports/definitions` | süper admin, plasiyer, firma yöneticisi |
-| GET · PATCH · DELETE | `/api/reports/definitions/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
-| GET | `/api/reports/definitions/:id/run` | okuyabilen herkes (kapsam çalıştırana göre) |
-| GET · PUT | `/api/reports/definitions/:id/schedule` | yazma: sahibi + süper admin (gönderim sahibin kapsamıyla çalışır) |
-| GET · POST | `/api/reports/dashboards` | süper admin, plasiyer, firma yöneticisi |
-| GET · PATCH · DELETE | `/api/reports/dashboards/:id` | sahibi + süper admin (okuma: paylaşıksa herkes) |
-| GET | `/api/reports/dashboards/:id/run` | okuyabilen herkes (her kart çalıştıranın kapsamıyla) |
-| GET | `/api/reports/definitions/:id/export?format=CSV|XLSX` | okuyabilen herkes (kapsam çalıştırana göre) |
-| GET · PUT · DELETE | `/api/cart?companyId=` | 4 rol (yalnızca kendi sepeti) |
-| POST | `/api/cart/items` | 4 rol (tek satır ekle/güncelle/sil) |
-| POST | `/api/admin/uploads` | süper admin (multipart görsel) |
-| GET | `/api/activity?companyId&from&to&limit` | süper admin, plasiyer, firma yöneticisi (kapsamlı) |
-| GET · POST | `/api/admin/audit/retention` | süper admin (durum / eski kayıtları sil) |
-| GET | `/api/admin/audit/export?from&to` | süper admin (CSV akışı) |
-| GET | `/api/admin/variants` | süper admin (hediye seçimi için varyant listesi) |
-| GET | `/api/media/<klasör>/<dosya>[?w=160|320|640|960]` | herkes (katalog görseli; `w` küçültülmüş WebP) |
-| POST · GET | `/api/orders` | 4 rol (kapsam role göre) |
-| POST | `/api/orders/quote` | 4 rol (sepeti fiyatlar, sipariş oluşturmaz) |
-| GET | `/api/orders/:id` | 4 rol (kendi firması / portföy / hepsi) |
-| POST | `/api/orders/:id/status` | süper admin (sevkiyat), firma yöneticisi (iptal) |
-| POST | `/api/orders/:id/approve` | firma yöneticisi, süper admin |
-| POST | `/api/orders/:id/reject` | firma yöneticisi, süper admin |
-| GET · POST | `/api/orders/:id/shipments` | okuma 4 rol (kendi kapsamı), yazma süper admin |
-| DELETE | `/api/shipments/:id` | süper admin (faturalanmamışsa) |
-| GET · POST | `/api/orders/:id/invoices` | okuma 4 rol (kendi kapsamı), yazma süper admin |
-| GET · DELETE | `/api/invoices/:id` | okuma 4 rol (kendi kapsamı), iptal süper admin |
-| GET · POST | `/api/admin/document-series` | süper admin |
-| PATCH · DELETE | `/api/admin/document-series/:id` | süper admin |
-| POST · GET | `/api/checkins?companyId=` | plasiyer, süper admin (GET listeyle birlikte açık ziyareti de döndürür) |
-| POST | `/api/checkins/:id/checkout` | plasiyer, süper admin (yalnız açan kapatır) |
-| POST · GET | `/api/payments?companyId=` | plasiyer, süper admin (firma verilmezse "kendi kaydettiklerim") |
-| POST | `/api/payments/:id/reverse` | plasiyer (portföyü), süper admin — ters kayıt yazar, silmez |
-| GET · POST | `/api/admin/companies?search&includeInactive` | süper admin |
-| GET · PATCH · DELETE | `/api/admin/companies/:id` | süper admin |
-| POST | `/api/admin/companies/:id/addresses` | süper admin |
-| PATCH · DELETE | `/api/admin/addresses/:id` | süper admin |
-| GET · POST | `/api/admin/users?search&companyId&includeInactive` | süper admin, firma yöneticisi (kendi firması) |
-| GET · PATCH · DELETE | `/api/admin/users/:id` | süper admin, firma yöneticisi (kendi firması) |
-| POST | `/api/admin/users/:id/password` | süper admin, firma yöneticisi (kendi firması) |
-| GET | `/api/admin/sales-reps` | süper admin |
-| GET · POST | `/api/admin/categories` | süper admin |
-| PATCH · DELETE | `/api/admin/categories/:id` | süper admin |
-| GET · POST | `/api/admin/products` | süper admin |
-| GET · PATCH · DELETE | `/api/admin/products/:id` | süper admin |
-| POST | `/api/admin/products/:id/variants` | süper admin |
-| PATCH · DELETE | `/api/admin/variants/:id` | süper admin |
-| GET · POST | `/api/admin/variants/:id/prices` | süper admin |
-| DELETE | `/api/admin/prices/:id` | süper admin |
-| GET · POST | `/api/admin/customer-groups` | süper admin |
-| PATCH · DELETE | `/api/admin/customer-groups/:id` | süper admin |
-| GET · POST | `/api/admin/companies/:id/discounts` | süper admin |
-| DELETE | `/api/admin/discounts/:id` | süper admin |
-| GET · POST | `/api/admin/promotions` | süper admin |
-| GET · PATCH · DELETE | `/api/admin/promotions/:id` | süper admin |
-| GET | `/api/admin/promotions/rules` | süper admin (kural kataloğu) |
-| GET · POST | `/api/admin/announcements` | süper admin |
-| PATCH · DELETE | `/api/admin/announcements/:id` | süper admin |
-| GET · POST | `/api/admin/payment-terms` | süper admin |
-| PATCH · DELETE | `/api/admin/payment-terms/:id` | süper admin (firmaya tanımlı vade silinemez) |
-| GET | `/api/payment-options?companyId=` | 4 rol (yalnız gösterim — asıl kontrol `buildQuote`'ta) |
-| GET · POST | `/api/admin/volume-tiers` | süper admin |
-| PATCH · DELETE | `/api/admin/volume-tiers/:id` | süper admin (firmaya atanmış basamak silinemez) |
-| GET | `/api/volume-status?companyId=` | 4 rol (yalnız gösterim — oran her fiyatlamada sunucuda çözülür) |
-| GET · POST | `/api/admin/cash-accounts` | süper admin (hesaplar + yöntem eşlemesi) |
-| PATCH · DELETE | `/api/admin/cash-accounts/:id` | süper admin (hareketi olan hesap silinmez, kapatılır) |
-| POST | `/api/admin/cash-accounts/:id/default` | süper admin (diğerlerinin bayrağını temizler) |
-| PUT | `/api/admin/cash-accounts/bindings` | süper admin (yöntem → hesap; `null` varsayılana döndürür) |
-| GET · POST | `/api/admin/cash-movements?accountId&source&direction&from&to` | süper admin (defter / elle giriş-çıkış) |
-| POST | `/api/admin/cash-movements/transfer` | süper admin (iki bacak tek işlemde) |
-| POST | `/api/admin/cash-movements/:id/reverse` | süper admin (yalnız elle/aktarım kaydı) |
-| GET | `/api/admin/cash-movements/summary?from&to` | süper admin (gün sonu) |
-| GET | `/api/cash-accounts` | plasiyer, süper admin (tahsilat seçicisi — bakiye göstermez) |
-| GET · POST | `/api/admin/warehouses` | süper admin (`stock.view` / `stock.manage`) |
-| GET | `/api/admin/stock?q&warehouseId&lowOnly` | süper admin (`stock.view` — seviyeler + kırılım) |
-| GET · POST | `/api/admin/stock-movements?variantId&warehouseId&source&direction&q&from&to` | süper admin (defter / elle giriş-çıkış) |
-| POST | `/api/admin/stock-movements/count` | süper admin (sayılan adet; farkı sistem yazar) |
-| POST | `/api/admin/stock-movements/transfer` | süper admin (iki bacak tek işlemde) |
-| POST | `/api/admin/stock-movements/:id/reverse` | süper admin (sipariş kaynaklı hareket reddedilir) |
-| GET | `/api/admin/stock-movements/summary?from&to` | süper admin (dönem özeti, sebebe göre) |
-| GET · POST | `/api/admin/stock-lots?variantId&q&expiredOnly&withinDays&includeEmpty` | süper admin (parti listesi + SKT özeti / mal kabul) |
-| PATCH | `/api/admin/stock-lots/:id` | süper admin (künye düzeltme, bloke/blokeyi kaldır) |
-| POST | `/api/admin/stock-lots/:id/write-off` | süper admin (fire/imha, gerekçe zorunlu) |
-| GET | `/api/admin/payment-intents?status&companyId&orderId` | süper admin (kart tahsilatları + aktif sağlayıcı) |
-| POST | `/api/admin/payment-intents/:id/capture` | süper admin (kasaya yazan tek yol; çift tıklama ikinci kayıt yazmaz) |
-| POST | `/api/admin/payment-intents/:id/cancel` | süper admin (tahsil edilmiş ödeme reddedilir — iade gerekir) |
-| GET | `/api/branding/<dosya>` | herkes (kiracı klasöründeki logo/favicon — oturum taşımayan `<img>` ve yazdırılan belge için) |
-| GET | `/api/announcements` | 4 rol (kendi firmasının grubuna göre süzülür) |
-| GET | `/api/catalog/:id` | 4 rol (fiyat firmaya göre çözülür) |
-| GET · PATCH | `/api/account` | kimliği doğrulanmış (yalnız kendi hesabı) |
-| POST | `/api/account/password` | kimliği doğrulanmış (yalnız kendi hesabı) |
-| GET | `/api/account/activity` | kimliği doğrulanmış (yalnız kendi kayıtları) |
-| GET · PUT · DELETE | `/api/admin/page-layout/:key` | süper admin (`design.manage`; GET katalogla birlikte döner, DELETE varsayılana döndürür) |
-| GET · POST | `/api/admin/setup` | süper admin (`organization.manage`; GET kurulum durumu + paketler, POST paketi uygular) |
-| GET | `/api/admin/audit` | süper admin (yalnız GET — POST/PATCH/DELETE 405) |
+Şifre bilen herkesin hesaba girebildiği bir sistemde en pahalı kayıp yönetim
+hesabıdır; TOTP onu bir cihaza bağlıyor.
+
+- **Kurulum** `/hesabim`de ve dört hâli tek panelde topluyor: kurulamaz
+  (sunucuda `TOTP_ENCRYPTION_KEY` yok), kapalı, kurulum sürüyor, açık. Ayrı
+  ekranlara bölmek, zorunlu kapsamdaki kullanıcının kendini nerede bulacağını
+  belirsizleştirirdi — kapı onu buraya yolluyor.
+- **Anahtar şifreli saklanıyor.** Ortam anahtarı yoksa kurulum hiç
+  başlamıyor: yarım kurulmuş bir 2FA, hiç kurulmamış olandan kötü.
+- **Yedek kodlar bir kez gösteriliyor** ve her biri bir kez kullanılıyor. Kod
+  üretmek açık olan bütün oturumları düşürüyor (mobil dahil).
+- **Zorunlu kapsam rolle değil izinle**: yüksek etkili izni olan hesaplarda
+  2FA kapatılamıyor. Telefon değişirse yönetici sıfırlıyor —
+  `/admin/users`taki düğme anahtarı siliyor, hesabı 2FA'sız bırakmıyor; bir
+  sonraki girişte kurulum ekranına düşüyor.
+- **`/hesabim` ikinci adım kapısından muaf tek ekran.** Kapı orada da
+  çalışsaydı yönlendirme kendi üstüne kapanır ve hesap kilitlenirdi.
+- Mobil akış aynı: giriş 2FA istiyorsa uygulama kodu soruyor.
+
+21 rota testi (`apps/web/test/two-factor.test.ts`).
+
+## 59. Arayüz Yenilemesi (Adım 1-11)
+
+Tasarım dili **"Executive Precision"**: tek renk ailesi gri, yüzeyler gölgeyle
+değil 1px çizgiyle ayrılıyor, köşeler sıkı, tek yazı tipi, tek kabuk. Ayrıntı ve
+her adımın kararları `docs/design/REDESIGN.md`de; her biten ekranın görüntüsü
+`docs/design/screens/adim-<n>/` altında (64 görüntü).
+
+Kalıcı olarak sisteme giren şeyler:
+
+- **Anlamsal renk katmanı.** `surface`, `panel`, `sunken`, `line`, `ink`,
+  `accent`, `positive`/`caution`/`critical` ve `scrim` — hepsi CSS
+  değişkeninden okuyor ve koyu temada kendiliğinden dönüyor. Ekran kodunda
+  `dark:` ikizi yok: sayaç sıfır (`documents/**` hariç — kâğıt her zaman
+  beyaz).
+- **Tek kabuk.** `SidebarShell`: solda 256px gezinme, üstte 64px şerit.
+  Yönetim, portal, plasiyer ve kurye aynı yerleşimi paylaşıyor. Sayfa boşluğu
+  kabuktan geliyor, ekranlar kendi gutter'ını yazmıyor.
+- **Paylaşılan bileşenler.** `ui.tsx` (kart, sayı kutusu, ölçek, künye, tablo,
+  sekme, künye şeridi, dipnot) ve `form.tsx` (girdi, düğme, panel, pencere,
+  hata ve uyarı satırı). Kanca taşıyan üçlü ayrı: `table-sort` (sıralama),
+  `toast` (kaydetme onayı), `show-more` (uzun liste).
+- **Kiracının adı kabukta ve sekme başlığında** — `tenants/<slug>/tenant.json`
+  içindeki ticari unvan.
+- **Genel arama (Ctrl+K)**: ürün, firma, sipariş numarası tek kutudan; kapsam
+  sunucuda bir kez yazılı.
+- **Ekran görüntüsü kuralı.** Bir adım bittiğinde ekranları
+  `scripts/screens.mjs` kayıt defterine giriyor ve `pnpm shots --step <n>`
+  onları çekiyor. Sekme ve kip **URL'de** tutulmak zorunda: betik düğmelere
+  basmıyor, fotoğraflanamayan ekranın doğru göründüğü söylenemez.
+
+Açık kalan tek adım: **9 — mobil** (`apps/mobile` aynı palete taşınacak).
+
+## 60. Test Yalıtımı
+
+Rota ve bütünleşme testleri gerçek Postgres'e yazıyor. 2026-08-28'e kadar bunu
+gösterim veritabanının içinde yapıyorlardı ve yarıda kesilen her koşu artık
+bırakıyordu — kullanıcı ekranının görüntüsünde `…@test.local` satırları vardı.
+
+- Testler artık **ayrı bir şemada** koşuyor (`?schema=test`). İki vitest
+  kurulum dosyası da Prisma içe aktarılmadan önce `DATABASE_URL`i çeviriyor
+  (`packages/database/src/test-env.ts`).
+- `pnpm db:test-prepare` şemayı kuruyor: göçler + testlerin varlığını
+  varsaydığı başvuru verisi (belge serisi, etiket şablonları). `--reset`
+  sıfırdan kuruyor.
+- `pnpm db:purge-test-residue` ayrımdan önce birikeni temizliyor. Kuru kip
+  varsayılan; imza e-postalardan çıkarılan koşu etiketleri.
+
+## 61. API Uçları
+
+| Method               | Yol                                                                           | Roller                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| GET                  | `/api/health`                                                                 | herkes (kimliksiz; yalnızca evet/hayır, 200/503)                                              |
+| POST                 | `/api/auth/[...nextauth]`                                                     | herkes (web cookie oturumu)                                                                   |
+| POST                 | `/api/auth/forgot-password`                                                   | herkes (yanıt her zaman aynı — hesap ifşa etmez)                                              |
+| POST                 | `/api/auth/reset-password`                                                    | bağlantı sahibi (token'ın kendisi kimlik)                                                     |
+| POST                 | `/api/mobile/login`                                                           | herkes (bearer token üretir)                                                                  |
+| GET                  | `/api/mobile/me`                                                              | kimliği doğrulanmış                                                                           |
+| POST/DELETE          | `/api/mobile/push-token`                                                      | kimliği doğrulanmış (sahip oturumdan, gövdeden değil)                                         |
+| GET                  | `/api/catalog?companyId&categoryId&search`                                    | 4 rol                                                                                         |
+| GET                  | `/api/categories`                                                             | 4 rol                                                                                         |
+| GET                  | `/api/companies`                                                              | kimliği doğrulanmış (role göre kapsam)                                                        |
+| GET                  | `/api/companies/:id/statement?from&to`                                        | kendi firması / portföy / hepsi                                                               |
+| GET                  | `/api/companies/:id/aging`                                                    | kendi firması / portföy / hepsi                                                               |
+| GET                  | `/api/orders/:id/returnable`                                                  | 4 rol (kapsam hesaptan; sevk edilmemişte 409)                                                 |
+| GET/POST             | `/api/returns`                                                                | 4 rol (`orders.view`; POST talep açar)                                                        |
+| GET/POST             | `/api/returns/:id`                                                            | 4 rol (karar `returns.manage` ister, serviste)                                                |
+| GET                  | `/api/reports/sales?from&to&companyId&limit`                                  | süper admin, plasiyer (kendi portföyü)                                                        |
+| GET                  | `/api/reports/products?from&to&companyId&limit`                               | süper admin, plasiyer (kendi portföyü)                                                        |
+| GET                  | `/api/reports/collections?from&to&companyId&limit`                            | süper admin, plasiyer (kendi kaydettikleri)                                                   |
+| GET                  | `/api/reports/receivables`                                                    | süper admin, plasiyer (kendi portföyü)                                                        |
+| GET                  | `/api/reports/reps?from&to`                                                   | süper admin                                                                                   |
+| GET                  | `/api/reports/datasets`                                                       | süper admin, plasiyer, firma yöneticisi                                                       |
+| POST                 | `/api/reports/run`                                                            | süper admin, plasiyer, firma yöneticisi (kaydetmeden çalıştır)                                |
+| GET · POST           | `/api/reports/definitions`                                                    | süper admin, plasiyer, firma yöneticisi                                                       |
+| GET · PATCH · DELETE | `/api/reports/definitions/:id`                                                | sahibi + süper admin (okuma: paylaşıksa herkes)                                               |
+| GET                  | `/api/reports/definitions/:id/run`                                            | okuyabilen herkes (kapsam çalıştırana göre)                                                   |
+| GET · PUT            | `/api/reports/definitions/:id/schedule`                                       | yazma: sahibi + süper admin (gönderim sahibin kapsamıyla çalışır)                             |
+| GET · POST           | `/api/reports/dashboards`                                                     | süper admin, plasiyer, firma yöneticisi                                                       |
+| GET · PATCH · DELETE | `/api/reports/dashboards/:id`                                                 | sahibi + süper admin (okuma: paylaşıksa herkes)                                               |
+| GET                  | `/api/reports/dashboards/:id/run`                                             | okuyabilen herkes (her kart çalıştıranın kapsamıyla)                                          |
+| GET                  | `/api/reports/definitions/:id/export?format=CSV                               | XLSX`                                                                                         | okuyabilen herkes (kapsam çalıştırana göre) |
+| GET                  | `/api/search?q=`                                                              | kimliği doğrulanmış (her tür kendi iznine ve kapsamına göre süzülür)                          |
+| POST · DELETE        | `/api/account/two-factor`                                                     | kendi hesabı (kapatma kod ister)                                                              |
+| POST                 | `/api/account/two-factor/confirm`                                             | kendi hesabı (kurulumu doğrular, yedek kodları döndürür)                                      |
+| POST                 | `/api/account/two-factor/backup-codes`                                        | kendi hesabı (kod ister)                                                                      |
+| DELETE               | `/api/admin/users/:id/two-factor`                                             | `users.manage` (anahtarı siler, hesabı muaf tutmaz)                                           |
+| GET · PUT · DELETE   | `/api/cart?companyId=`                                                        | 4 rol (yalnızca kendi sepeti)                                                                 |
+| POST                 | `/api/cart/items`                                                             | 4 rol (tek satır ekle/güncelle/sil)                                                           |
+| POST                 | `/api/admin/uploads`                                                          | süper admin (multipart görsel)                                                                |
+| GET                  | `/api/activity?companyId&from&to&limit`                                       | süper admin, plasiyer, firma yöneticisi (kapsamlı)                                            |
+| GET · POST           | `/api/admin/audit/retention`                                                  | süper admin (durum / eski kayıtları sil)                                                      |
+| GET                  | `/api/admin/audit/export?from&to`                                             | süper admin (CSV akışı)                                                                       |
+| GET                  | `/api/admin/variants`                                                         | süper admin (hediye seçimi için varyant listesi)                                              |
+| GET                  | `/api/media/<klasör>/<dosya>[?w=160                                           | 320                                                                                           | 640                                         | 960]` | herkes (katalog görseli; `w` küçültülmüş WebP) |
+| POST · GET           | `/api/orders`                                                                 | 4 rol (kapsam role göre)                                                                      |
+| POST                 | `/api/orders/quote`                                                           | 4 rol (sepeti fiyatlar, sipariş oluşturmaz)                                                   |
+| GET                  | `/api/orders/:id`                                                             | 4 rol (kendi firması / portföy / hepsi)                                                       |
+| POST                 | `/api/orders/:id/status`                                                      | süper admin (sevkiyat), firma yöneticisi (iptal)                                              |
+| POST                 | `/api/orders/:id/approve`                                                     | firma yöneticisi, süper admin                                                                 |
+| POST                 | `/api/orders/:id/reject`                                                      | firma yöneticisi, süper admin                                                                 |
+| GET · POST           | `/api/orders/:id/shipments`                                                   | okuma 4 rol (kendi kapsamı), yazma süper admin                                                |
+| DELETE               | `/api/shipments/:id`                                                          | süper admin (faturalanmamışsa)                                                                |
+| GET · POST           | `/api/orders/:id/invoices`                                                    | okuma 4 rol (kendi kapsamı), yazma süper admin                                                |
+| GET · DELETE         | `/api/invoices/:id`                                                           | okuma 4 rol (kendi kapsamı), iptal süper admin                                                |
+| GET · POST           | `/api/admin/document-series`                                                  | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/document-series/:id`                                              | süper admin                                                                                   |
+| POST · GET           | `/api/checkins?companyId=`                                                    | plasiyer, süper admin (GET listeyle birlikte açık ziyareti de döndürür)                       |
+| POST                 | `/api/checkins/:id/checkout`                                                  | plasiyer, süper admin (yalnız açan kapatır)                                                   |
+| POST · GET           | `/api/payments?companyId=`                                                    | plasiyer, süper admin (firma verilmezse "kendi kaydettiklerim")                               |
+| POST                 | `/api/payments/:id/reverse`                                                   | plasiyer (portföyü), süper admin — ters kayıt yazar, silmez                                   |
+| GET · POST           | `/api/admin/companies?search&includeInactive`                                 | süper admin                                                                                   |
+| GET · PATCH · DELETE | `/api/admin/companies/:id`                                                    | süper admin                                                                                   |
+| POST                 | `/api/admin/companies/:id/addresses`                                          | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/addresses/:id`                                                    | süper admin                                                                                   |
+| GET · POST           | `/api/admin/users?search&companyId&includeInactive`                           | süper admin, firma yöneticisi (kendi firması)                                                 |
+| GET · PATCH · DELETE | `/api/admin/users/:id`                                                        | süper admin, firma yöneticisi (kendi firması)                                                 |
+| POST                 | `/api/admin/users/:id/password`                                               | süper admin, firma yöneticisi (kendi firması)                                                 |
+| GET                  | `/api/admin/sales-reps`                                                       | süper admin                                                                                   |
+| GET · POST           | `/api/admin/categories`                                                       | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/categories/:id`                                                   | süper admin                                                                                   |
+| GET · POST           | `/api/admin/products`                                                         | süper admin                                                                                   |
+| GET · PATCH · DELETE | `/api/admin/products/:id`                                                     | süper admin                                                                                   |
+| POST                 | `/api/admin/products/:id/variants`                                            | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/variants/:id`                                                     | süper admin                                                                                   |
+| GET · POST           | `/api/admin/variants/:id/prices`                                              | süper admin                                                                                   |
+| DELETE               | `/api/admin/prices/:id`                                                       | süper admin                                                                                   |
+| GET · POST           | `/api/admin/customer-groups`                                                  | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/customer-groups/:id`                                              | süper admin                                                                                   |
+| GET · POST           | `/api/admin/companies/:id/discounts`                                          | süper admin                                                                                   |
+| DELETE               | `/api/admin/discounts/:id`                                                    | süper admin                                                                                   |
+| GET · POST           | `/api/admin/promotions`                                                       | süper admin                                                                                   |
+| GET · PATCH · DELETE | `/api/admin/promotions/:id`                                                   | süper admin                                                                                   |
+| GET                  | `/api/admin/promotions/rules`                                                 | süper admin (kural kataloğu)                                                                  |
+| GET · POST           | `/api/admin/announcements`                                                    | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/announcements/:id`                                                | süper admin                                                                                   |
+| GET · POST           | `/api/admin/payment-terms`                                                    | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/payment-terms/:id`                                                | süper admin (firmaya tanımlı vade silinemez)                                                  |
+| GET                  | `/api/payment-options?companyId=`                                             | 4 rol (yalnız gösterim — asıl kontrol `buildQuote`'ta)                                        |
+| GET · POST           | `/api/admin/volume-tiers`                                                     | süper admin                                                                                   |
+| PATCH · DELETE       | `/api/admin/volume-tiers/:id`                                                 | süper admin (firmaya atanmış basamak silinemez)                                               |
+| GET                  | `/api/volume-status?companyId=`                                               | 4 rol (yalnız gösterim — oran her fiyatlamada sunucuda çözülür)                               |
+| GET · POST           | `/api/admin/cash-accounts`                                                    | süper admin (hesaplar + yöntem eşlemesi)                                                      |
+| PATCH · DELETE       | `/api/admin/cash-accounts/:id`                                                | süper admin (hareketi olan hesap silinmez, kapatılır)                                         |
+| POST                 | `/api/admin/cash-accounts/:id/default`                                        | süper admin (diğerlerinin bayrağını temizler)                                                 |
+| PUT                  | `/api/admin/cash-accounts/bindings`                                           | süper admin (yöntem → hesap; `null` varsayılana döndürür)                                     |
+| GET · POST           | `/api/admin/cash-movements?accountId&source&direction&from&to`                | süper admin (defter / elle giriş-çıkış)                                                       |
+| POST                 | `/api/admin/cash-movements/transfer`                                          | süper admin (iki bacak tek işlemde)                                                           |
+| POST                 | `/api/admin/cash-movements/:id/reverse`                                       | süper admin (yalnız elle/aktarım kaydı)                                                       |
+| GET                  | `/api/admin/cash-movements/summary?from&to`                                   | süper admin (gün sonu)                                                                        |
+| GET                  | `/api/cash-accounts`                                                          | plasiyer, süper admin (tahsilat seçicisi — bakiye göstermez)                                  |
+| GET · POST           | `/api/admin/warehouses`                                                       | süper admin (`stock.view` / `stock.manage`)                                                   |
+| GET                  | `/api/admin/stock?q&warehouseId&lowOnly`                                      | süper admin (`stock.view` — seviyeler + kırılım)                                              |
+| GET · POST           | `/api/admin/stock-movements?variantId&warehouseId&source&direction&q&from&to` | süper admin (defter / elle giriş-çıkış)                                                       |
+| POST                 | `/api/admin/stock-movements/count`                                            | süper admin (sayılan adet; farkı sistem yazar)                                                |
+| POST                 | `/api/admin/stock-movements/transfer`                                         | süper admin (iki bacak tek işlemde)                                                           |
+| POST                 | `/api/admin/stock-movements/:id/reverse`                                      | süper admin (sipariş kaynaklı hareket reddedilir)                                             |
+| GET                  | `/api/admin/stock-movements/summary?from&to`                                  | süper admin (dönem özeti, sebebe göre)                                                        |
+| GET · POST           | `/api/admin/stock-lots?variantId&q&expiredOnly&withinDays&includeEmpty`       | süper admin (parti listesi + SKT özeti / mal kabul)                                           |
+| PATCH                | `/api/admin/stock-lots/:id`                                                   | süper admin (künye düzeltme, bloke/blokeyi kaldır)                                            |
+| POST                 | `/api/admin/stock-lots/:id/write-off`                                         | süper admin (fire/imha, gerekçe zorunlu)                                                      |
+| GET                  | `/api/admin/payment-intents?status&companyId&orderId`                         | süper admin (kart tahsilatları + aktif sağlayıcı)                                             |
+| POST                 | `/api/admin/payment-intents/:id/capture`                                      | süper admin (kasaya yazan tek yol; çift tıklama ikinci kayıt yazmaz)                          |
+| POST                 | `/api/admin/payment-intents/:id/cancel`                                       | süper admin (tahsil edilmiş ödeme reddedilir — iade gerekir)                                  |
+| GET                  | `/api/branding/<dosya>`                                                       | herkes (kiracı klasöründeki logo/favicon — oturum taşımayan `<img>` ve yazdırılan belge için) |
+| GET                  | `/api/announcements`                                                          | 4 rol (kendi firmasının grubuna göre süzülür)                                                 |
+| GET                  | `/api/catalog/:id`                                                            | 4 rol (fiyat firmaya göre çözülür)                                                            |
+| GET · PATCH          | `/api/account`                                                                | kimliği doğrulanmış (yalnız kendi hesabı)                                                     |
+| POST                 | `/api/account/password`                                                       | kimliği doğrulanmış (yalnız kendi hesabı)                                                     |
+| GET                  | `/api/account/activity`                                                       | kimliği doğrulanmış (yalnız kendi kayıtları)                                                  |
+| GET · PUT · DELETE   | `/api/admin/page-layout/:key`                                                 | süper admin (`design.manage`; GET katalogla birlikte döner, DELETE varsayılana döndürür)      |
+| GET · POST           | `/api/admin/setup`                                                            | süper admin (`organization.manage`; GET kurulum durumu + paketler, POST paketi uygular)       |
+| GET                  | `/api/admin/audit`                                                            | süper admin (yalnız GET — POST/PATCH/DELETE 405)                                              |
 
 ---
 
@@ -2998,13 +3101,13 @@ için alınan hosting'de. Paylaşılan tek örnek yoktur. Bunun iki sonucu var:
 Özelleştirme kiracı klasöründen gelir (Adım 26) ve dört katmandır. Sınırı
 Next.js'in derleme modeli çizer, tercih değil:
 
-| Ne değişiyor | Yayına alma |
-|---|---|
-| Satıcı kimliği, logo, marka dosyaları | **Anında** — dosya, mtime önbelleği (Adım 26 ✅) |
-| Renk/font token'ları, metinler | **Anında** — CSS değişkeni (planlandı) |
-| Sayfa düzeni: hangi blok, hangi sırada | **Anında** — JSON + blok kayıt defteri (planlandı) |
-| Ödeme sağlayıcı, ERP eşitleme, iş kuralı | **Yeniden başlatma** — eklenti (planlandı) |
-| Yeni React bileşeni | **Yeniden derleme** — o kiracının imajı |
+| Ne değişiyor                             | Yayına alma                                        |
+| ---------------------------------------- | -------------------------------------------------- |
+| Satıcı kimliği, logo, marka dosyaları    | **Anında** — dosya, mtime önbelleği (Adım 26 ✅)   |
+| Renk/font token'ları, metinler           | **Anında** — CSS değişkeni (planlandı)             |
+| Sayfa düzeni: hangi blok, hangi sırada   | **Anında** — JSON + blok kayıt defteri (planlandı) |
+| Ödeme sağlayıcı, ERP eşitleme, iş kuralı | **Yeniden başlatma** — eklenti (planlandı)         |
+| Yeni React bileşeni                      | **Yeniden derleme** — o kiracının imajı            |
 
 ---
 
@@ -3033,7 +3136,8 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.
 - ~~**Ziyaret raporu yok**~~ — Adım 44'te kapatıldı: `CHECKINS` veri kümesine `source` ve saklanan `durationMinutes` eklendi; "kim kaç ziyaret yaptı, ne kadar sürdü, kaçı sahadan" artık gruplanabiliyor.
 - ~~**"Stok neden düştü" cevapsız**~~ — Adım 51'de kapatıldı: `StockMovement` defteri, eldeki adet artık onun bakiyesi, ERP senkronu ezmek yerine fark yazıyor. **Kalan:** sipariş bir depo seçmiyor — sipariş ve iptal hareketleri toplamı oynatıyor, kırılımı değil. Carinin bağlı deposundan düşürmek, backlog'daki "depo/şube bazlı stok + fiyat" maddesinin işi.
-- ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı: 115 rota testi (Adım 49'da 8 push testi eklendi), ağırlığı yetki sınırında. **Ekranlar (41 sayfa) hâlâ testsiz** ve tarayıcı seviyesinde e2e (Playwright) yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
+- ~~**Rota işleyicileri test edilmiyor**~~ — Adım 47'de kapatıldı; bugün 235 rota testi var, ağırlığı yetki sınırında. **Ekranlar hâlâ testsiz** ve tarayıcı seviyesinde e2e yok; `requirePage` yönlendirmeleri elle doğrulanıyor. Mobil uygulamada da tek test yok.
+- ~~**Testler gösterim veritabanını kirletiyor**~~ — 2026-08-28'de kapatıldı: testler ayrı bir Postgres şemasında koşuyor (`?schema=test`, `pnpm db:test-prepare`). Yarıda kesilen bir koşunun bıraktığı artık gösterim verisine değmiyor; birikmiş 41 satır `pnpm db:purge-test-residue` ile temizlendi.
 
 ### Mobil
 
@@ -3050,8 +3154,8 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 ### Daha büyük
 
 - ~~**Gıda: parti/SKT takibi yok**~~ — Adım 60'ta kapatıldı: parti defteri, FEFO sevkiyat, fire/bloke, kalem bazlı uyarı eşiği, `STOCK_LOTS` veri kümesi. **Kalan:** parti irsaliyede otomatik basılmıyor (defterden okunuyor), ve tartılan malın faturada yeniden tartıya göre fiyatlanması yok.
-- **Hediye kademesi tek seviyeli** — "her 10 adette 1 bedava" var, ancak "10 alana 1, 50 alana 6" gibi artan kademe tek kampanyayla kurulamıyor; her kademe ayrı kampanya olur.
-- **Görsel işlenmiyor** — yüklenen dosya olduğu gibi saklanıyor; küçük resim (thumbnail) üretimi, yeniden boyutlandırma ve WebP'ye dönüştürme yok. Depolama yerel disk; S3/MinIO sürücüsü yok.
+- ~~**Hediye kademesi tek seviyeli**~~ — Adım 55'te kapatıldı: `GIFT_TIER` (artan hediye) ve `PERCENT_OFF_TIER` (artan yüzde), tek kampanyada merdiven.
+- ~~**Görsel işlenmiyor**~~ — Adım 59'da kapatıldı: istendiğinde küçültme + WebP, diskte önbellek, `?w=` beyaz listesi. Depolama sürücüsü de geldi (2026-08-26): disk ya da S3/MinIO, SigV4 elle imzalanmış.
 - **Bildirim tercihi yok** — Adım 49'da push eklendi (e-postanın yanına), ama kullanıcı hangi olay için bildirim alacağını seçemiyor: ya hepsi ya hiçbiri. SMS kanalı da yok; o, sağlayıcı seçimi gerektiriyor.
 
 ### Canlıya çıkışta çözülecek
@@ -3073,18 +3177,34 @@ değil, canlıya çıkış turunda ele alınır.
 Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 
 ### Yakın plan
-- **Mobil tamamlama:** sipariş durum aksiyonları (şu an salt okunur), mobil sepetin sunucudaki `Cart` satırına taşınması, uygulamanın gerçek cihazda / Android emülatöründe koşturulması.
-- **Arayüz Faz 3 kalanı:** rapor tasarımcısı ve sipariş detayı ekranlarını da paylaşılan dile taşımak (vitrin kimliği yönetim tarafına uygulanmayacak).
-- **Nesne deposu sürücüsü:** yerel diskin yanına S3/MinIO. Küçük resim/WebP Adım 59'da geldi.
+
+Üçü de kapandı; yerine geçenler:
+
+- ~~Mobil tamamlama~~ (Adım 45), ~~Arayüz Faz 3~~ (Adım 53), ~~nesne deposu
+  sürücüsü~~ (2026-08-26).
+- **Arayüz yenilemesi Adım 9 — mobil.** `apps/mobile` aynı palete ve tipografiye
+  taşınacak. Tema motoru (yenilemenin Adım 46'sı) bilerek geri alındı; geri
+  getirilmeyecek.
+- **Yönetici panosu.** Şirketin anlık durumu ve büyüme matematiği: kohort
+  tutundurma, RFM, ciro köprüsü, konsantrasyon riski, DSO. Rapor tasarımcısının
+  yerine geçmiyor — o kullanıcı tanımlı, bu küratörlü ve kodda. Ayrıntı
+  `docs/KALAN-ISLER.md` §6'da.
+- **Excel ile toplu fiyat/stok güncelleme.** XLSX **yazıcı** var (Adım 58),
+  okuyucu yok. 2673 varyanta dört ayrı fiyatı ekrandan tek tek girmek mümkün
+  değil ve toptancıda zam toplu gelir. Fark önizlemesi olmadan uygulama yok.
+- **Ekran testleri ve tarayıcı seviyesinde e2e.** `puppeteer-core` zaten
+  bağımlılıkta (ekran görüntüsü betiği kullanıyor).
 
 ### Uzun vadeli backlog
 
 **Operasyon & sipariş**
-- İade & değişim (RMA): talep → onay → ters cari + ters stok hareketi.
+
+- ~~İade & değişim (RMA)~~ — Adım 64'te kapatıldı (bkz. §57).
 - Teklif yönetimi: sepeti teklife çevir → plasiyer özel fiyat/vade → müşteri onayı → siparişe dönüşüm.
 - Hızlı & periyodik sipariş: geçmiş siparişi kopyala, SKU+miktar CSV/Excel toplu sipariş, abonelik siparişi.
 
 **Cari & finans**
+
 - Sanal POS adaptörü: iyzico / PayTR / banka VPOS — bağlantı noktası Adım 28'de açıldı, geriye somut adaptör + 3-D Secure dönüş/webhook rotaları kaldı. DBS (doğrudan borçlandırma) ayrı.
 - Çek/senet: portföy Adım 41'de geldi; kalan iş sahadan **görselle** giriş ve risk hesabına işleme.
 - E-Fatura / E-İrsaliye: özel entegratör (EDM, Foriba, Sovos) üzerinden belgelendirme + PDF.
@@ -3093,35 +3213,42 @@ Sıralama kesin değil — öncelik iş ihtiyacına göre belirlenecek.
 - Holding/şube konsolidasyonu: şubeler kendi siparişini verir, limit + fatura ana caride birleşir.
 
 **Yönetim**
+
 - Fine-grained RBAC/ABAC: bölge bazlı firma görünürlüğü, kategori bazlı iskonto yetkisi (kural matrisi).
 - Depo/şube bazlı stok + fiyat: carinin bağlı deposundan stok düşümü, bölgeye göre fiyat.
 
 **Satış & pazarlama**
+
 - Çapraz satış / muadil ürün: stoksuz üründe muadil önerisi, sepette "birlikte alınanlar".
 - Matrix katalog: firma/bölge/anlaşma bazlı ürün-kategori görünürlüğü.
 - Numune talebi: bedelsiz/indirimli numune isteği → onay → sevkiyat akışı.
 
 **Depo & lojistik**
+
 - Hacim/ağırlık (desi) bazlı sepet: nakliye hesabı, "min 1 palet / 1 tır" kısıtı.
 - Sipariş birleştirme: aynı adrese aynı gün/hafta verilen siparişler tek irsaliyede.
 - Teslimat randevusu: gün + saat aralığı (slot) seçimi.
 
 **Saha satış & mobil**
+
 - Offline-first: SQLite/WatermelonDB ile sipariş + tahsilat senkronizasyonu.
 - Rota planlama: günlük/haftalık rota, haritada duraklar, ziyaret süresi, rota sapma raporu.
 - Barkod/QR okuyucu: kamerayla sepete ekleme, depo teslimat doğrulama.
 
 **Satış sonrası & bayi portalı**
+
 - Garanti + yedek parça + patlatılmış şema: teknik çizimde numaralı parçaya tıkla → sepete ekle.
 - Servis/arıza talebi (ticketing): garanti talebi ↔ yedek parça siparişi ilişkisi.
 - Müşteri içi hiyerarşi + bütçe: satınalmacı / departman müdürü rolleri, aylık bütçe limiti.
 - White-label katalog: bayinin kendi logosu + kendi satış fiyatlarıyla katalog modu / PDF.
 
 **Veri & AI**
+
 - Talep tahminleme + otomatik ikmal önerisi: geçmiş sipariş periyodundan "X ürününüz bitmek üzere".
 - Dinamik fiyatlandırma motoru: maliyet artışına göre kural bazlı fiyat üretimi (Cost + %X marj).
 
 **Platform & entegrasyon**
+
 - ERP çift yönlü senkron (Logo, Mikro, SAP, Nebim, DIA): stok/fiyat/cari ERP→B2B, sipariş+tahsilat B2B→ERP.
 - Bildirim motoru: FCM push + SendGrid/Twilio; sipariş durumu, onay bekleyen, limit aşımı tetikleyicileri.
 - Çoklu dil: arayüz yalnızca Türkçe. (Çoklu para birimi kapandı: hesap Adım 42'de, TCMB kuru çeken zamanlanmış iş Adım 44'te, belgede gösterim Adım 52'de.)
