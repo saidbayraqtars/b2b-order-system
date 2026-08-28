@@ -876,6 +876,11 @@ Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
 `adim-15/tahsilat-listesi.png`, `adim-15/plasiyer-primi.png`,
 `adim-15/kampanya-simulasyon.png`.
 
+Adım 15'in son parçası ekran değil **soyutlama**: bildirim kanalı kayıt defteri
+(`notification-channel.ts`) ve `/hesabim`daki bildirim tercihi paneli. Kutular
+"alıyorsunuz" demek, kaydedilen ise istemediklerinin listesi — ters kodlansaydı
+yeni bir bildirim türü eklendiğinde kimse onu almazdı.
+
 **Kampanya ekranı ikiye ayrıldı** (`?bolum=tanimlar` / `?bolum=simulasyon`).
 Simülatör ayrı bir sayfaya konmadı: oranı yazan kişi sonucunu aynı ekranda
 görebilmeli. Simülasyonun kendi süzgeçleri de adreste — sonuç bir yöneticiye
@@ -890,7 +895,7 @@ ekranı açan plasiyerin sorusu "hangi firma" değil, "bugün kimi arayacağım"
 Seçici altında duruyor ve orada kalıyor, çünkü listede olmayan bir cariye de
 tahsilat girilebilmeli.
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 360 + 646
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 378 + 651
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)

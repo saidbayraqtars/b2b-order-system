@@ -17,15 +17,40 @@ Yeni bir sohbet açtığınızda önce bunu okutun.
 
 |                  |                                                                             |
 | ---------------- | --------------------------------------------------------------------------- |
-| Test             | 344 (apps/web) + 590 (servisler) + 18 (ERP ajanı); `pnpm test` yeşil        |
+| Test             | 378 (apps/web) + 651 (servisler) + 18 (ERP ajanı); `pnpm test` yeşil        |
 | e2e              | 23 senaryo, `pnpm e2e` — CI'da değil, ayakta sunucu + gösterim verisi ister |
 | CI               | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil                |
 | Ham sınıf sayacı | `dark:` **0** · `neutral-` **0** · `brand-` **0** (`documents/**` hariç)    |
-| Yenileme         | Adım 1-8, 10-13 bitti; açık kalan tek adım **9 — mobil**                    |
+| Yenileme         | Adım 1-8, 10-15 bitti; açık kalan tek adım **9 — mobil**                    |
 
-Bugün eklenen ekranlar: yönetici panosu (`/admin/analitik`, altı bölüm) ve
-Excel ile toplu güncelleme (`/admin/toplu-guncelleme`). Testler artık ayrı bir
-şemada koşuyor, gösterim veritabanına dokunmuyor.
+**2026-08-28'de kapanan on madde** (her biri ayrı commit, hepsi push edildi):
+
+| Madde | İş | Commit |
+| --- | --- | --- |
+| §4.5–4.9, §4.11 | Arayüz artıkları (Adım 14) | `11803f4` |
+| §5.5, 5.6, 5.9 | Asgari sipariş · kesim saati · sipariş kanalı | `bf78679` |
+| §5.7 | Zamanlı fiyat değişimi | `f26a44e` |
+| §5.8 | Bekleyen bakiye (backorder) | `ec03166` |
+| §5.2 | Cari mutabakat | `5490b38` |
+| §5.3 | Tahsilat çalışma listesi | `f2cdcee` |
+| §5.4 | Plasiyer primi ve hakediş | `2d2d5bf` |
+| §5.10 | Kampanya simülatörü | `305de92` |
+| §5.11 | Bildirim kanalı soyutlaması + bildirim tercihi | `48e557f` |
+
+Yeni ekranlar: `/admin/siparis-kurallari`, `/admin/mutabakat`, `/admin/prim`,
+`/admin/deliveries?bolum=bekleyen`, `/admin/toplu-guncelleme?bolum=zamanli`,
+`/admin/promotions?bolum=simulasyon`, `/rep/tahsilat` çalışma listesi,
+`/hesabim` bildirim tercihi. Görüntüler `docs/design/screens/adim-15/`.
+
+⚠ **Depoda 76 adet artık kopya var** (`admin (1).ts`, `README (2).md`, …). Bir
+dosya kopyalama kazasının kalıntısı: izlenmiyorlar, bayatlar ve önbellek
+ıskaladığı an **eski bir sürümün hatalarını** rapor ediyorlar. Derleme ve lint
+artık onları görmezden geliyor (`tsconfig.exclude` + `eslint ignorePatterns`),
+ama **silinmeleri gerekiyor** — bu bir karar, o yüzden silinmedi:
+
+```bash
+git status --porcelain | grep '^??' | grep -E ' \([0-9]\)' | cut -c4- | tr -d '"' | xargs -d '\n' rm -f
+```
 
 ---
 
@@ -130,7 +155,9 @@ Vega ekranında gözle doğrula.
   faturada yeniden tartıya göre fiyatlanmıyor.
 - **Sipariş bir depo seçmiyor** — hareket toplamı oynuyor, kırılım yok.
   Backlog'daki "depo/şube bazlı stok + fiyat" maddesinin işi.
-- Bildirim tercihi yok — ya hepsi ya hiçbiri. SMS kanalı yok.
+- ~~Bildirim tercihi yok~~ ✔ (§5.11): olay bazında susturma geldi. **SMS/WhatsApp
+  kanalı hâlâ yok** ve bu bir karar bekliyor — soyutlama hazır, adaptör tek
+  dosya.
 - Hazır kampanya performans **ekranı** yok — `PROMOTIONS` veri kümesi var,
   rapor tasarımcısından kuruluyor.
 - Mobil cari ekstre salt okunur — **bu doğru**, düzeltme ters kayıtla yapılır.
@@ -714,35 +741,38 @@ Bir tur atıldı:
 
 ## 10. Sıradaki
 
-2026-08-28'de kapanan dokuz madde (her biri ayrı commit, hepsi push edildi):
+§5'in tamamı kapandı. Kalanlar, bağımlılık ve maliyet/etki sırasıyla — söz
+değil, sıra önerisi:
 
-| #   | İş                                    | Nerede        |
-| --- | ------------------------------------- | ------------- |
-| 1   | Adım 7 — rapor tasarımcısı ve panolar | REDESIGN.md   |
-| 2   | Adım 8 kalanı — `hesabim`, `403`      | REDESIGN.md   |
-| 3   | Adım 11 — saha üçlüsü ve kök          | REDESIGN.md   |
-| 4   | Test yalıtımı (§4.1)                  | §4.1, README  |
-| 5   | Adım 10 temizlik + §4.2/4.3/4.4/4.10  | REDESIGN.md   |
-| 6   | FEATURES.md güncellemesi (§9)         | FEATURES.md   |
-| 7   | Yönetici panosu (§6)                  | §6, Adım 12   |
-| 8   | Excel içe aktarma (§5.1)              | §5.1, Adım 13 |
-| 9   | Test boşluğu (§3.1)                   | §3.1, README  |
+### Hemen yapılabilir (kod, karar gerektirmiyor)
 
-**Sırada ne var** — bağımlılık ve maliyet/etki sırası, söz değil:
+1. **§6.4 pano kalanları.** Kohort penceresi 12 ay ve RFM penceresi 365 gün
+   **sabit** — ekranın kendi süzgeci gerekiyor. Resmî tatiller iş günü
+   sayılıyor, bayram aylarında ay sonu tahmini yüksek çıkıyor; tatil takvimi
+   girilirse düzelir.
+2. **§3.5 kalan orta boy eksikler.** Hazır kampanya performans **ekranı** yok
+   (`PROMOTIONS` veri kümesi var, rapor tasarımcısından kuruluyor). Parti
+   irsaliyede otomatik basılmıyor. Tartılan mal faturada yeniden tartıya göre
+   fiyatlanmıyor.
+3. **Artık kopyaları sil** (§1'deki komut) ve istenirse `tsconfig`/`eslint`
+   istisnalarını geri al.
 
-1. **Yenilemenin Adım 9'u — mobil.** Web tarafında elden geçmemiş ekran
-   kalmadı; `apps/mobile` aynı palete ve tipografiye taşınacak. Mobilde tek
-   test olmaması da aynı turda ele alınmalı.
-2. **§4.5–4.9 arayüz artıkları.** `EmptyState`in kullanılmayan `action` yuvası,
-   adreste olmayan süzgeçler, kabuksuz `orders/[id]`, `Modal`da odak tuzağı,
-   ekran görüntüsü regresyon kontrolü (`pnpm shots --check`). Beşi de küçük.
-3. **§4.11** — kategoriler ekranının okuma izniyle açılıp yazma izni istemesi.
-4. **§5.2–5.11 özellik önerileri.** En getirilisi cari mutabakat ve tahsilat
-   çalışma listesi; ikisi de mevcut defterin üstüne biniyor.
-5. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
-6. **§3.4 canlıya çıkış turu** ve **§3.6 backlog** — ikisi de iş kararı
-   bekliyor.
+### Karar bekleyen
+
+4. **WhatsApp/SMS kanalı** (§5.11). Business API sözleşmesi ve numarası sizin
+   kararınız; soyutlama hazır, iş tek dosyalık bir adaptör.
+5. **§3.6 backlog** — 14 başlık, sıralanmadı. Öne çıkanlar: teklif yönetimi,
+   vade farkı & erken ödeme iskontosu, firma risk skoru + otomatik blokaj,
+   holding/şube konsolidasyonu, matrix katalog, çoklu dil, dışa açık B2B API.
+6. **§3.4 canlıya çıkış turu** — dört maddesi de dağıtım topolojisine bağlı;
+   şimdi yazılırsa tahmine dayanır.
+
+### Kullanıcının "geç" dediği (2026-08-28)
+
+7. **Adım 9 — mobil.** `apps/mobile` eski palette, tek test yok.
+8. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
+9. **§3.3 sanal POS adaptörü ve iOS** — dış bağımlılık.
 
 **Vega sorusu hâlâ açık** (§6.3): "Vega'nın rapor sistemi gibi" denen şeyin
-hangi rapor olduğu bilinmiyor. Uydurulmadı; kullanıcıdan ekran görüntüsü ya da
-rapor adı gerekiyor.
+hangi rapor olduğu bilinmiyor. Uydurulmadı; ekran görüntüsü ya da rapor adı
+gerekiyor.
