@@ -4,10 +4,20 @@ import Link from "next/link";
 import type { CustomerSnapshot } from "@repo/services";
 // Etiketler `@repo/types`tan: `@repo/services`ten bir *değer* içe aktarmak
 // nodemailer'ı istemci paketine sokuyor (bkz. packages/types/src/analytics.ts).
-import { RFM_SEGMENT_LABELS, type RfmSegment } from "@repo/types";
+import {
+  COHORT_WINDOW_LABELS,
+  COHORT_WINDOW_OPTIONS,
+  RFM_SEGMENT_LABELS,
+  RFM_WINDOW_LABELS,
+  RFM_WINDOW_OPTIONS,
+  type CohortWindowMonths,
+  type RfmSegment,
+  type RfmWindowDays,
+} from "@repo/types";
 import { formatTRY } from "@/lib/format";
 import { Panel } from "@/components/form";
 import {
+  Chips,
   EmptyState,
   Note,
   Table,
@@ -22,7 +32,17 @@ import { Insufficient, SourceTile } from "./shared";
 
 // C. Müşteri: RFM, kohort tutundurma, konsantrasyon riski, sessizleşenler.
 
-export function CustomerSection({ data }: { data: CustomerSnapshot }) {
+export function CustomerSection({
+  data,
+  rfmWindow,
+  cohortWindow,
+  onWindowChange,
+}: {
+  data: CustomerSnapshot;
+  rfmWindow: RfmWindowDays;
+  cohortWindow: CohortWindowMonths;
+  onWindowChange: (next: { rfm?: number; kohort?: number }) => void;
+}) {
   const conc = data.concentration;
 
   return (
@@ -65,7 +85,19 @@ export function CustomerSection({ data }: { data: CustomerSnapshot }) {
       </section>
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
-        <Panel title="RFM segmentleri">
+        <Panel
+          title="RFM segmentleri"
+          action={
+            <Chips
+              value={String(rfmWindow)}
+              onChange={(next) => onWindowChange({ rfm: Number(next) })}
+              items={RFM_WINDOW_OPTIONS.map((d) => ({
+                key: String(d),
+                label: RFM_WINDOW_LABELS[d],
+              }))}
+            />
+          }
+        >
           {data.rfm.ok ? (
             <PieChart
               slices={Object.entries(data.segmentCounts).map(([key, count]) => ({
@@ -81,7 +113,10 @@ export function CustomerSection({ data }: { data: CustomerSnapshot }) {
             Sabit eşik yok: her boyut kurulumun kendi dağılımının çeyrekliğine
             göre puanlanıyor. &ldquo;90 günden eskiyse riskli&rdquo; gibi bir
             eşik, haftalık alan bayi ile mevsimlik alan bayiyi aynı kefeye
-            koyardı.
+            koyardı. <strong>Pencere segmenti değiştirir</strong>: bir yıllık
+            pencerede &ldquo;sadık&rdquo; görünen firma, 90 günlük pencerede
+            hiç alışveriş yapmadıysa listeye bile girmez — soru
+            &ldquo;kim iyi müşteri&rdquo; değil, &ldquo;hangi dönemde&rdquo;.
           </Note>
         </Panel>
 
@@ -114,14 +149,29 @@ export function CustomerSection({ data }: { data: CustomerSnapshot }) {
                 </tr>
               ))}
               {data.topCompanies.length === 0 && (
-                <TableEmpty colSpan={3} label="Son bir yılda sipariş yok." />
+                <TableEmpty
+                  colSpan={3}
+                  label={`Son ${rfmWindow} günde sipariş yok.`}
+                />
               )}
             </TBody>
           </Table>
         </Panel>
       </div>
 
-      <Panel title="Kohort tutundurma">
+      <Panel
+        title="Kohort tutundurma"
+        action={
+          <Chips
+            value={String(cohortWindow)}
+            onChange={(next) => onWindowChange({ kohort: Number(next) })}
+            items={COHORT_WINDOW_OPTIONS.map((m) => ({
+              key: String(m),
+              label: COHORT_WINDOW_LABELS[m],
+            }))}
+          />
+        }
+      >
         {data.cohorts.length === 0 ? (
           <EmptyState label="Kohort çıkaracak kadar sipariş geçmişi yok." />
         ) : (
@@ -166,7 +216,9 @@ export function CustomerSection({ data }: { data: CustomerSnapshot }) {
         <Note className="mt-6">
           Satır: ilk siparişini o ayda veren firmalar. Sütun: o aydan kaç ay
           sonra. Hücre: o kohortun yüzde kaçı hâlâ alıyor. İlk sütun her zaman
-          %100 — tanım gereği.
+          %100 — tanım gereği. Pencere yalnızca <strong>kaç kohort</strong>
+          gösterileceğini değiştirir; bir firmanın hangi kohorta düştüğü ilk
+          siparişiyle belirlenir ve pencereyle oynamaz.
         </Note>
       </Panel>
 

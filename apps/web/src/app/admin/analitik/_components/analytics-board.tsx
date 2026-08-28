@@ -14,7 +14,11 @@ import type {
 import {
   ANALYTICS_SECTIONS,
   ANALYTICS_SECTION_LABELS,
+  parseCohortWindow,
+  parseRfmWindow,
   type AnalyticsSection,
+  type CohortWindowMonths,
+  type RfmWindowDays,
 } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
@@ -58,10 +62,27 @@ export function AnalyticsBoard() {
   const params = useSearchParams();
   const section = sectionFrom(params.get("bolum"));
 
+  // Müşteri bölümünün iki penceresi de **adreste** (§6.4): sekmeyle aynı
+  // kural, aynı sebep — betik düğmelere basmıyor, fotoğraflanamayan ekranın
+  // doğru göründüğü söylenemez. Süzgeç sorgu anahtarında da var, yoksa
+  // pencere değişince önbellekteki eski matris gösterilirdi.
+  const rfmWindow = parseRfmWindow(params.get("rfm"));
+  const cohortWindow = parseCohortWindow(params.get("kohort"));
+  const windowQuery =
+    section === "musteri" ? `&rfm=${rfmWindow}&kohort=${cohortWindow}` : "";
+
   const query = useQuery({
-    queryKey: ["analytics", section],
-    queryFn: () => apiGet<Envelope<unknown>>(`/api/analytics?bolum=${section}`),
+    queryKey: ["analytics", section, windowQuery],
+    queryFn: () =>
+      apiGet<Envelope<unknown>>(`/api/analytics?bolum=${section}${windowQuery}`),
   });
+
+  /** Süzgeç adresi değiştiriyor; sekme de aynı yoldan geçiyor. */
+  function go(next: Partial<{ bolum: string; rfm: number; kohort: number }>) {
+    const q = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(next)) q.set(k, String(v));
+    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+  }
 
   return (
     <div className="space-y-5">
@@ -72,9 +93,7 @@ export function AnalyticsBoard() {
 
       <Tabs
         value={section}
-        onChange={(next) =>
-          router.replace(`${pathname}?bolum=${next}`, { scroll: false })
-        }
+        onChange={(next) => go({ bolum: next })}
         items={TABS}
       />
 
@@ -85,7 +104,13 @@ export function AnalyticsBoard() {
       ) : (
         <>
           <Stale live={query.data!.live} computedAt={query.data!.computedAt} />
-          <Body section={section} envelope={query.data!} />
+          <Body
+            section={section}
+            envelope={query.data!}
+            rfmWindow={rfmWindow}
+            cohortWindow={cohortWindow}
+            onWindowChange={go}
+          />
         </>
       )}
 
@@ -107,9 +132,15 @@ export function AnalyticsBoard() {
 function Body({
   section,
   envelope,
+  rfmWindow,
+  cohortWindow,
+  onWindowChange,
 }: {
   section: Section;
   envelope: Envelope<unknown>;
+  rfmWindow: RfmWindowDays;
+  cohortWindow: CohortWindowMonths;
+  onWindowChange: (next: { rfm?: number; kohort?: number }) => void;
 }) {
   if (!envelope.data) {
     return (
@@ -135,7 +166,14 @@ function Body({
     case "buyume":
       return <GrowthSection data={envelope.data as GrowthSnapshot} />;
     case "musteri":
-      return <CustomerSection data={envelope.data as CustomerSnapshot} />;
+      return (
+        <CustomerSection
+          data={envelope.data as CustomerSnapshot}
+          rfmWindow={rfmWindow}
+          cohortWindow={cohortWindow}
+          onWindowChange={onWindowChange}
+        />
+      );
     case "urun":
       return <ProductSection data={envelope.data as ProductSnapshot} />;
     case "nakit":

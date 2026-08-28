@@ -1,10 +1,13 @@
 import type { NextRequest } from "next/server";
 import {
+  computeCustomerWindow,
+  isDefaultCustomerWindows,
   liveStatus,
   pace,
   readSnapshot,
   type AnalyticsSnapshotPayload,
 } from "@repo/services";
+import { parseCohortWindow, parseRfmWindow } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 
 // GET /api/analytics?bolum= — yönetici panosunun tek ucu.
@@ -31,7 +34,8 @@ export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
     await requireUser(["SUPER_ADMIN"], "analytics.view");
 
-    const raw = new URL(req.url).searchParams.get("bolum") ?? "durum";
+    const params = new URL(req.url).searchParams;
+    const raw = params.get("bolum") ?? "durum";
     const section = (raw as Section) in SNAPSHOT_KEY || raw === "durum" || raw === "gidisat"
       ? (raw as Section)
       : "durum";
@@ -51,6 +55,26 @@ export function GET(req: NextRequest) {
         computedAt: new Date().toISOString(),
         data: await pace(),
       });
+    }
+
+    // Müşteri bölümünün iki penceresi ekranın süzgeci (§6.4). Varsayılan
+    // pencere gecelik özetten geliyor; varsayılan **dışı** bir pencere
+    // seçildiğinde canlı hesaplanıyor ve cevap öyle işaretleniyor. Dokuz
+    // pencere kombinasyonunu her gece hesaplamak, sekizi hiç açılmayacak bir
+    // işi her gece yapmak olurdu.
+    if (section === "musteri") {
+      const windows = {
+        rfmWindowDays: parseRfmWindow(params.get("rfm")),
+        cohortMonths: parseCohortWindow(params.get("kohort")),
+      };
+      if (!isDefaultCustomerWindows(windows)) {
+        return Response.json({
+          section,
+          live: true,
+          computedAt: new Date().toISOString(),
+          data: await computeCustomerWindow(windows),
+        });
+      }
     }
 
     const stored = await readSnapshot(SNAPSHOT_KEY[section]!);

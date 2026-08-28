@@ -245,6 +245,7 @@ model User {
   orderPolicyEdits      OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
   priceChanges          ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
   collectionCalls       CollectionCall[]       @relation("CollectionCallBy")
+  holidaysAuthored      Holiday[]              @relation("HolidayAuthor")
 
   /// Bu kullanıcının **istemediği** bildirim olayları.
   ///
@@ -2973,4 +2974,37 @@ model AnalyticsSnapshot {
   /// Hesabın ne kadar sürdüğü. Gecelik iş yavaşlamaya başladığında bunu
   /// görmenin başka yolu yok.
   durationMs Int?
+}
+
+/// Resmî tatil takvimi (KALAN-ISLER §6.4).
+///
+/// Ay sonu projeksiyonu **iş gününe** göre çalışıyor ama iş günü sayacı
+/// yalnızca hafta sonunu biliyordu: bayram ayında "ayın yarısı geçti"
+/// derken dokuz iş gününü çalışılmış sayıyor, tahmin de o oranda yüksek
+/// çıkıyordu.
+///
+/// Tarihler **tablodan** okunuyor, kodda gömülü değil: 1 Ocak ve 29 Ekim
+/// sabit ama ramazan ve kurban bayramı ay takvimine göre kayıyor ve
+/// yarım gün ilanları her yıl ayrı çıkıyor. Uydurulmuş bir tarih, yanlış
+/// bir tahminden daha kötü — kimse sorgulamıyor.
+model Holiday {
+  id String @id @default(cuid())
+
+  /// Günün kendisi, yerel gün başı olarak normalleştirilmiş. Tekil: aynı
+  /// güne iki kayıt girilirse iş günü sayacı ikisini de düşerdi.
+  date DateTime @unique @db.Date
+
+  name String
+
+  /// Yarım gün (arife): iş gününün yarısı sayılıyor. Ayrı bir kolon, çünkü
+  /// "0,5 gün" bir tarih listesinden çıkarılamaz.
+  halfDay Boolean @default(false)
+
+  createdById String?
+  createdBy   User?   @relation("HolidayAuthor", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
 }

@@ -7,6 +7,7 @@ import {
   Boxes,
   Building2,
   CalendarClock,
+  CalendarOff,
   ClipboardCheck,
   Handshake,
   FileSpreadsheet,
@@ -250,6 +251,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         href: "/admin/kurulum",
         label: "Kurulum",
         icon: ListChecks,
+        permission: "organization.manage",
+      },
+      {
+        href: "/admin/tatiller",
+        label: "Resmî tatiller",
+        icon: CalendarOff,
         permission: "organization.manage",
       },
       {

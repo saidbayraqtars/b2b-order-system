@@ -22,7 +22,10 @@ export function PaceSection({ data }: { data: Pace }) {
         <SourceTile
           label="Bu ay yapılan"
           value={formatTRY(data.achieved)}
-          hint={`${data.businessDaysElapsed} / ${data.businessDaysInMonth} iş günü`}
+          // Tatil takvimi girildiğinde iş günü kesirli olabilir (arife 0,5).
+          hint={`${days(data.businessDaysElapsed)} / ${days(
+            data.businessDaysInMonth,
+          )} iş günü`}
           href="/admin/reports?bolum=satis"
           sourceLabel="Satış raporu"
         />
@@ -106,8 +109,30 @@ export function PaceSection({ data }: { data: Pace }) {
           Tempo <strong>iş gününe</strong> göre ölçülüyor, takvim gününe göre
           değil: ayın 15&apos;i pazara denk geldiğinde &ldquo;ayın yarısı
           geçti&rdquo; demek toptancıda yanlış olur, çünkü satış hafta içi
-          oluyor. Resmî tatiller hesaba girmiyor — bayram haftası olduğu gibi
-          iş günü sayılıyor, bu yüzden bayram aylarında tahmin yüksek çıkar.
+          oluyor.{" "}
+          {data.holidays.length === 0 ? (
+            <>
+              Bu ay için <strong>resmî tatil girilmemiş</strong>: bütün hafta
+              içi günler çalışılmış sayılıyor, yani bayram ayında tahmin yüksek
+              çıkar.{" "}
+              <a
+                href="/admin/tatiller"
+                className="underline underline-offset-4 hover:text-ink"
+              >
+                Tatil takvimi
+              </a>{" "}
+              girilirse düzelir.
+            </>
+          ) : (
+            <>
+              Bu ayın iş gününden <strong>{holidayLabel(data.holidays)}</strong>{" "}
+              düşüldü:{" "}
+              {data.holidays
+                .map((h) => `${h.name}${h.halfDay ? " (yarım gün)" : ""}`)
+                .join(", ")}
+              .
+            </>
+          )}
           {data.seasonalIndex !== null && (
             <>
               {" "}
@@ -120,4 +145,18 @@ export function PaceSection({ data }: { data: Pace }) {
       </Panel>
     </div>
   );
+}
+
+/** Kesirli iş günü Türkçe yazımla: 10,5 — `10.5` değil. */
+function days(value: number): string {
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+}
+
+/** "iki tam gün + bir yarım gün" yerine tek satır: kaç iş günü düştü. */
+function holidayLabel(
+  holidays: ReadonlyArray<{ halfDay: boolean }>,
+): string {
+  const days = holidays.reduce((sum, h) => sum + (h.halfDay ? 0.5 : 1), 0);
+  const text = days.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+  return `${text} iş günü`;
 }

@@ -476,14 +476,66 @@ export function trimLeadingEmpty(points: readonly MonthPoint[]): MonthPoint[] {
   return first <= 0 ? [...points] : points.slice(first);
 }
 
-/** Ay içindeki iş günü sayısı (Pzt–Cum). Resmî tatil bilgisi yok, notu ekranda. */
-export function businessDaysBetween(from: Date, to: Date): number {
+/**
+ * Resmî tatil takvimi: `"YYYY-MM-DD" -> yarım gün mü`.
+ *
+ * Yarım gün (arife) 0,5 iş günü sayılıyor; tam tatil 0. Set değil map,
+ * çünkü "tatil mi" sorusunun üç cevabı var, iki değil.
+ */
+export type HolidayMap = ReadonlyMap<string, boolean>;
+
+/**
+ * Yerel gün anahtarı — takvimde ilerleyen sayaç için.
+ *
+ * `toISOString` kullanılamaz: UTC+3'te yerel gece yarısı UTC'de bir önceki
+ * günün 21:00'i, yani her anahtar bir gün geriye kayardı.
+ */
+export function dayKey(d: Date): string {
+  return key(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+/**
+ * UTC gün anahtarı — **veritabanından gelen `DATE` kolonları için**.
+ *
+ * Postgres `DATE` saat taşımıyor; sürücü onu UTC gece yarısı olarak veriyor.
+ * O değeri yerel getter'la okumak UTC+3'te doğru günü, UTC-5'te bir önceki
+ * günü verirdi — yani takvim, sunucunun saat dilimine göre kayardı. İki ayrı
+ * fonksiyon olmasının sebebi bu: biri takvimde yürüyen imleç için, diğeri
+ * diskteki gün için, ve ikisi de aynı "YYYY-AA-GG" dizesini üretiyor.
+ */
+export function dayKeyUtc(d: Date): string {
+  return key(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
+function key(year: number, month: number, day: number): string {
+  return `${year}-${`${month}`.padStart(2, "0")}-${`${day}`.padStart(2, "0")}`;
+}
+
+/**
+ * İki tarih arasındaki iş günü sayısı (Pzt–Cum), **her iki uç dahil**.
+ *
+ * Resmî tatiller verilirse düşülüyor (KALAN-ISLER §6.4): bayram ayında ayın
+ * yarısı geçmişken dokuz tatil gününü çalışılmış saymak ay sonu tahminini
+ * yukarı çekiyordu. Takvim boşsa davranış eskisiyle birebir aynı — tatil
+ * girilmemiş bir kurulumda hiçbir sayı değişmiyor.
+ *
+ * Sonuç kesir olabilir (arife = 0,5).
+ */
+export function businessDaysBetween(
+  from: Date,
+  to: Date,
+  holidays?: HolidayMap,
+): number {
   let count = 0;
   const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
   while (cursor <= end) {
     const day = cursor.getDay();
-    if (day !== 0 && day !== 6) count += 1;
+    if (day !== 0 && day !== 6) {
+      const half = holidays?.get(dayKey(cursor));
+      // `undefined` = tatil değil, `false` = tam tatil, `true` = yarım gün.
+      count += half === undefined ? 1 : half ? 0.5 : 0;
+    }
     cursor.setDate(cursor.getDate() + 1);
   }
   return count;

@@ -37,6 +37,7 @@ export * from "./reports";
 export * from "./search";
 export * from "./analytics";
 export * from "./analytics-math";
+export * from "./holidays";
 export * from "./xlsx-read";
 export * from "./bulk-import";
 export * from "./report-registry";

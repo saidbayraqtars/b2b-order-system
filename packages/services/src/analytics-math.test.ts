@@ -4,6 +4,8 @@ import {
   businessDaysBetween,
   cagr,
   concentration,
+  dayKey,
+  dayKeyUtc,
   dso,
   inventoryTurnover,
   median,
@@ -215,6 +217,52 @@ describe("gidişat", () => {
     const from = new Date(2026, 7, 3);
     const to = new Date(2026, 7, 9);
     expect(businessDaysBetween(from, to)).toBe(5);
+  });
+
+  it("resmî tatil iş gününden düşülüyor", () => {
+    // Aynı hafta, çarşamba tam tatil: beş iş günü dörde iniyor.
+    const from = new Date(2026, 7, 3);
+    const to = new Date(2026, 7, 9);
+    const holidays = new Map([[dayKey(new Date(2026, 7, 5)), false]]);
+    expect(businessDaysBetween(from, to, holidays)).toBe(4);
+  });
+
+  it("arife yarım gün sayılıyor", () => {
+    const from = new Date(2026, 7, 3);
+    const to = new Date(2026, 7, 9);
+    const holidays = new Map([[dayKey(new Date(2026, 7, 5)), true]]);
+    expect(businessDaysBetween(from, to, holidays)).toBe(4.5);
+  });
+
+  it("hafta sonuna düşen tatil hiçbir şeyi değiştirmiyor", () => {
+    // Sayacın iki kez düşmemesi gerekiyor: cumartesi zaten iş günü değil.
+    const from = new Date(2026, 7, 3);
+    const to = new Date(2026, 7, 9);
+    const holidays = new Map([[dayKey(new Date(2026, 7, 8)), false]]);
+    expect(businessDaysBetween(from, to, holidays)).toBe(5);
+  });
+
+  it("takvim boşken davranış eskisiyle birebir aynı", () => {
+    // Tatil girilmemiş bir kurulumda hiçbir sayı oynamamalı.
+    const from = new Date(2026, 7, 1);
+    const to = new Date(2026, 7, 31);
+    expect(businessDaysBetween(from, to, new Map())).toBe(
+      businessDaysBetween(from, to),
+    );
+  });
+
+  it("gün anahtarı yerel gün, UTC değil", () => {
+    // `toISOString` gece yarısını bir önceki güne kaydırıyordu.
+    expect(dayKey(new Date(2026, 0, 1))).toBe("2026-01-01");
+    expect(dayKey(new Date(2026, 11, 31))).toBe("2026-12-31");
+  });
+
+  it("DATE kolonu UTC anahtarla okunuyor", () => {
+    // Postgres `DATE`i sürücü UTC gece yarısı olarak veriyor. Yerel getter'la
+    // okunsaydı takvim sunucunun saat dilimine göre kayardı — ilk denemede
+    // tam bunu yaptı: 1 Ocak diskte 31 Aralık oldu.
+    expect(dayKeyUtc(new Date(Date.UTC(2026, 0, 1)))).toBe("2026-01-01");
+    expect(dayKeyUtc(new Date(Date.UTC(2026, 11, 31)))).toBe("2026-12-31");
   });
 });
 

@@ -2,6 +2,8 @@ import { Prisma, prisma } from "@repo/database";
 import {
   abcClasses,
   businessDaysBetween,
+  dayKey,
+  dayKeyUtc,
   cagr,
   concentration,
   dso,
@@ -20,9 +22,16 @@ import {
   yearOverYear,
   type Indicator,
   type MonthPoint,
+  type HolidayMap,
   type QuietInput,
   type RfmRow,
 } from "./analytics-math";
+import {
+  COHORT_WINDOW_DEFAULT,
+  RFM_WINDOW_DEFAULT,
+  type CohortWindowMonths,
+  type RfmWindowDays,
+} from "@repo/types";
 
 // Yönetici panosunun veri katmanı.
 //
@@ -292,11 +301,23 @@ export interface Pace {
   seasonalIndex: number | null;
   targetTotal: number | null;
   targetAchievedPct: number | null;
+  /**
+   * Bu ayın iş gününden düşülen resmî tatiller. Ekran bunu yazıyor: sıfırsa
+   * "tatil takvimi girilmemiş" uyarısı duruyor, doluysa hangi günler olduğu
+   * görünüyor — tahminin neden düştüğü sorulacak bir soru.
+   */
+  holidays: Array<{ date: string; name: string; halfDay: boolean }>;
 }
 
 export async function pace(now = new Date()): Promise<Pace> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  // Tatiller iki dönem için lazım: bu ay (iş günü sayacı) ve geçen yılın aynı
+  // ayı (mevsimsel indeksin kestiği nokta). İkisi tek sorguda iniyor.
+  const lastYearFrom = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+  const holidayRows = await listHolidaysBetween(lastYearFrom, monthEnd);
+  const holidays = holidayMapOf(holidayRows);
   const achieved = await sumRevenue(
     monthStart,
     new Date(now.getFullYear(), now.getMonth() + 1, 1),
@@ -306,13 +327,13 @@ export async function pace(now = new Date()): Promise<Pace> {
   // ne kadarı yapılmıştı. Yoksa doğrusal tahmine düşülüyor.
   const lastYearStart = new Date(now.getFullYear() - 1, now.getMonth(), 1);
   const lastYearNext = new Date(now.getFullYear() - 1, now.getMonth() + 1, 1);
-  const businessDaysElapsed = businessDaysBetween(monthStart, now);
-  const businessDaysInMonth = businessDaysBetween(monthStart, monthEnd);
+  const businessDaysElapsed = businessDaysBetween(monthStart, now, holidays);
+  const businessDaysInMonth = businessDaysBetween(monthStart, monthEnd, holidays);
 
   const lastYearTotal = await sumRevenue(lastYearStart, lastYearNext);
   let seasonalIndex: number | null = null;
   if (lastYearTotal > 0) {
-    const cutoff = nthBusinessDay(lastYearStart, businessDaysElapsed);
+    const cutoff = nthBusinessDay(lastYearStart, businessDaysElapsed, holidays);
     const partial = await sumRevenue(lastYearStart, cutoff);
     seasonalIndex = partial / lastYearTotal;
   }
@@ -336,16 +357,67 @@ export async function pace(now = new Date()): Promise<Pace> {
     seasonalIndex,
     targetTotal,
     targetAchievedPct: targetTotal ? (achieved / targetTotal) * 100 : null,
+    holidays: holidayRows
+      .filter((h) => h.date >= utcDay(monthStart) && h.date <= utcDay(monthEnd))
+      .map((h) => ({
+        date: dayKeyUtc(h.date),
+        name: h.name,
+        halfDay: h.halfDay,
+      })),
   };
 }
 
-/** Ayın n'inci iş gününün ertesi (üst sınır olarak kullanılıyor). */
-function nthBusinessDay(monthStart: Date, n: number): Date {
+/**
+ * Tatil satırları.
+ *
+ * Sınırlar **UTC gününe** çevriliyor: kolon `DATE` ve sürücü onu UTC gece
+ * yarısı olarak tutuyor. Yerel gece yarısıyla sorulsaydı UTC+3'te ayın ilk
+ * günü aralığın dışında kalırdı.
+ */
+export async function listHolidaysBetween(
+  from: Date,
+  to: Date,
+): Promise<Array<{ date: Date; name: string; halfDay: boolean }>> {
+  return prisma.holiday.findMany({
+    where: { date: { gte: utcDay(from), lte: utcDay(to) } },
+    orderBy: { date: "asc" },
+    select: { date: true, name: true, halfDay: true },
+  });
+}
+
+/**
+ * Satırları sayacın anlayacağı haritaya çeviriyor.
+ *
+ * Anahtar `dayKeyUtc` ile üretiliyor (disk tarafı), sayaç `dayKey` ile arıyor
+ * (takvim tarafı) — ikisi de aynı takvim gününü aynı dizeye çeviriyor.
+ */
+export function holidayMapOf(
+  rows: ReadonlyArray<{ date: Date; halfDay: boolean }>,
+): HolidayMap {
+  return new Map(rows.map((r) => [dayKeyUtc(r.date), r.halfDay]));
+}
+
+function utcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
+/**
+ * Ayın n'inci iş gününün ertesi (üst sınır olarak kullanılıyor).
+ *
+ * Tatil takvimini `businessDaysBetween` ile aynı şekilde sayıyor — biri
+ * sayarken tatili düşüp diğeri düşmeseydi mevsimsel indeks yanlış noktadan
+ * kesilirdi. `n` kesirli olabilir (arife 0,5 sayılıyor).
+ */
+function nthBusinessDay(monthStart: Date, n: number, holidays?: HolidayMap): Date {
   const cursor = new Date(monthStart);
+  const guard = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
   let counted = 0;
-  while (counted < n) {
+  while (counted < n && cursor < guard) {
     const day = cursor.getDay();
-    if (day !== 0 && day !== 6) counted += 1;
+    if (day !== 0 && day !== 6) {
+      const half = holidays?.get(dayKey(cursor));
+      counted += half === undefined ? 1 : half ? 0.5 : 0;
+    }
     cursor.setDate(cursor.getDate() + 1);
   }
   return cursor;
@@ -368,6 +440,8 @@ export interface GrowthSnapshot {
 }
 
 export interface CustomerSnapshot {
+  /** Bu sayıların hangi pencereden çıktığı; ekran başlıkta bunu yazıyor. */
+  windows: CustomerWindows;
   rfm: Indicator<RfmRow[]>;
   segmentCounts: Record<string, number>;
   cohorts: Array<{ cohort: string; size: number; retention: Array<number | null> }>;
@@ -568,11 +642,47 @@ async function companyRevenueForMonths(
 
 // ── müşteri ─────────────────────────────────────────────────────────────────
 
-const RFM_WINDOW_DAYS = 365;
-const COHORT_MONTHS = 12;
+/**
+ * Müşteri bölümünün iki penceresi (§6.4).
+ *
+ * Eskiden sabitti (365 gün / 12 ay); artık ekranın süzgeci. **Gecelik özet
+ * yalnızca varsayılanı hesaplıyor** — üç RFM x üç kohort penceresini her gece
+ * hesaplamak dokuz kat iş demekti ve dokuzunun sekizi hiç açılmayacaktı.
+ * Varsayılan dışı bir pencere seçildiğinde uç bu fonksiyonu **canlı**
+ * çağırıyor: sorgu pencereyle sınırlı, ve cevap "canlı" diye işaretleniyor
+ * (bkz. api/analytics/route.ts).
+ */
+export interface CustomerWindows {
+  rfmWindowDays: RfmWindowDays;
+  cohortMonths: CohortWindowMonths;
+}
 
-async function computeCustomers(now: Date): Promise<CustomerSnapshot> {
-  const windowStart = new Date(now.getTime() - RFM_WINDOW_DAYS * 86_400_000);
+export const CUSTOMER_WINDOWS_DEFAULT: CustomerWindows = {
+  rfmWindowDays: RFM_WINDOW_DEFAULT,
+  cohortMonths: COHORT_WINDOW_DEFAULT,
+};
+
+export function isDefaultCustomerWindows(w: CustomerWindows): boolean {
+  return (
+    w.rfmWindowDays === CUSTOMER_WINDOWS_DEFAULT.rfmWindowDays &&
+    w.cohortMonths === CUSTOMER_WINDOWS_DEFAULT.cohortMonths
+  );
+}
+
+/** Varsayılan dışı pencere için ekranın çağırdığı canlı yol. */
+export function computeCustomerWindow(
+  windows: CustomerWindows,
+  now = new Date(),
+): Promise<CustomerSnapshot> {
+  return computeCustomers(now, windows);
+}
+
+async function computeCustomers(
+  now: Date,
+  windows: CustomerWindows = CUSTOMER_WINDOWS_DEFAULT,
+): Promise<CustomerSnapshot> {
+  const { rfmWindowDays, cohortMonths } = windows;
+  const windowStart = new Date(now.getTime() - rfmWindowDays * 86_400_000);
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -601,7 +711,7 @@ async function computeCustomers(now: Date): Promise<CustomerSnapshot> {
       companyName: r.companyName,
       recencyDays: r.lastOrderAt
         ? Math.floor((now.getTime() - r.lastOrderAt.getTime()) / 86_400_000)
-        : RFM_WINDOW_DAYS,
+        : rfmWindowDays,
       frequency: Number(r.orders),
       monetary: r.revenue,
     })),
@@ -624,9 +734,10 @@ async function computeCustomers(now: Date): Promise<CustomerSnapshot> {
     }));
 
   return {
+    windows,
     rfm: rfmResult,
     segmentCounts,
-    cohorts: await computeCohorts(now),
+    cohorts: await computeCohorts(now, cohortMonths),
     concentration: concentration(active.map((r) => r.revenue)),
     topCompanies,
     quiet: quietCustomers(await quietInputs(now)),
@@ -642,8 +753,9 @@ async function computeCustomers(now: Date): Promise<CustomerSnapshot> {
  */
 async function computeCohorts(
   now: Date,
+  cohortMonths: CohortWindowMonths,
 ): Promise<Array<{ cohort: string; size: number; retention: Array<number | null> }>> {
-  const from = new Date(now.getFullYear(), now.getMonth() - COHORT_MONTHS + 1, 1);
+  const from = new Date(now.getFullYear(), now.getMonth() - cohortMonths + 1, 1);
 
   const rows = await prisma.$queryRaw<
     Array<{ cohort: string; month: string; companyId: string }>
@@ -687,7 +799,7 @@ async function computeCohorts(
       const size = sizes.get(cohort)?.size ?? 0;
       const span = monthDiff(cohort, currentMonth);
       const retention: Array<number | null> = [];
-      for (let i = 0; i <= Math.min(span, COHORT_MONTHS - 1); i += 1) {
+      for (let i = 0; i <= Math.min(span, cohortMonths - 1); i += 1) {
         const active = cohorts.get(cohort)?.get(i)?.size ?? 0;
         retention.push(size === 0 ? null : active / size);
       }
@@ -741,11 +853,20 @@ async function quietInputs(now: Date): Promise<QuietInput[]> {
 
 const DEAD_STOCK_DAYS = 90;
 
+/**
+ * Ürün bölümünün penceresi — bir yıl, ve **sabit**.
+ *
+ * Eskiden RFM sabitini paylaşıyordu. Paylaşmaması gerekiyordu: RFM penceresi
+ * artık ekranın süzgeci (§6.4) ve "son 90 günün müşteri segmenti" sorusu ABC
+ * sınıflandırmasının penceresini değiştirmemeli. Aynı sayı, ayrı sebep.
+ */
+const PRODUCT_WINDOW_DAYS = 365;
+
 /** Karşılıksız oranının yazılabilmesi için gereken kâğıt sayısı. */
 export const BOUNCED_MIN_SAMPLE = 10;
 
 async function computeProducts(now: Date): Promise<ProductSnapshot> {
-  const windowStart = new Date(now.getTime() - RFM_WINDOW_DAYS * 86_400_000);
+  const windowStart = new Date(now.getTime() - PRODUCT_WINDOW_DAYS * 86_400_000);
 
   const rows = await prisma.$queryRaw<
     Array<{
