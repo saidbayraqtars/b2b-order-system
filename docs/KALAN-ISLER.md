@@ -385,12 +385,47 @@ veritabanında.
 13 test (`packages/services/test/integration/order-policy.test.ts`); altısı saf
 kesim saati hesabı (cuma akşamı → pazartesi, cumartesi açık/kapalı, pazar).
 
-### 5.7, 5.8 Kalan ucuzlar
+### 5.7 ~~Zamanlı fiyat değişimi~~ ✔ (2026-08-28)
 
-| Fikir                        | Durum | Neden                                                                                            |
-| ---------------------------- | ----- | ------------------------------------------------------------------------------------------------ |
-| **Zamanlı fiyat değişimi**   | yok   | "1 Eylül'den itibaren zam". `Price`'ta `validFrom` yok; `Job` zamanlayıcı hazır                  |
-| **Backorder / bekleyen bakiye** | yok | Kısmi sevkiyat var (`quantityShipped`), ama "40 koli bekliyor, mal gelince sevk et" takibi yok |
+"1 Eylül'den itibaren zam". Excel'deki fiyat şablonuna **Geçerlilik tarihi**
+sütunu eklendi: boş = hemen, dolu = kuyruğa. Aynı dosyada ikisi bir arada
+olabiliyor.
+
+**Neden kuyruk, neden `Price.validFrom` değil:** geçerlilik tarihi `Price`
+üzerinde olsaydı, "şu andaki fiyat" sorusu her okumada bir alt sorguya
+dönüşürdü. O soruyu soran dört yer var (katalog, sepet, teklif, toplu
+güncelleme) ve dördü de sistemin en sonuçlu yolunda. Bir zam listesi o yolu
+karmaşıklaştırmaya değmez. Bunun yerine `ScheduledPriceChange`: bekleyen satır
+zamanı gelince `Price`a **kopyalanıyor**, okuma yolu hiç değişmiyor.
+
+Bedeli, değişimin tam gece yarısında değil işin ilk turunda yürürlüğe girmesi.
+İş (`price-schedule`) saat başı koşuyor ve periyodu `/admin/jobs`tan
+değiştirilebiliyor.
+
+Dört kural:
+
+- **Geçmişe fiyat yazılmıyor**; bugünün tarihi de geçmiş sayılıyor, çünkü
+  "bugünden itibaren" zaten tarihsiz satırın davranışı.
+- **Okunamayan tarih sessizce yok sayılmıyor**: "01/09/26" yazan satır
+  reddediliyor — hemen uygulanması zammı üç gün erken yapmak olurdu.
+- **Uygulanmış satır silinmiyor**, eski fiyatı taşıyor: "ne zaman, ne kadar zam"
+  tabloda cevaplanıyor.
+- **İptal yalnızca bekleyeni kapatıyor.** Uygulanmış bir fiyatı geri almak ayrı
+  bir karar ve yeni bir zamanlı değişiklikle yapılıyor; sessizce geri sarmak,
+  aradaki siparişlerin hangi fiyattan geçtiğini belirsiz bırakırdı.
+
+Her satır **kendi işleminde** uygulanıyor: beş yüz satırlık bir listede tek bir
+silinmiş varyant, listenin tamamını geri almamalı. Başarısız satır sebebiyle
+`FAILED` olarak duruyor ve ekranda görünüyor — bekleyende kalsaydı her turda
+yeniden denenir ve kimse fark etmezdi.
+
+Ekran: `/admin/toplu-guncelleme?bolum=zamanli`. 8 test
+(`packages/services/test/integration/price-schedule.test.ts`).
+
+### 5.8 Backorder / bekleyen bakiye
+
+Kısmi sevkiyat var (`OrderItem.quantityShipped`), ama "40 koli bekliyor, mal
+gelince sevk et" takibi yok.
 
 ### 5.10 Kampanya simülatörü
 

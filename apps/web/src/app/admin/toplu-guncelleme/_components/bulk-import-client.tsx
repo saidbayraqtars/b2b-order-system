@@ -20,6 +20,7 @@ import {
   THead,
 } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { PriceQueue } from "./price-queue";
 
 // Akış tek yönlü ve ekran onu adım adım çiziyor:
 //
@@ -47,16 +48,42 @@ const STATUS_TONE: Record<RowStatus, "brand" | "success" | "neutral" | "warning"
   invalid: "danger",
 };
 
+/**
+ * Üç sekme, tek ekran: ikisi dosya yükleyen, üçüncüsü yüklenenin **kuyruğu**.
+ *
+ * Kuyruk ayrı bir sayfaya konmadı çünkü oraya kayıt buradan giriliyor: zamanlı
+ * fiyat, fiyat sekmesinden yüklenen dosyanın "Geçerlilik tarihi" sütunundan
+ * doğuyor ve sonucunu görmek için başka bir adrese gitmek gerekmemeli.
+ */
 const TABS = [
   { key: "PRICE" as const, label: "Fiyat" },
   { key: "STOCK" as const, label: "Stok sayımı" },
+  { key: "QUEUE" as const, label: "Zamanlı fiyatlar" },
 ];
+
+type TabKey = (typeof TABS)[number]["key"];
+
+const TAB_SLUG: Record<TabKey, string> = {
+  PRICE: "fiyat",
+  STOCK: "stok",
+  QUEUE: "zamanli",
+};
+
+function tabFromSlug(slug: string | null): TabKey {
+  const hit = (Object.keys(TAB_SLUG) as TabKey[]).find(
+    (k) => TAB_SLUG[k] === slug,
+  );
+  return hit ?? "PRICE";
+}
 
 export function BulkImportClient() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const kind: ImportKind = params.get("bolum") === "stok" ? "STOCK" : "PRICE";
+  const tab = tabFromSlug(params.get("bolum"));
+  // Kuyruk sekmesinde dosya yükleme yok; `kind` yalnızca iki yükleme sekmesi
+  // için anlamlı ve orada `PRICE`a düşüyor.
+  const kind: ImportKind = tab === "STOCK" ? "STOCK" : "PRICE";
 
   const { notify } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -118,30 +145,34 @@ export function BulkImportClient() {
         title="Toplu güncelleme"
         subtitle="Excel'den fiyat ve stok — önce fark, sonra uygulama"
         actions={
-          <LinkButton
-            href={`/api/admin/bulk-import?kind=${kind}`}
-            variant="secondary"
-            size="md"
-          >
-            Şablonu indir
-          </LinkButton>
+          tab === "QUEUE" ? undefined : (
+            <LinkButton
+              href={`/api/admin/bulk-import?kind=${kind}`}
+              variant="secondary"
+              size="md"
+            >
+              Şablonu indir
+            </LinkButton>
+          )
         }
       />
 
       <Tabs
-        value={kind}
+        value={tab}
         onChange={(next) => {
           reset();
           setFile(null);
           if (fileRef.current) fileRef.current.value = "";
-          router.replace(
-            `${pathname}?bolum=${next === "STOCK" ? "stok" : "fiyat"}`,
-            { scroll: false },
-          );
+          router.replace(`${pathname}?bolum=${TAB_SLUG[next]}`, {
+            scroll: false,
+          });
         }}
         items={TABS}
       />
 
+      {tab === "QUEUE" && <PriceQueue />}
+
+      {tab !== "QUEUE" && (
       <Panel title="1 · Dosyayı seçin">
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -171,12 +202,26 @@ export function BulkImportClient() {
         </p>
         <ErrorLine error={error} />
       </Panel>
+      )}
 
       {result && (
         <Panel title="Uygulandı">
           <p className="text-body-sm text-positive">
             {result.applied} satır işlendi, {result.skipped} satır atlandı.
           </p>
+          {result.scheduled ? (
+            <p className="mt-2 text-body-sm text-ink-muted">
+              {result.scheduled} satır <strong>ileri tarihe</strong> alındı ve
+              yürürlük günü geldiğinde uygulanacak.{" "}
+              <a
+                href="/admin/toplu-guncelleme?bolum=zamanli"
+                className="underline underline-offset-4 hover:text-ink"
+              >
+                Kuyruğu görün
+              </a>
+              .
+            </p>
+          ) : null}
           {result.kind === "STOCK" && (
             <p className="mt-2 text-body-sm text-ink-muted">
               Sayım farkları <strong>stok defterine</strong> yazıldı — eldeki
@@ -262,6 +307,21 @@ export function BulkImportClient() {
         </>
       )}
 
+      {tab === "QUEUE" ? (
+        <Note>
+          Bekleyen satır fiyatı <strong>değiştirmiyor</strong>: yürürlük günü
+          gelince <a href="/admin/jobs" className="underline underline-offset-4 hover:text-ink">bakım işi</a>{" "}
+          onu fiyat listesine işliyor ve o anki fiyatı satırda saklıyor — &ldquo;ne
+          zaman, ne kadar zam&rdquo; sorusu burada cevaplanıyor. İş saat başı
+          koşuyor; gece yarısı hassasiyeti isteyen kurulum periyodu kısaltabilir.
+          <br />
+          <br />
+          Uygulanmış bir satır <strong>iptal edilemiyor</strong>: fiyatı geri
+          almak ayrı bir karardır ve yeni bir zamanlı değişiklikle yapılır.
+          Sessizce geri sarmak, aradaki siparişlerin hangi fiyattan geçtiğini
+          belirsiz bırakırdı.
+        </Note>
+      ) : (
       <Note>
         <strong>Fark önizlemesi pazarlık konusu değil.</strong> Bir dosyayı
         doğrudan uygulamak, yanlış sütuna kaymış bir kopyalamanın bütün kataloğu
@@ -278,6 +338,7 @@ export function BulkImportClient() {
         </a>{" "}
         yazılıyor: kim, kaç satır, hangi dosya.
       </Note>
+      )}
     </div>
   );
 }
@@ -296,6 +357,7 @@ function PriceDiff({ plan }: { plan: ImportPlan }) {
             <Th align="right">Min adet</Th>
             <Th align="right">Mevcut</Th>
             <Th align="right">Yeni</Th>
+            <Th>Yürürlük</Th>
             <Th>Durum</Th>
           </tr>
         </THead>
@@ -321,6 +383,17 @@ function PriceDiff({ plan }: { plan: ImportPlan }) {
               >
                 {r.newPrice === null ? "—" : formatTRY(r.newPrice)}
               </Td>
+              {/* Tarihsiz satır **hemen** uygulanıyor ve bunu yazmak gerekiyor:
+                  boş bir hücre, tarih girmeyi unutmuş kişiye hiçbir şey
+                  söylemez. */}
+              <Td muted={r.effectiveDate === null}>
+                {r.effectiveDate === null
+                  ? "hemen"
+                  : new Date(`${r.effectiveDate}T00:00:00`).toLocaleDateString(
+                      "tr-TR",
+                      { day: "2-digit", month: "long", year: "numeric" },
+                    )}
+              </Td>
               <Td>
                 <span className="flex items-center gap-2">
                   <Badge tone={STATUS_TONE[r.status]}>
@@ -333,7 +406,7 @@ function PriceDiff({ plan }: { plan: ImportPlan }) {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <TableEmpty colSpan={8} label="Satır yok." />}
+          {rows.length === 0 && <TableEmpty colSpan={9} label="Satır yok." />}
         </TBody>
       </Table>
       <Truncated shown={rows.length} total={plan.totalRows} />

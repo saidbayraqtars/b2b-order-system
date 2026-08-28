@@ -299,6 +299,22 @@ export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
   MOBILE: "Mobil",
 };
 
+/** Zamanlı fiyat değişiminin hâli. */
+export const PriceChangeStatusEnum = z.enum([
+  "PENDING",
+  "APPLIED",
+  "CANCELLED",
+  "FAILED",
+]);
+export type PriceChangeStatus = z.infer<typeof PriceChangeStatusEnum>;
+
+export const PRICE_CHANGE_STATUS_LABELS: Record<PriceChangeStatus, string> = {
+  PENDING: "Bekliyor",
+  APPLIED: "Uygulandı",
+  CANCELLED: "İptal",
+  FAILED: "Başarısız",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 

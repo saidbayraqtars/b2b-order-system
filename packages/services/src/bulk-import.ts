@@ -42,6 +42,15 @@ export interface PriceRowPlan {
   minQuantity: number;
   currentPrice: number | null;
   newPrice: number | null;
+  /**
+   * Yürürlük tarihi — `YYYY-MM-DD`, boşsa hemen.
+   *
+   * Dosyanın kendisinde: "1 Eylül zammı" hazırlayan kişi listeyi zaten Excel'de
+   * kuruyor ve tarihi ayrı bir ekrana girmek, listeyle tarihin ayrı yerlerde
+   * durması demek. Aynı dosyada iki farklı tarih de olabiliyor — kademeli zam
+   * tek listeyle giriliyor.
+   */
+  effectiveDate: string | null;
   status: RowStatus;
   message?: string;
 }
@@ -111,6 +120,7 @@ const PRICE_HEADERS = {
   group: ["grup", "musterigrubu", "fiyatgrubu"],
   minQuantity: ["minadet", "minimumadet", "adet", "kademe"],
   price: ["fiyat", "birimfiyat", "yenifiyat", "listefiyati"],
+  effective: ["gecerliliktarihi", "yururluk", "yururluktarihi", "tarih", "baslangic"],
 } as const;
 
 const STOCK_HEADERS = {
@@ -235,6 +245,8 @@ async function planPrices(rows: SheetRow[]): Promise<ImportPlan> {
         ? Math.max(1, Math.trunc(parseDecimal(row[col.minQuantity] ?? null) ?? 1))
         : 1;
     const newPrice = parseDecimal(row[col.price] ?? null);
+    const rawEffective = col.effective >= 0 ? (row[col.effective] ?? null) : null;
+    const effectiveDate = cellDate(rawEffective);
 
     const base: PriceRowPlan = {
       line,
@@ -245,6 +257,7 @@ async function planPrices(rows: SheetRow[]): Promise<ImportPlan> {
       minQuantity,
       currentPrice: null,
       newPrice,
+      effectiveDate,
       status: "invalid",
     };
 
@@ -276,6 +289,21 @@ async function planPrices(rows: SheetRow[]): Promise<ImportPlan> {
 
     if (newPrice === null || newPrice < 0) {
       return withCount(counts, { ...base, message: "Fiyat okunamadı" });
+    }
+
+    // Dolu ama okunamayan tarih **sessizce yok sayılmıyor**: "01/09/26" yazan
+    // bir satırın hemen uygulanması, zammı üç gün erken yapmak olurdu.
+    if (rawEffective !== null && rawEffective !== "" && effectiveDate === null) {
+      return withCount(counts, {
+        ...base,
+        message: "Tarih okunamadı — 2026-09-01 ya da 01.09.2026 yazın",
+      });
+    }
+    if (effectiveDate !== null && !isFuture(effectiveDate)) {
+      return withCount(counts, {
+        ...base,
+        message: "Yürürlük tarihi geçmişte — geçmişe fiyat yazılmaz",
+      });
     }
 
     const current =
@@ -373,12 +401,59 @@ async function planStock(rows: SheetRow[]): Promise<ImportPlan> {
   };
 }
 
+/**
+ * Tarih **bugünden sonra** mı.
+ *
+ * Bugünün kendisi geçmiş sayılıyor: "bugünden itibaren" demek, hemen uygulamak
+ * demek ve o zaten tarihsiz satırın davranışı. Kuyruğa bugünün tarihiyle bir
+ * satır koymak, işin ilk turuna kadar eski fiyattan satmak olurdu.
+ */
+function isFuture(day: string): boolean {
+  return day > new Date().toISOString().slice(0, 10);
+}
+
 function withCount<T extends { status: RowStatus }>(
   counts: Record<RowStatus, number>,
   row: T,
 ): T {
   counts[row.status] += 1;
   return row;
+}
+
+/**
+ * Hücreden yürürlük tarihi.
+ *
+ * Excel tarihi **seri numarası** olarak saklıyor (1900 dizgesinden gün sayısı);
+ * `xlsx-read` biçimlendirmeyi çözmediği için sayı olarak geliyor ve burada
+ * çevriliyor. Metin hâli de kabul ediliyor: `2026-09-01` ve `01.09.2026`.
+ *
+ * Dönen değer **günün başlangıcı, kurulumun takviminde değil UTC'de**: fiyat
+ * "1 Eylül'den itibaren" dendiğinde 1 Eylül 00:00'da geçerli olmalı ve iş saat
+ * başı koştuğu için gün içindeki saat farkı zaten görünmüyor. Saat taşımak,
+ * taşımadığı bir hassasiyeti vaat ederdi.
+ */
+function cellDate(value: string | number | null): string | null {
+  if (value === null || value === "") return null;
+
+  if (typeof value === "number") {
+    // Excel seri numarası: 25569 = 1970-01-01. 1900'ün var olmayan 29 Şubat'ı
+    // seride duruyor ve 60'tan büyük her tarihi bir gün kaydırıyor — sabit onu
+    // içeriyor, ayrıca düzeltme gerekmiyor.
+    if (value < 1 || value > 2_958_465) return null;
+    const ms = Math.round((value - 25569) * 86_400_000);
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+
+  const text = value.trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const tr = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/.exec(text);
+  if (tr) {
+    const [, d, m, y] = tr;
+    return `${y}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  }
+  return null;
 }
 
 function cellText(value: string | number | null): string | null {
@@ -400,7 +475,7 @@ function sign(kind: ImportKind, rows: Array<PriceRowPlan | StockRowPlan>): strin
     .filter((r) => r.status === "update" || r.status === "create")
     .map((r) =>
       "newPrice" in r
-        ? `${r.sku}|${r.groupId ?? ""}|${r.minQuantity}|${r.currentPrice ?? ""}|${r.newPrice}`
+        ? `${r.sku}|${r.groupId ?? ""}|${r.minQuantity}|${r.currentPrice ?? ""}|${r.newPrice}|${r.effectiveDate ?? ""}`
         : `${r.sku}|${r.currentStock}|${r.countedStock}`,
     )
     .join("\n");
@@ -415,6 +490,8 @@ export interface ImportResult {
   applied: number;
   skipped: number;
   kind: ImportKind;
+  /** Hemen değil, **kuyruğa** giren satır sayısı (yürürlük tarihi verilmiş). */
+  scheduled?: number;
 }
 
 export async function applyImport(
@@ -435,20 +512,30 @@ export async function applyImport(
   }
 
   return kind === "PRICE"
-    ? applyPrices(plan)
+    ? applyPrices(plan, actorId)
     : applyStock(plan, actorId);
 }
 
-async function applyPrices(plan: ImportPlan): Promise<ImportResult> {
-  const targets = (plan.priceRows ?? []).filter(
+async function applyPrices(
+  plan: ImportPlan,
+  actorId: string,
+): Promise<ImportResult> {
+  const all = (plan.priceRows ?? []).filter(
     (r) => r.status === "update" || r.status === "create",
   );
+  // Tarihi olan satır **kuyruğa**, olmayan doğrudan fiyat listesine. Aynı
+  // dosyada ikisi bir arada olabiliyor: "şunlar hemen, şunlar 1 Eylül'den".
+  const targets = all.filter((r) => r.effectiveDate === null);
+  const queued = all.filter((r) => r.effectiveDate !== null);
 
   // Varyant kimlikleri **tek sorguda**: satır başına bir `findUnique`, beş bin
   // satırlık bir dosyada beş bin gidiş-dönüş demek olurdu ve hepsi tek bir
   // işlemin içinde, yani kilit tutarak.
   const variants = await prisma.productVariant.findMany({
-    where: { sku: { in: [...new Set(targets.map((r) => r.sku))] } },
+    // `all`, `targets` değil: kuyruğa giren satırlar da varyant kimliği
+    // istiyor ve yalnız hemen uygulananlara bakan bir sorgu onları sessizce
+    // atlardı.
+    where: { sku: { in: [...new Set(all.map((r) => r.sku))] } },
     select: { id: true, sku: true },
   });
   const idBySku = new Map(variants.map((v) => [v.sku, v.id]));
@@ -491,10 +578,38 @@ async function applyPrices(plan: ImportPlan): Promise<ImportResult> {
     { timeout: 120_000 },
   );
 
+  // Kuyruk ayrı ve **tek** işlemde: zam listesinin yarısının kuyruğa girmesi,
+  // hiç girmemesinden kötü — hangi ürünün ne zaman zamlanacağı belirsiz kalır.
+  if (queued.length > 0) {
+    await prisma.$transaction(
+      async (tx) => {
+        for (const row of queued) {
+          const variantId = idBySku.get(row.sku);
+          if (!variantId) continue;
+          await tx.scheduledPriceChange.create({
+            data: {
+              variantId,
+              customerGroupId: row.groupId,
+              minQuantity: row.minQuantity,
+              price: row.newPrice!,
+              // Günün başlangıcı: fiyat "1 Eylül'den itibaren" dendiğinde
+              // 1 Eylül 00:00'da geçerli olmalı.
+              effectiveAt: new Date(`${row.effectiveDate}T00:00:00.000Z`),
+              note: `Excel ile toplu güncelleme`,
+              createdById: actorId,
+            },
+          });
+        }
+      },
+      { timeout: 120_000 },
+    );
+  }
+
   return {
     kind: "PRICE",
     applied: targets.length,
-    skipped: plan.totalRows - targets.length,
+    scheduled: queued.length,
+    skipped: plan.totalRows - all.length,
   };
 }
 

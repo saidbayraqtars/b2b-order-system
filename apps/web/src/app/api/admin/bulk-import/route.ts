@@ -42,12 +42,23 @@ export function GET(req: NextRequest) {
             { label: "Grup" },
             { label: "Min adet" },
             { label: "Fiyat" },
+            // Boş bırakılıyor: şablon **mevcut hâli** taşıyor ve mevcut fiyatın
+            // bir yürürlük tarihi yok. Sütunun varlığı, doldurulabileceğini
+            // söylüyor — kullanıcının başlığı elle yazması gerekmiyor.
+            { label: "Geçerlilik tarihi" },
           ]
         : [{ label: "SKU" }, { label: "Ürün" }, { label: "Sayılan stok" }];
 
     const body =
       kind === "PRICE"
-        ? rows.map((r) => [r.sku, r.productName, r.groupName, r.minQuantity, r.price])
+        ? rows.map((r) => [
+            r.sku,
+            r.productName,
+            r.groupName,
+            r.minQuantity,
+            r.price,
+            null,
+          ])
         : rows.map((r) => [r.sku, r.productName, r.stock]);
 
     const file = buildXlsx(
@@ -107,11 +118,19 @@ export function POST(req: NextRequest) {
       entity: "BulkImport",
       summary:
         kind === "PRICE"
-          ? `${result.applied} fiyat satırı güncellendi`
+          ? [
+              `${result.applied} fiyat satırı güncellendi`,
+              result.scheduled
+                ? `${result.scheduled} satır ileri tarihe kuyruğa alındı`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(", ")
           : `${result.applied} varyantta sayım farkı işlendi`,
       meta: {
         kind,
         applied: result.applied,
+        scheduled: result.scheduled ?? 0,
         skipped: result.skipped,
         fileName: file instanceof File ? file.name : null,
         fileSize: file.size,

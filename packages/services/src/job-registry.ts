@@ -5,6 +5,7 @@ import { listOrphanMedia, deleteMedia } from "./media";
 import { purgePasswordResetTokens } from "./password-reset";
 import { deliverDueReports } from "./report-delivery";
 import { computeSnapshot, saveSnapshot } from "./analytics";
+import { applyDuePriceChanges } from "./price-schedule";
 
 // ─────────────────────────────────────────────
 // İŞ KAYIT DEFTERİ
@@ -213,6 +214,31 @@ const analyticsSnapshot: JobDefinition = {
   },
 };
 
+/**
+ * Zamanı gelmiş fiyat değişiklikleri.
+ *
+ * Saatte bir: "1 Eylül'den itibaren zam" sözü gün başında tutulsun ama saat
+ * başı bir sorgu da kimseyi rahatsız etmesin. Periyot ekrandan değiştirilebilir
+ * ve gece yarısı hassasiyeti isteyen kurulum onu 15 dakikaya çekebilir.
+ */
+const priceSchedule: JobDefinition = {
+  name: "price-schedule",
+  label: "Zamanlı fiyatları uygula",
+  description:
+    "Yürürlük tarihi gelmiş fiyat değişikliklerini fiyat listesine işler.",
+  intervalMinutes: 60,
+  run: async () => {
+    const result = await applyDuePriceChanges();
+    return {
+      summary:
+        result.applied === 0 && result.failed === 0
+          ? "Zamanı gelen fiyat değişikliği yok"
+          : `${result.applied} fiyat uygulandı, ${result.failed} başarısız`,
+      meta: { ...result },
+    };
+  },
+};
+
 export const JOBS: readonly JobDefinition[] = [
   purgeTokens,
   auditRetention,
@@ -221,6 +247,7 @@ export const JOBS: readonly JobDefinition[] = [
   reportDelivery,
   tcmbRates,
   analyticsSnapshot,
+  priceSchedule,
 ];
 
 export function findJob(name: string): JobDefinition | undefined {

@@ -846,9 +846,21 @@ Sepet tarafında iki ekleme:
 Firma sayfasına da bir alan geldi: **asgari sipariş (₺)**, ipucu "boş = genel
 kural, 0 = muaf".
 
-Ekran görüntüsü: `adim-15/siparis-kurallari.png`.
+**Toplu güncelleme ekranına üçüncü sekme** geldi: `?bolum=zamanli` —
+zamanlı fiyat kuyruğu. Kuyruk ayrı bir sayfaya konmadı çünkü oraya kayıt
+buradan giriliyor: zamanlı fiyat, fiyat sekmesinden yüklenen dosyanın
+"Geçerlilik tarihi" sütunundan doğuyor ve sonucunu görmek için başka bir adrese
+gitmek gerekmemeli. Sekme kayıt **açmıyor**, yalnızca gösteriyor ve bekleyen bir
+satırı iptal ediyor — bir zam listesi yüzlerce satır ve onu tek tek forma girmek,
+listeyi zaten Excel'de kuran kişiye yapılabilecek en kötü teklif.
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 616
+Fark önizlemesi bir **Yürürlük** sütunu aldı ve tarihsiz satır orada "hemen"
+yazıyor: boş bir hücre, tarih girmeyi unutmuş kişiye hiçbir şey söylemez.
+
+Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
+`adim-15/zamanli-fiyatlar.png`.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 619
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)

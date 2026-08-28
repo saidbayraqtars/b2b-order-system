@@ -590,6 +590,14 @@ export const SCREENS = [
     path: "/admin/siparis-kurallari",
   },
 
+  {
+    step: 15,
+    slug: "zamanli-fiyatlar",
+    label: "Zamanlı fiyat kuyruğu",
+    as: "admin",
+    path: "/admin/toplu-guncelleme?bolum=zamanli",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:
