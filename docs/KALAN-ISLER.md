@@ -155,23 +155,22 @@ teklif yönetimi · vade farkı & erken ödeme iskontosu motoru · firma risk sk
 Bunlar listede yoktu; bugün kodu ve ekran görüntülerini okurken çıktı. Her
 maddenin altında **neden** ve **kanıt** var — gerekçesi zayıf olanı atın.
 
-### 4.1 Test artığı gösterim veritabanını kirletiyor ★
+### 4.1 ~~Test artığı gösterim veritabanını kirletiyor~~ ✔ (2026-08-28)
 
-Rota testleri gerçek DB'ye yazıyor ve temizlemiyor. Bugün sayıldı:
+**Testler ayrı şemada koşuyor.** `apps/web/test/setup.ts` ve
+`packages/services/test/setup-env.ts`, Prisma'yı içe aktarmadan önce
+`applyTestSchema()` çağırıyor; o da `DATABASE_URL`e `?schema=test` yazıyor
+(`packages/database/src/test-env.ts`). Şemayı `pnpm db:test-prepare` kuruyor —
+göçleri uygular, başvuru verisini (belge serisi, etiket şablonları) yazar;
+`--reset` ile komple sıfırlar.
 
-```
-User      email like '%@test.local'     → 23
-Category  name like 'Kategori %'/'S7 %' →  4
-Company   name like '%rmamta%'/'%acctmt%' → 2
-```
+Temizliği sıkılaştırmak seçilmedi: Ctrl+C'yle kesilen bir koşu her zaman artık
+bırakır. Ayrı şemada bıraktığı artık gösterim verisine hiç değmiyor.
 
-İki zarar: **(1)** kullanıcı ekranının görüntüsünde 15 tane "Yeni Plasiyer" ve
-`plasiyer-acctmtbh3rwy588@test.local` var — bu görüntü müşteriye gösterilemez;
-**(2)** `db:seed-demo` sonrası kurulum kirli açılıyor.
-
-Çözüm: test harness'ına `afterAll` temizliği ya da testleri ayrı bir şemaya
-(`SEARCH_PATH=test`) almak. İkincisi daha sağlam — yarıda kalan bir test
-temizlik yapamaz.
+Birikmiş artık da temizlendi: `pnpm db:purge-test-residue` (kuru kip
+varsayılan, `--apply` siler, `--orphans` kullanıcısı kalmamış eski katalog
+satırlarını da tarar). Gösterim veritabanından 41 satır kalktı; sayaç şimdi
+sıfır.
 
 ### 4.2 Uzun tabloda başlık kayboluyor ★
 
@@ -483,6 +482,7 @@ Gece boyu çalışırken **bunlara dokunmayın**:
 ```bash
 # 0. Veritabanı ayakta olsun (Docker Desktop elle açılıyor, otomatik değil)
 docker compose up -d db
+pnpm db:test-prepare                    # testlerin şeması; göç eklendiyse tekrar
 
 # 1. Kod
 # 2. Doğrulama — CI tam bu sırayı çalıştırıyor

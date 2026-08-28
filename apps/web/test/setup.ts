@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { vi } from "vitest";
+import { applyTestSchema } from "@repo/database/test-env";
 import { currentScope } from "./request-context";
 
 // ─────────────────────────────────────────────
@@ -28,6 +29,15 @@ if (!process.env.DATABASE_URL) {
     }
   }
 }
+
+// Testler **ayrı bir şemada** koşar (`?schema=test`). Prisma içe aktarılmadan
+// önce çağrılmak zorunda: istemci adresi kurulum anında okuyor ve bu dosya
+// vitest'in `setupFiles`ı, yani test modüllerinden önce çalışıyor.
+//
+// Şemayı `pnpm db:test-prepare` kuruyor. Gerekçe `packages/database/src/
+// test-env.ts` içinde yazılı: yarıda kesilen bir koşu temizlik yapamaz ve
+// bıraktığı artık gösterim ekranlarının fotoğrafına giriyordu.
+applyTestSchema();
 
 // ─────────────────────────────────────────────
 // what Next.js normally supplies

@@ -52,6 +52,13 @@ jobs:
           pnpm db:generate
           pnpm db:deploy
 
+      # Tests run in their own schema (?schema=test) — see
+      # packages/database/src/test-env.ts. CI already has a throwaway database,
+      # so this changes nothing here; it is run so CI exercises the same path a
+      # developer does rather than a second, CI-only one.
+      - name: Test schema
+        run: pnpm db:test-prepare
+
       - run: pnpm typecheck
       - run: pnpm lint
       # Unit suite plus the integration suite, which runs because DATABASE_URL is set.

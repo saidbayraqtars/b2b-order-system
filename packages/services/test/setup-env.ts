@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { applyTestSchema } from "@repo/database/test-env";
 
 // Vitest runs from packages/services, where there is no .env — Prisma only picks
 // one up next to the schema. Rather than duplicate the connection string, read
@@ -22,3 +23,7 @@ if (!process.env.DATABASE_URL) {
     }
   }
 }
+
+// Bütünleşme testleri ayrı bir şemada koşar; gerekçe ve kurulum
+// `packages/database/src/test-env.ts` ile `pnpm db:test-prepare`de.
+applyTestSchema();

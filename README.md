@@ -66,18 +66,33 @@ pnpm --filter mobile start  # expo
 ## Doğrulama
 
 ```bash
-pnpm typecheck   # her pakette tsc
-pnpm lint        # ESLint, sıfır uyarı toleransı
-pnpm test        # Vitest: birim takımı + entegrasyon takımı
-pnpm build       # next build + paket derlemeleri
+pnpm db:test-prepare   # testlerin şeması (bir kez; göç eklenince tekrar)
+pnpm typecheck         # her pakette tsc
+pnpm lint              # ESLint, sıfır uyarı toleransı
+pnpm test              # Vitest: birim takımı + entegrasyon takımı
+pnpm build             # next build + paket derlemeleri
 ```
 
-`pnpm test` iki takım çalıştırıyor; bugün 22 dosyada 292 test. **Birim takımı (70)** saf domain
-matematiği, hiçbir şeye ihtiyacı yok. **Entegrasyon takımı (81)** gerçek bir Postgres ile
-konuşuyor, kendi fixture'ını kuruyor (grup, firma, ürün, fiyat kademeleri, kampanyalar, belge
-serileri) ve yalnızca kendi kayıtlarına dokunuyor — bu yüzden seed verisi olan bir veritabanında
-da güvenle çalışıyor. `DATABASE_URL` yoksa takım başarısız olmuyor, **atlanıyor**. CI
-(`.github/workflows/ci.yml`) dört komutu da Postgres servis konteyneri üzerinde koşturuyor.
+**Testler ayrı bir Postgres şemasında koşuyor** (`?schema=test`). Kurulum
+`packages/database/src/test-env.ts`te: iki vitest kurulum dosyası da Prisma'yı
+içe aktarmadan önce `DATABASE_URL`i o şemaya çeviriyor. Şemayı
+`pnpm db:test-prepare` açıyor — göçleri uygular ve testlerin varlığını
+varsaydığı başvuru verisini (belge serisi, etiket şablonları) yazar; `--reset`
+ile sıfırdan kurar.
+
+Ayrımın sebebi temizlik değil **kesinti**: fixture'lar kendi satırlarını
+siliyor ama Ctrl+C'yle kesilen bir koşu silemiyor ve biriken artık gösterim
+ekranlarının görüntüsüne giriyordu (`plasiyer-…@test.local` satırları).
+Geçmişten kalanı `pnpm db:purge-test-residue` temizliyor (kuru kip varsayılan;
+`--apply` siler).
+
+`pnpm test` iki takım çalıştırıyor. **Birim takımı** saf domain matematiği,
+hiçbir şeye ihtiyacı yok. **Entegrasyon takımı** gerçek bir Postgres ile
+konuşuyor, kendi fixture'ını kuruyor (grup, firma, ürün, fiyat kademeleri,
+kampanyalar, belge serileri) ve yalnızca kendi kayıtlarına dokunuyor.
+`DATABASE_URL` yoksa takım başarısız olmuyor, **atlanıyor**. CI
+(`.github/workflows/ci.yml`) beş komutu da Postgres servis konteyneri üzerinde
+koşturuyor.
 
 Bilinmesi gereken bir fixture var: belge numarası üzerine iddiada bulunan bir test
 `useOwnDefaultSeries()` çağırmak zorunda, çünkü bir seri yalnızca **varsayılan** olduğu sürece
@@ -86,33 +101,33 @@ devam eder ve tam olarak bir kez geçer — o sayacın hâlâ sıfır olduğu ve
 
 ## Seed hesapları (şifre: `Password123!`)
 
-| E-posta              | Rol           |
-| -------------------- | ------------- |
-| admin@b2b.local      | SUPER_ADMIN   |
-| rep@b2b.local        | SALES_REP     |
-| manager@ornek.local  | COMPANY_ADMIN |
-| staff@ornek.local    | COMPANY_STAFF |
+| E-posta             | Rol           |
+| ------------------- | ------------- |
+| admin@b2b.local     | SUPER_ADMIN   |
+| rep@b2b.local       | SALES_REP     |
+| manager@ornek.local | COMPANY_ADMIN |
+| staff@ornek.local   | COMPANY_STAFF |
 
 ## RBAC yol haritası
 
 Tek gerçek kaynak: `packages/auth/src/rbac.ts`.
 
-| Ön ek        | İzinli roller                                          |
-| ------------ | ------------------------------------------------------ |
-| `/admin`     | SUPER_ADMIN                                            |
-| `/rep`       | SALES_REP, SUPER_ADMIN                                 |
-| `/portal`    | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN              |
-| `/reports`   | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN                  |
-| `/orders`    | dört rol de (satırlar sunucuda kapsamlanır)            |
-| `/documents` | dört rol de (belge, kendi firması üzerinden yetkilenir)|
-| `/hesabim`   | dört rol de (yalnızca kendi hesabı)                    |
+| Ön ek        | İzinli roller                                           |
+| ------------ | ------------------------------------------------------- |
+| `/admin`     | SUPER_ADMIN                                             |
+| `/rep`       | SALES_REP, SUPER_ADMIN                                  |
+| `/portal`    | COMPANY_ADMIN, COMPANY_STAFF, SUPER_ADMIN               |
+| `/reports`   | SUPER_ADMIN, SALES_REP, COMPANY_ADMIN                   |
+| `/orders`    | dört rol de (satırlar sunucuda kapsamlanır)             |
+| `/documents` | dört rol de (belge, kendi firması üzerinden yetkilenir) |
+| `/hesabim`   | dört rol de (yalnızca kendi hesabı)                     |
 
 ## Yetkilendirme modeli
 
 Üç katman, ve sıra önemli:
 
 1. **Edge `middleware.ts`** — imzalı çerezden rol kontrolü, `/login` ya da `/403`'e yönlendirir.
-   Bir *ön filtre*: edge runtime'ın veritabanı erişimi yok.
+   Bir _ön filtre_: edge runtime'ın veritabanı erişimi yok.
 2. **`requirePage()`** — Server Component'ler. Yönlendirir.
 3. **`requireUser()`** — route handler'lar. JSON 401/403 döner.
 
@@ -184,7 +199,7 @@ Bir kampanya bir satırdır: hepsi sağlanması gereken bir koşul listesi ve in
 aksiyon listesi, ikisi de `{ type, params }` JSON'u olarak saklanır. Kural türlerinin kataloğu
 `packages/services/src/promotion-registry.ts` içinde; orası aynı zamanda **güvenlik sınırı** —
 tanımsız bir tür yoktur ve her parametre, kuralın yanında bildirilen Zod şemasından geçer, hem
-yazarken *hem de* her çalıştırmada. İstemciden gelen (ya da doğrudan veritabanında düzenlenmiş
+yazarken _hem de_ her çalıştırmada. İstemciden gelen (ya da doğrudan veritabanında düzenlenmiş
 bir satırdan gelen) hiçbir şey kod olarak çalıştırılmaz.
 
 `promotion-engine.ts` saftır: fiyatlanmış satırları ve derlenmiş kuralları alır, satır bazında
@@ -203,7 +218,7 @@ için içinde başka hiçbir şey saklanamaz. Navlun indirimi kaynağında `ship
 indirimi taşıyan bir satırdır: sıfıra iner ama malın değersiz olduğunu iddia etmez — faturanın
 göstermek zorunda olduğu şey de budur.
 
-Motor üçünü ayrı ayrı raporlar ve hiçbir şeyi fiyatlamaz: *ne* verileceğini ve *kaç tane*
+Motor üçünü ayrı ayrı raporlar ve hiçbir şeyi fiyatlamaz: _ne_ verileceğini ve _kaç tane_
 olduğunu bilir, değerlemeyi katalog üzerinden `buildQuote` yapar. Verilemeyen bir hediye —
 stok bitmişse ya da bu firmaya uygulanabilir bir fiyatı yoksa — ölümcül değildir, atlanır.
 Aylar önce yanlış kurulmuş bir kampanya bugünkü ödemeyi bloklamamalı.
