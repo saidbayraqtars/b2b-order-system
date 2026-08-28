@@ -598,6 +598,14 @@ export const SCREENS = [
     path: "/admin/toplu-guncelleme?bolum=zamanli",
   },
 
+  {
+    step: 15,
+    slug: "bekleyen-bakiye",
+    label: "Bekleyen bakiye (backorder)",
+    as: "admin",
+    path: "/admin/deliveries?bolum=bekleyen",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:

@@ -857,10 +857,16 @@ listeyi zaten Excel'de kuran kişiye yapılabilecek en kötü teklif.
 Fark önizlemesi bir **Yürürlük** sütunu aldı ve tarihsiz satır orada "hemen"
 yazıyor: boş bir hücre, tarih girmeyi unutmuş kişiye hiçbir şey söylemez.
 
-Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
-`adim-15/zamanli-fiyatlar.png`.
+**Dağıtım ekranı ikiye ayrıldı** (`?bolum=sevkiyat` / `?bolum=bekleyen`): yola
+çıkmış mal ve henüz çıkmamış bakiye. İkisi aynı işin iki ucu ve aynı ekranda
+duruyorlar, çünkü "bugün ne sevk edeceğim" sorusunun cevabı ikisinde birden.
+Bekleyen sekmesi kendi içinde de ikiye bölünüyor — ürün bazında (depo sorusu) ve
+sipariş bazında (müşteri sorusu).
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 619
+Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
+`adim-15/zamanli-fiyatlar.png`, `adim-15/bekleyen-bakiye.png`.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 624
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)

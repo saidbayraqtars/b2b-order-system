@@ -7,6 +7,7 @@ export * from "./order-approval";
 export * from "./order-lifecycle";
 export * from "./order-policy";
 export * from "./price-schedule";
+export * from "./backorder";
 export * from "./order-quote";
 export * from "./document-series";
 export * from "./shipment";

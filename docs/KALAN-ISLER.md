@@ -422,10 +422,35 @@ yeniden denenir ve kimse fark etmezdi.
 Ekran: `/admin/toplu-guncelleme?bolum=zamanli`. 8 test
 (`packages/services/test/integration/price-schedule.test.ts`).
 
-### 5.8 Backorder / bekleyen bakiye
+### 5.8 ~~Backorder / bekleyen bakiye~~ ✔ (2026-08-28)
 
-Kısmi sevkiyat var (`OrderItem.quantityShipped`), ama "40 koli bekliyor, mal
-gelince sevk et" takibi yok.
+`/admin/deliveries?bolum=bekleyen` — sipariş edilip sevk edilmemiş mal.
+
+**Yeni kayıt yok, yeni durum yok.** Bekleyen bakiye türetilmiş bir sayı:
+`quantity − quantityShipped`. Ayrı bir kolonda tutulsaydı iki sayı birbirinden
+ayrışabilir ve hangisinin doğru olduğu belirsiz kalırdı. Eksik olan şey veri
+değil, **görünüm**di: kısmi sevkiyat Adım 7'den beri var ama onu toplu gösteren
+hiçbir ekran yoktu; depocu "hangi üründen ne kadar borçluyuz" sorusunu ancak
+siparişleri tek tek açarak cevaplayabiliyordu.
+
+İki tablo, iki ayrı soru — bilerek ayrı:
+
+| Tablo | Soru | Kime |
+| --- | --- | --- |
+| Ürün bazında | "neyden ne kadar borçluyuz, elde var mı" | depo / satın alma |
+| Sipariş bazında | "hangi müşteri ne bekliyor" | müşteri ilişkileri |
+
+İki karar:
+
+- **Teslim edilmiş sipariş listeye girmiyor.** Kapanmış bir siparişin eksiği
+  artık bekleyen mal değil; onu iade/RMA ya da yeni bir sipariş çözer.
+- **"Sevk edilebilir" künyesi bir iş emri**: eldeki mal bekleyenin tamamını
+  karşılıyor, yani mal depoda duruyor ve müşteri bekliyor. Karşılamıyorsa satın
+  almanın işi.
+
+Sıralama tutara değil **süreye** göre: bekleyen bakiyede en eski borç en üstte.
+
+5 test (`packages/services/test/integration/backorder.test.ts`).
 
 ### 5.10 Kampanya simülatörü
 

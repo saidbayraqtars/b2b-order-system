@@ -1,6 +1,6 @@
 import { requirePage } from "@/lib/guard";
-import { Note, PageHeader } from "@/components/ui";
-import { DeliveryBoard } from "@/components/delivery-board";
+import { PageHeader } from "@/components/ui";
+import { DeliveryTabs } from "./_components/delivery-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +11,9 @@ export default async function AdminDeliveriesPage() {
     <main className="mx-auto max-w-5xl">
       <PageHeader
         title="Dağıtım"
-        subtitle="Sevkiyatlara kurye ata, teslim durumunu izle"
+        subtitle="Yola çıkan mal ve henüz çıkmayan bakiye"
       />
-      <DeliveryBoard canDispatch />
-      <Note>
-        Listeye giren şey <strong>sevkiyat</strong>, sipariş değil: irsaliyesi
-        kesilmemiş bir sipariş burada görünmez. Kurye ataması teslimden önce
-        serbestçe değişir — seçimi boşaltmak sevkiyatı atanmamışa döndürür — ama
-        teslim edilmiş sevkiyatın kuryesi artık değiştirilemez.{" "}
-        <strong>Teslim kaydı bir kez yazılır</strong>: kim teslim aldı bilgisi
-        imzanın yerini tutuyor, üstüne yazılabilseydi hiçbir şeyin yerini
-        tutmazdı. Atamayı kurye kendisi yapamaz; taşıyan ile kaydı tutan aynı
-        kişi olmamalı. Siparişin bütün sevkiyatları teslim edilince sipariş
-        kendiliğinden &ldquo;Teslim edildi&rdquo;ye geçer — kısmi teslimde
-        durumu değişmez.
-      </Note>
+      <DeliveryTabs />
     </main>
   );
 }

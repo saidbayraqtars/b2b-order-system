@@ -189,6 +189,7 @@ görüntüleri `docs/design/screens/` altında.
 - **Firma başına istisna** (`Company.minOrderAmount`): boş = genel kural, `0` = muaf. İkisi ayrı şey — muaf bayi, genel eşik yükseldiğinde etkilenmiyor.
 - Teklif eksiği **hesaplıyor**, fırlatmıyor: sepet "4.000,00 ₺ daha ekleyin" diyebiliyor ve sipariş düğmesi kapanıyor.
 - **Zamanlı fiyat değişimi:** Excel şablonundaki "Geçerlilik tarihi" sütunu dolu satırı kuyruğa alıyor (`ScheduledPriceChange`); `price-schedule` işi yürürlük günü gelince fiyat listesine işliyor ve o anki fiyatı satırda saklıyor. Bekleyen satır fiyatı değiştirmiyor; uygulanmış satır iptal edilemiyor. Kuyruk `/admin/toplu-guncelleme?bolum=zamanli` sekmesinde.
+- **Bekleyen bakiye (backorder):** `/admin/deliveries?bolum=bekleyen` — sipariş edilip sevk edilmemiş mal, ürün ve sipariş bazında. Türetilmiş sayı (`quantity − quantityShipped`), ayrı kolon yok. Teslim edilmiş siparişler listeye girmiyor; eldeki mal bekleyeni karşılıyorsa satır "sevk edilebilir" işaretleniyor.
 - **Sevkiyat kesim saati** engel değil söz: kesimden sonraki sipariş reddedilmiyor, sepette hangi gün çıkacağı yazıyor. Pazar her zaman kapalı, cumartesi ayara bağlı.
 
 ### Onay akışı
