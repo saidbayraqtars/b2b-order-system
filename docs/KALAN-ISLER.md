@@ -1,83 +1,55 @@
 # Kalan işler — devir belgesi
 
-**Yazıldığı gün: 2026-08-27, genişletildi 2026-08-28.**
-Son commit `349df39`; yenilemede Adım 6 bitti ve push edildi.
+**Yazıldığı gün: 2026-08-27, son güncelleme 2026-08-28.**
+§10'daki dokuz maddenin dokuzu da kapandı; her biri ayrı commit.
 
 Bu dosya `docs/design/REDESIGN.md`in yaptığı şeyi bütün proje için yapıyor:
 nerede kalındı, sırada ne var, hangi karar neden verildi, neye dokunulmayacak.
 Yeni bir sohbet açtığınızda önce bunu okutun.
 
 - Ekran yenilemesinin kendi ayrıntısı: `docs/design/REDESIGN.md`
-- Özellik envanteri: `FEATURES.md` (**kısmen bayat**, aşağıda §9)
+- Özellik envanteri: `FEATURES.md` (2026-08-28'de güncellendi)
 - Ekran görüntüsü kuralı: `docs/design/screens/README.md`
 
 ---
 
 ## 1. Bugünün durumu
 
-|                  |                                                              |
-| ---------------- | ------------------------------------------------------------ |
-| Commit           | `bc4fe68`, `origin/main` ile eşit                            |
-| Test             | 233 rota (apps/web) + servis paketi; `pnpm test` yeşil       |
-| CI               | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil |
-| Ham sınıf sayacı | `dark:` 83 · `neutral-` 186 · `brand-` 13                    |
-| Yenileme         | Adım 1-6 + 8 bitti; 7, 8-kalan, 9, 10 açık                   |
+|                  |                                                                             |
+| ---------------- | --------------------------------------------------------------------------- |
+| Test             | 344 (apps/web) + 590 (servisler) + 18 (ERP ajanı); `pnpm test` yeşil        |
+| e2e              | 23 senaryo, `pnpm e2e` — CI'da değil, ayakta sunucu + gösterim verisi ister |
+| CI               | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil                |
+| Ham sınıf sayacı | `dark:` **0** · `neutral-` **0** · `brand-` **0** (`documents/**` hariç)    |
+| Yenileme         | Adım 1-8, 10-13 bitti; açık kalan tek adım **9 — mobil**                    |
+
+Bugün eklenen ekranlar: yönetici panosu (`/admin/analitik`, altı bölüm) ve
+Excel ile toplu güncelleme (`/admin/toplu-guncelleme`). Testler artık ayrı bir
+şemada koşuyor, gösterim veritabanına dokunmuyor.
 
 ---
 
-## 2. Ekranlar — 14 kaldı
+## 2. Ekranlar — mobil kaldı
 
-61 rotanın 47'si elden geçti. Kalanlar:
+Web tarafında elden geçmemiş ekran yok. Bugün kapanan altı grup:
 
-### Adım 7 — Rapor tasarımcısı ve panolar (7 ekran, 53 ham satır)
+| Grup                       | Adım | Ekran |
+| -------------------------- | ---- | ----- |
+| Rapor tasarımcısı, panolar | 7    | 7     |
+| Hesap ekranları            | 8    | 2     |
+| Saha üçlüsü ve kök         | 11   | 4     |
+| Temizlik (sayaç sıfır)     | 10   | —     |
+| Yönetici panosu            | 12   | 6     |
+| Excel ile toplu güncelleme | 13   | 2     |
 
-| Rota                       | Not                                                            |
-| -------------------------- | -------------------------------------------------------------- |
-| `/reports`                 | rapor listesi                                                  |
-| `/reports/new`             | tasarımcı — ekranların en karmaşığı                            |
-| `/reports/[id]`            | rapor görüntüleme                                              |
-| `/reports/[id]/print`      | yazdırma yüzeyi — `documents/**` gibi mi davranacak, karar ver |
-| `/reports/dashboards`      | pano listesi                                                   |
-| `/reports/dashboards/[id]` | pano detayı                                                    |
-| `/admin/reports`           | yönetim tarafı                                                 |
+Ayrıntı ve her adımın kararları `docs/design/REDESIGN.md`de; görüntüler
+`docs/design/screens/adim-<n>/` altında (76 dosya).
 
-Paylaşılan bileşen: `components/report-preview.tsx` (11 ham satır).
-
-**Dikkat:** rapor tasarımcısı Adım 53'te "ortak dile taşındı" diye kapatılmıştı
-ama kendi kopya `Panel`i vardı ve 46 ham satır hâlâ duruyor. "Zaten yapıldı"
-diye atlamayın.
-
-### Adım 8 kalanı — hesap ekranları (2 ekran, 23 ham satır)
-
-`/hesabim` (18) ve `/403` (5).
-
-### Sırasız — saha üçlüsü + kök (4 ekran, 62 ham satır)
-
-**REDESIGN.md'nin Adım 1-10 listesinde bunlar yok.** Gözden kaçmış: Adım 1'de
-kabukları `SidebarShell`e döndü, içerikleri hiç elden geçmedi.
-
-| Rota                     | Ham satır |
-| ------------------------ | --------- |
-| `/rep` (plasiyer panosu) | 16        |
-| `/rep/ziyaret`           | 28        |
-| `/rep/tahsilat`          | 13        |
-| `/` (kök giriş sayfası)  | 5         |
-
-Paylaşılan bileşen: `components/target-scorecard.tsx` (5).
-
-**Yeni adım numarası açın** (Adım 7b ya da 11) ve REDESIGN.md'ye yazın —
-sessizce Adım 7'ye karıştırmayın, sonraki devir teslim yanlış okur.
-
-### Adım 9 — Mobil
+### ▢ Adım 9 — Mobil (tek açık adım)
 
 `apps/mobile`, aynı palet ve tipografi. NativeWind'in iki tuzağı için hafıza
 notu `b2b-theme-engine`. **Adım 46 tema motoru geri alınmıştı** — geri
-getirmeyin, o not nedenini yazıyor.
-
-### ~~Adım 10 — Temizlik~~ ✔ (2026-08-28)
-
-Ham sınıf sayacı sıfır (`documents/**` hariç), kiracı adı kabukta ve sekme
-başlığında, genel arama (Ctrl+K) üst şeritte. Ayrıntı REDESIGN.md Adım 10'da.
+getirmeyin, o not nedenini yazıyor. Mobilde tek test de yok (§3.1).
 
 ---
 
@@ -543,22 +515,37 @@ Bir tur atıldı:
 - `Sonraki Adımlar`ın "yakın plan"ı üç bitmiş işi sayıyordu; yerine mobil
   yenileme, yönetici panosu, Excel içe aktarma ve test boşluğu yazıldı.
 
-## 10. Önerilen sıra
+## 10. Sıradaki
 
-Bağımlılık ve maliyet/etki sırası; söz değil.
+2026-08-28'de kapanan dokuz madde (her biri ayrı commit, hepsi push edildi):
 
-1. **Adım 7** — rapor tasarımcısı ve panolar (7 ekran). En karmaşığı, dinç
-   kafayla.
-2. **Adım 8 kalanı** — `hesabim`, `403` (2 ekran, küçük).
-3. **Saha üçlüsü + kök** (4 ekran). Yeni adım numarası açıp REDESIGN.md'ye yaz.
-4. **§4.1 test artığı temizliği** — ondan sonraki her ekran görüntüsü temiz
-   çıkar; erken yapmanın getirisi var.
-5. **Adım 10 temizlik** — ham sınıflar sıfıra, kiracı marka adı, §4.2/4.3/4.4.
-6. **FEATURES.md güncellemesi** (§9).
-7. **§6 yönetici panosu.** Adım 7 bittikten _sonra_: rapor ekranlarının ortak
-   dili ve grafik bileşenleri o adımda oturuyor, pano onların üstüne biniyor.
-   Önce §6.4'teki dört mimari kararı yazıp öyle başlayın.
-8. **§5.1 Excel içe aktarma** — özellik önerilerinin en getirilisi, gözetim
-   gerektirmiyor.
-9. **§3.1 test boşluğu** — sayfa testleri, sonra `puppeteer-core` üstünde e2e.
-10. §5'in kalanı ve §3.6 backlog — iş kararı bekliyor.
+| #   | İş                                    | Nerede        |
+| --- | ------------------------------------- | ------------- |
+| 1   | Adım 7 — rapor tasarımcısı ve panolar | REDESIGN.md   |
+| 2   | Adım 8 kalanı — `hesabim`, `403`      | REDESIGN.md   |
+| 3   | Adım 11 — saha üçlüsü ve kök          | REDESIGN.md   |
+| 4   | Test yalıtımı (§4.1)                  | §4.1, README  |
+| 5   | Adım 10 temizlik + §4.2/4.3/4.4/4.10  | REDESIGN.md   |
+| 6   | FEATURES.md güncellemesi (§9)         | FEATURES.md   |
+| 7   | Yönetici panosu (§6)                  | §6, Adım 12   |
+| 8   | Excel içe aktarma (§5.1)              | §5.1, Adım 13 |
+| 9   | Test boşluğu (§3.1)                   | §3.1, README  |
+
+**Sırada ne var** — bağımlılık ve maliyet/etki sırası, söz değil:
+
+1. **Yenilemenin Adım 9'u — mobil.** Web tarafında elden geçmemiş ekran
+   kalmadı; `apps/mobile` aynı palete ve tipografiye taşınacak. Mobilde tek
+   test olmaması da aynı turda ele alınmalı.
+2. **§4.5–4.9 arayüz artıkları.** `EmptyState`in kullanılmayan `action` yuvası,
+   adreste olmayan süzgeçler, kabuksuz `orders/[id]`, `Modal`da odak tuzağı,
+   ekran görüntüsü regresyon kontrolü (`pnpm shots --check`). Beşi de küçük.
+3. **§4.11** — kategoriler ekranının okuma izniyle açılıp yazma izni istemesi.
+4. **§5.2–5.11 özellik önerileri.** En getirilisi cari mutabakat ve tahsilat
+   çalışma listesi; ikisi de mevcut defterin üstüne biniyor.
+5. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
+6. **§3.4 canlıya çıkış turu** ve **§3.6 backlog** — ikisi de iş kararı
+   bekliyor.
+
+**Vega sorusu hâlâ açık** (§6.3): "Vega'nın rapor sistemi gibi" denen şeyin
+hangi rapor olduğu bilinmiyor. Uydurulmadı; kullanıcıdan ekran görüntüsü ya da
+rapor adı gerekiyor.
