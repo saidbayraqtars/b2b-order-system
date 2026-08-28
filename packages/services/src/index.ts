@@ -21,6 +21,7 @@ export * from "./promotion";
 export * from "./promotion-registry";
 export * from "./promotion-engine";
 export * from "./promotion-admin";
+export * from "./promotion-performance";
 export * from "./checkin";
 export * from "./payment";
 export * from "./cash";

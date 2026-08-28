@@ -3,27 +3,32 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Note, Tabs } from "@/components/ui";
 import { PromotionsManager } from "./promotions-manager";
+import { PromotionPerformance } from "./promotion-performance";
 import { PromotionSimulator } from "./promotion-simulator";
 
-// İki sekme: kampanyanın **tanımı** ve **ne yapacağı**.
+// Üç sekme: kampanyanın **tanımı**, **ne yapacağı** ve **ne yaptığı**.
 //
-// Simülatör ayrı bir sayfaya konmadı: oranı yazan kişi sonucunu aynı ekranda
-// görebilmeli, ve iki adres arasında gidip gelmek o bağı koparırdı. Sekme
-// `?bolum=` ile adreste — betik düğmeye basmıyor.
+// Üçü de ayrı sayfaya konmadı: oranı yazan kişi hem tahmini hem sonucu aynı
+// ekranda görebilmeli, ve üç adres arasında gidip gelmek o bağı koparırdı.
+// Sekme `?bolum=` ile adreste — betik düğmeye basmıyor.
 
 const TABS = [
   { key: "tanimlar" as const, label: "Tanımlar" },
   { key: "simulasyon" as const, label: "Simülasyon" },
+  { key: "performans" as const, label: "Performans" },
 ];
 
 type TabKey = (typeof TABS)[number]["key"];
+
+function tabFrom(raw: string | null): TabKey {
+  return TABS.some((t) => t.key === raw) ? (raw as TabKey) : "tanimlar";
+}
 
 export function PromotionsTabs() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const tab: TabKey =
-    params.get("bolum") === "simulasyon" ? "simulasyon" : "tanimlar";
+  const tab = tabFrom(params.get("bolum"));
 
   return (
     <>
@@ -31,15 +36,18 @@ export function PromotionsTabs() {
         <Tabs
           value={tab}
           onChange={(next) => {
-            // Simülasyonun kendi süzgeçleri de adreste; sekme değişince
-            // onları taşımıyoruz, çünkü tanımlar sekmesinde anlamları yok.
+            // Simülasyonun ve performansın kendi süzgeçleri de adreste; sekme
+            // değişince onları taşımıyoruz, çünkü diğer sekmelerde anlamları
+            // yok ve taşınan bir süzgeç sessizce yanlış sayı gösterir.
             router.replace(`${pathname}?bolum=${next}`, { scroll: false });
           }}
           items={TABS}
         />
       </div>
 
-      {tab === "simulasyon" ? (
+      {tab === "performans" ? (
+        <PromotionPerformance />
+      ) : tab === "simulasyon" ? (
         <>
           <PromotionSimulator />
           <Note>

@@ -144,3 +144,38 @@ export interface PromotionRuleCatalog {
   conditions: RuleMeta[];
   actions: RuleMeta[];
 }
+
+// ─────────────────────────────────────────────
+// Performans penceresi (KALAN-ISLER §3.5)
+// ─────────────────────────────────────────────
+//
+// Kapalı liste: serbest gün sayısı, her tuş vuruşunda bir toplama sorgusu
+// demekti. Aynı liste hem sunucuda hem ekranda doğrulanıyor.
+
+export const PERFORMANCE_WINDOWS = ["30", "90", "365", "tumu"] as const;
+export type PerformanceWindow = (typeof PERFORMANCE_WINDOWS)[number];
+export const PERFORMANCE_WINDOW_DEFAULT: PerformanceWindow = "90";
+
+export const PERFORMANCE_WINDOW_LABELS: Record<PerformanceWindow, string> = {
+  "30": "Son 30 gün",
+  "90": "Son 90 gün",
+  "365": "Son 1 yıl",
+  tumu: "Başından beri",
+};
+
+/** Pencere anahtarı → gün sayısı. `null` = sınır yok. */
+export const PERFORMANCE_WINDOW_DAYS: Record<PerformanceWindow, number | null> =
+  {
+    "30": 30,
+    "90": 90,
+    "365": 365,
+    tumu: null,
+  };
+
+export function parsePerformanceWindow(
+  raw: string | null | undefined,
+): PerformanceWindow {
+  return (PERFORMANCE_WINDOWS as readonly string[]).includes(raw ?? "")
+    ? (raw as PerformanceWindow)
+    : PERFORMANCE_WINDOW_DEFAULT;
+}
