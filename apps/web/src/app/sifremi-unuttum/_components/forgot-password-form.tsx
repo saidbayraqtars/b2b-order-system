@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { MailCheck } from "lucide-react";
 import { forgotPasswordSchema } from "@repo/types";
-import { Stagger } from "@/components/auth-shell";
+import { Stagger } from "@/components/stagger";
 import { Button, ErrorLine, Label, TextInput } from "@/components/form";
 
 /**

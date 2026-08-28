@@ -42,6 +42,7 @@ export default {
         positive: v("positive"),
         caution: v("caution"),
         critical: v("critical"),
+        scrim: v("scrim"), // pencere/çekmece perdesi — temayla dönmez
 
         // ── Gri merdiven ───────────────────────────────────────────────────
         // Tailwind'in nötrü saf gri; bu palet hafif soğuk. Fark küçük ama

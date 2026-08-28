@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserRow } from "@repo/services";
+import { SortableTh, useTableSort } from "@/components/table-sort";
 import {
   defaultPermissionsFor,
   isPermissionGrantableTo,
@@ -36,6 +37,7 @@ import {
   THead,
   Tabs,
 } from "@/components/ui";
+import { useToast } from "@/components/toast";
 
 /** Sırasız iki izin kümesi aynı mı — PATCH gövdesini gereksiz büyütmemek için. */
 function samePermissionSet(
@@ -109,16 +111,34 @@ export function UserManager({
     },
   });
 
-  const invalidate = () => {
+  const { notify } = useToast();
+  const invalidate = (message = "Kaydedildi") => {
     void qc.invalidateQueries({ queryKey: ["admin-users"] });
+    notify(message);
     void qc.invalidateQueries({ queryKey: ["admin-companies"] });
   };
 
   const all = query.data?.users ?? [];
   // Süzme sunucuda değil burada: liste zaten tek istekte geliyor ve sekme
   // değiştirmek yeni bir sorgu beklemeden çalışsın.
-  const rows =
+  const filtered =
     family === "ALL" ? all : all.filter((u) => ROLE_FAMILY[u.role] === family);
+
+  // Sıralama da burada ve aynı sebeple. Varsayılan ada göre: sunucu kayıt
+  // sırasını döndürüyor ve otuz beş hesap arasında birini aramanın yolu o
+  // değil.
+  const sort = useTableSort(filtered, {
+    initial: { key: "name" },
+    value: (u, key) =>
+      key === "company"
+        ? (u.company?.name ?? null)
+        : key === "role"
+          ? ROLE_LABELS[u.role]
+          : key === "isActive"
+            ? u.isActive
+            : (u as unknown as Record<string, unknown>)[key],
+  });
+  const rows = sort.rows;
   const countOf = (f: RoleFamily) =>
     all.filter((u) => ROLE_FAMILY[u.role] === f).length;
 
@@ -197,14 +217,27 @@ export function UserManager({
       </div>
 
       {query.data && (
-        <Table>
+        <Table stickyHead>
           <THead>
             <tr>
-              <Th>Ad</Th>
-              <Th>E-posta</Th>
-              <Th>Rol</Th>
-              {!fixedCompanyId && <Th>Firma</Th>}
-              <Th>Durum</Th>
+              <SortableTh sort={sort} sortKey="name">
+                Ad
+              </SortableTh>
+              <SortableTh sort={sort} sortKey="email">
+                E-posta
+              </SortableTh>
+              <SortableTh sort={sort} sortKey="role">
+                Rol
+              </SortableTh>
+              {!fixedCompanyId && (
+                <SortableTh sort={sort} sortKey="company">
+                  Firma
+                </SortableTh>
+              )}
+              <SortableTh sort={sort} sortKey="isActive">
+                Durum
+              </SortableTh>
+              {/* İşlem sütunu sıralanmıyor: içinde veri değil düğme var. */}
               <Th align="right">İşlem</Th>
             </tr>
           </THead>
@@ -404,7 +437,9 @@ function UserRowView({
   grantablePermissions: readonly Permission[];
   showCompany: boolean;
   isSelf: boolean;
-  onChanged: () => void;
+  /** Tazele + "oldu" de. Mesajı satır seçiyor: silmek ile rol değiştirmek
+      aynı cümleyi hak etmiyor. */
+  onChanged: (message?: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name);
@@ -420,19 +455,22 @@ function UserRowView({
       apiPatch(`/api/admin/users/${user.id}`, body),
     onSuccess: () => {
       setEditing(false);
-      onChanged();
+      onChanged("Hesap güncellendi");
     },
   });
 
   const setPass = useMutation({
     mutationFn: () =>
       apiPost(`/api/admin/users/${user.id}/password`, { password }),
-    onSuccess: () => setPassword(""),
+    onSuccess: () => {
+      setPassword("");
+      onChanged("Şifre değiştirildi");
+    },
   });
 
   const remove = useMutation({
     mutationFn: () => apiDelete(`/api/admin/users/${user.id}`),
-    onSuccess: onChanged,
+    onSuccess: () => onChanged("Hesap silindi"),
   });
 
   /**
@@ -443,7 +481,7 @@ function UserRowView({
    */
   const resetTwoFactor = useMutation({
     mutationFn: () => apiDelete(`/api/admin/users/${user.id}/two-factor`),
-    onSuccess: onChanged,
+    onSuccess: () => onChanged("İki adımlı doğrulama sıfırlandı"),
   });
 
   const error =

@@ -424,17 +424,52 @@ export function MultiChips<T extends string>({
 // koyu tema satır ayracı var, diğerinde yok. Aşağıdakiler bileşen kütüphanesi
 // değil — tablo elemanının kendisi yerinde duruyor, yalnızca sınıflar tek yerde.
 
-/** Yatay kaydırma kabuğu + tablo. Dar ekranda sayfayı değil tabloyu kaydırır. */
+/**
+ * Yatay kaydırma kabuğu + tablo. Dar ekranda sayfayı değil tabloyu kaydırır.
+ *
+ * `stickyHead`: uzun listelerde başlık satırı sayfanın üstüne yapışır. Üç
+ * yönetim tablosu üç bin pikseli aşıyor (güvenlik kaydı 3530, kategoriler 3648,
+ * kullanıcılar 3567) ve sayfanın ortasında bir rakam sütununa bakarken hangi
+ * sütun olduğunu söyleyen hiçbir şey yoktu.
+ *
+ * İki ayrıntı, ikisi de denemeden görünmüyor:
+ *
+ *  1. **`THead`e tek satır `sticky` eklemek işe yaramıyor.** Sarmalayıcının
+ *     `overflow-x: auto`su diğer ekseni de `auto`ya çeviriyor (CSS kuralı) ve
+ *     yapışkan öğe artık sayfaya değil o kutuya tutunuyor; kutunun yüksekliği
+ *     sınırsız olduğu için de hiç kaydırılmıyor, yani başlık hiç yapışmıyor.
+ *     Bu yüzden `stickyHead` verildiğinde sarmalayıcı `sm`den itibaren
+ *     kaydırmayı bırakıyor. Dar ekranda kaydırma kalıyor — orada zaten sayfa
+ *     kaydırılıyor ve yapışkan başlık ekranın yarısını yerdi.
+ *  2. **`top-16`, `top-0` değil.** Kabuğun üst şeridi 64 piksel ve o da
+ *     yapışkan; sıfırda başlık şeridin altına kayıyor.
+ *
+ * Bu yüzden bayrak isteğe bağlı: sekiz sayı sütunlu geniş tablolar (alacak
+ * yaşlandırma) kaydırma kabuğunu koruyor.
+ */
 export function Table({
   children,
   className,
+  stickyHead = false,
 }: {
   children: ReactNode;
   className?: string;
+  stickyHead?: boolean;
 }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className={cn("w-full text-left text-body-sm", className)}>
+    <div
+      className={cn(
+        "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0",
+        stickyHead && "sm:overflow-x-visible",
+      )}
+    >
+      <table
+        className={cn(
+          "w-full text-left text-body-sm",
+          stickyHead && "sm:[&_thead]:sticky sm:[&_thead]:top-16 sm:[&_thead]:z-10",
+          className,
+        )}
+      >
         {children}
       </table>
     </div>

@@ -21,6 +21,7 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import { useToast } from "@/components/toast";
 
 interface TreeNode extends AdminCategoryRow {
   depth: number;
@@ -70,8 +71,14 @@ export function CategoriesManager() {
     () => toTree(query.data?.categories ?? []),
     [query.data],
   );
-  const invalidate = () =>
+  const { notify } = useToast();
+  // Tazeleme + "oldu" tek yerde: dört mutasyonun dördü de aynı iki şeyi
+  // yapıyor ve biri unutulursa ekran sessiz kalıyor — §4.4'ün sebebi tam
+  // olarak buydu.
+  const invalidate = (message = "Kaydedildi") => {
     void qc.invalidateQueries({ queryKey: ["admin", "categories"] });
+    notify(message);
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -82,7 +89,7 @@ export function CategoriesManager() {
     onSuccess: () => {
       setName("");
       setParentId("");
-      invalidate();
+      invalidate("Kategori eklendi");
     },
   });
 
@@ -91,7 +98,7 @@ export function CategoriesManager() {
       apiPatch(`/api/admin/categories/${id}`, { name: value }),
     onSuccess: () => {
       setEditing(null);
-      invalidate();
+      invalidate("Adı değiştirildi");
     },
   });
 
@@ -103,12 +110,12 @@ export function CategoriesManager() {
       id: string;
       newParentId: string | null;
     }) => apiPatch(`/api/admin/categories/${id}`, { parentId: newParentId }),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate("Üst kategori değişti"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/admin/categories/${id}`),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate("Kategori silindi"),
   });
 
   return (
@@ -161,7 +168,10 @@ export function CategoriesManager() {
         </div>
       )}
 
-      <Table>
+      {/* Sıralama bilerek yok: satırların sırası bir *hiyerarşi* ve girinti
+          ondan okunuyor. Ada göre sıralamak ağacı düzleştirir, yani ekranın
+          taşıdığı tek fazladan bilgiyi siler. */}
+      <Table stickyHead>
         <THead>
           <tr>
             <Th>Kategori</Th>

@@ -202,7 +202,7 @@ function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={item.title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4 backdrop-blur-sm"
       onClick={onDismiss}
     >
       <div

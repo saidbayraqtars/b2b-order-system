@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resetPasswordSchema } from "@repo/types";
-import { Stagger } from "@/components/auth-shell";
+import { Stagger } from "@/components/stagger";
 import {
   Button,
   ErrorLine,

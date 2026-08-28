@@ -87,6 +87,11 @@ Sayfa başlığı `headline-lg`, panel başlığı `headline-sm`, gövde `body-s
 : `Label`, `TextInput`, `Select`, `MultiSelect`, `TextArea`, `Checkbox`,
 `Button`, `LinkButton`, `Panel`, `Modal`, `ErrorLine`, `WarnLine`
 
+İstemciye özel üçlü (kanca taşıdıkları için `ui.tsx`e konamadılar; orası sunucu
+bileşenlerinden de içe aktarılıyor):
+`table-sort.tsx` (`useTableSort`, `SortableTh`) · `toast.tsx` (`ToastProvider`,
+`useToast`) · `show-more.tsx` (`useVisibleSlice`, `ShowMore`)
+
 `src/components/app-sidebar.tsx`
 : `SidebarShell` — uygulamanın tek kabuğu. `groups` (başlıksız grup = düz
 liste), `search` (üst şeritteki arama kutusu), `actions` (sağdaki düğmeler).
@@ -773,15 +778,136 @@ Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil,
 `apps/mobile` — aynı palet ve tipografi. NativeWind'in bilinen iki tuzağı için
 `b2b-theme-engine` hafıza notuna bakın.
 
-### ▢ Adım 10 — Temizlik
+### ✔ Adım 10 — Temizlik (bitti)
 
-- Kalan ham sınıfları anlamsala çevir. Sayaç: Adım 1 sonrası `dark:` 506,
-  `neutral-` 1033, `brand-` 90 → Adım 2 sonrası 348 / 792 / 46 → Adım 3 sonrası
-  237 / 434 / 20 → Adım 4 sonrası 191 / 366 / 18 → Adım 5 sonrası 159 / 318 / 15
-  → Adım 6 sonrası **83 / 186 / 13**. Hedef: üçü de sıfır — `documents/**`
-  hariç, orada ham `neutral-` bilerek duruyor (bkz. Adım 5).
-- Kiracı marka adını kabuğa bağla: `loadTenant()` →
-  `seller.tradeName ?? seller.legalName`, `SidebarShell`'in `brand` prop'una.
-  Şu an sabit "B2B Portal". `loadTenant()` `TENANT_DIR` yoksa fırlattığı için
-  sunucu tarafında yakalanıp yedeğe düşen küçük bir yardımcı gerekiyor.
-- Genel arama (Ctrl+K): ürün, firma, sipariş no tek kutudan.
+**Ham sınıf sayacı sıfır.** `dark:` 83 → **0**, `neutral-` 186 → **0**,
+`brand-` 13 → **0** (`documents/**` hariç; orada kâğıt her zaman beyaz).
+Kalan son dördü perde rengiydi ve o bir ekranın değil bir _kuralın_ eksiğiydi:
+pencerenin ve çekmecenin arkasındaki veil `bg-neutral-950/40` diye yazılmıştı
+çünkü anlamsal token yoktu. Şimdi var — `--scrim`, ve diğerlerinin aksine koyu
+temada **dönmüyor**: perde bir yüzey değil, yüzeyin üstüne çekilen gölge; açık
+temada beyaza dönseydi hiç görünmezdi.
+
+**Kiracı adı kabuğa bağlandı.** `SidebarShell`in markası sabit "B2B Portal"
+idi; her müşteri kendi kurulumunu çalıştırdığı için orada kendi unvanı yazmalı.
+Adı okuyan şey (`loadTenant`) dosya sistemine bakıyor, kullanan şey
+(`SidebarShell`) bir istemci bileşeni: köprü `BrandProvider`. Kök yerleşim adı
+bir kez okuyup sağlayıcıya veriyor, kabuk oradan alıyor — alternatif altmış bir
+rotaya aynı prop'u geçirmekti. Sekme başlığı da (`generateMetadata`) artık
+kiracının adı: on sekme açık bir tarayıcıda "B2B Portal" hangi kurulum olduğunu
+söylemiyor. `AuthShell` sunucu bileşeni olduğu için adı doğrudan okuyor.
+
+`loadTenant()` klasör yoksa fırlatıyor ve burada **yutuluyor** — irsaliyenin
+aksine. Bir belgede eksik satıcı künyesi belgeyi geçersiz kılar; kenar
+çubuğundaki ad ise bir etiket, yarım kurulumlu bir geliştirici makinesinde
+uygulamanın hiç açılmaması kazandırdığından fazlasını götürürdü.
+
+**Genel arama (Ctrl+K).** Ürün, firma ve sipariş numarası tek kutudan
+(`components/command-palette.tsx` + `/api/search` + `services/search.ts`).
+İki karar:
+
+- **Kapsam sunucuda, bir kez.** Üç ayrı listeleme ucunu arka arkaya çağırmak da
+  mümkündü ama her biri kendi kapsamını kendi yazıyor; arama kutusu hepsinin
+  kesişimini tek cevapta vermek zorunda. Plasiyer portföyü dışındaki firmayı
+  aramayla bulamıyor, bayi kullanıcısı başka bayinin siparişini açamıyor.
+- **Kutu görünür, kısayol tek yol değil.** Bir tuş kombinasyonunu kimse
+  kendiliğinden bulmuyor — ve fotoğraflanamayan ekranın doğru göründüğü
+  söylenemez. Kutu üst şeritte duruyor; ekranın kendi araması varsa (vitrinde
+  ürün araması) o kalıyor, yoksa genel arama geliyor. İkisini yan yana koymak
+  kullanıcıya hangisinin ne aradığını sorardı.
+
+#### §4.2 Yapışkan tablo başlığı
+
+`THead`e tek satır `sticky` eklemek **işe yaramıyor** ve bunu ancak deneyince
+görüyorsunuz. İki engel:
+
+1. `Table`ın sarmalayıcısındaki `overflow-x: auto`, CSS kuralı gereği diğer
+   ekseni de `auto`ya çeviriyor; yapışkan öğe artık sayfaya değil o kutuya
+   tutunuyor ve kutu hiç kaydırılmadığı için başlık hiç yapışmıyor.
+2. `Panel` ve ürün listesi sarmalayıcısı `overflow-hidden` taşıyordu — o da bir
+   kaydırma kabı. **`overflow-clip`e çevrildi:** ikisi de köşeyi kesiyor ama
+   `clip` kap açmıyor.
+
+`Table` bu yüzden `stickyHead` bayrağı aldı: verildiğinde sarmalayıcı `sm`den
+itibaren kaydırmayı bırakıyor ve başlık `top-16`ya yapışıyor (`top-0` değil —
+kabuğun üst şeridi 64 piksel ve o da yapışkan). Bayrak isteğe bağlı, çünkü sekiz
+sayı sütunlu geniş tablolar (alacak yaşlandırma) kaydırma kabuğunu korumak
+zorunda.
+
+#### §4.3 Sıralanabilir yönetim tabloları
+
+`components/table-sort.tsx`: `useTableSort` + `SortableTh`. `ui.tsx`e
+konmadı çünkü orası sunucu bileşenlerinden de içe aktarılıyor ve oraya bir kanca
+koymak o sayfaları kırardı.
+
+Üç karar:
+
+- **Boş değer her zaman sona.** Yön ne olursa olsun: "en yüksek borç" dendiğinde
+  listenin başında borcu olmayan satırların durması, sıralamanın cevaplamadığı
+  tek soru.
+- **Sayı gibi duran metin sayı gibi sıralanıyor.** Tutarlar sunucudan
+  `Decimal`in dizgi hâli olarak geliyor ve alfabetik sıralamada "9" ile "10"
+  ters düşüyor.
+- **Her tablo sıralanmıyor.** Kategoriler bir _ağaç_ — ada göre sıralamak
+  girintinin taşıdığı hiyerarşiyi siler. Güvenlik kaydı imleçle sayfalanıyor —
+  yalnızca görünen elli satırı sıralamak "en eski kayıt" diye yanlış bir cevap
+  verir. İkisi yapışkan başlık aldı, sıralama almadı.
+
+#### §4.4 Kaydetme onayı
+
+`components/toast.tsx`: sağ altta yeşil, küçük, dört saniyede sönen bir şerit.
+Kutu değil ve onay istemiyor — bir pencere olsaydı her kaydetmeden sonra bir tık
+daha isterdi. `aria-live="polite"`: görsel olarak akışın dışında, sesli okumada
+içinde.
+
+Sağlayıcı yoksa çağrı sessizce düşüyor: bileşenler testlerde sağlayıcısız da
+çiziliyor ve "kaydedildi" diyememek bir hata değil. Hata fırlatmak, kaydetmenin
+kendisini bir bildirim ayrıntısına bağlardı.
+
+Bağlandığı yerler: kategoriler, duyurular, firma iskontoları, kullanıcı
+yönetimi. Mesajı çağıran seçiyor — silmek ile rol değiştirmek aynı cümleyi hak
+etmiyor.
+
+#### §4.10 Uzun liste kuralı
+
+Üç desen var ve hangisinin ne zaman kullanılacağı bugüne kadar yazılı değildi:
+
+1. **İmleçli sayfalama** — sonu olmayan, yeniden eskiye okunan defterler
+   (güvenlik kaydı, hareket akışı). Liste bitmiyor, dolayısıyla "hepsi" diye bir
+   şey yok.
+2. **Tavan + sayaç** — doğal bir büyüklüğü olan, gözle taranan listeler
+   (kategoriler, kullanıcılar, depolar). Tamamı çiziliyor, altına kaç tane
+   olduğu yazılıyor.
+3. **Önce arama** — taranamayacak kadar büyük listeler (ürünler, vitrin).
+   Ekran ilk N satırı çiziyor ve bunu söylüyor; belirli bir satırı bulmanın yolu
+   kaydırmak değil arama kutusu.
+
+Üçüncüsü için ortak bir kanca yazıldı (`components/show-more.tsx`):
+`useVisibleSlice` + `ShowMore`. **Kesme çizimde, istekte değil** — liste zaten
+bellekte ve sıralama, süzme, sayma onun tamamı üzerinde çalışıyor. Sunucudan
+yalnızca ilk sayfayı isteyip "en ucuz önce" diye sıralamak, sayfanın en ucuzunu
+bütün kataloğun en ucuzu diye göstermek olurdu.
+
+Uygulandığı yerler ve öncesi:
+
+| Ekran                        | Önce                          | Sonra                  |
+| ---------------------------- | ----------------------------- | ---------------------- |
+| `/portal` (vitrin)           | 2654 kart, 6000'de kesik      | 24 kart + "daha fazla" |
+| `/admin/products`            | 200 satır, 6000'de kesik      | 50 satır + sayaç       |
+| `/admin/kasa`                | tüm hareketler, 6000'de kesik | 50 satır + sayaç       |
+| `OrdersBoard` (pano, portal) | 100 satır, 5490px             | 25 satır + sayaç       |
+
+Ürün listesi ayrıca **sunucunun kendi tavanını** söylüyor: liste tam 200
+geldiyse gerisi hiç indirilmedi ve 2654 ürünlük bir katalogda "200 ürün" yazan
+bir ekran kataloğun tamamını gösterdiğini ima eder.
+
+Kalan 3000+ piksellik sekiz ekran **kesik değil**: hepsi elli satırlık, sınırı
+kendi yazan listeler (Adım 5 ve 6'da dipnotları konmuştu). Kural şu: uzun bir
+sayfa kendi başına bulgu değil — nerede bittiğini söylemeyen bir liste bulgudur.
+
+Sayaçlar (`app` + `components`, `documents/**` hariç): `dark:` **0** ·
+`neutral-` **0** · `brand-` **0**.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil,
+`next build` başarılı, 64 ekran görüntüsünün tamamı yeniden çekildi (üst şerit
+ve marka her ekranda değişti).

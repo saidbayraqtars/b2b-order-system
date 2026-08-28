@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { dealerApplicationSchema } from "@repo/types";
-import { Stagger } from "@/components/auth-shell";
+import { Stagger } from "@/components/stagger";
 import {
   Button,
   Checkbox,

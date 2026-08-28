@@ -14,6 +14,7 @@ import { ActingAsBar } from "@/components/storefront/acting-as-bar";
 import { Checkbox, ErrorLine, Select } from "@/components/form";
 import { EmptyState, LoadingState, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
 
@@ -254,6 +255,13 @@ export function PortalClient({
     return sorted;
   }, [catalogQuery.data, sort, inStockOnly]);
 
+  // Izgara ilk 24 kartla açılıyor — dört sütunda altı sıra, bir ekran dolusu.
+  // Sıralama ve süzgeç **bütün** liste üzerinde çalıştığı için "en ucuz önce"
+  // hâlâ kataloğun en ucuzunu getiriyor; kesilen yalnızca çizim. 2654 ürünü tek
+  // seferde çizen sayfa altmış bin piksele çıkıyordu ve kimse onu kaydırarak
+  // okumuyor — arıyor.
+  const grid = useVisibleSlice(products, 24);
+
   return (
     <PortalNav
       role={role}
@@ -377,16 +385,25 @@ export function PortalClient({
             ) : products.length === 0 ? (
               <EmptyState label="Ürün bulunamadı." />
             ) : (
-              <div className={cn("grid gap-4 sm:grid-cols-2", gridColumns)}>
-                {products.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    companyId={companyId}
-                    categoryName={categoryNames.get(p.categoryId) ?? null}
-                  />
-                ))}
-              </div>
+              <>
+                <div className={cn("grid gap-4 sm:grid-cols-2", gridColumns)}>
+                  {grid.visible.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      companyId={companyId}
+                      categoryName={categoryNames.get(p.categoryId) ?? null}
+                    />
+                  ))}
+                </div>
+                <ShowMore
+                  visible={grid.visible.length}
+                  total={grid.total}
+                  hidden={grid.hidden}
+                  onMore={grid.showMore}
+                  noun="ürün"
+                />
+              </>
             )}
           </section>
 

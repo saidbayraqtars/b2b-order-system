@@ -18,6 +18,7 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import { useToast } from "@/components/toast";
 
 type Target = "category" | "product";
 
@@ -53,8 +54,11 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
       apiGet<{ products: AdminProductRow[] }>("/api/admin/products"),
   });
 
-  const invalidate = () =>
+  const { notify } = useToast();
+  const invalidate = (message = "Kaydedildi") => {
     void qc.invalidateQueries({ queryKey: ["admin", "discounts", companyId] });
+    notify(message);
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -73,7 +77,7 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
 
   const remove = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/admin/discounts/${id}`),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate("İskonto kaldırıldı"),
   });
 
   const parsed = Number(value.replace(",", "."));

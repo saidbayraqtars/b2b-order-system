@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, UserRound, X, type LucideIcon } from "lucide-react";
+import { useBrand } from "@/components/brand";
+import { CommandPalette } from "@/components/command-palette";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -34,7 +36,8 @@ export interface SidebarGroup {
 }
 
 export function SidebarShell({
-  brand = "B2B Portal",
+  /** Verilmezse kiracının adı (bkz. `lib/tenant-brand.ts`). */
+  brand,
   context,
   groups,
   userLabel,
@@ -53,6 +56,8 @@ export function SidebarShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const tenant = useBrand();
+  const name = brand ?? tenant;
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -74,7 +79,7 @@ export function SidebarShell({
         <button
           type="button"
           aria-label="Menüyü kapat"
-          className="fixed inset-0 z-20 bg-neutral-950/40 md:hidden"
+          className="fixed inset-0 z-20 bg-scrim/40 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -89,11 +94,11 @@ export function SidebarShell({
         <div className="flex shrink-0 items-center gap-3 px-4 py-5">
           <Link href="/" className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-subtle text-body-md font-bold text-ink">
-              {brand.slice(0, 1).toUpperCase()}
+              {name.slice(0, 1).toUpperCase()}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-body-md font-bold leading-tight text-ink">
-                {brand}
+                {name}
               </span>
               {context && (
                 <span className="truncate text-xs leading-tight text-ink-faint">
@@ -177,13 +182,19 @@ export function SidebarShell({
           <span
             className={cn(
               "truncate text-body-md font-semibold text-ink md:text-headline-sm",
-              search && "hidden md:inline",
+              "hidden md:inline",
             )}
           >
-            {context ?? brand}
+            {context ?? name}
           </span>
 
-          {search && <div className="mx-auto w-full max-w-md">{search}</div>}
+          {/* Ekranın kendi araması varsa (vitrinde ürün araması) o kalıyor;
+              yoksa genel arama kutusu geliyor. İkisini yan yana koymak aynı
+              şeridi iki kutuya bölerdi ve kullanıcıya hangisinin ne aradığını
+              sorardı. */}
+          <div className="mx-auto w-full max-w-md">
+            {search ?? <CommandPalette />}
+          </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {actions}

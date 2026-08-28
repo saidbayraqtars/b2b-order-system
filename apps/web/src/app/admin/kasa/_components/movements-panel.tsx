@@ -33,6 +33,7 @@ import {
   Th,
   THead,
 } from "@/components/ui";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 
 // The till ledger itself: what moved, filters over it, and the two entries a
 // human writes by hand — elle giriş/çıkış and hesaplar arası aktarım.
@@ -68,6 +69,11 @@ export function MovementsPanel() {
       );
     },
   });
+
+  // Defter uzun ve okunacak yeri baştır; ekran elli satırda kesiliyor. Sunucu
+  // sınırı ayrı bir şey (bkz. /api/admin/cash-movements) — buradaki kesme
+  // yalnızca çizim ve sayaç toplamı söylüyor.
+  const page = useVisibleSlice(movements.data?.movements ?? [], 50);
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["cash-movements"] });
@@ -137,26 +143,35 @@ export function MovementsPanel() {
       ) : null}
 
       {movements.data && (
-        <Table>
-          <THead>
-            <tr>
-              <Th>Tarih</Th>
-              <Th>Hesap</Th>
-              <Th>Kaynak</Th>
-              <Th>Açıklama</Th>
-              <Th align="right">Tutar</Th>
-              <Th> </Th>
-            </tr>
-          </THead>
-          <TBody>
-            {movements.data.movements.map((m) => (
-              <MovementRow key={m.id} movement={m} onChanged={refresh} />
-            ))}
-            {movements.data.movements.length === 0 && (
-              <TableEmpty colSpan={6} label="Bu filtrede hareket yok." />
-            )}
-          </TBody>
-        </Table>
+        <>
+          <Table stickyHead>
+            <THead>
+              <tr>
+                <Th>Tarih</Th>
+                <Th>Hesap</Th>
+                <Th>Kaynak</Th>
+                <Th>Açıklama</Th>
+                <Th align="right">Tutar</Th>
+                <Th> </Th>
+              </tr>
+            </THead>
+            <TBody>
+              {page.visible.map((m) => (
+                <MovementRow key={m.id} movement={m} onChanged={refresh} />
+              ))}
+              {page.total === 0 && (
+                <TableEmpty colSpan={6} label="Bu filtrede hareket yok." />
+              )}
+            </TBody>
+          </Table>
+          <ShowMore
+            visible={page.visible.length}
+            total={page.total}
+            hidden={page.hidden}
+            onMore={page.showMore}
+            noun="hareket"
+          />
+        </>
       )}
     </Panel>
   );

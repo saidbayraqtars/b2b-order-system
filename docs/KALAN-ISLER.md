@@ -74,15 +74,10 @@ sessizce Adım 7'ye karıştırmayın, sonraki devir teslim yanlış okur.
 notu `b2b-theme-engine`. **Adım 46 tema motoru geri alınmıştı** — geri
 getirmeyin, o not nedenini yazıyor.
 
-### Adım 10 — Temizlik
+### ~~Adım 10 — Temizlik~~ ✔ (2026-08-28)
 
-- Ham sınıfları sıfıra indir. `documents/**` **hariç**: kâğıt her zaman beyaz,
-  anlamsal token koyu temada döner ve çıktı beyaz-üstüne-beyaz olur.
-- **Kiracı marka adını kabuğa bağla.** `SidebarShell`in `brand`i şu an sabit
-  "B2B Portal". `loadTenant()` → `seller.tradeName ?? seller.legalName`.
-  `loadTenant()` `TENANT_DIR` yoksa fırlatıyor, sunucu tarafında yakalayıp
-  yedeğe düşen küçük bir yardımcı gerekiyor.
-- Genel arama (Ctrl+K): ürün, firma, sipariş no tek kutudan.
+Ham sınıf sayacı sıfır (`documents/**` hariç), kiracı adı kabukta ve sekme
+başlığında, genel arama (Ctrl+K) üst şeritte. Ayrıntı REDESIGN.md Adım 10'da.
 
 ---
 
@@ -172,32 +167,36 @@ varsayılan, `--apply` siler, `--orphans` kullanıcısı kalmamış eski katalog
 satırlarını da tarar). Gösterim veritabanından 41 satır kalktı; sayaç şimdi
 sıfır.
 
-### 4.2 Uzun tabloda başlık kayboluyor ★
+### 4.2 ~~Uzun tabloda başlık kayboluyor~~ ✔ (2026-08-28)
 
-Güvenlik kaydı 3530px, kategoriler 3648px, kullanıcılar 3567px. Sayfanın
-ortasında bir rakam sütununa bakarken hangi sütun olduğunu söyleyen şey yok.
+`Table` bir `stickyHead` bayrağı aldı; güvenlik kaydı, kategoriler, kullanıcılar,
+ürünler ve kasa hareketleri kullanıyor.
 
-`THead`e `sticky top-0 z-10` — **tek satır**, her uzun tabloya birden yansır.
-`Table`ın `overflow-x-auto` sarmalayıcısıyla çakışmadığını doğrulayın.
+**Tek satır değildi.** Çakışma tahmini doğru çıktı ve bir tane değil iki taneydi:
+sarmalayıcının `overflow-x: auto`su diğer ekseni de kaydırma kabına çeviriyor, ve
+`Panel` ile ürün listesi `overflow-hidden` taşıyordu — o da bir kap. İkincisi
+`overflow-clip` oldu (köşeyi yine kesiyor, kap açmıyor); birincisi bayrak
+verildiğinde `sm`den itibaren kapanıyor. Ayrıca `top-0` değil `top-16`: kabuğun
+üst şeridi 64 piksel ve o da yapışkan. Ayrıntı REDESIGN.md Adım 10'da.
 
-### 4.3 Yönetim tabloları sıralanamıyor ★
+### 4.3 ~~Yönetim tabloları sıralanamıyor~~ ✔ (2026-08-28)
 
-55 kategori, 2654 ürün, 35 kullanıcı — hiçbiri başlığa tıklanarak
-sıralanamıyor. Vitrin tarafında istemci sıralaması Adım 21'de gelmişti,
-yönetimde hiç yok.
+`components/table-sort.tsx`: `useTableSort` + `SortableTh`. Kullanıcılar ve
+ürünler sıralanıyor.
 
-`Th`e opsiyonel `sortKey` + `Table`a bir sıralama durumu. Sunucuya gitmeye
-gerek yok, listeler zaten tek istekte geliyor.
+**Hepsi değil, ve sebebi yazıldı:** kategoriler bir _ağaç_ (ada göre sıralamak
+girintinin taşıdığı hiyerarşiyi siler), güvenlik kaydı imleçle sayfalanıyor
+(yalnızca görünen elli satırı sıralamak yanlış cevap verir). İkisi yapışkan
+başlık aldı, sıralama almadı.
 
-### 4.4 Kaydetme sessiz ★
+### 4.4 ~~Kaydetme sessiz~~ ✔ (2026-08-28)
 
-Kategori adını değiştirin — hiçbir şey "kaydedildi" demiyor, liste sessizce
-tazeleniyor. Duyuru yayınlayın, aynı. `ErrorLine` var ama **başarının
-karşılığı yok**; her mutasyonun `onSuccess`i yalnızca `invalidateQueries`
-çağırıyor.
+`components/toast.tsx` — sağ altta yeşil, küçük, dört saniyede sönen bir şerit;
+kutu değil, onay istemiyor. `ToastProvider` kök sağlayıcı zincirinde, `useToast`
+çağıran ekranda. Bağlandığı yerler: kategoriler, duyurular, firma iskontoları,
+kullanıcı yönetimi. Mesajı çağıran seçiyor.
 
-Paylaşılan bir `Toast` ya da satır içi "kaydedildi" ipucu. Tasarım dilinde
-karşılığı: yeşil, küçük, kendiliğinden sönen — kutu değil.
+Kalan mutasyonlara da bağlanabilir; kalıp tek satır (`invalidate("…")`).
 
 ### 4.5 `EmptyState`in `action` yuvası kullanılmıyor
 
@@ -235,11 +234,16 @@ fark varsa sıfırdan farklı çık) tasarım kaymasını CI'da yakalar. Mevcut 
 ⚠ Giriş sahnesi sürekli hareket ediyor (`adim-8/giris`) — o dosya kıyaslamadan
 muaf tutulmalı, yoksa her koşuda kırmızı yanar.
 
-### 4.10 Uzun listeler için sayfalama deseni tek değil
+### 4.10 ~~Uzun listeler için sayfalama deseni tek değil~~ ✔ (2026-08-28)
 
-Güvenlik kaydı imleçli sayfalama kullanıyor, stok defteri "ilk 50" diyor,
-kategoriler hepsini basıyor. Üçü de savunulabilir ama **hangisinin ne zaman
-kullanılacağı yazılı değil**. Adım 10'da bir kural yazın.
+Kural REDESIGN.md Adım 10'da: **imleçli sayfalama** (sonu olmayan defterler),
+**tavan + sayaç** (doğal büyüklüğü olan, gözle taranan listeler), **önce arama**
+(taranamayacak kadar büyük listeler).
+
+Üçüncüsü için ortak kanca: `components/show-more.tsx`. Kesme _çizimde_, istekte
+değil — sıralama ve süzme listenin tamamı üzerinde çalışmaya devam ediyor.
+Uygulandığı dört ekranın üçü 6000 piksellik kırpma sınırında kesiliyordu:
+vitrin (2654 kart), yönetim ürün listesi (200 satır), kasa defteri.
 
 ---
 

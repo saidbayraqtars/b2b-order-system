@@ -21,6 +21,7 @@ import {
   TextInput,
 } from "@/components/form";
 import { Badge, EmptyState, LoadingState, MultiChips } from "@/components/ui";
+import { useToast } from "@/components/toast";
 
 // Vitrin duyuruları. Kampanya motorundan bağımsız: buradaki hiçbir kayıt bir
 // tutarı değiştirmez, yalnızca müşteriye ne gösterileceğini söyler.
@@ -52,8 +53,11 @@ export function AnnouncementsManager() {
       apiGet<{ groups: CustomerGroupRow[] }>("/api/admin/customer-groups"),
   });
 
-  const invalidate = () =>
+  const { notify } = useToast();
+  const invalidate = (message = "Kaydedildi") => {
     void qc.invalidateQueries({ queryKey: ["admin-announcements"] });
+    notify(message);
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -70,19 +74,20 @@ export function AnnouncementsManager() {
       }),
     onSuccess: () => {
       setDraft({ ...EMPTY });
-      invalidate();
+      invalidate("Duyuru eklendi");
     },
   });
 
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       apiPatch(`/api/admin/announcements/${id}`, { enabled }),
-    onSuccess: invalidate,
+    onSuccess: (_data, vars) =>
+      invalidate(vars.enabled ? "Duyuru yayında" : "Duyuru kapatıldı"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/admin/announcements/${id}`),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate("Duyuru silindi"),
   });
 
   const groups = groupsQuery.data?.groups ?? [];

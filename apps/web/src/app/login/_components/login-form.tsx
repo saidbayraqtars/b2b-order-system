@@ -12,7 +12,7 @@ import {
   TextInput,
   WarnLine,
 } from "@/components/form";
-import { Stagger } from "@/components/auth-shell";
+import { Stagger } from "@/components/stagger";
 
 /**
  * Why the page guard sent the user back here. A session can die between two

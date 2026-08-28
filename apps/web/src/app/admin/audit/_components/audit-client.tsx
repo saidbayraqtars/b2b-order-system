@@ -144,7 +144,10 @@ export function AuditClient() {
       {query.data && (
         <>
           <div className="rounded-lg border border-line bg-panel">
-            <Table>
+            {/* Sıralama yok: liste imleçle sayfalanıyor ve yalnızca *görünen*
+                elli satırı sıralamak, "en eski kayıt" diye yanlış bir cevap
+                verirdi. Yapışkan başlık ise tam da bu ekran için: 3530 piksel. */}
+            <Table stickyHead>
               <THead>
                 <tr>
                   <Th>Zaman</Th>

@@ -19,6 +19,7 @@ import {
   Th,
   type BadgeTone,
 } from "@/components/ui";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 
 export interface OrderListItem {
   id: string;
@@ -105,15 +106,18 @@ export function OrdersBoard({
     },
   });
 
+  // Sunucu yüzde kesiyor ve yüz satır beş bin piksel: pano ekranı altındaki
+  // her şeyi fotoğrafın dışına itiyordu. Kesme çizimde — "hepsini seç" hâlâ
+  // gelen siparişlerin tamamını seçiyor, çünkü seçim listeyi değil veriyi
+  // kapsıyor.
+  const page = useVisibleSlice(ordersQuery.data?.orders ?? [], 25);
+
   if (ordersQuery.isLoading) {
     return <LoadingState />;
   }
   if (ordersQuery.isError) return <ErrorLine error={ordersQuery.error} />;
 
   const orders = ordersQuery.data?.orders ?? [];
-  if (orders.length === 0) {
-    return <EmptyState label="Sipariş yok." />;
-  }
 
   return (
     <div
@@ -156,6 +160,9 @@ export function OrdersBoard({
           )}
         </div>
       )}
+      {orders.length === 0 ? (
+        <EmptyState label="Sipariş yok." />
+      ) : (
       <Table>
         <THead>
           <tr>
@@ -181,7 +188,7 @@ export function OrdersBoard({
           </tr>
         </THead>
         <TBody>
-          {orders.map((o) => {
+          {page.visible.map((o) => {
             const pending =
               canAct &&
               (o.status === "PENDING_APPROVAL" ||
@@ -268,6 +275,18 @@ export function OrdersBoard({
           })}
         </TBody>
       </Table>
+      )}
+      {/* Sayaç çerçevenin içinde ama tablonun dışında: satır değil, liste
+          hakkında bir cümle. */}
+      <div className={framed ? "px-4 pb-3" : ""}>
+        <ShowMore
+          visible={page.visible.length}
+          total={page.total}
+          hidden={page.hidden}
+          onMore={page.showMore}
+          noun="sipariş"
+        />
+      </div>
     </div>
   );
 }

@@ -14,9 +14,10 @@ import {
   THead,
   Table,
   Td,
-  Th,
 } from "@/components/ui";
 import { Button, ErrorLine, Select, TextInput } from "@/components/form";
+import { SortableTh, useTableSort } from "@/components/table-sort";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 
 export function ProductsTable() {
   const [search, setSearch] = useState("");
@@ -42,7 +43,21 @@ export function ProductsTable() {
       ),
   });
 
-  const rows = products.data?.products ?? [];
+  // Sunucu ada göre döndürüyor; "stoğu en az olan" ya da "en çok varyantlı"
+  // soruları ancak sıralamayla cevaplanıyor. İstemcide, çünkü liste süzgeçten
+  // sonra zaten tek istekte geliyor.
+  const sort = useTableSort(products.data?.products ?? [], {
+    value: (p, key) =>
+      key === "category"
+        ? p.category.name
+        : (p as unknown as Record<string, unknown>)[key],
+  });
+  // Sunucu 200'de kesiyor; ekran da elli satırda. Liste tam 200 geldiyse
+  // gerisi hiç indirilmedi ve bunu söylemek gerekiyor — 2654 ürünlük bir
+  // katalogda "200 ürün" yazan bir ekran, kataloğun tamamını gösterdiğini ima
+  // eder.
+  const rows = sort.rows;
+  const page = useVisibleSlice(rows, 50);
 
   return (
     <div className="space-y-4">
@@ -81,20 +96,32 @@ export function ProductsTable() {
       )}
 
       {rows.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-line bg-panel">
-          <Table>
+        <div className="overflow-clip rounded-lg border border-line bg-panel">
+          <Table stickyHead>
             <THead>
               <tr>
-                <Th>Ürün</Th>
-                <Th>Kategori</Th>
-                <Th align="right">KDV</Th>
-                <Th align="right">Varyant</Th>
-                <Th align="right">Stok</Th>
-                <Th>Durum</Th>
+                <SortableTh sort={sort} sortKey="name">
+                  Ürün
+                </SortableTh>
+                <SortableTh sort={sort} sortKey="category">
+                  Kategori
+                </SortableTh>
+                <SortableTh sort={sort} sortKey="vatRate" align="right">
+                  KDV
+                </SortableTh>
+                <SortableTh sort={sort} sortKey="variantCount" align="right">
+                  Varyant
+                </SortableTh>
+                <SortableTh sort={sort} sortKey="totalStock" align="right">
+                  Stok
+                </SortableTh>
+                <SortableTh sort={sort} sortKey="isActive">
+                  Durum
+                </SortableTh>
               </tr>
             </THead>
             <TBody>
-              {rows.map((p) => (
+              {page.visible.map((p) => (
                 <tr key={p.id}>
                   <Td>
                     <Link
@@ -139,6 +166,17 @@ export function ProductsTable() {
             </TBody>
           </Table>
         </div>
+      )}
+
+      {rows.length > 0 && (
+        <ShowMore
+          visible={page.visible.length}
+          total={page.total}
+          hidden={page.hidden}
+          onMore={page.showMore}
+          noun="ürün"
+          serverCapped={rows.length >= 200}
+        />
       )}
     </div>
   );

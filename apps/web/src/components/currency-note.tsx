@@ -40,7 +40,7 @@ export function CurrencyNote({
   const money = formatMoney(amount, currency!);
   const body = rate ? `${money} × ${formatRate(rate)}` : money;
   return (
-    <span className={className ?? "text-neutral-500"}>
+    <span className={className ?? "text-ink-faint"}>
       {prefix ? `${prefix} ${body}` : body}
     </span>
   );

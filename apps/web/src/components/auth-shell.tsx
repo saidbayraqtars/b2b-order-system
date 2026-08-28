@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AuthStage } from "@/components/auth-stage";
+import { tenantBrand } from "@/lib/tenant-brand";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 
 /**
  * Oturum açılmadan görülen üç ekranın ortak kabuğu: giriş, bayi başvurusu ve
@@ -17,8 +17,9 @@ import { cn } from "@/lib/utils";
  * Sol sütun `lg`den küçük ekranlarda hiç çizilmiyor: telefonda 400 piksellik
  * bir alanı dekora ayırmak, formu ekranın dışına iter.
  */
-export function AuthShell({
-  brand = "B2B Portal",
+export async function AuthShell({
+  /** Verilmezse kiracının adı; bu bir sunucu bileşeni, doğrudan okuyabiliyor. */
+  brand,
   eyebrow,
   title,
   subtitle,
@@ -34,9 +35,11 @@ export function AuthShell({
   /** Kartın altındaki bağlantı satırı. */
   footer?: ReactNode;
 }) {
+  const name = brand ?? (await tenantBrand());
+
   return (
     <div className="flex min-h-screen bg-surface">
-      <AuthStage brand={brand} />
+      <AuthStage brand={name} />
 
       <main className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3 px-6 pt-6 md:px-10">
@@ -44,9 +47,9 @@ export function AuthShell({
               ekranın üstünde aynı ad iki kez duruyordu. */}
           <Link href="/" className="flex items-center gap-2.5 lg:hidden">
             <span className="flex h-8 w-8 items-center justify-center rounded border border-line bg-panel text-xs font-bold text-ink">
-              {brand.slice(0, 1).toUpperCase()}
+              {name.slice(0, 1).toUpperCase()}
             </span>
-            <span className="text-body-sm font-semibold text-ink">{brand}</span>
+            <span className="text-body-sm font-semibold text-ink">{name}</span>
           </Link>
           <div className="ml-auto">
             <ThemeToggle />
@@ -85,35 +88,9 @@ export function AuthShell({
         </div>
 
         <footer className="px-6 pb-6 text-center text-xs text-ink-faint md:px-10">
-          {brand} · Sipariş &amp; Yönetim Sistemi
+          {name} · Sipariş &amp; Yönetim Sistemi
         </footer>
       </main>
-    </div>
-  );
-}
-
-/**
- * Form alanlarını sırayla getiren sarmalayıcı.
- *
- * Gecikme `index`ten hesaplanıyor, elle yazılmıyor: alan eklendiğinde ya da
- * yeri değiştiğinde gecikmelerin tek tek düzeltilmesi gerekmesin. 60 ms
- * bilerek küçük — form doldurmaya gelen biri gösteriyi değil kutuyu bekliyor.
- */
-export function Stagger({
-  index,
-  className,
-  children,
-}: {
-  index: number;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={cn("animate-fade-up", className)}
-      style={{ animationDelay: `${0.16 + index * 0.06}s` }}
-    >
-      {children}
     </div>
   );
 }

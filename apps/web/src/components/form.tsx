@@ -303,7 +303,11 @@ export function Panel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-lg border border-line bg-panel",
+        // `clip`, `hidden` değil. İkisi de köşeyi kesiyor ama `overflow: hidden`
+        // bir kaydırma kabı açıyor ve içindeki `position: sticky` ona
+        // tutunuyor — kap hiç kaydırılmadığı için de başlık hiç yapışmıyordu.
+        // `overflow: clip` kap açmıyor.
+        "overflow-clip rounded-lg border border-line bg-panel",
         className,
       )}
     >
@@ -348,7 +352,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={title}

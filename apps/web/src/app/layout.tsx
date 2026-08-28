@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { tenantBrand } from "@/lib/tenant-brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,12 +21,20 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "B2B Portal",
-  description: "B2B Order & Management System",
-};
+// Sekme başlığı da kiracının adını taşıyor: on sekme açık bir tarayıcıda
+// "B2B Portal" hangi müşterinin kurulumu olduğunu söylemiyor.
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await tenantBrand();
+  return { title: brand, description: "B2B Order & Management System" };
+}
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const brand = await tenantBrand();
+
   return (
     <html lang="tr" className={`${inter.variable} ${mono.variable}`}>
       <head>
@@ -34,7 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-surface text-ink antialiased">
-        <Providers>{children}</Providers>
+        <Providers brand={brand}>{children}</Providers>
       </body>
     </html>
   );

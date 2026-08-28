@@ -23,6 +23,11 @@
   --positive: 22 121 82; /* stok var, tahsil edildi */
   --caution: 176 116 8; /* sınırlı stok, bekliyor */
   --critical: 186 26 26; /* borç, iptal, hata */
+
+  /* Pencerenin ve çekmecenin arkasındaki perde. Diğer değişkenlerin aksine
+     koyu temada **dönmüyor**: perde bir yüzey değil, yüzeyin üstüne çekilen
+     gölge. Açık temada beyaza dönseydi hiç görünmezdi. */
+  --scrim: 15 17 18;
 }
 
 .dark {
@@ -42,6 +47,8 @@
   --positive: 74 190 139;
   --caution: 224 168 61;
   --critical: 255 138 128;
+  /* Perde koyu temada da koyu; bkz. `:root`. */
+  --scrim: 0 0 0;
 }
 
 html,
