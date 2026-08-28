@@ -204,6 +204,12 @@ const PAGES: PageCase[] = [
     role: "SUPER_ADMIN",
   },
   {
+    name: "/admin/mutabakat",
+    load: () => import("@/app/admin/mutabakat/page"),
+    permission: "reconciliation.manage",
+    role: "SUPER_ADMIN",
+  },
+  {
     name: "/admin/siparis-kurallari",
     load: () => import("@/app/admin/siparis-kurallari/page"),
     permission: "order_policy.manage",

@@ -213,39 +213,41 @@ model User {
   // Sales rep portfolio (reverse of Company.salesRep)
   managedCompanies Company[] @relation("SalesRepPortfolio")
 
-  ordersCreated         Order[]                @relation("OrderCreatedBy")
-  ordersApproved        Order[]                @relation("OrderApprovedBy")
-  ordersPushedToErp     Order[]                @relation("OrderErpPushedBy")
-  shipments             Shipment[]             @relation("ShipmentShippedBy")
-  invoicesIssued        Invoice[]              @relation("InvoiceCreatedBy")
-  checkIns              CheckIn[]
-  transactions          Transaction[]          @relation("TransactionRecordedBy")
-  chequeEvents          ChequeEvent[]          @relation("ChequeEventActor")
-  exchangeRates         ExchangeRate[]         @relation("ExchangeRateCreatedBy")
-  jobRuns               JobRun[]               @relation("JobRunTriggeredBy")
-  cashMovements         CashMovement[]         @relation("CashMovementRecordedBy")
-  stockMovements        StockMovement[]        @relation("StockMovementRecordedBy")
-  pageLayouts           PageLayout[]           @relation("PageLayoutUpdatedBy")
-  paymentIntents        PaymentIntent[]        @relation("PaymentIntentCreatedBy")
-  paymentEvents         PaymentIntentEvent[]   @relation("PaymentIntentActor")
-  statusChanges         OrderStatusHistory[]   @relation("OrderStatusChangedBy")
-  reports               ReportDefinition[]     @relation("ReportOwner")
-  dashboards            ReportDashboard[]      @relation("DashboardOwner")
-  auditLogs             AuditLog[]             @relation("AuditActor")
-  passwordResets        PasswordResetToken[]
-  salesTargets          SalesTarget[]          @relation("SalesTargetRep")
-  targetsAuthored       SalesTarget[]          @relation("SalesTargetAuthor")
-  pushDevices           PushDevice[]           @relation("PushDeviceOwner")
-  visitRequests         VisitRequest[]         @relation("VisitRequestRep")
-  visitRequestsAuthored VisitRequest[]         @relation("VisitRequestAuthor")
-  deliveries            Shipment[]             @relation("ShipmentCourier")
-  returnsRequested      ReturnRequest[]        @relation("ReturnRequestedBy")
-  returnsDecided        ReturnRequest[]        @relation("ReturnDecidedBy")
-  applicationsDecided   DealerApplication[]    @relation("DealerApplicationDecidedBy")
-  orderPolicyEdits      OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
-  priceChanges          ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
+  ordersCreated           Order[]                @relation("OrderCreatedBy")
+  ordersApproved          Order[]                @relation("OrderApprovedBy")
+  ordersPushedToErp       Order[]                @relation("OrderErpPushedBy")
+  shipments               Shipment[]             @relation("ShipmentShippedBy")
+  invoicesIssued          Invoice[]              @relation("InvoiceCreatedBy")
+  checkIns                CheckIn[]
+  transactions            Transaction[]          @relation("TransactionRecordedBy")
+  chequeEvents            ChequeEvent[]          @relation("ChequeEventActor")
+  exchangeRates           ExchangeRate[]         @relation("ExchangeRateCreatedBy")
+  jobRuns                 JobRun[]               @relation("JobRunTriggeredBy")
+  cashMovements           CashMovement[]         @relation("CashMovementRecordedBy")
+  stockMovements          StockMovement[]        @relation("StockMovementRecordedBy")
+  pageLayouts             PageLayout[]           @relation("PageLayoutUpdatedBy")
+  paymentIntents          PaymentIntent[]        @relation("PaymentIntentCreatedBy")
+  paymentEvents           PaymentIntentEvent[]   @relation("PaymentIntentActor")
+  statusChanges           OrderStatusHistory[]   @relation("OrderStatusChangedBy")
+  reports                 ReportDefinition[]     @relation("ReportOwner")
+  dashboards              ReportDashboard[]      @relation("DashboardOwner")
+  auditLogs               AuditLog[]             @relation("AuditActor")
+  passwordResets          PasswordResetToken[]
+  salesTargets            SalesTarget[]          @relation("SalesTargetRep")
+  targetsAuthored         SalesTarget[]          @relation("SalesTargetAuthor")
+  pushDevices             PushDevice[]           @relation("PushDeviceOwner")
+  visitRequests           VisitRequest[]         @relation("VisitRequestRep")
+  visitRequestsAuthored   VisitRequest[]         @relation("VisitRequestAuthor")
+  deliveries              Shipment[]             @relation("ShipmentCourier")
+  returnsRequested        ReturnRequest[]        @relation("ReturnRequestedBy")
+  returnsDecided          ReturnRequest[]        @relation("ReturnDecidedBy")
+  applicationsDecided     DealerApplication[]    @relation("DealerApplicationDecidedBy")
+  orderPolicyEdits        OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
+  priceChanges            ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
+  reconciliationsSent     Reconciliation[]       @relation("ReconciliationCreatedBy")
+  reconciliationsAnswered Reconciliation[]       @relation("ReconciliationRespondedBy")
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
-  originApplication     DealerApplication?     @relation("DealerApplicationUser")
+  originApplication       DealerApplication?     @relation("DealerApplicationUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -353,6 +355,7 @@ model Company {
   returnRequests       ReturnRequest[]
   /// Bu firmayı doğuran bayi başvurusu (varsa). Elle açılan firmalarda boş.
   originApplication    DealerApplication?    @relation("DealerApplicationCompany")
+  reconciliations      Reconciliation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2527,6 +2530,10 @@ enum AuditAction {
   /// kaç satır, hangi dosya, hangi imza.
   PRICES_IMPORTED
   STOCK_IMPORTED
+
+  /// Cari mutabakat cevabı. Defter oynamıyor — "mutabıkım" bir beyandır, bir
+  /// işlem değil — dolayısıyla cevabın izi **yalnızca** burada kalıyor.
+  RECONCILIATION_ANSWERED
 }
 
 /// Append-only record of security-relevant events. Nothing in the application
@@ -2703,6 +2710,78 @@ model PushDevice {
 /// Karar verildiğinde satır **silinmiyor, güncelleniyor**. Reddedilen başvuru
 /// da duruyor: "biz başvurmuştuk" tartışmasının tek cevabı o satır ve
 /// `decisionNote`.
+/// Cari mutabakat — Türk B2B'sinin dönem sonu ritüeli.
+///
+/// Mutabakat mektubu gider, müşteri "mutabıkım" ya da "itirazım var" der.
+/// Deseni `DealerApplication` ile aynı: **talep → cevap**.
+///
+/// Üç kural modelin şeklini belirliyor:
+///
+///  1. **Bakiye anlık görüntüdür.** Defter işlemeye devam ediyor; mutabakat
+///     mektubu ise bir **ana** ait. `balance` ve `asOf` bu yüzden satırda
+///     donuyor — bugünkü bakiyeyi gösteren bir mutabakat, dün imzalanmış bir
+///     kâğıdı bugün değiştirmek olurdu.
+///  2. **Cevap defteri oynatmaz.** "Mutabıkım" bir beyandır, bir işlem değil;
+///     "itirazım var" da bir düzeltme değil, bir konuşmanın başlangıcı.
+///     Düzeltme gerekiyorsa onu insan yapar ve defterde kendi satırını açar.
+///  3. **Bir dönem, bir firma, bir mektup.** Aynı döneme ikinci mektup
+///     "hangisi geçerli" sorusunu doğurur; ikincisi ancak ilki iptal edilerek
+///     gönderilir.
+model Reconciliation {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Dönem — mektubun kapsadığı aralık. `periodEnd` aynı zamanda bakiyenin
+  /// kesildiği an.
+  periodStart DateTime
+  periodEnd   DateTime
+
+  /// Dönem sonundaki bakiye, mektup üretildiği anda hesaplanmış hâliyle.
+  /// Pozitif = müşteri borçlu.
+  balance     Decimal  @db.Decimal(14, 2)
+  /// Dönem içi borç ve alacak toplamları — mektubun gövdesi.
+  totalDebit  Decimal  @db.Decimal(14, 2)
+  totalCredit Decimal  @db.Decimal(14, 2)
+  /// Bakiyenin kesildiği an; `periodEnd` ile aynı ama belgede ayrıca yazıyor.
+  asOf        DateTime
+
+  status ReconciliationStatus @default(SENT)
+
+  /// İtirazın gerekçesi — `DISPUTED` hâlinde zorunlu. Mutabık kalınırken de
+  /// doldurulabilir ("kaydımızda 12,50 ₺ kur farkı var, kabul ediyoruz").
+  responseNote  String?
+  /// Cevabı **kim** verdi. Bayi tarafındaki kullanıcı; iptal eden yönetici de
+  /// buraya yazılıyor ve statü ondan okunuyor.
+  respondedById String?
+  respondedBy   User?     @relation("ReconciliationRespondedBy", fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedAt   DateTime?
+
+  /// Mektubu gönderen. Toplu üretimde hepsi aynı kişi.
+  createdById String?
+  createdBy   User?   @relation("ReconciliationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Aynı firmaya aynı dönem için **açık** ikinci mektup olmasın diye kısmi
+  /// benzersizlik gerekirdi; Prisma onu ifade edemiyor, kural serviste
+  /// (`sendReconciliations`) ve iptal edilmiş satır yeni mektuba izin veriyor.
+  @@index([companyId, periodEnd])
+  @@index([status, createdAt])
+}
+
+enum ReconciliationStatus {
+  /// Gönderildi, cevap bekleniyor.
+  SENT
+  /// Müşteri mutabık.
+  AGREED
+  /// Müşteri itiraz etti; `responseNote` gerekçeyi taşıyor.
+  DISPUTED
+  /// Satıcı geri çekti — yanlış dönem, yanlış firma, tekrar gönderilecek.
+  CANCELLED
+}
+
 model DealerApplication {
   id String @id @default(cuid())
 

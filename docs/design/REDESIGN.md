@@ -863,10 +863,18 @@ duruyorlar, çünkü "bugün ne sevk edeceğim" sorusunun cevabı ikisinde birde
 Bekleyen sekmesi kendi içinde de ikiye bölünüyor — ürün bazında (depo sorusu) ve
 sipariş bazında (müşteri sorusu).
 
-Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
-`adim-15/zamanli-fiyatlar.png`, `adim-15/bekleyen-bakiye.png`.
+**Cari mutabakat** iki ekran getirdi: yönetimde `/admin/mutabakat` (dönem
+mektubu + cevaplar), alıcı tarafında ise **cari ekstrenin üstünde** bir panel.
+Ayrı bir menü maddesi açılmadı: mutabakat bir bakiye hakkında ve müşteri o
+bakiyeye zaten orada bakıyor — yılda iki kez kullanılan bir ekranı her gün
+göstermenin karşılığı yok. Cevaplanmamış mektup yoksa panel **hiç
+çizilmiyor**.
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 624
+Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
+`adim-15/zamanli-fiyatlar.png`, `adim-15/bekleyen-bakiye.png`,
+`adim-15/mutabakat.png`, `adim-15/mutabakat-portal.png`.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 356 + 627
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)

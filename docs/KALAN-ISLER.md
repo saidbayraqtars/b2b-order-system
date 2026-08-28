@@ -317,15 +317,39 @@ imza kuralını sınıyor — uydurma imza, dosya değişimi, veritabanı deği�
 için parçalı yükleme gerekir. Fiyat dışındaki alanlar (maliyet, barkod, raf
 kodu) içe aktarılmıyor — aynı makine, yeni sütunlar.
 
-### 5.2 Cari mutabakat ★★★
+### 5.2 ~~Cari mutabakat~~ ✔ (2026-08-28)
 
-Türk B2B'sinin dönem sonu ritüeli: mutabakat mektubu gider, müşteri onaylar ya
-da itiraz eder. Defter (`Transaction`) tam, ekstre ekranı var — **belge ve onay
-akışı yok.**
+`/admin/mutabakat` (satıcı) + cari ekstrenin üstündeki panel (alıcı).
 
-Deseni zaten elimizde: `DealerApplication` tam olarak "talep → cevap" akışı.
-Bayi portalına "mutabıkım" / "itirazım var + gerekçe" düğmesi, yönetime
-mutabakat listesi. Muhasebenin yılda iki kez elle yaptığı iş.
+Defter (`Transaction`) zaten tamdı, ekstre ekranı zaten vardı; eksik olan
+**belge ve onay akışı**ydı — muhasebenin yılda iki kez elle yaptığı iş. Deseni
+`DealerApplication` ile aynı: talep → cevap.
+
+Üç kural modelin şeklini belirledi:
+
+1. **Bakiye anlık görüntü.** Defter işlemeye devam ediyor, mektup bir **ana**
+   ait. `balance`, `totalDebit`, `totalCredit` satıra donuyor. Bugünkü bakiye
+   ekranda yanında duruyor, ki mektubun ne kadar eski olduğu görünsün.
+2. **Cevap defteri oynatmaz.** "Mutabıkım" bir beyandır, bir işlem değil;
+   itiraz da bir düzeltme değil, bir konuşmanın başlangıcı. Cevabın izi
+   yalnızca denetim kaydında (`RECONCILIATION_ANSWERED`) — testlerden biri
+   tam da bunu sınıyor: cevaptan sonra `Transaction` sayısı değişmiyor.
+3. **Bir dönem, bir firma, bir açık mektup.** İkincisi ancak ilki geri
+   çekilerek gönderilir; cevaplanmış mektup geri çekilemez — müşterinin
+   beyanını satıcının silmesi, mutabakatın taşıdığı tek şeyi yok ederdi.
+
+İki ayrıntı:
+
+- **Dönem sınırları yerel**, UTC değil. Mektup, müşterinin yan yana koyacağı
+  ekstre ile aynı günleri kapsamak zorunda ve ekstre yerel gün sınırlarıyla
+  çalışıyor. UTC kullanılsaydı Türkiye'de 1 Ağustos'un ilk üç saati Temmuz
+  mutabakatına girerdi (ilk çekimde tam bu görüldü: dönem "01.07 – 01.08"
+  yazıyordu).
+- **Bakiyesi sıfır ve hareketsiz firmaya gönderilmiyor** (istenirse
+  gönderiliyor): "borcunuz 0,00 ₺, mutabık mısınız" diye bir mektup alan kişiye
+  hiçbir şey sormuyor, gönderene yüz cevapsız satır bırakıyor.
+
+11 test (`packages/services/test/integration/reconciliation.test.ts`).
 
 ### 5.3 Tahsilat çalışma listesi ★★
 

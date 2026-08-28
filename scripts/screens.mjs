@@ -606,6 +606,22 @@ export const SCREENS = [
     path: "/admin/deliveries?bolum=bekleyen",
   },
 
+  {
+    step: 15,
+    slug: "mutabakat",
+    label: "Cari mutabakat — yönetim",
+    as: "admin",
+    path: "/admin/mutabakat",
+  },
+
+  {
+    step: 15,
+    slug: "mutabakat-portal",
+    label: "Cari mutabakat — bayi cevabı",
+    as: "portal",
+    path: "/portal/statement",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:

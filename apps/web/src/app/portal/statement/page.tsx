@@ -4,6 +4,7 @@ import { resolvePortalContext } from "@/lib/portal-context";
 import { PortalNav } from "@/components/portal-nav";
 import { PageHeader } from "@/components/ui";
 import { StatementView } from "@/components/statement-view";
+import { ReconciliationPanel } from "@/components/reconciliation-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,10 @@ export default async function PortalStatementPage({ searchParams }: Props) {
               : "Bakiye, yaşlandırma ve hesap hareketleri"
           }
         />
+        {/* Mutabakat ekstrenin üstünde: bir bakiye hakkında ve müşteri o
+            bakiyeye zaten burada bakıyor. Cevaplanmamış mektup yoksa hiçbir
+            şey çizmiyor. */}
+        <ReconciliationPanel companyId={ctx.companyId} />
         <StatementView companyId={ctx.companyId} />
       </div>
     </PortalNav>

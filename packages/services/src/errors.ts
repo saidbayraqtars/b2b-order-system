@@ -16,6 +16,10 @@ export type BusinessErrorCode =
   | "BELOW_MINIMUM_ORDER"
   | "INVALID_MINIMUM"
   | "INVALID_CUTOFF"
+  // ── cari mutabakat ──
+  | "INVALID_PERIOD"
+  | "INVALID_RESPONSE"
+  | "RECONCILIATION_NOT_FOUND"
   | "FORBIDDEN_APPROVAL"
   | "INVALID_STATE"
   | "CHECKIN_NOT_FOUND"

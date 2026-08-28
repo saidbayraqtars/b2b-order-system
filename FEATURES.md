@@ -225,6 +225,14 @@ görüntüleri `docs/design/screens/` altında.
 - Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
 - **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
 
+### Cari mutabakat
+
+- **Dönem mektubu** toplu üretiliyor (`/admin/mutabakat`): bakiye, dönem içi borç ve alacak defterden hesaplanıp satıra **donuyor**. Bugünkü bakiye ekranda yanında duruyor.
+- Alıcı tarafı cari ekstrenin üstünde: **mutabıkım** / **itirazım var + gerekçe**. Gerekçesiz itiraz reddediliyor.
+- **Cevap defteri oynatmaz** — beyandır, düzeltme değil. İzi denetim kaydında (`RECONCILIATION_ANSWERED`).
+- Aynı döneme ikinci mektup gitmiyor; cevaplanmış mektup geri çekilemiyor, verilen cevap değiştirilemiyor.
+- Dönem sınırları **yerel gün**, ekstre ile aynı çerçeve.
+
 ## 7. Katalog Yönetimi (Adım 6)
 
 Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlılık kalktı.

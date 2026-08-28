@@ -103,6 +103,7 @@ export const AuditActionEnum = z.enum([
   "TWO_FACTOR_FAILED",
   "TWO_FACTOR_BACKUP_USED",
   "PRICES_IMPORTED",
+  "RECONCILIATION_ANSWERED",
   "STOCK_IMPORTED",
 ]);
 export type AuditAction = z.infer<typeof AuditActionEnum>;
@@ -144,6 +145,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   TWO_FACTOR_FAILED: "Hatalı doğrulama kodu",
   TWO_FACTOR_BACKUP_USED: "Yedek kod kullanıldı",
   PRICES_IMPORTED: "Fiyatlar Excel ile güncellendi",
+  RECONCILIATION_ANSWERED: "Cari mutabakat cevaplandı",
   STOCK_IMPORTED: "Stok Excel ile sayıldı",
 };
 

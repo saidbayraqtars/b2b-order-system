@@ -8,6 +8,7 @@ export * from "./order-lifecycle";
 export * from "./order-policy";
 export * from "./price-schedule";
 export * from "./backorder";
+export * from "./reconciliation";
 export * from "./order-quote";
 export * from "./document-series";
 export * from "./shipment";

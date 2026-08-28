@@ -59,6 +59,7 @@ export const PermissionEnum = z.enum([
   "order_policy.manage",
   "payments.view",
   "cheques.manage",
+  "reconciliation.manage",
   // belge & rapor
   "documents.view",
   "documents.manage",
@@ -111,6 +112,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "order_policy.manage": "Sipariş kabul kurallarını yönet",
   "payments.view": "Kart tahsilatlarını görüntüle",
   "cheques.manage": "Çek/senet portföyünü yönet",
+  "reconciliation.manage": "Cari mutabakat gönder ve yanıtları izle",
   "documents.view": "Belgeleri görüntüle",
   "documents.manage": "Belge serilerini yönet",
   "reports.view": "Raporları görüntüle",
@@ -143,6 +145,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "reconciliation.manage":
+    "Dönem sonu mutabakat mektubu. Cevap **defteri oynatmaz** — mutabakat bir beyandır, düzeltme değil; düzeltmeyi insan yapar ve defterde kendi satırını açar",
   "order_policy.manage":
     "Asgari sipariş tutarı/kolisi ve sevkiyat kesim saati. Asgari **alıcıyı** bağlar; plasiyer ve yönetici eşiğin altında sipariş geçebilir",
   "analytics.view":
@@ -211,6 +215,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "cash.manage",
       "payments.view",
       "cheques.manage",
+      "reconciliation.manage",
       "payment_terms.manage",
       "volume_tiers.manage",
       "order_policy.manage",
@@ -452,6 +457,11 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "cash.manage": ["SELLER", "FIELD"],
   "payment_terms.manage": ["SELLER"],
   "volume_tiers.manage": ["SELLER"],
+  // Mektubu **satıcı** gönderiyor. Bayinin cevap vermesi bir izne bağlı
+  // değil: portalda kendi mutabakatını gören herkes cevaplayabilir, çünkü
+  // cevap firmanın beyanıdır ve firmanın kullanıcısı zaten firmayı temsil
+  // ediyor.
+  "reconciliation.manage": ["SELLER"],
   "order_policy.manage": ["SELLER"],
   "payments.view": ["SELLER"],
   // Portföy satıcının alacağı. Saha çek *toplar* (tahsilat kaydı) ama kâğıdın

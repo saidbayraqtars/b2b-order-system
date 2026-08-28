@@ -51,6 +51,21 @@ export const saveOrderPolicySchema = z.object({
 });
 export type SaveOrderPolicyInput = z.infer<typeof saveOrderPolicySchema>;
 
+/** Dönem mutabakat mektuplarını üret. Boş `companyIds` = her aktif firma. */
+export const sendReconciliationsSchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-AA-GG olmalı"),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-AA-GG olmalı"),
+  companyIds: z.array(z.string().cuid()).max(2000).optional(),
+  includeZeroBalance: z.boolean().optional(),
+});
+export type SendReconciliationsInput = z.infer<typeof sendReconciliationsSchema>;
+
+/** Müşterinin cevabı. İtirazda gerekçe zorunlu — kural serviste de var. */
+export const respondReconciliationSchema = z.object({
+  agreed: z.boolean(),
+  note: z.string().trim().max(2000).nullable().optional(),
+});
+
 export const recordPaymentSchema = z.object({
   companyId: z.string().cuid(),
   amount: z.number().positive(),

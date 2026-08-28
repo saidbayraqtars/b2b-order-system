@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   ClipboardCheck,
+  Handshake,
   FileSpreadsheet,
   FileText,
   Gauge,
@@ -162,6 +163,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         label: "Kasa & Banka",
         icon: Wallet,
         permission: "cash.view",
+      },
+      {
+        href: "/admin/mutabakat",
+        label: "Mutabakat",
+        icon: Handshake,
+        permission: "reconciliation.manage",
       },
       {
         href: "/admin/cekler",

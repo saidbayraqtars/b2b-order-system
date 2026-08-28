@@ -315,6 +315,25 @@ export const PRICE_CHANGE_STATUS_LABELS: Record<PriceChangeStatus, string> = {
   FAILED: "Başarısız",
 };
 
+/** Cari mutabakat mektubunun hâli. */
+export const ReconciliationStatusEnum = z.enum([
+  "SENT",
+  "AGREED",
+  "DISPUTED",
+  "CANCELLED",
+]);
+export type ReconciliationStatus = z.infer<typeof ReconciliationStatusEnum>;
+
+export const RECONCILIATION_STATUS_LABELS: Record<
+  ReconciliationStatus,
+  string
+> = {
+  SENT: "Cevap bekliyor",
+  AGREED: "Mutabık",
+  DISPUTED: "İtiraz",
+  CANCELLED: "İptal",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 
