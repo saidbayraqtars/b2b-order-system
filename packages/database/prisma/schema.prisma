@@ -244,6 +244,7 @@ model User {
   applicationsDecided     DealerApplication[]    @relation("DealerApplicationDecidedBy")
   orderPolicyEdits        OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
   priceChanges            ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
+  collectionCalls         CollectionCall[]       @relation("CollectionCallBy")
   reconciliationsSent     Reconciliation[]       @relation("ReconciliationCreatedBy")
   reconciliationsAnswered Reconciliation[]       @relation("ReconciliationRespondedBy")
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
@@ -356,6 +357,7 @@ model Company {
   /// Bu firmayı doğuran bayi başvurusu (varsa). Elle açılan firmalarda boş.
   originApplication    DealerApplication?    @relation("DealerApplicationCompany")
   reconciliations      Reconciliation[]
+  collectionCalls      CollectionCall[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2710,6 +2712,56 @@ model PushDevice {
 /// Karar verildiğinde satır **silinmiyor, güncelleniyor**. Reddedilen başvuru
 /// da duruyor: "biz başvurmuştuk" tartışmasının tek cevabı o satır ve
 /// `decisionNote`.
+/// Tahsilat araması — "bugün kimi aradım, ne dedi".
+///
+/// Plasiyerin sabah sorduğu soru **"bugün kimi arayacağım"** ve o soruya
+/// cevap verebilmek için tek eksik parça buydu: yaşlandırma zaten var, ziyaret
+/// kaydı zaten var, ama aramanın **sonucu** hiçbir yerde durmuyordu. Sonuç
+/// olmayınca liste her sabah aynı: dün arayıp "15'inde ödeyeceğim" diyen
+/// müşteri bugün yine listenin başında.
+///
+/// Ekle-only: bir arama olmuş bir şeydir, düzeltilmez. Yanlış girilen sonucun
+/// üstüne yeni bir arama kaydı yazılır ve son söz onun olur.
+model CollectionCall {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  outcome CollectionOutcome
+
+  /// Söz verilen tarih — `PROMISED` ve `CHEQUE` için. Listenin sırasını bu
+  /// belirliyor: sözü geçen müşteri, hiç aranmamış müşteriden önce gelir.
+  promisedDate   DateTime?
+  /// Söz verilen tutar; bilinmiyorsa boş. Tahsilat kaydı **değil** — para
+  /// gerçekten geldiğinde `Transaction` yazılıyor.
+  promisedAmount Decimal?  @db.Decimal(14, 2)
+
+  /// Serbest not: "muhasebeci izinde", "ikinci hat cevap vermiyor".
+  note String?
+
+  /// Aramayı yapan. Plasiyer ya da ofisten arayan yönetici.
+  calledById String?
+  calledBy   User?   @relation("CollectionCallBy", fields: [calledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([promisedDate])
+}
+
+enum CollectionOutcome {
+  /// Ödeme sözü verdi.
+  PROMISED
+  /// Çek/senet verecek.
+  CHEQUE
+  /// Ulaşılamadı.
+  UNREACHABLE
+  /// Ödemeyi reddetti ya da itiraz etti.
+  REFUSED
+  /// Görüşüldü, söz yok.
+  NO_PROMISE
+}
+
 /// Cari mutabakat — Türk B2B'sinin dönem sonu ritüeli.
 ///
 /// Mutabakat mektubu gider, müşteri "mutabıkım" ya da "itirazım var" der.

@@ -1,6 +1,7 @@
 import { requirePage } from "@/lib/guard";
 import { resolvePortalContext } from "@/lib/portal-context";
 import { CompanyPicker } from "@/components/company-picker";
+import { CollectionWorklistPanel } from "@/components/collection-worklist";
 import { RepNav } from "@/components/rep-nav";
 import { CollectionPanel } from "./_components/collection-panel";
 
@@ -29,11 +30,18 @@ export default async function RepCollectionPage({ searchParams }: Props) {
         current="/rep/tahsilat"
         showCompany
       >
-        <CompanyPicker
-          basePath="/rep/tahsilat"
-          eyebrow="Tahsilat girilecek firma"
-          subtitle="Tahsilat carinin defterine yazılır; hangi firma olduğu seçilmeden tutar girilemez."
-        />
+        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+          {/* Firma seçilmeden önce görünen şey **alfabetik bir liste değil**:
+              sabah ekranı açan plasiyerin sorusu "hangi firma" değil, "bugün
+              kimi arayacağım". Seçici altında duruyor ve orada kalıyor —
+              listede olmayan bir cariye de tahsilat girilebilmeli. */}
+          <CollectionWorklistPanel collectHref="/rep/tahsilat" />
+          <CompanyPicker
+            basePath="/rep/tahsilat"
+            eyebrow="Tahsilat girilecek firma"
+            subtitle="Tahsilat carinin defterine yazılır; hangi firma olduğu seçilmeden tutar girilemez."
+          />
+        </div>
       </RepNav>
     );
   }

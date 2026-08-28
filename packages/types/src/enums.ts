@@ -334,6 +334,24 @@ export const RECONCILIATION_STATUS_LABELS: Record<
   CANCELLED: "İptal",
 };
 
+/** Tahsilat aramasının sonucu. */
+export const CollectionOutcomeEnum = z.enum([
+  "PROMISED",
+  "CHEQUE",
+  "UNREACHABLE",
+  "REFUSED",
+  "NO_PROMISE",
+]);
+export type CollectionOutcome = z.infer<typeof CollectionOutcomeEnum>;
+
+export const COLLECTION_OUTCOME_LABELS: Record<CollectionOutcome, string> = {
+  PROMISED: "Söz verdi",
+  CHEQUE: "Çek verecek",
+  UNREACHABLE: "Ulaşılamadı",
+  REFUSED: "Reddetti",
+  NO_PROMISE: "Görüşüldü, söz yok",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 

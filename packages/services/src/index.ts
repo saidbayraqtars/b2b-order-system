@@ -9,6 +9,7 @@ export * from "./order-policy";
 export * from "./price-schedule";
 export * from "./backorder";
 export * from "./reconciliation";
+export * from "./collection-worklist";
 export * from "./order-quote";
 export * from "./document-series";
 export * from "./shipment";

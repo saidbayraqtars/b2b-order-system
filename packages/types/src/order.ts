@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { chequeDetailsSchema } from "./cheque";
-import { CollectionMethodEnum, OrderStatusEnum, PaymentMethodEnum } from "./enums";
+import {
+  CollectionMethodEnum,
+  CollectionOutcomeEnum,
+  OrderStatusEnum,
+  PaymentMethodEnum,
+} from "./enums";
 import { entityIdSchema } from "./id";
 import { couponCodeSchema } from "./promotion";
 
@@ -64,6 +69,25 @@ export type SendReconciliationsInput = z.infer<typeof sendReconciliationsSchema>
 export const respondReconciliationSchema = z.object({
   agreed: z.boolean(),
   note: z.string().trim().max(2000).nullable().optional(),
+});
+
+/**
+ * Tahsilat araması sonucu.
+ *
+ * Tarih zorunluluğu **serviste**: şema onu "koşullu zorunlu" yapabilirdi ama o
+ * kural iş kuralı ve iki yerde durması, birinin bir gün diğerinden ayrışması
+ * demek.
+ */
+export const recordCollectionCallSchema = z.object({
+  companyId: z.string().cuid(),
+  outcome: CollectionOutcomeEnum,
+  promisedDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-AA-GG olmalı")
+    .nullable()
+    .optional(),
+  promisedAmount: z.number().min(0).max(100_000_000).nullable().optional(),
+  note: z.string().trim().max(1000).nullable().optional(),
 });
 
 export const recordPaymentSchema = z.object({

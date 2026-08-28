@@ -622,6 +622,14 @@ export const SCREENS = [
     path: "/portal/statement",
   },
 
+  {
+    step: 15,
+    slug: "tahsilat-listesi",
+    label: "Tahsilat çalışma listesi — bugün kimi arayacağım",
+    as: "rep",
+    path: "/rep/tahsilat",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:

@@ -351,14 +351,49 @@ Defter (`Transaction`) zaten tamdı, ekstre ekranı zaten vardı; eksik olan
 
 11 test (`packages/services/test/integration/reconciliation.test.ts`).
 
-### 5.3 Tahsilat çalışma listesi ★★
+### 5.3 ~~Tahsilat çalışma listesi~~ ✔ (2026-08-28)
 
-FIFO yaşlandırma Adım 8'de geldi. Ama plasiyerin sabah sorduğu soru **"bugün
-kimi arayacağım"** ve o listeyi hiçbir ekran vermiyor.
+`/rep/tahsilat` — firma seçilmeden önce görünen ekran artık alfabetik bir liste
+değil, **"bugün kimi arayacağım"**.
 
-Vadesi X gün geçmiş + tutara göre sıralı + **arama sonucu kaydedilen** ("söz
-verdi 15'i", "çek verecek", "ulaşılamadı"). Veri tamamen mevcut: `Transaction`
-yaşlandırma + `CheckIn` + `Company`. Yeni model tek satır: `CollectionCall`.
+FIFO yaşlandırma Adım 8'de gelmişti ve "kim ne kadar borçlu" sorusunu
+cevaplıyordu. Plasiyerin sabah sorduğu soru başka: **sırada kim var.** Aradaki
+tek eksik parça aramanın **sonucu**ydu — dün arayıp "15'inde ödeyeceğim" diyen
+müşteri, sonuç hiçbir yerde durmadığı için bugün yine listenin başındaydı.
+
+Yeni model tek tablo: `CollectionCall` (sonuç, söz tarihi, söz tutarı, not).
+**Ekle-only**: bir arama olmuş bir şeydir, düzeltilmez; yanlış girilen sonucun
+üstüne yeni bir kayıt yazılır ve son söz onun olur.
+
+Sırayı **borç büyüklüğü değil durum** belirliyor:
+
+| Sıra | Durum | Anlamı |
+| --- | --- | --- |
+| 1 | Sözü geçti | Söz günü geldi, para gelmedi |
+| 2 | Ulaşılamadı | Tekrar denenecek |
+| 3 | Hiç aranmadı | — |
+| 4 | Söz yok | Görüşüldü, söz alınamadı |
+| 5 | Reddetti | Artık tahsilat aramasının konusu değil |
+| 6 | Söz bekleniyor | Günü gelmedi — **aranmayacak** |
+
+Aynı durumdaki iki cari arasında büyük olan önde; ama 5.000 ₺'lik sözü geçen
+cari, 100.000 ₺'lik hiç aranmamışın **önünde** (test bunu sabitliyor).
+
+Üç karar:
+
+- **Vadesi geçmemiş cari listeye girmiyor.** Tahsilat araması bir borç
+  hatırlatması; vadesi gelmemiş borcu hatırlatmak müşteriyi kızdırmaktan başka
+  işe yaramaz.
+- **Sözü henüz gelmemiş cari listeden çıkmıyor**, en alta iniyor. Tamamen
+  çıkarmak, "ben o adama söz verdirmiştim" diyen plasiyerin sözü nerede
+  olduğunu göremediği bir liste olurdu.
+- **Tarihsiz söz kaydedilemiyor.** "Ödeyeceğim" deyip gün söylemeyen müşteri,
+  yarın yine aranacak biridir; tarihsiz bir söz listeyi hiç değiştirmez.
+
+Firma seçici kaldırılmadı, listenin altına indi: listede olmayan bir cariye de
+tahsilat girilebilmeli.
+
+7 test (`packages/services/test/integration/collection-worklist.test.ts`).
 
 ### 5.4 Plasiyer primi / hakediş ★★
 

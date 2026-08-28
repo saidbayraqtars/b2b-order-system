@@ -225,6 +225,13 @@ görüntüleri `docs/design/screens/` altında.
 - Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
 - **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
 
+### Tahsilat çalışma listesi
+
+- `/rep/tahsilat` firma seçilmeden önce **"bugün kimi arayacağım"** listesini gösteriyor: vadesi geçmiş cariler, durum sırasına göre.
+- **Arama sonucu kaydediliyor** (`CollectionCall`): söz verdi / çek verecek / ulaşılamadı / reddetti / söz yok, söz tarihi ve tutarıyla. Ekle-only — düzeltme yok, üstüne yeni kayıt.
+- Sıra borç büyüklüğüne değil **duruma** göre: sözü geçen en üstte, sözü beklenen en altta ve "aranacak" sayısına girmiyor.
+- Vadesi geçmemiş cari listeye girmiyor; tarihsiz söz kaydedilemiyor.
+
 ### Cari mutabakat
 
 - **Dönem mektubu** toplu üretiliyor (`/admin/mutabakat`): bakiye, dönem içi borç ve alacak defterden hesaplanıp satıra **donuyor**. Bugünkü bakiye ekranda yanında duruyor.

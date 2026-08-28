@@ -872,9 +872,16 @@ göstermenin karşılığı yok. Cevaplanmamış mektup yoksa panel **hiç
 
 Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
 `adim-15/zamanli-fiyatlar.png`, `adim-15/bekleyen-bakiye.png`,
-`adim-15/mutabakat.png`, `adim-15/mutabakat-portal.png`.
+`adim-15/mutabakat.png`, `adim-15/mutabakat-portal.png`,
+`adim-15/tahsilat-listesi.png`.
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 356 + 627
+**Tahsilat ekranının boş hâli değişti.** `/rep/tahsilat` firma seçilmeden önce
+alfabetik bir seçici gösteriyordu; artık **çalışma listesi** gösteriyor — sabah
+ekranı açan plasiyerin sorusu "hangi firma" değil, "bugün kimi arayacağım".
+Seçici altında duruyor ve orada kalıyor, çünkü listede olmayan bir cariye de
+tahsilat girilebilmeli.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 356 + 634
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)
