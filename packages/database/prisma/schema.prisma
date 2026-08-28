@@ -2385,6 +2385,12 @@ enum AuditAction {
   TWO_FACTOR_RESET
   TWO_FACTOR_FAILED
   TWO_FACTOR_BACKUP_USED
+
+  /// Excel ile toplu güncelleme. Fiyat satırının kendisi kimin değiştirdiğini
+  /// taşımıyor; bir zam listesinin kime ait olduğu yalnızca burada kalıyor —
+  /// kaç satır, hangi dosya, hangi imza.
+  PRICES_IMPORTED
+  STOCK_IMPORTED
 }
 
 /// Append-only record of security-relevant events. Nothing in the application

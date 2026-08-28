@@ -7,6 +7,7 @@ import {
   Boxes,
   Building2,
   CalendarClock,
+  FileSpreadsheet,
   FileText,
   Gauge,
   Inbox,
@@ -67,6 +68,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         label: "Ürünler",
         icon: Package,
         permission: "products.view",
+      },
+      {
+        href: "/admin/toplu-guncelleme",
+        label: "Toplu güncelleme",
+        icon: FileSpreadsheet,
+        permission: "pricing.manage",
       },
       {
         href: "/admin/categories",

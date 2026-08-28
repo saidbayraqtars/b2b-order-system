@@ -344,6 +344,25 @@ export const SCREENS = [
     path: "/403?perm=cash.manage",
   },
 
+  // ── Adım 13 — Excel ile toplu güncelleme ────────────────────────────────
+  // Fark önizlemesi ancak dosya yüklenince çiziliyor ve betik dosya
+  // yüklemiyor: kaydedilen şey akışın ilk adımı. Önizlemenin kendisi
+  // `bulk-import.test.ts`te 13 testle sınanıyor.
+  {
+    step: 13,
+    slug: "toplu-fiyat",
+    label: "Toplu güncelleme — fiyat",
+    as: "admin",
+    path: "/admin/toplu-guncelleme?bolum=fiyat",
+  },
+  {
+    step: 13,
+    slug: "toplu-stok",
+    label: "Toplu güncelleme — stok sayımı",
+    as: "admin",
+    path: "/admin/toplu-guncelleme?bolum=stok",
+  },
+
   // ── Adım 12 — yönetici panosu ───────────────────────────────────────────
   // Altı bölüm altı ayrı adres: sekme `?bolum=` ile URL'de, çünkü betik
   // düğmelere basmıyor ve fotoğraflanamayan ekranın doğru göründüğü

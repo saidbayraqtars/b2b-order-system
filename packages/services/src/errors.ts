@@ -68,6 +68,10 @@ export type BusinessErrorCode =
   | "RESET_TOKEN_INVALID"
   // ── uploads ──
   | "INVALID_UPLOAD"
+  // ── toplu içe aktarma ──
+  | "INVALID_IMPORT"
+  /** Önizlemeden sonra dosya ya da veritabanı değişti; uygulama reddedildi. */
+  | "STALE_IMPORT"
   // ── storefront ──
   | "ANNOUNCEMENT_NOT_FOUND"
   // ── field operations: collection, visit ──

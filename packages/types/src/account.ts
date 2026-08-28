@@ -102,6 +102,8 @@ export const AuditActionEnum = z.enum([
   "TWO_FACTOR_RESET",
   "TWO_FACTOR_FAILED",
   "TWO_FACTOR_BACKUP_USED",
+  "PRICES_IMPORTED",
+  "STOCK_IMPORTED",
 ]);
 export type AuditAction = z.infer<typeof AuditActionEnum>;
 
@@ -141,6 +143,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   TWO_FACTOR_RESET: "İki adımlı doğrulama sıfırlandı (yönetici)",
   TWO_FACTOR_FAILED: "Hatalı doğrulama kodu",
   TWO_FACTOR_BACKUP_USED: "Yedek kod kullanıldı",
+  PRICES_IMPORTED: "Fiyatlar Excel ile güncellendi",
+  STOCK_IMPORTED: "Stok Excel ile sayıldı",
 };
 
 /** Actions worth surfacing as "security events" by default in the viewer. */

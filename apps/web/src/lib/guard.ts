@@ -427,6 +427,12 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // user-defined reports
   REPORT_NOT_FOUND: 404,
   INVALID_REPORT: 422,
+  // Dosya okunamadı ya da başlıkları tanınmadı: istemcinin düzeltebileceği bir
+  // şey, sunucunun değil.
+  INVALID_IMPORT: 422,
+  // Önizlemeden sonra veriler değişti. 409: istek doğru ama dünyanın hâli
+  // değişti; kullanıcı önizlemeyi yenileyip tekrar onaylayacak.
+  STALE_IMPORT: 409,
   INVALID_SCHEDULE: 422,
   DASHBOARD_NOT_FOUND: 404,
   // company / user administration

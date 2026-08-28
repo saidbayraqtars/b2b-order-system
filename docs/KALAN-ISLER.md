@@ -254,29 +254,44 @@ Bunlar da bugün koda bakarken çıktı ve **hiçbiri backlog'da yok** — 2026-
 karşılığı bulunamadı. Öneri, plan değil: sektörü kullanıcı biliyor, gerekçesi
 zayıf olanı atın.
 
-### 5.1 Excel ile toplu fiyat/stok güncelleme ★★★
+### 5.1 ~~Excel ile toplu fiyat/stok güncelleme~~ ✔ (2026-08-28)
 
-**En büyük pratik boşluk.** XLSX **yazıcı** var (Adım 58); okuyucu yok, hiçbir
-yerde içe aktarma yok (`parseXlsx|readXlsx|importC|csvImport|bulkUpsert` → sıfır
-eşleşme).
-
-Kanıt kurulum sihirbazının kendisinde: _"Ürünler ve varyantlar — 2673 varyant"_,
-_"Fiyatlar — 10669 fiyat satırı"_. Sihirbaz "her varyanta liste fiyatı,
-gerekiyorsa grup bazlı kademe gir" diyor. Gerçek bir müşteri 2673 varyanta 4'er
-fiyatı **ekrandan tek tek giremez** — ve toptancıda zam ayda bir gelir, toplu
-gelir.
-
-Yeni müşteri devreye almanın önündeki en somut engel bu. Yazıcı zaten var,
-simetrisi eksik:
+`/admin/toplu-guncelleme` — iki sekme (fiyat, stok sayımı), tek akış:
 
 ```
-dışa aktar → Excel'de düzelt → içe aktar → FARK ÖNİZLEMESİ → onayla → uygula
+şablonu indir → Excel'de düzelt → dosyayı seç → FARK ÖNİZLEMESİ → onayla → uygula
 ```
 
-**Fark önizlemesi pazarlık konusu değil.** Bir dosyayı doğrudan uygulamak,
-yanlış sütuna kaymış bir kopyalamanın bütün kataloğu bir kuruşa satması demek.
-Önizleme "142 fiyat değişecek, 3 yeni satır, 1 satır tanınmayan SKU" demeli.
-İçe aktarma denetim kaydına yazılmalı (kim, kaç satır, hangi dosya).
+**Kural sunucuda, ekranda değil.** `apply` bir imza istiyor; imzayı yalnızca
+sunucunun kendi hesapladığı fark üretiyor. Uygulama isteği geldiğinde fark
+**yeniden** hesaplanıp imza karşılaştırılıyor: dosya değiştiyse de, aradan biri
+girip bir fiyatı değiştirdiyse de tutmuyor ve istek 409 alıyor. İmzasız bir
+"uygula" ucu, önizlemeyi bir öneriye çevirirdi.
+
+Üç ayrıntı:
+
+- **Sütunlar ada göre bulunuyor, sıraya göre değil.** Kullanıcı Excel'de kolon
+  taşıyor, siliyor, araya ekliyor; sıraya güvenmek "yanlış sütuna kaymış
+  kopyalama" felaketinin ta kendisi olurdu. Eşleşme büyük/küçük harf ve Türkçe
+  karakterden bağımsız.
+- **Stok defterden geçiyor.** `stock` kolonuna doğrudan yazmak Adım 51'in tek
+  kapı kuralını çiğnerdi; içe aktarma bir **sayım** (`COUNT`) ve farkı kadar
+  hareket açıyor.
+- **Her uygulama denetim kaydına yazılıyor**: kim, kaç satır, hangi dosya, hangi
+  imza. Fiyat satırının kendisi kimin değiştirdiğini taşımıyor — bir zam
+  listesinin kime ait olduğu yalnızca orada kalıyor.
+
+XLSX **okuyucusu** da yazıldı (`xlsx-read.ts`), yazıcının aynası: ZIP + XML,
+bağımlılıksız. Paylaşılan metinler, satır içi metinler, Türkçe ondalık
+(`1.234,56`) ve noktalı virgüllü CSV karşılanıyor. Sınırları dosyanın başında
+yazılı (ilk sayfa, formül değil değer, tarih seri numarası).
+
+13 test (`packages/services/test/integration/bulk-import.test.ts`); üçü doğrudan
+imza kuralını sınıyor — uydurma imza, dosya değişimi, veritabanı değişimi.
+
+**Kalan:** 5000 satır sınırı ve 8 MB dosya sınırı sabit; daha büyük katalog
+için parçalı yükleme gerekir. Fiyat dışındaki alanlar (maliyet, barkod, raf
+kodu) içe aktarılmıyor — aynı makine, yeni sütunlar.
 
 ### 5.2 Cari mutabakat ★★★
 

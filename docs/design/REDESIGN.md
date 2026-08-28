@@ -802,6 +802,22 @@ kararlar:
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil (24 yeni
 matematik testi), `next build` başarılı, 6 ekran görüntüsü `adim-12/` altında.
 
+### ✔ Adım 13 — Excel ile toplu güncelleme (bitti)
+
+`/admin/toplu-guncelleme`, iki sekme (`?bolum=fiyat|stok`).
+
+Ekranın tamamı **akışın kendisi**: numaralı paneller (1 · dosyayı seçin, 2 ·
+fark), ve "uygula" düğmesi ancak fark geldikten sonra çiziliyor. Fark
+satırları dört durum künyesiyle işaretli — değişecek, yeni satır, aynı,
+reddedilen — ve reddedilen varsa üstte kehribar bir uyarı duruyor: uygulamak
+yine mümkün ama o satırlar çoğu zaman kaymış bir kopyalamanın işareti.
+
+Önizleme 300 satırda kesiliyor ve **kesildiği yazılıyor**: "300 satır gördüm,
+onayladım" diyen biri 4000 satır uyguladığını bilmeli. Kesilen yalnızca çizim;
+imza ve uygulama satırların tamamından çıkıyor.
+
+Gerekçe ve sunucu tarafı `docs/KALAN-ISLER.md` §5.1'de.
+
 ### ▢ Adım 9 — Mobil
 
 `apps/mobile` — aynı palet ve tipografi. NativeWind'in bilinen iki tuzağı için
