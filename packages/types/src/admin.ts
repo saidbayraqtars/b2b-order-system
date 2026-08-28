@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { PaymentMethodEnum, RoleEnum, VolumeDiscountModeEnum } from "./enums";
+import {
+  CommissionBaseEnum,
+  PaymentMethodEnum,
+  RoleEnum,
+  TargetPeriodEnum,
+  VolumeDiscountModeEnum,
+} from "./enums";
 import { permissionListSchema } from "./permission";
 
 // Company, address, user and customer-group administration.
@@ -38,6 +44,19 @@ const paymentTermIds = z.array(z.string().cuid()).max(50);
 // ─────────────────────────────────────────────
 // COMPANY
 // ─────────────────────────────────────────────
+
+/** Prim planı. Oran ve çarpan sınırları serviste de var — kural iş kuralı. */
+export const saveCommissionPlanSchema = z.object({
+  id: z.string().cuid().optional(),
+  name: z.string().trim().min(1, "Plan adı gerekli").max(120),
+  base: CommissionBaseEnum,
+  rate: z.coerce.number().min(0.01).max(100),
+  period: TargetPeriodEnum.default("MONTHLY"),
+  targetMultiplier: z.coerce.number().min(1).max(10).optional(),
+  minBase: z.coerce.number().min(0).max(100_000_000).optional(),
+  isActive: z.boolean().optional(),
+  repIds: z.array(z.string().cuid()).max(500).default([]),
+});
 
 export const createCompanySchema = z.object({
   name: z.string().trim().min(1, "Firma adı gerekli").max(200),

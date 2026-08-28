@@ -20,6 +20,8 @@ export type BusinessErrorCode =
   | "INVALID_PERIOD"
   | "INVALID_RESPONSE"
   | "RECONCILIATION_NOT_FOUND"
+  // ── plasiyer primi ──
+  | "INVALID_COMMISSION"
   | "FORBIDDEN_APPROVAL"
   | "INVALID_STATE"
   | "CHECKIN_NOT_FOUND"

@@ -245,6 +245,7 @@ model User {
   orderPolicyEdits        OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
   priceChanges            ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
   collectionCalls         CollectionCall[]       @relation("CollectionCallBy")
+  commissionPlans         CommissionPlan[]       @relation("CommissionPlanReps")
   reconciliationsSent     Reconciliation[]       @relation("ReconciliationCreatedBy")
   reconciliationsAnswered Reconciliation[]       @relation("ReconciliationRespondedBy")
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
@@ -2257,6 +2258,56 @@ model SalesTarget {
 
   @@unique([salesRepId, metric, period, periodStart])
   @@index([salesRepId, periodStart])
+}
+
+/// Plasiyer primi — sektörde plasiyer primle çalışır.
+///
+/// **Kural motoru yok, bilerek.** Prim şu dört şeyden ibaret: hangi tabandan
+/// (ciro mu tahsilat mı), yüzde kaç, hangi dönem, ve hedef tutturulursa çarpan.
+/// Kampanya motorundaki gibi bir kural kayıt defteri kurmak, bu dört alanın
+/// üstüne bir yorumlayıcı koymak olurdu.
+///
+/// **İki taban ayrı planlar olarak tanımlanıyor**, tek planda iki oran olarak
+/// değil: bir kurulumda yalnız ciro primi vardır, ötekinde ikisi birden ve
+/// farklı oranlarla. Bir plasiyere birden çok plan atanabilir ve hakediş
+/// hepsinin toplamıdır.
+model CommissionPlan {
+  id   String @id @default(cuid())
+  name String
+
+  /// Primin hesaplandığı taban.
+  base   CommissionBase
+  /// Yüzde. `12.50` = %12,5.
+  rate   Decimal        @db.Decimal(5, 2)
+  /// Hesap dönemi. Hakediş bu dönemin sınırlarıyla kesiliyor.
+  period TargetPeriod   @default(MONTHLY)
+
+  /// Hedef tutturulduğunda orana uygulanan çarpan. `1.00` = etkisiz.
+  ///
+  /// Hangi hedef: aynı plasiyerin aynı dönemdeki `SalesTarget` satırı
+  /// (`REVENUE` metriği). Hedef yoksa çarpan uygulanmıyor — "hedefi olmayan
+  /// herkes çarpanı hak eder" demek, çarpanı ikinci bir orana çevirirdi.
+  targetMultiplier Decimal @default(1.00) @db.Decimal(5, 2)
+
+  /// Bu tutarın altındaki taban prim doğurmuyor. 0 = eşik yok.
+  minBase Decimal @default(0) @db.Decimal(14, 2)
+
+  isActive Boolean @default(true)
+
+  /// Planın atandığı plasiyerler. Boş = kimse; plan tanımlı ama kullanılmıyor.
+  reps User[] @relation("CommissionPlanReps")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CommissionBase {
+  /// Dönemde kesilen ciro — net mal bedeli, KDV ve navlun hariç. Hacim
+  /// iskontosunun ciro tanımıyla aynı taban.
+  REVENUE
+  /// Dönemde **tahsil edilen** para. Satıp tahsil edemeyen plasiyer kâr
+  /// getirmez; sektörün primi bu yüzden çoğu zaman buradan hesaplanır.
+  COLLECTION
 }
 
 enum VisitRequestStatus {

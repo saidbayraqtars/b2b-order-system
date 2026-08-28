@@ -630,6 +630,14 @@ export const SCREENS = [
     path: "/rep/tahsilat",
   },
 
+  {
+    step: 15,
+    slug: "plasiyer-primi",
+    label: "Plasiyer primi ve hakediş",
+    as: "admin",
+    path: "/admin/prim",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:

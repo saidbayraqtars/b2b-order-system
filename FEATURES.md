@@ -225,6 +225,13 @@ görüntüleri `docs/design/screens/` altında.
 - Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
 - **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
 
+### Plasiyer primi (`/admin/prim`)
+
+- **Plan = taban + oran + dönem + hedef çarpanı.** Kural motoru yok. İki taban ayrı plan: **ciro** (net mal bedeli, hacim iskontosuyla aynı tanım) ve **tahsilat** (defterin alacak satırları). Bir plasiyere iki plan birden atanabilir.
+- **Atıf portföye göre**, kaydı kimin girdiğine göre değil.
+- Hedef çarpanı yalnızca o dönem için tanımlı bir **ciro hedefi** varsa ve tutturulduysa uygulanır — taban tahsilat olsa bile karşılaştırma ciroyla yapılır.
+- Eşik (`minBase`) altındaki taban prim doğurmaz. Hakediş saklanmaz, her okumada yeniden hesaplanır.
+
 ### Tahsilat çalışma listesi
 
 - `/rep/tahsilat` firma seçilmeden önce **"bugün kimi arayacağım"** listesini gösteriyor: vadesi geçmiş cariler, durum sırasına göre.

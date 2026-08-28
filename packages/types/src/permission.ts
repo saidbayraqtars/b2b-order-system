@@ -60,6 +60,7 @@ export const PermissionEnum = z.enum([
   "payments.view",
   "cheques.manage",
   "reconciliation.manage",
+  "commission.manage",
   // belge & rapor
   "documents.view",
   "documents.manage",
@@ -113,6 +114,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "payments.view": "Kart tahsilatlarını görüntüle",
   "cheques.manage": "Çek/senet portföyünü yönet",
   "reconciliation.manage": "Cari mutabakat gönder ve yanıtları izle",
+  "commission.manage": "Prim planlarını ve hakedişi yönet",
   "documents.view": "Belgeleri görüntüle",
   "documents.manage": "Belge serilerini yönet",
   "reports.view": "Raporları görüntüle",
@@ -145,6 +147,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "commission.manage":
+    "Taban (ciro/tahsilat) + oran + dönem + hedef çarpanı. Atıf **portföye** göre: kaydı kimin girdiği primi değiştirmiyor",
   "reconciliation.manage":
     "Dönem sonu mutabakat mektubu. Cevap **defteri oynatmaz** — mutabakat bir beyandır, düzeltme değil; düzeltmeyi insan yapar ve defterde kendi satırını açar",
   "order_policy.manage":
@@ -216,6 +220,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "payments.view",
       "cheques.manage",
       "reconciliation.manage",
+      "commission.manage",
       "payment_terms.manage",
       "volume_tiers.manage",
       "order_policy.manage",
@@ -462,6 +467,8 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // cevap firmanın beyanıdır ve firmanın kullanıcısı zaten firmayı temsil
   // ediyor.
   "reconciliation.manage": ["SELLER"],
+  // Prim satıcının kendi saha ekibine ödediği para; bayiye verilemez.
+  "commission.manage": ["SELLER"],
   "order_policy.manage": ["SELLER"],
   "payments.view": ["SELLER"],
   // Portföy satıcının alacağı. Saha çek *toplar* (tahsilat kaydı) ama kâğıdın

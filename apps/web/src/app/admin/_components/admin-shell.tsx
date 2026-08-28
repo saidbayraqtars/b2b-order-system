@@ -142,6 +142,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "targets.manage",
       },
       {
+        href: "/admin/prim",
+        label: "Prim",
+        icon: Coins,
+        permission: "commission.manage",
+      },
+      {
         href: "/admin/deliveries",
         label: "Dağıtım",
         icon: Truck,

@@ -352,6 +352,15 @@ export const COLLECTION_OUTCOME_LABELS: Record<CollectionOutcome, string> = {
   NO_PROMISE: "Görüşüldü, söz yok",
 };
 
+/** Primin hesaplandığı taban. */
+export const CommissionBaseEnum = z.enum(["REVENUE", "COLLECTION"]);
+export type CommissionBase = z.infer<typeof CommissionBaseEnum>;
+
+export const COMMISSION_BASE_LABELS: Record<CommissionBase, string> = {
+  REVENUE: "Ciro",
+  COLLECTION: "Tahsilat",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 

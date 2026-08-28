@@ -395,54 +395,38 @@ tahsilat girilebilmeli.
 
 7 test (`packages/services/test/integration/collection-worklist.test.ts`).
 
-### 5.4 Plasiyer primi / hakediş ★★
+### 5.4 ~~Plasiyer primi / hakediş~~ ✔ (2026-08-28)
 
-Hedefler Adım 34'te geldi, **prim yok** (`commission|prim` → sıfır eşleşme).
-Sektörde plasiyer primle çalışır ve prim **iki tabandan** hesaplanır: ciro
-**ve** tahsilat — satıp tahsil edemeyen plasiyer kâr getirmez.
+`/admin/prim` — planlar ve dönem hakedişi tek ekranda.
 
-Sipariş, tahsilat ve plasiyer bağı zaten kayıtlı. Kural motoru gerekmiyor:
-oran + taban + dönem + (opsiyonel) hedefe bağlı çarpan.
+**Kural motoru yok, bilerek.** Prim şu dörtten ibaret: taban, oran, dönem, hedef
+çarpanı. Kampanya motorundaki gibi bir kayıt defteri kurmak, dört alanın üstüne
+bir yorumlayıcı koymak olurdu.
 
-### 5.5, 5.6, 5.9 ~~Asgari sipariş · kesim saati · sipariş kanalı~~ ✔ (2026-08-28)
+**İki taban ayrı plan olarak** tanımlanıyor, tek planda iki oran olarak değil:
+bir kurulumda yalnız ciro primi vardır, ötekinde ikisi birden ve farklı
+oranlarla. Bir plasiyere iki plan birden atanabilir; hakediş toplamdır.
 
-Üçü tek turda, çünkü üçü de sipariş **alınırken** cevaplanan sorular.
+| Taban | Ne sayıyor |
+| --- | --- |
+| Ciro | Net mal bedeli (KDV ve navlun hariç), gerçekleşmiş siparişler — hacim iskontosuyla **aynı** tanım |
+| Tahsilat | Defterin alacak satırları. Satıp tahsil edemeyen plasiyer kâr getirmez |
 
-**Asgari sipariş** (`OrderPolicy.minOrderAmount` + `minOrderCases`, firma başına
-`Company.minOrderAmount`). Dört karar:
+Dört karar:
 
-1. **Taban net mal bedeli** — KDV ve navlun hariç. KDV dahil olsaydı eşik oran
-   değiştiğinde kendiliğinden oynardı; navlun dahil olsaydı uzak müşteri aynı
-   malla eşiği geçer, yakın müşteri geçmezdi. Hacim iskontosunun ciro tanımıyla
-   aynı taban.
-2. **Alıcıyı bağlar, satıcıyı bağlamaz.** Plasiyer ve yönetici eşiğin altında
-   sipariş geçebilir — pazarlık onların işi. Vade kuralının aynası, ters yönde.
-3. **Firma kolonunda `null` ile `0` ayrı şeyler**: `null` = genel kural,
-   `0` = muaf. Sözleşmeyle muaf tutulan bayi, genel eşik yükseldiğinde
-   kendiliğinden etkilenmemeli.
-4. **Teklif fırlatmıyor, hesaplıyor.** `quoteOrder` eksiği döndürüyor, kapıyı
-   sipariş yaratma adımı kapatıyor — sepet "340 ₺ daha ekleyin" diyebilsin.
+- **Atıf portföye göre**, kaydı kimin girdiğine göre değil. Ofisten girilen bir
+  tahsilat da o carinin plasiyerinin primini doğurur; başka bir plasiyerin
+  tahsil etmesi primi ona geçirmez. Test bunu doğrudan sınıyor.
+- **Çarpanın koşulu satış hedefi.** Taban tahsilat olsa bile karşılaştırma
+  ciroyla yapılıyor: tahsilat her zaman cirodan küçük ve ciro hedefiyle
+  karşılaştırılsaydı çarpan hiç uygulanmazdı. (İlk çekimde tam bu görüldü.)
+- **Hedefi olmayana çarpan yok.** "Hedefi olmayan herkes hak eder" demek,
+  çarpanı ikinci bir orana çevirirdi.
+- **Hakediş saklanmıyor**, her okumada yeniden hesaplanıyor — dönem kapandıktan
+  sonra girilen bir tahsilat da o döneme yazılır. Bedeli: plan silinince geçmiş
+  hakediş de kaybolur, o yüzden ekran "silme, pasife al" diyor.
 
-**Kesim saati** (`OrderPolicy.cutoffHour` + `shipsOnSaturday`). **Engel değil,
-söz**: 16:01'de gelen siparişi reddetmek iş kaybı, ekran yalnızca hangi gün
-çıkacağını yazıyor. Gün ilerletme UTC gün sayısı üzerinden — yerel takvimde bir
-gün eklemek yaz saati geçişinde 23 ya da 25 saat sürüyor. Pazar her zaman
-kapalı; iki ayrı bayrak yapmanın karşılığı yok.
-
-**Sipariş kanalı** (`Order.source`, `WEB | MOBILE`). Sunucu karar veriyor,
-istemci söylemiyor — ziyaret kaydındaki kuralın aynısı. **Kim** girdiği burada
-değil, `createdBy.role`da: aynı bilgiyi iki kolona yazmak, ikisinin bir gün
-birbirini yalanlaması demek. Rapor tasarımcısında "Kanal" alanı olarak
-gruplanabiliyor; iki eksen çaprazlanınca "mobilden, plasiyer eliyle" sorusu
-cevaplanıyor.
-
-Ayarlar **veritabanında**, `tenant.json`da değil: kiracı dosyası elle düzenlenen
-bir destek birimi ve ekranda salt okunur. Ticari politikayı müşterinin kendi
-yöneticisi dosyaya erişmeden değiştirebilmeli — kimlik dosyada, politika
-veritabanında.
-
-13 test (`packages/services/test/integration/order-policy.test.ts`); altısı saf
-kesim saati hesabı (cuma akşamı → pazartesi, cumartesi açık/kapalı, pazar).
+8 test (`packages/services/test/integration/commission.test.ts`).
 
 ### 5.7 ~~Zamanlı fiyat değişimi~~ ✔ (2026-08-28)
 
