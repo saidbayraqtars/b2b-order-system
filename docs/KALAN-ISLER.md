@@ -1,7 +1,8 @@
 # Kalan işler — devir belgesi
 
-**Yazıldığı gün: 2026-08-27, son güncelleme 2026-08-28.**
-§10'daki dokuz maddenin dokuzu da kapandı; her biri ayrı commit.
+**Yazıldığı gün: 2026-08-27, son güncelleme 2026-08-28 (ikinci tur).**
+§10'un "hemen yapılabilir" üç maddesinin **kodu olan ikisi kapandı**; üçüncüsü
+(artık kopyaların silinmesi) hâlâ sizde — sebebi §1'de.
 
 Bu dosya `docs/design/REDESIGN.md`in yaptığı şeyi bütün proje için yapıyor:
 nerede kalındı, sırada ne var, hangi karar neden verildi, neye dokunulmayacak.
@@ -17,11 +18,11 @@ Yeni bir sohbet açtığınızda önce bunu okutun.
 
 |                  |                                                                             |
 | ---------------- | --------------------------------------------------------------------------- |
-| Test             | 378 (apps/web) + 651 (servisler) + 18 (ERP ajanı); `pnpm test` yeşil        |
+| Test             | 386 (apps/web) + 675 (servisler) + 18 (ERP ajanı); `pnpm test` yeşil        |
 | e2e              | 23 senaryo, `pnpm e2e` — CI'da değil, ayakta sunucu + gösterim verisi ister |
 | CI               | `pnpm typecheck` → `lint` → `test` → `build`, dördü de yeşil                |
 | Ham sınıf sayacı | `dark:` **0** · `neutral-` **0** · `brand-` **0** (`documents/**` hariç)    |
-| Yenileme         | Adım 1-8, 10-15 bitti; açık kalan tek adım **9 — mobil**                    |
+| Yenileme         | Adım 1-8, 10-16 bitti; açık kalan tek adım **9 — mobil**                    |
 
 **2026-08-28'de kapanan on madde** (her biri ayrı commit, hepsi push edildi):
 
@@ -42,11 +43,57 @@ Yeni ekranlar: `/admin/siparis-kurallari`, `/admin/mutabakat`, `/admin/prim`,
 `/admin/promotions?bolum=simulasyon`, `/rep/tahsilat` çalışma listesi,
 `/hesabim` bildirim tercihi. Görüntüler `docs/design/screens/adim-15/`.
 
-⚠ **Depoda 76 adet artık kopya var** (`admin (1).ts`, `README (2).md`, …). Bir
+**İkinci turda kapanan üç madde** (§10'un "hemen yapılabilir" listesi):
+
+| Madde | İş | Commit |
+| --- | --- | --- |
+| §6.4 | Kohort/RFM penceresi ekranın süzgeci + resmî tatil takvimi | `a1f8f89` |
+| §3.5 | Kampanya performans ekranı | `7f201bb` |
+| §3.5 | Parti/SKT irsaliyeye basılıyor | `a05e172` |
+
+Yeni ekranlar: `/admin/tatiller`, `/admin/promotions?bolum=performans`,
+`/admin/analitik?bolum=musteri&rfm=&kohort=`. Görüntüler
+`docs/design/screens/adim-16/` (dördü de açılıp bakıldı).
+
+Bu turda **üç hata** çıktı ve üçü de düzeltildi; hiçbiri raporlanmamıştı:
+
+1. **`DATE` kolonu UTC'den dönüyor, kod yerel saatte normalleştiriyordu.**
+   UTC+3'te 1 Ocak diske 31 Aralık olarak yazıldı. Gün anahtarı artık iki
+   çeşit: takvimde yürüyen imleç için yerel (`dayKey`), diskten okunan değer
+   için UTC (`dayKeyUtc`). Testi var.
+2. **Hafta sonuna düşen tatil "düşüldü" diye yazılıyordu.** Ekran "1,5 iş günü
+   düşüldü" derken gerçekte 0,5 düşüyordu: sayı doğru, cümle yalandı. `pace`
+   artık yalnızca hafta içine düşen tatilleri listeliyor.
+3. **Asgari örnek kuralı üstteki kutuda uygulanmıyordu.** Kampanya karnesinde
+   tablo "—" yazarken aynı ortalama kutuda yazıyordu; kural yalnızca göze
+   görünmeyen yerde işliyordu.
+
+⚠ **Artık kopyalar HÂLÂ duruyor** (`admin (1).ts`, `README (2).md`, …). Bir
 dosya kopyalama kazasının kalıntısı: izlenmiyorlar, bayatlar ve önbellek
 ıskaladığı an **eski bir sürümün hatalarını** rapor ediyorlar. Derleme ve lint
-artık onları görmezden geliyor (`tsconfig.exclude` + `eslint ignorePatterns`),
-ama **silinmeleri gerekiyor** — bu bir karar, o yüzden silinmedi:
+onları görmezden geliyor (`tsconfig.exclude` + `eslint ignorePatterns`), ama
+silinmeleri gerekiyor.
+
+2026-08-28'de silinmeye çalışıldı, **araç izni engelledi**: toplu silme iki
+ayrı kabuktan da reddedildi. Silinecek liste önce çıkarıldı ve doğrulandı,
+doğrulama temiz çıktı — komut güvenle çalıştırılabilir:
+
+- Depoda **268**, `node_modules` altında **191** dosya (toplam 459). Sayı
+  76'dan büyük çünkü `.git` içindekiler ve `node_modules` de sayıldı.
+- **Hepsinin aslı yerinde**: adı `(n)` taşımayan eşi her dosya için mevcut,
+  yani tek başına kalmış, aslı kaybolmuş bir kopya yok.
+- `(n)` taşıyan **klasör yok**; silinecek her şey dosya.
+- `.git` altındakiler de kopya (`index (1)`, `config (1)`, `refs/heads/main (1)`).
+  Git geçerli bir ad olmadıkları için onları zaten görmüyor; silinmeleri
+  deponun kendisine dokunmuyor.
+
+Bütün projeler için, `projeler` klasörünün kökünden:
+
+```bash
+find . -type f | awk -F/ '{ if ($NF ~ / \([0-9]+\)/) print }' | xargs -d '\n' rm -f
+```
+
+Yalnız bu depo için:
 
 ```bash
 git status --porcelain | grep '^??' | grep -E ' \([0-9]\)' | cut -c4- | tr -d '"' | xargs -d '\n' rm -f
@@ -151,15 +198,27 @@ Vega ekranında gözle doğrula.
 
 ### 3.5 Orta boy eksikler
 
-- Parti irsaliyede otomatik basılmıyor (defterden okunuyor); tartılan mal
-  faturada yeniden tartıya göre fiyatlanmıyor.
+- ~~Parti irsaliyede otomatik basılmıyor~~ ✔ (2026-08-28): parti ve SKT her
+  satırın altında basılıyor. Parti seçimi **sipariş anında** yapıldığı için
+  (FEFO; stok da o an düşüyor) irsaliye başına parti kaydı yok ve
+  uydurulmuyor — `listShipmentLots` siparişin ayrımını **sevk sırasına göre**
+  bölüştürüyor: önceki irsaliyelerin aldığı adet atlanıyor, kalanın başından bu
+  irsaliyenin adedi alınıyor. Bir parti iki irsaliye arasında bölünebiliyor.
+  Ters kayıtlı (iptal) çıkış hiçbir irsaliyeye girmiyor; ayrım yetmezse kalan
+  adet partisiz basılıyor. **Tartılan mal faturada yeniden tartıya göre
+  fiyatlanmıyor — hâlâ açık.**
 - **Sipariş bir depo seçmiyor** — hareket toplamı oynuyor, kırılım yok.
   Backlog'daki "depo/şube bazlı stok + fiyat" maddesinin işi.
 - ~~Bildirim tercihi yok~~ ✔ (§5.11): olay bazında susturma geldi. **SMS/WhatsApp
   kanalı hâlâ yok** ve bu bir karar bekliyor — soyutlama hazır, adaptör tek
   dosya.
-- Hazır kampanya performans **ekranı** yok — `PROMOTIONS` veri kümesi var,
-  rapor tasarımcısından kuruluyor.
+- ~~Hazır kampanya performans **ekranı** yok~~ ✔ (2026-08-28):
+  `/admin/promotions?bolum=performans`. Kampanya başına kullanım, firma,
+  iskonto, sipariş cirosu, iskonto payı, ortalama sepet, yeni firma, geri gelen
+  firma ve kota. **"Kampanyanın getirdiği ciro" kolonu bilerek yok** — artımlı
+  etki kontrol grubu ister ve o grup yok; onun yerine aynı aralıktaki
+  kampanyasız siparişlerin ortalama sepeti yan yana duruyor. Beş siparişin
+  altında ortalama yazılmıyor.
 - Mobil cari ekstre salt okunur — **bu doğru**, düzeltme ters kayıtla yapılır.
 
 ### 3.6 Uzun vadeli backlog
@@ -650,13 +709,26 @@ isteniyorsa kullanıcıdan ekran görüntüsü ya da rapor adı gerekiyor.
 
 ### 6.4 Kalanlar
 
-- **Kohort penceresi 12 ay, RFM penceresi 365 gün** — sabit. Kullanıcı seçmeli
-  olması istenirse ekranın kendi süzgeci gerekir.
+- ~~**Kohort penceresi 12 ay, RFM penceresi 365 gün** — sabit.~~ ✔ (2026-08-28)
+  İkisi de ekranın süzgeci: kohort 6/12/24 ay, RFM 90/180/365 gün, ikisi de
+  adreste (`?rfm=&kohort=`). **Gecelik özet yalnızca varsayılanı hesaplıyor** —
+  dokuz kombinasyonu her gece hesaplamak, sekizi hiç açılmayacak bir işi her
+  gece yapmak olurdu; varsayılan dışı pencere canlı hesaplanıyor ve cevap
+  "canlı" diye işaretleniyor, yani "ne zaman hesaplandı" satırı dürüst kalıyor.
+  Kohort penceresi yalnızca **kaç kohort** gösterileceğini değiştiriyor; bir
+  firmanın hangi kohorta düştüğü ilk siparişiyle belirleniyor ve pencereyle
+  oynamıyor.
 - **Ortalama gecikme yaklaşık**: borç satırı ile onu kapatan tahsilat kuruşuna
   kadar eşlenmiyor (o işi ekstredeki FIFO mahsup yapıyor). Ekranda böyle
-  yazıyor.
-- **Resmî tatiller iş günü sayılıyor** — bayram aylarında ay sonu tahmini
-  yüksek çıkar. Tatil takvimi girilirse düzelir.
+  yazıyor. **Hâlâ açık** — kapatmak için mahsup eşlemesinin defterde saklanması
+  gerekir, bu da ekran değil defter işi.
+- ~~**Resmî tatiller iş günü sayılıyor**~~ ✔ (2026-08-28) `/admin/tatiller`
+  (`organization.manage`) takvimi tutuyor, `businessDaysBetween` onu düşüyor,
+  arife 0,5 iş günü sayılıyor. Tarihler **tabloda**, kodda değil: 1 Ocak sabit
+  ama ramazan ve kurban ay takvimiyle kayıyor ve gömülü bir liste ikinci yıl
+  sessizce bayatlar. Ekran sabit tarihli millî günleri **öneriyor**, dinî
+  bayramları önermiyor — uydurulmuş bir tarih boş takvimden kötü. Takvim boşken
+  bütün sayılar eskisiyle birebir aynı.
 
 ## 7. Gözetimsiz yapılmayacaklar
 
@@ -741,37 +813,44 @@ Bir tur atıldı:
 
 ## 10. Sıradaki
 
-§5'in tamamı kapandı. Kalanlar, bağımlılık ve maliyet/etki sırasıyla — söz
-değil, sıra önerisi:
+§5'in tamamı kapandı; §6.4'ün iki kalemi ve §3.5'in iki kalemi de 2026-08-28'de
+kapandı. Kalanlar, bağımlılık ve maliyet/etki sırasıyla — söz değil, sıra
+önerisi:
 
 ### Hemen yapılabilir (kod, karar gerektirmiyor)
 
-1. **§6.4 pano kalanları.** Kohort penceresi 12 ay ve RFM penceresi 365 gün
-   **sabit** — ekranın kendi süzgeci gerekiyor. Resmî tatiller iş günü
-   sayılıyor, bayram aylarında ay sonu tahmini yüksek çıkıyor; tatil takvimi
-   girilirse düzelir.
-2. **§3.5 kalan orta boy eksikler.** Hazır kampanya performans **ekranı** yok
-   (`PROMOTIONS` veri kümesi var, rapor tasarımcısından kuruluyor). Parti
-   irsaliyede otomatik basılmıyor. Tartılan mal faturada yeniden tartıya göre
-   fiyatlanmıyor.
-3. **Artık kopyaları sil** (§1'deki komut) ve istenirse `tsconfig`/`eslint`
-   istisnalarını geri al.
+1. ~~**§6.4 pano kalanları.**~~ ✔ (2026-08-28) Kohort ve RFM penceresi ekranın
+   süzgeci oldu, resmî tatil takvimi geldi. Bu maddeden geriye **ortalama
+   gecikmenin yaklaşıklığı** kaldı ve o bir ekran işi değil: kapatmak için
+   borç satırı ile onu kapatan tahsilatın defterde eşlenmesi gerekiyor.
+2. ~~**§3.5 kampanya ekranı ve parti basımı.**~~ ✔ (2026-08-28) Bu maddeden
+   geriye **tartılan malın faturada yeniden tartıya göre fiyatlanması** kaldı.
+   Küçük değil: kantar okuması bir belge alanı olmadığı için önce nereden
+   geleceğine karar vermek gerekiyor (kurye cihazı mı, elle giriş mi), ve
+   fiyatın sipariş anındaki tutardan **sapmasına** izin veren ilk yer burası
+   olacak.
+3. **Artık kopyaları sil** — komut ve doğrulama §1'de. Silindikten sonra
+   istenirse `tsconfig.exclude` + `eslint ignorePatterns` istisnaları geri
+   alınabilir; kopyalar durdukça alınamaz, derleme yine kırılır.
+4. **Depo/şube bazlı stok** (§3.5). Sipariş bir depo seçmiyor; hareket toplamı
+   oynuyor ama kırılım yok. Backlog'daki maddenin işi, ama kodu hazır olan
+   tarafı (StockMovement zaten `warehouseId` taşıyor) bunu ucuzlatıyor.
 
 ### Karar bekleyen
 
-4. **WhatsApp/SMS kanalı** (§5.11). Business API sözleşmesi ve numarası sizin
+5. **WhatsApp/SMS kanalı** (§5.11). Business API sözleşmesi ve numarası sizin
    kararınız; soyutlama hazır, iş tek dosyalık bir adaptör.
-5. **§3.6 backlog** — 14 başlık, sıralanmadı. Öne çıkanlar: teklif yönetimi,
+6. **§3.6 backlog** — 14 başlık, sıralanmadı. Öne çıkanlar: teklif yönetimi,
    vade farkı & erken ödeme iskontosu, firma risk skoru + otomatik blokaj,
    holding/şube konsolidasyonu, matrix katalog, çoklu dil, dışa açık B2B API.
-6. **§3.4 canlıya çıkış turu** — dört maddesi de dağıtım topolojisine bağlı;
+7. **§3.4 canlıya çıkış turu** — dört maddesi de dağıtım topolojisine bağlı;
    şimdi yazılırsa tahmine dayanır.
 
 ### Kullanıcının "geç" dediği (2026-08-28)
 
-7. **Adım 9 — mobil.** `apps/mobile` eski palette, tek test yok.
-8. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
-9. **§3.3 sanal POS adaptörü ve iOS** — dış bağımlılık.
+8. **Adım 9 — mobil.** `apps/mobile` eski palette, tek test yok.
+9. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
+10. **§3.3 sanal POS adaptörü ve iOS** — dış bağımlılık.
 
 **Vega sorusu hâlâ açık** (§6.3): "Vega'nın rapor sistemi gibi" denen şeyin
 hangi rapor olduğu bilinmiyor. Uydurulmadı; ekran görüntüsü ya da rapor adı

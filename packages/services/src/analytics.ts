@@ -357,8 +357,17 @@ export async function pace(now = new Date()): Promise<Pace> {
     seasonalIndex,
     targetTotal,
     targetAchievedPct: targetTotal ? (achieved / targetTotal) * 100 : null,
+    // Ekranda **gerçekten düşülen** günler yazıyor. Hafta sonuna denk gelen
+    // tatil iş gününü zaten düşürmüyor; onu da listeye koymak "1,5 gün
+    // düşüldü" derken 0,5 düşmek olurdu — sayının kendisi doğru, cümlesi
+    // yalan.
     holidays: holidayRows
-      .filter((h) => h.date >= utcDay(monthStart) && h.date <= utcDay(monthEnd))
+      .filter(
+        (h) =>
+          h.date >= utcDay(monthStart) &&
+          h.date <= utcDay(monthEnd) &&
+          !isWeekendUtc(h.date),
+      )
       .map((h) => ({
         date: dayKeyUtc(h.date),
         name: h.name,
@@ -399,6 +408,12 @@ export function holidayMapOf(
 
 function utcDay(d: Date): Date {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
+/** `DATE` kolonundan gelen gün hafta sonuna mı düşüyor. */
+function isWeekendUtc(d: Date): boolean {
+  const day = d.getUTCDay();
+  return day === 0 || day === 6;
 }
 
 /**

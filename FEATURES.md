@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-28 · Adım 64 + arayüz yenilemesi (Adım 1-11) sonu
+Son güncelleme: 2026-08-28 (ikinci tur) · Adım 64 + arayüz yenilemesi (Adım 1-16) sonu
 
 ---
 
@@ -3115,6 +3115,82 @@ bırakıyordu — kullanıcı ekranının görüntüsünde `…@test.local` sat�
 | GET · PUT · DELETE   | `/api/admin/page-layout/:key`                                                 | süper admin (`design.manage`; GET katalogla birlikte döner, DELETE varsayılana döndürür)      |
 | GET · POST           | `/api/admin/setup`                                                            | süper admin (`organization.manage`; GET kurulum durumu + paketler, POST paketi uygular)       |
 | GET                  | `/api/admin/audit`                                                            | süper admin (yalnız GET — POST/PATCH/DELETE 405)                                              |
+| GET · POST           | `/api/admin/holidays`                                                         | süper admin (`organization.manage`; GET bir yılın takvimi + sabit gün önerileri)              |
+| DELETE               | `/api/admin/holidays/:id`                                                     | süper admin (`organization.manage`)                                                           |
+| GET                  | `/api/admin/promotions/performance`                                           | süper admin (`promotions.manage`; `?pencere=30\|90\|365\|tumu`)                               |
+| GET                  | `/api/analytics?bolum=musteri&rfm=&kohort=`                                    | süper admin (`analytics.view`; varsayılan dışı pencere canlı hesaplanır)                      |
+
+---
+
+## 62. Pano Pencereleri, Tatil Takvimi, Kampanya Karnesi (2026-08-28)
+
+Üç iş, üç ayrı commit; ortak yanları hepsinin **bir sayının ne anlama geldiğini
+daraltması**.
+
+### Pano pencereleri
+
+Kohort matrisi 12 ay, RFM 365 gün sabitti. İkisi de artık ekranın süzgeci ve
+**adreste**: `?bolum=musteri&rfm=90&kohort=6`. Seçenekler kapalı liste (RFM
+90/180/365 gün, kohort 6/12/24 ay) — serbest sayı her tuş vuruşunda bir ağır
+sorgu demekti.
+
+Gecelik özet **yalnızca varsayılanı** hesaplıyor. Üç RFM × üç kohort penceresini
+her gece hesaplamak dokuz kat iş, ve dokuzun sekizi hiç açılmayacak; varsayılan
+dışı bir pencere canlı hesaplanıyor ve cevap "canlı" diye işaretleniyor, yani
+"ne zaman hesaplandı" satırı yalan söylemiyor.
+
+Kohort penceresi yalnızca **kaç kohort** gösterileceğini değiştiriyor: bir
+firmanın hangi kohorta düştüğü ilk siparişiyle belirlenir, pencereyle oynamaz.
+RFM penceresi ise segmenti gerçekten değiştiriyor — bir yıllık pencerede
+"sadık" görünen firma, 90 günlük pencerede listeye bile girmeyebilir; soru
+"kim iyi müşteri" değil, "hangi dönemde".
+
+### Resmî tatil takvimi
+
+`/admin/tatiller` (`organization.manage`). Ay sonu projeksiyonu iş gününe göre
+hesaplanıyordu ama sayaç yalnızca hafta sonunu biliyordu: bayram ayında dokuz
+tatil günü çalışılmış sayılıyor, tahmin o oranda yüksek çıkıyordu.
+
+- Tarihler **tabloda**, kodda değil. 1 Ocak ve 29 Ekim sabit, ama ramazan ve
+  kurban ay takvimiyle kayıyor; gömülü bir liste ikinci yıl sessizce bayatlar.
+- Ekran sabit tarihli millî günleri **öneriyor**, dinî bayramları önermiyor —
+  uydurulmuş bir tarih, boş takvimden kötü.
+- Arife **yarım gün** (0,5 iş günü); ayrı bir bayrak, çünkü "yarım gün" bir
+  tarih listesinden çıkarılamaz.
+- Hafta sonuna düşen tatil hiçbir şeyi değiştirmiyor ve ekranda "düşüldü"
+  listesine de girmiyor.
+- Takvim boşken bütün sayılar eskisiyle **birebir aynı**.
+
+### Kampanya karnesi
+
+`/admin/promotions?bolum=performans`. Kampanya başına kullanım, firma, iskonto,
+kampanyalı sipariş cirosu, iskonto payı, ortalama sepet, yeni firma, geri gelen
+firma, kota.
+
+Ekranın en önemli işi bir sayıyı **göstermemek**: "kampanyanın getirdiği ciro"
+diye bir kolon yok, çünkü öyle bir sayı ölçülmedi. O siparişlerin çoğu kampanya
+olmasaydı da gelirdi; artımlı etki kontrol grubu ister ve o grup yok. Onun
+yerine aynı aralıktaki **kampanyasız** siparişlerin ortalama sepeti yan yana
+duruyor — farklı dönemlerin ortalamasını kıyaslamak mevsimselliği kampanya
+etkisi sanmak olurdu. Beş siparişin altında ortalama yazılmıyor (tabloda da,
+üstteki kutuda da). İptal ve red hiçbir sayıya girmiyor; kota zaten iptalde
+geri veriliyordu.
+
+### Parti/SKT irsaliyede
+
+Parti ve son kullanma tarihi her irsaliye satırının altında basılıyor. Parti
+seçimi **sipariş anında** yapılıyor (FEFO; stok da o an düşüyor, yoksa aynı son
+kutu iki müşteriye satılırdı), yani irsaliye başına bir parti kaydı yok.
+`listShipmentLots` siparişin ayrımını **sevk sırasına göre** bölüştürüyor:
+önceki irsaliyelerin aldığı adet atlanıyor, kalanın başından bu irsaliyenin
+adedi alınıyor — fiziksel gerçekle aynı, FEFO sırasındaki ilk kutu ilk kamyona
+biniyor. Bir parti iki irsaliye arasında bölünebiliyor. Sıra `shippedAt`,
+eşitlikte `createdAt`, onda da eşitlikte `id`: aynı kâğıt iki kez basıldığında
+iki farklı parti yazamaz.
+
+Ters kayıtlı (iptal) çıkış hiçbir irsaliyeye girmiyor. Ayrım sevk edilen adedi
+karşılamıyorsa kalan adet **partisiz** basılıyor — parti takibi ambalaj ve
+sarfta meşru olarak kapalı, ve boş bir hücre uydurulmuş bir parti kodundan iyi.
 
 ---
 
@@ -3176,7 +3252,7 @@ Bunlar olmadan sistem bir müşteriye teslim edilemez.
 ### Yakın sırada
 
 - ~~**Yönetim ekranları Faz 3**~~ — Adım 53'te kapatıldı: ortak dile `Checkbox` ve `LinkButton` eklendi, kontrol boyu ikiye indirildi, rapor tasarımcısı (kendi kopya `Panel`iyle birlikte) ve sipariş detayı taşındı, 19 ham checkbox ile 17 elle yazılmış "Yükleniyor…" süpürüldü. Yönetim tarafı vitrin kimliğini **almadı** — nötr dilde kaldı, karar buydu.
-- ~~**Kampanya performans raporu yok**~~ — Adım 44'te kapatıldı: `PROMOTIONS` veri kümesi (kampanya × sipariş), kapsamı sipariş raporlarıyla aynı. **Hazır bir kampanya ekranı hâlâ yok** — rapor tasarımcısından kuruluyor.
+- ~~**Kampanya performans raporu yok**~~ — Adım 44'te kapatıldı: `PROMOTIONS` veri kümesi (kampanya × sipariş), kapsamı sipariş raporlarıyla aynı. ~~Hazır bir kampanya ekranı hâlâ yok~~ — 2026-08-28'de o da kapandı: `/admin/promotions?bolum=performans` (bkz. §62).
 - ~~**İş zamanlayıcı yok**~~ — Adım 43'te kapatıldı: uygulama içi zamanlayıcı, iş kayıt defteri, sahiplenme kuralı, `/admin/jobs` ekranı. Adım 44'te üzerine iki iş bindi: zamanlanmış rapor gönderimi ve TCMB kuru.
 - ~~**Yetim görsel temizliği yok**~~ — Adım 43'te kapatıldı: hiçbir ürünün `images` dizisinde geçmeyen **ve** 24 saatten eski dosyalar siliniyor. Yaş koşulu, forma yüklenip henüz kaydedilmemiş görselin ayağının altından silinmesini engelliyor.
 - ~~**Tahsilatta mükerrer koruması yok**~~ — Adım 43'te kapatıldı: `Transaction.idempotencyKey` tekil, koruma veritabanında. Aynı anahtarla gelen ikinci istek ilkinin sonucunu döndürüyor, bakiye bir kez düşüyor.

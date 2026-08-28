@@ -1136,3 +1136,31 @@ Sayaçlar (`app` + `components`, `documents/**` hariç): `dark:` **0** ·
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil,
 `next build` başarılı, 64 ekran görüntüsünün tamamı yeniden çekildi (üst şerit
 ve marka her ekranda değişti).
+### ✔ Adım 16 — Pano pencereleri, tatil takvimi, kampanya karnesi (bitti)
+
+Yenilemenin ekran değil **davranış** adımı: üç yeni yüzey, üçü de mevcut
+tasarım dilinde, tek yeni bileşen yok. Kayda değer olan yerleşim kararları:
+
+- **Süzgeç `Panel`in `action` yuvasında.** Kohort ve RFM penceresi kendi
+  başlıklarının sağında duruyor, sayfanın üstünde ortak bir süzgeç şeridinde
+  değil: iki pencere iki ayrı panele ait ve ortak bir şeritte hangisinin neyi
+  süzdüğü okunmuyordu. `Chips`, `Tabs` değil — bunlar sekme değil kip.
+- **Süzgeç adreste** (`?rfm=&kohort=&pencere=`), sekmelerle aynı kural: betik
+  düğmelere basmıyor, fotoğraflanamayan ekranın doğru göründüğü söylenemez.
+  Ekran görüntüleri varsayılan **dışı** pencereyle çekildi (`rfm=90&kohort=6`,
+  `pencere=90`) — süzgecin çalıştığını gösteren tek şey o.
+- **Kampanya karnesi 50 satırda kesiliyor**, altında kaç satır gösterildiği ve
+  sıranın ne olduğu yazıyor. Üstteki kutular **bütün** kampanyaları sayıyor,
+  yalnızca gösterilenleri değil.
+- **Kısa ayar listesinde `dangerQuiet`.** Tatil takvimindeki "Çıkar" düğmesi
+  dolu kırmızı değil: sekiz satırlık bir listede dolu `danger` ekranı kırmızı
+  bir duvara çeviriyordu ve takvimden bir gün çıkarmak geçmiş bir sayıyı
+  bozmuyor.
+- **Kesirli iş günü Türkçe yazımla**: "19,5 / 20,5 iş günü". Arife 0,5 sayıldığı
+  an sayaç tam sayı olmaktan çıktı; `toFixed` "19.5" yazıyordu.
+
+Görüntüler `docs/design/screens/adim-16/` (dördü de açılıp bakıldı; en uzunu
+2015 piksel, hiçbiri kesik değil).
+
+Doğrulama: `pnpm typecheck` temiz, `pnpm lint` temiz, `pnpm test` yeşil (386
+web + 675 servis + 18 ERP ajanı), `pnpm build` başarılı.

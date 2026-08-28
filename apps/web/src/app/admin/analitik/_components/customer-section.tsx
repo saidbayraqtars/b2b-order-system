@@ -216,7 +216,7 @@ export function CustomerSection({
         <Note className="mt-6">
           Satır: ilk siparişini o ayda veren firmalar. Sütun: o aydan kaç ay
           sonra. Hücre: o kohortun yüzde kaçı hâlâ alıyor. İlk sütun her zaman
-          %100 — tanım gereği. Pencere yalnızca <strong>kaç kohort</strong>
+          %100 — tanım gereği. Pencere yalnızca <strong>kaç kohort</strong>{" "}
           gösterileceğini değiştirir; bir firmanın hangi kohorta düştüğü ilk
           siparişiyle belirlenir ve pencereyle oynamaz.
         </Note>

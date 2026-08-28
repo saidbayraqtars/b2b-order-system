@@ -17,6 +17,9 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-11` | Saha üçlüsü ve kök              |
 | `adim-12` | Yönetici panosu                 |
 | `adim-13` | Excel ile toplu güncelleme      |
+| `adim-14` | Arayüz artıkları                |
+| `adim-15` | §5 özellikleri                  |
+| `adim-16` | Pano pencereleri, tatil takvimi, kampanya karnesi |
 
 ## Yeniden üretmek
 

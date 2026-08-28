@@ -242,6 +242,19 @@ describe("gidişat", () => {
     expect(businessDaysBetween(from, to, holidays)).toBe(5);
   });
 
+  it("hafta sonundaki tatil iş günü sayısını çift düşürmüyor", () => {
+    // Ekranda "1,5 gün düşüldü" yazarken 0,5 düşmek, sayıyı değil cümleyi
+    // yalan yapar: pazara denk gelen tatil zaten sayılmıyordu.
+    const from = new Date(2026, 7, 24); // pazartesi
+    const to = new Date(2026, 7, 30); // pazar
+    const holidays = new Map([
+      [dayKey(new Date(2026, 7, 28)), true], // cuma, arife
+      [dayKey(new Date(2026, 7, 30)), false], // pazar, tam tatil
+    ]);
+    // Pzt–Cum beş gün, cuma yarım: 4,5. Pazar hiçbir şeyi değiştirmiyor.
+    expect(businessDaysBetween(from, to, holidays)).toBe(4.5);
+  });
+
   it("takvim boşken davranış eskisiyle birebir aynı", () => {
     // Tatil girilmemiş bir kurulumda hiçbir sayı oynamamalı.
     const from = new Date(2026, 7, 1);

@@ -37,6 +37,15 @@ import {
 // kampanya olmasaydı gelmeyeceğini kimse bilmiyor. Bu ayrımın kaybolduğu bir
 // pano, iskontoyu kâr gibi gösterir.
 
+/**
+ * Ortalama sepetin yazılabilmesi için gereken sipariş sayısı.
+ *
+ * Sunucudaki `PERFORMANCE_MIN_ORDERS` ile aynı sayı ve aynı sebep; buraya
+ * kopyalanmasının nedeni `@repo/services`ten bir *değer* içe aktarmanın
+ * nodemailer'ı istemci paketine sokması (bkz. packages/types/src/analytics.ts).
+ */
+const MIN_ORDERS_FOR_AVERAGE = 5;
+
 const STATUS_LABEL = {
   aktif: "Aktif",
   bekliyor: "Bekliyor",
@@ -55,8 +64,14 @@ function money(value: string | null): string {
   return value === null ? "—" : formatTRY(Number(value));
 }
 
+/** Yüzde, Türkçe yazımla: %5,0 — `%5.0` değil. */
 function pct(value: number | null): string {
-  return value === null ? "—" : `%${value.toFixed(1)}`;
+  return value === null
+    ? "—"
+    : `%${value.toLocaleString("tr-TR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}`;
 }
 
 export function PromotionPerformance() {
@@ -85,6 +100,7 @@ export function PromotionPerformance() {
 
   const data = query.data!;
   const used = data.rows.filter((r) => r.redemptions > 0);
+  const usedOrders = used.reduce((n, r) => n + r.redemptions, 0);
   // Uzun liste 50 satırda kesiliyor (tasarım kuralı): kırpma sınırı sessizce
   // kesmesin, kaç satır gösterildiği altta yazsın. Üstteki kutular **bütün**
   // kampanyaları sayıyor, yalnızca gösterilenleri değil.
@@ -112,19 +128,28 @@ export function PromotionPerformance() {
           hint={
             givenPct === null
               ? "aralıkta ciro yok"
-              : `aralıktaki cironun %${givenPct.toFixed(1)}'i`
+              : `aralıktaki cironun ${pct(givenPct)}'i`
           }
           tone={givenPct !== null && givenPct > 10 ? "caution" : "neutral"}
         />
         <StatTile
           label="Kampanyalı sipariş"
-          value={used.reduce((n, r) => n + r.redemptions, 0)}
+          value={usedOrders}
           hint={`aralıktaki ${data.ordersInWindow} siparişin içinde`}
         />
+        {/* Asgari örnek kuralı kutuda da geçerli: tabloda "—" yazan bir
+            ortalamayı üstteki kutuda yazmak, kuralı yalnızca göze görünmeyen
+            yerde uygulamak olurdu. */}
         <StatTile
           label="Kampanyalı ortalama sepet"
-          value={money(averageOf(used))}
-          hint="kampanya uygulanan siparişlerin ortalaması"
+          value={
+            usedOrders >= MIN_ORDERS_FOR_AVERAGE ? money(averageOf(used)) : "—"
+          }
+          hint={
+            usedOrders >= MIN_ORDERS_FOR_AVERAGE
+              ? "kampanya uygulanan siparişlerin ortalaması"
+              : `ortalama için en az ${MIN_ORDERS_FOR_AVERAGE} sipariş gerekiyor`
+          }
         />
         <StatTile
           label="Kampanyasız ortalama sepet"

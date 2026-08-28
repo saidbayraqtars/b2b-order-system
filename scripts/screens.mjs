@@ -813,4 +813,36 @@ export const SCREENS = [
     as: "admin",
     path: "/admin/activity",
   },
+  // ── Adım 16: pano pencereleri, tatil takvimi, kampanya karnesi ──────────
+  {
+    step: 16,
+    slug: "pano-musteri-pencere",
+    label: "Yönetici panosu — kohort ve RFM penceresi seçilebilir",
+    as: "admin",
+    path: "/admin/analitik?bolum=musteri&rfm=90&kohort=6",
+  },
+
+  {
+    step: 16,
+    slug: "pano-gidisat-tatil",
+    label: "Gidişat — iş gününden düşülen resmî tatiller",
+    as: "admin",
+    path: "/admin/analitik?bolum=gidisat",
+  },
+
+  {
+    step: 16,
+    slug: "resmi-tatiller",
+    label: "Resmî tatil takvimi",
+    as: "admin",
+    path: "/admin/tatiller",
+  },
+
+  {
+    step: 16,
+    slug: "kampanya-performans",
+    label: "Kampanya karnesi",
+    as: "admin",
+    path: "/admin/promotions?bolum=performans&pencere=90",
+  },
 ];
