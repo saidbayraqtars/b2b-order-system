@@ -818,6 +818,106 @@ imza ve uygulama satırların tamamından çıkıyor.
 
 Gerekçe ve sunucu tarafı `docs/KALAN-ISLER.md` §5.1'de.
 
+### ✔ Adım 14 — Arayüz artıkları (bitti)
+
+Beş küçük madde ve bir bulgu. Hepsi tek tek küçük, ama beşi de aynı şeyi
+söylüyordu: ekran doğru çiziliyor, **kullanıcıya bir sonraki adımı söylemiyor**.
+
+#### §4.6 Süzgeçler adrese taşındı — kancası da yazıldı
+
+Süzgeçler `useState` içindeyken iki şey birden bozuktu: paylaşılamıyorlardı
+("geçen haftanın başarısız girişleri" bir bağlantı değil, tarif edilmesi gereken
+bir tıklama dizisiydi) ve **fotoğraflanamıyorlardı** — betik adres ziyaret
+ediyor, düğmeye basmıyor.
+
+Ortak kanca `lib/url-state.ts`, dört kuralı var ve dördü de tek yerde:
+
+1. **Varsayılana eşit değer adrese yazılmaz** — süzgeçsiz ekranın adresi temiz.
+2. **Yalnızca kendi anahtarlarına dokunur** — `?bolum=` gibi başkasının
+   parametresi `set`/`clear` sonrası yerinde kalır.
+3. **`replace`, `push` değil** — on kez süzen kullanıcı geri düğmesine on kez
+   basmıyor.
+4. **`scroll: false`** — uzun listede süzgeç değiştirmek sayfayı başa sarmıyor.
+
+Taşınan altı ekran: çek portföyü, iadeler, bayi başvuruları, güvenlik kaydı,
+hareket akışı, kullanıcılar.
+
+**Arama kutuları ayrı davranıyor** ve bu bilinçli: her tuşta adres yazmak her
+tuşta bir sunucu gidiş-dönüşü demek. Yazılan metin yerelde, adrese `Enter`da ya
+da alandan çıkınca işleniyor — ürün listesindeki "Ara" düğmesinin zaten yaptığı
+şey. Yer tutucu bunu söylüyor: "Ad veya e-posta ara — Enter".
+
+Yan kazanç: bayi başvuruları ekranı çip şeridini **elle** çizmişti (`Chips`in
+kopyası, kendi renkleriyle); o şerit de paylaşılan bileşene döndü.
+
+#### §4.5 Boş ekran artık bir sonraki adımı söylüyor
+
+Kural şu oldu: **boşluğun sebebi süzgeçse eylem süzgeci temizler, liste
+gerçekten boşsa eylem ilk kaydı açar.** Tek bir metin ikisini birden
+anlatamıyordu — ürün listesi "Sağ üstten yeni ürün ekleyebilirsiniz" diyerek
+aramada hiçbir şey bulamayan kişiyi ekranın öbür ucuna yolluyordu.
+
+Uygulandığı yerler: ürünler, vitrin, çekler, iadeler, başvurular, güvenlik
+kaydı, hareket akışı, kampanyalar, firma seçici. `TableEmpty` de `EmptyState`
+gibi bir `action` yuvası aldı — tablo içindeki boşluk da bir sonraki adımı
+söyleyebilsin.
+
+#### §4.7 `orders/[id]` kabuğa girdi — son kural ihlali kapandı
+
+Tasarım dilinin 5. kuralını ("tek kabuk") çiğneyen tek ekran buydu ve Adım
+3'ten beri açıktı. Sipariş detayına dört rol birden giriyor, tek bir menü
+hepsine uymuyordu, ekran da bu yüzden **hiç** menüsüz çiziliyordu: kullanıcının
+elinde yalnızca başlıktaki "Geri" bağlantısı kalıyordu.
+
+Çözüm rapor tasarımcısındakinin aynısı: `app/orders/layout.tsx` + `RoleShell`.
+Rol listesi artık `lib/order-access.ts`te tek yerde (`ORDER_DETAIL_ROLES`) —
+kabuk ve sayfa aynı listeyi okuyor, biri diğerinden gevşek kalamaz.
+
+#### §4.8 `Modal` odağı içeride tutuyor
+
+`aria-modal` ekran okuyucuya "arkası yok" diyor ama klavyeyi durdurmuyordu: Tab,
+pencerenin son alanından sonra arkadaki sayfanın bağlantılarına geçiyordu.
+Üç davranış eklendi ve üçü de tek yerde, çünkü pencere tek yerde yazılı:
+açılışta odak içeri, Tab uçlarda sarıyor, kapanışta odak **pencereyi açan
+öğeye** dönüyor (listede "Düzenle"ye basan klavye kullanıcısı listenin başına
+fırlamıyor).
+
+#### §4.9 `pnpm shots --check`
+
+Yeni çekimi git'tekiyle kıyaslıyor, fark varsa sıfırdan farklı çıkıyor.
+
+Bayt karşılaştırması **yapmıyor**: aynı ekran, aynı tarayıcı, farklı gün — PNG
+sıkıştırması birkaç baytı oynatabiliyor ve hiçbir şeyin değişmediği bir koşu
+kırmızı yanıyor. Ölçü piksel (kanal başına 8'den fazla sapan piksel "farklı"
+sayılıyor), eşik yüzde birin onda biri. Boy değişimi doğrudan fark sayılıyor.
+Yeni bağımlılık yok — `sharp` zaten görsel küçültmede kullanılıyor.
+
+`adim-8/giris` muaf: sahne sürekli hareket ediyor ve iki çekim arasında aynı
+kareyi yakalamak tesadüf olurdu. "Her zaman kırmızı" ile "hiç bakılmıyor"
+arasında fark yok.
+
+#### §4.11 Kategoriler ekranı artık iznini biliyor
+
+Kapı `products.view` (katalogu *görmek*), her düğme `categories.manage`
+istiyordu: okuma izniyle giren kullanıcı ekranı açıyor, adı değiştiriyor, 403
+alıyor ve sebebini görmüyordu.
+
+Kapı **yükseltilmedi** — o zaman katalogu görmek isteyen kişi ağacı hiç
+göremezdi. İzin ekrana taşındı: yetkisi olmayan ekleme şeridini, yeniden
+adlandırma düğmesini, üst kategori kutusunu ve Sil düğmesini görmüyor; başlık
+"salt okunur" diyor ve dipnot hangi iznin gerektiğini yazıyor. Karar yine
+sunucuda; bu yalnızca yapılamayacak şeyi önermemek.
+
+#### Ekran görüntüleri
+
+`adim-14/` altındaki beş dosyanın dördü **daha önce çekilemeyen** durumlar:
+süzgeçli çek portföyü, süzgeçli güvenlik kaydı, saha ekibi sekmesi, boş dönen
+ürün araması. Beşincisi sipariş detayının bayi kabuğuyla hâli.
+`adim-3/admin-siparis-detay` de yenilendi — o ekran artık kabuklu.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 348 geçti
+(+4: sipariş kabuğunun kapısı), `next build` başarılı.
+
 ### ▢ Adım 9 — Mobil
 
 `apps/mobile` — aynı palet ve tipografi. NativeWind'in bilinen iki tuzağı için

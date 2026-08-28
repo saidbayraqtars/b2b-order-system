@@ -11,6 +11,7 @@ import {
   type ChequeStatus,
 } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import { formatTRY } from "@/lib/format";
 import {
   Badge,
@@ -128,12 +129,14 @@ function daysLeft(iso: string | null): number | null {
   return Math.ceil(diff / 86_400_000);
 }
 
+/** Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = { durum: "OPEN", vadesi: "" };
+
 export function ChequeBoard({ accounts }: { accounts: Account[] }) {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<"OPEN" | ChequeStatus>(
-    "OPEN",
-  );
-  const [overdueOnly, setOverdueOnly] = useState(false);
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const statusFilter = filters.value.durum as "OPEN" | ChequeStatus;
+  const overdueOnly = filters.value.vadesi === "gecmis";
   const [acting, setActing] = useState<{
     row: ChequeRow;
     to: ChequeStatus;
@@ -222,12 +225,14 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Chips
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(durum) => filters.set({ durum })}
             items={STATUS_FILTERS}
           />
           <Checkbox
             checked={overdueOnly}
-            onChange={(e) => setOverdueOnly(e.target.checked)}
+            onChange={(e) =>
+              filters.set({ vadesi: e.target.checked ? "gecmis" : "" })
+            }
             label="Yalnızca vadesi geçmiş"
           />
         </div>
@@ -238,7 +243,20 @@ export function ChequeBoard({ accounts }: { accounts: Account[] }) {
       {isLoading ? (
         <LoadingState />
       ) : rows.length === 0 ? (
-        <EmptyState label="Bu süzgeçle kâğıt yok." />
+        <EmptyState
+          label={
+            filters.isFiltered
+              ? "Bu süzgeçle kâğıt yok."
+              : "Portföyde çek/senet yok — kâğıt, tahsilat ekranından “çek” yöntemiyle giriliyor."
+          }
+          action={
+            filters.isFiltered ? (
+              <Button size="sm" variant="secondary" onClick={filters.clear}>
+                Süzgeci temizle
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <Panel title="Kâğıtlar" bodyClassName="p-0">
           <Table>

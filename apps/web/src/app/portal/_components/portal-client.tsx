@@ -11,7 +11,7 @@ import { useCart } from "@/store/cart";
 import { PortalNav } from "@/components/portal-nav";
 import { Announcements } from "@/components/storefront/announcements";
 import { ActingAsBar } from "@/components/storefront/acting-as-bar";
-import { Checkbox, ErrorLine, Select } from "@/components/form";
+import { Button, Checkbox, ErrorLine, Select } from "@/components/form";
 import { EmptyState, LoadingState, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
@@ -383,7 +383,27 @@ export function PortalClient({
             ) : catalogQuery.isError ? (
               <ErrorLine error={catalogQuery.error} />
             ) : products.length === 0 ? (
-              <EmptyState label="Ürün bulunamadı." />
+              <EmptyState
+                label={
+                  search || categoryId
+                    ? "Bu süzgeçle ürün bulunamadı."
+                    : "Katalogda ürün yok."
+                }
+                action={
+                  search || categoryId ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setSearch("");
+                        setCategoryId(null);
+                      }}
+                    >
+                      Süzgeci temizle
+                    </Button>
+                  ) : undefined
+                }
+              />
             ) : (
               <>
                 <div className={cn("grid gap-4 sm:grid-cols-2", gridColumns)}>

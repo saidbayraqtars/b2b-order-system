@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserRow } from "@repo/services";
 import { SortableTh, useTableSort } from "@/components/table-sort";
@@ -16,6 +16,7 @@ import {
   type RoleFamily,
 } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import {
   Button,
   Checkbox,
@@ -70,6 +71,14 @@ function templateFor(
 // props only decide what the UI offers — the API re-checks every rule, so a
 // company admin poking at the endpoint directly gets the same answer.
 
+/**
+ * Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor.
+ *
+ * `pasif` ters kodlanmış (`"0"` = gizle): varsayılan **göster** ve varsayılana
+ * eşit değer adrese yazılmıyor, yani süzgeçsiz ekranın adresi temiz kalıyor.
+ */
+const FILTER_DEFAULTS = { tip: "ALL", ara: "", pasif: "" };
+
 export function UserManager({
   fixedCompanyId,
   allowedRoles,
@@ -91,13 +100,19 @@ export function UserManager({
   grantablePermissions: readonly Permission[];
 }) {
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(true);
-  const [creating, setCreating] = useState(false);
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const search = filters.value.ara;
+  const includeInactive = filters.value.pasif !== "0";
   // Hesap tipi sekmesi. Yalnızca her firmayı gören ekranda anlamlı: firma
   // detayında ve portalda liste zaten tek tip (bayi) hesaplardan oluşuyor.
-  const [family, setFamily] = useState<RoleFamily | "ALL">("ALL");
+  const family = filters.value.tip as RoleFamily | "ALL";
   const showFamilies = !fixedCompanyId;
+
+  const [creating, setCreating] = useState(false);
+  // Yazılan metin yerelde, adrese Enter'da/alandan çıkınca işleniyor: her tuşta
+  // adres yazmak her tuşta bir sunucu gidiş-dönüşü demek.
+  const [searchDraft, setSearchDraft] = useState(search);
+  useEffect(() => setSearchDraft(search), [search]);
 
   const key = ["admin-users", fixedCompanyId ?? "all", search, includeInactive];
   const query = useQuery({
@@ -170,7 +185,7 @@ export function UserManager({
           <div className="mb-3">
             <Tabs
               value={family}
-              onChange={setFamily}
+              onChange={(tip) => filters.set({ tip })}
               items={[
                 { key: "ALL" as const, label: "Tümü", count: all.length },
                 {
@@ -200,14 +215,20 @@ export function UserManager({
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <TextInput
-            value={search}
-            placeholder="Ad veya e-posta ara"
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchDraft}
+            placeholder="Ad veya e-posta ara — Enter"
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onBlur={() => {
+              if (searchDraft !== search) filters.set({ ara: searchDraft });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") filters.set({ ara: searchDraft });
+            }}
             className="max-w-64"
           />
           <Checkbox
             checked={includeInactive}
-            onChange={(e) => setIncludeInactive(e.target.checked)}
+            onChange={(e) => filters.set({ pasif: e.target.checked ? "" : "0" })}
             label="Pasifleri de göster"
           />
         </div>

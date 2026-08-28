@@ -555,9 +555,12 @@ export function Td({
 export function TableEmpty({
   colSpan,
   label,
+  action,
 }: {
   colSpan: number;
   label: string;
+  /** Bir sonraki adım — `EmptyState`teki yuvanın tablo içindeki karşılığı. */
+  action?: ReactNode;
 }) {
   return (
     <tr>
@@ -565,7 +568,10 @@ export function TableEmpty({
         colSpan={colSpan}
         className="px-4 py-10 text-center text-body-sm text-ink-faint"
       >
-        {label}
+        <div className="flex flex-col items-center gap-3">
+          {label}
+          {action}
+        </div>
       </td>
     </tr>
   );

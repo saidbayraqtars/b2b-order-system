@@ -24,9 +24,26 @@ export const ACCOUNTS = {
   courier: { email: "kurye1@bayraktar.local", password: "143688" },
 };
 
-/** Sipariş listesinde en çok kalemi olan sipariş — boş ekran kaydetmemek için. */
-async function richestOrder(db) {
+/**
+ * Sipariş listesinde en çok kalemi olan sipariş — boş ekran kaydetmemek için.
+ *
+ * `email` verilirse o hesabın **kendi firmasının** siparişleri arasından
+ * seçiyor: bayi hesabıyla başka bir firmanın siparişine gitmek 403 döner ve
+ * betik biçimli ama yanlış bir ekran kaydeder.
+ */
+async function richestOrder(db, email) {
+  let companyId;
+  if (email) {
+    const user = await db.user.findUnique({
+      where: { email },
+      select: { companyId: true },
+    });
+    companyId = user?.companyId ?? undefined;
+    if (!companyId) return null;
+  }
+
   const rows = await db.order.findMany({
+    where: companyId ? { companyId } : undefined,
     select: { id: true, _count: { select: { items: true } } },
     orderBy: { createdAt: "desc" },
     take: 40,
@@ -562,6 +579,56 @@ export const SCREENS = [
     label: "Hazır raporlar — alacak yaşlandırma",
     as: "admin",
     path: "/admin/reports?bolum=alacak",
+  },
+
+  // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
+  //
+  // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:
+  // süzgeçler artık URL'de ve bu, tam da bu betiğin fotoğraflayabildiği anlama
+  // geliyor. Süzgeçli hâl daha önce hiç çekilememişti — betik düğmeye basmıyor.
+  {
+    step: 14,
+    slug: "cekler-suzgecli",
+    label: "Çek portföyü — vadesi geçmişler (süzgeç adreste)",
+    as: "admin",
+    path: "/admin/cekler?vadesi=gecmis",
+  },
+  {
+    step: 14,
+    slug: "guvenlik-suzgecli",
+    label: "Güvenlik kaydı — yalnızca güvenlik olayları",
+    as: "admin",
+    path: "/admin/audit?guvenlik=1",
+  },
+  {
+    step: 14,
+    slug: "kullanicilar-suzgecli",
+    label: "Kullanıcılar — saha ekibi sekmesi",
+    as: "admin",
+    path: "/admin/users?tip=FIELD",
+  },
+  // Boş durumun **eylemli** hâli: aranan şey yoksa bir sonraki adım süzgeci
+  // temizlemek, katalog gerçekten boşsa ilk ürünü açmak. İki ayrı cümle, iki
+  // ayrı düğme.
+  {
+    step: 14,
+    slug: "urunler-bos-suzgec",
+    label: "Ürünler — süzgeç boş döndü",
+    as: "admin",
+    path: "/admin/products?ara=zzzzyok",
+  },
+  // Sipariş detayı artık kabuklu. Adım 3'teki `admin-siparis-detay` da aynı
+  // ekranı çekiyor ve o dosya da yenilendi; buradaki kayıt, kabuğun bayi
+  // gözünden nasıl göründüğünü gösteriyor — rol değişince kabuk da değişiyor.
+  {
+    step: 14,
+    slug: "siparis-detay-portal",
+    label: "Sipariş detayı — bayi kabuğuyla",
+    as: "portal",
+    path: async (db) => {
+      const id = await richestOrder(db, ACCOUNTS.portal.email);
+      return id && `/orders/${id}`;
+    },
   },
 
   // ── Adım 6 — yapılandırma ve sistem ─────────────────────────────────────

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type {
   ReactNode,
   SelectHTMLAttributes,
@@ -323,6 +323,16 @@ export function Panel({
   );
 }
 
+/** Sekmeyle gezilebilen öğeler — `inert` ve gizli olanlar hariç. */
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 /**
  * Ortada açılan pencere.
  *
@@ -330,6 +340,17 @@ export function Panel({
  * beklenen davranış ve her ekranın kendi başına yazması gereken şeyler değil.
  * İçerik `form` olabilsin diye `children` serbest bırakılıyor; pencere yalnızca
  * kabuk.
+ *
+ * **Odak pencereden çıkmıyor.** `aria-modal` ekran okuyucuya "arkası yok" diyor
+ * ama klavyeyi durdurmuyor: tuzak olmadan Tab, pencerenin son alanından sonra
+ * arkadaki sayfanın bağlantılarına geçiyor ve kullanıcı göremediği bir yerde
+ * geziniyor. Üç davranış birlikte gerekiyor ve üçü de burada, çünkü pencere tek
+ * yerde yazılı — her çağrı yerinin kendi başına yazması gereken şey değil:
+ *
+ * 1. Açılışta odak içeri alınır (ilk alan, yoksa pencerenin kendisi).
+ * 2. Tab sonuncudan ilkine, Shift+Tab ilkinden sonuncuya sarar.
+ * 3. Kapanışta odak, pencereyi açan öğeye geri döner — liste içinde "düzenle"ye
+ *    basan klavye kullanıcısı listenin başına fırlamaz.
  */
 export function Modal({
   title,
@@ -342,20 +363,61 @@ export function Modal({
   children: ReactNode;
   width?: string;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+
+    // Açılışta ilk alana. `preventScroll`: uzun bir pencerede tarayıcı
+    // odaklanan alanı görünür kılmak için sayfayı kaydırıyor ve pencere
+    // yerinden oynuyor.
+    const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (first ?? panel)?.focus({ preventScroll: true });
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+
+      // Her basışta yeniden okunuyor: pencere içeriği değişiyor (bir alan
+      // açılıyor, bir düğme etkinleşiyor) ve bir kez alınan liste bayatlıyor.
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) {
+        e.preventDefault();
+        panel.focus({ preventScroll: true });
+        return;
+      }
+
+      const edge = e.shiftKey ? first : last;
+      // Odak penceredeyse yalnızca uçlarda araya giriyoruz; ortadaki sıralama
+      // tarayıcının işi ve `tabindex` ile oynamaya gerek yok.
+      if (
+        document.activeElement === edge ||
+        !panel.contains(document.activeElement)
+      ) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
     };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      // Açan öğe bu arada kaldırılmış olabilir (satır silindi, liste yenilendi).
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
   }, [onClose]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
       // Yalnızca zemine tıklanınca kapanıyor: içerideki bir sürükleme hareketi
       // dışarıda bitince pencere kapanmasın.
       onMouseDown={(e) => {
@@ -363,10 +425,17 @@ export function Modal({
       }}
     >
       <div
+        ref={panelRef}
         className={cn(
-          "w-full rounded-lg border border-line bg-panel shadow-pop",
+          "w-full rounded-lg border border-line bg-panel shadow-pop outline-none",
           width,
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        // Odaklanabilir ama sekme sırasında değil: içinde alan olmayan bir
+        // pencere de odağı tutabilsin.
+        tabIndex={-1}
       >
         <h2 className="border-b border-line px-4 py-3 text-headline-sm text-ink">
           {title}

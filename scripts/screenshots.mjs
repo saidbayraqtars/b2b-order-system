@@ -4,6 +4,7 @@
 //   node scripts/screenshots.mjs --step 3       # yalnızca Adım 3
 //   node scripts/screenshots.mjs --only admin-pano,admin-urunler
 //   node scripts/screenshots.mjs --theme dark   # light | dark | both
+//   node scripts/screenshots.mjs --check        # kaydetme, git'tekiyle kıyasla
 //
 // Tarayıcı **indirilmiyor**: sistemde kurulu Chrome/Edge sürülüyor
 // (`puppeteer-core`). Tam `puppeteer` paketi her kurulumda ~150 MB'lık ayrı bir
@@ -24,6 +25,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
+import sharp from "sharp";
 import { PrismaClient } from "@prisma/client";
 import { ACCOUNTS, SCREENS } from "./screens.mjs";
 
@@ -61,9 +63,15 @@ function findBrowser() {
 }
 
 function parseArgs(argv) {
-  const args = { step: null, only: null, theme: "light" };
+  const args = { step: null, only: null, theme: "light", check: false };
   for (let i = 0; i < argv.length; i++) {
     const [flag, inline] = argv[i].split("=");
+    // `--check` değer almıyor: sıradaki argümanı yutarsa `--check --step 3`
+    // "3"ü kaybediyor.
+    if (flag === "--check") {
+      args.check = true;
+      continue;
+    }
     const value = inline ?? argv[++i];
     if (flag === "--step") args.step = Number(value);
     else if (flag === "--only")
@@ -197,6 +205,59 @@ async function fitViewport(page) {
   await new Promise((r) => setTimeout(r, 250));
 }
 
+/**
+ * Kıyaslamadan muaf ekranlar.
+ *
+ * Giriş sahnesi sürekli hareket ediyor: yol boyunca ilerleyen koli, nefes alan
+ * ışık. İki çekim arasında birebir aynı kareyi yakalamak tesadüf olurdu ve o
+ * dosya her koşuda kırmızı yanardı — "her zaman kırmızı" ile "hiç bakılmıyor"
+ * arasında fark yok.
+ */
+const CHECK_EXEMPT = new Set(["giris"]);
+
+/** Bu oranın altındaki fark gürültü sayılıyor — yüzde birin onda biri. */
+const DIFF_TOLERANCE = 0.001;
+
+/**
+ * İki görüntünün farklı piksel oranı.
+ *
+ * Bayt karşılaştırması yapmıyoruz: aynı ekran, aynı tarayıcı, farklı gün — PNG
+ * sıkıştırması ve yazı tipi kenar yumuşatması birkaç baytı oynatabiliyor ve
+ * hiçbir şeyin değişmediği bir koşu kırmızı yanıyor. Ölçü piksel: kanal başına
+ * 8'den fazla sapan piksel "farklı" sayılıyor (kenar yumuşatmasının gürültüsü
+ * bunun altında kalıyor), oran da bu piksellerin toplama bölümü.
+ *
+ * Boyu değişen ekran doğrudan fark sayılıyor, oran hesaplanmıyor: uzayan bir
+ * sayfa zaten anlatılacak bir değişiklik ve iki farklı boyu piksel piksel
+ * kıyaslamanın anlamı yok.
+ *
+ * `sharp` yeni bir bağımlılık değil — görsel küçültme zaten onu kullanıyor.
+ */
+async function pixelDiff(aPath, bBuffer) {
+  const a = sharp(aPath).raw().ensureAlpha();
+  const b = sharp(bBuffer).raw().ensureAlpha();
+  const [ai, bi] = await Promise.all([a.metadata(), b.metadata()]);
+  if (ai.width !== bi.width || ai.height !== bi.height) {
+    return {
+      sizeChanged: true,
+      was: `${ai.width}x${ai.height}`,
+      now: `${bi.width}x${bi.height}`,
+    };
+  }
+  const [ab, bb] = await Promise.all([a.toBuffer(), b.toBuffer()]);
+  let differing = 0;
+  for (let i = 0; i < ab.length; i += 4) {
+    if (
+      Math.abs(ab[i] - bb[i]) > 8 ||
+      Math.abs(ab[i + 1] - bb[i + 1]) > 8 ||
+      Math.abs(ab[i + 2] - bb[i + 2]) > 8
+    ) {
+      differing++;
+    }
+  }
+  return { sizeChanged: false, ratio: differing / (ab.length / 4) };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const themes = args.theme === "both" ? ["light", "dark"] : [args.theme];
@@ -217,6 +278,8 @@ async function main() {
 
   let taken = 0;
   const skipped = [];
+  /** `--check` kipinde git'tekinden ayrılan dosyalar. */
+  const drifted = [];
   try {
     for (const theme of themes) {
       // Oturum hesap başına bir kez açılıyor; her ekran için yeniden giriş
@@ -265,10 +328,39 @@ async function main() {
           await fitViewport(page);
 
           const dir = join(OUT_DIR, `adim-${screen.step}`);
-          mkdirSync(dir, { recursive: true });
           const name =
             theme === "dark" ? `${screen.slug}-dark.png` : `${screen.slug}.png`;
-          await page.screenshot({ path: join(dir, name) });
+          const file = join(dir, name);
+
+          if (args.check) {
+            if (CHECK_EXEMPT.has(screen.slug)) {
+              console.log(`  - adim-${screen.step}/${name}  (muaf)`);
+              continue;
+            }
+            if (!existsSync(file)) {
+              drifted.push(`adim-${screen.step}/${name} - git'te yok`);
+              console.log(`  x adim-${screen.step}/${name}  git'te yok`);
+              continue;
+            }
+            const shot = await page.screenshot();
+            const diff = await pixelDiff(file, shot);
+            if (diff.sizeChanged) {
+              const note = `boy ${diff.was} -> ${diff.now}`;
+              drifted.push(`adim-${screen.step}/${name} - ${note}`);
+              console.log(`  x adim-${screen.step}/${name}  ${note}`);
+            } else if (diff.ratio > DIFF_TOLERANCE) {
+              const note = `%${(diff.ratio * 100).toFixed(2)} piksel`;
+              drifted.push(`adim-${screen.step}/${name} - ${note}`);
+              console.log(`  x adim-${screen.step}/${name}  ${note}`);
+            } else {
+              console.log(`  = adim-${screen.step}/${name}`);
+            }
+            taken++;
+            continue;
+          }
+
+          mkdirSync(dir, { recursive: true });
+          await page.screenshot({ path: file });
           taken++;
           console.log(`  ✔ adim-${screen.step}/${name}  ← ${path}`);
         }
@@ -278,6 +370,20 @@ async function main() {
   } finally {
     await browser.close();
     await db.$disconnect();
+  }
+
+  if (args.check) {
+    const verdict = drifted.length === 0 ? "hepsi aynı" : `${drifted.length} tanesi farklı`;
+    console.log(`\n${taken} ekran kıyaslandı, ${verdict}.`);
+    if (skipped.length > 0) console.log(`Atlanan: ${skipped.join(", ")}`);
+    if (drifted.length > 0) {
+      console.log(drifted.map((d) => `  ${d}`).join("\n"));
+      console.log(
+        "\nTasarım bilerek değiştiyse `pnpm shots` ile yeniden çekip commit edin.",
+      );
+      process.exitCode = 1;
+    }
+    return;
   }
 
   console.log(`\n${taken} görüntü kaydedildi → docs/design/screens/`);

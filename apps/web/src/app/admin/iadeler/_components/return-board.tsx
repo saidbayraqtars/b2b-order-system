@@ -12,6 +12,7 @@ import {
   type ReturnView,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import { formatTRY } from "@/lib/format";
 import {
   Badge,
@@ -85,11 +86,13 @@ function trDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString("tr-TR") : "—";
 }
 
+/** Süzgeç varsayılanı — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = { durum: "OPEN" };
+
 export function ReturnBoard() {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<"OPEN" | ReturnStatus>(
-    "OPEN",
-  );
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const statusFilter = filters.value.durum as "OPEN" | ReturnStatus;
   const [acting, setActing] = useState<{ row: Row; to: ReturnStatus } | null>(
     null,
   );
@@ -146,7 +149,7 @@ export function ReturnBoard() {
       <Card>
         <Chips
           value={statusFilter}
-          onChange={setStatusFilter}
+          onChange={(durum) => filters.set({ durum })}
           items={STATUS_FILTERS}
         />
       </Card>
@@ -156,7 +159,20 @@ export function ReturnBoard() {
       {isLoading ? (
         <LoadingState />
       ) : rows.length === 0 ? (
-        <EmptyState label="Bu süzgeçle iade talebi yok." />
+        <EmptyState
+          label={
+            filters.isFiltered
+              ? "Bu süzgeçle iade talebi yok."
+              : "Açık iade talebi yok — talepler sipariş ekranından açılıyor."
+          }
+          action={
+            filters.isFiltered ? (
+              <Button size="sm" variant="secondary" onClick={filters.clear}>
+                Süzgeci temizle
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <Panel title="Talepler" bodyClassName="p-0">
           <Table>

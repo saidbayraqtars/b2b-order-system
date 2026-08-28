@@ -199,41 +199,54 @@ kullanıcı yönetimi. Mesajı çağıran seçiyor.
 
 Kalan mutasyonlara da bağlanabilir; kalıp tek satır (`invalidate("…")`).
 
-### 4.5 `EmptyState`in `action` yuvası kullanılmıyor
+### 4.5 ~~`EmptyState`in `action` yuvası kullanılmıyor~~ ✔ (2026-08-28)
 
-68 çağrının **1'i** `action` veriyor. "Henüz kampanya yok" diyor ama yeni
-kampanya düğmesi vermiyor; kullanıcı panelin başlığına dönmek zorunda. Boş
-ekran, bir sonraki adımı söylemesi gereken tek ekrandır.
+Kural: **boşluğun sebebi süzgeçse eylem süzgeci temizler, liste gerçekten boşsa
+eylem ilk kaydı açar.** Tek metin ikisini birden anlatamıyordu — ürün listesi
+"Sağ üstten yeni ürün ekleyebilirsiniz" diyerek aramada hiçbir şey bulamayan
+kişiyi ekranın öbür ucuna yolluyordu.
 
-### 4.6 Süzgeçler adreste değil
+Dokuz ekrana uygulandı. `TableEmpty` de aynı yuvayı aldı.
 
-Güvenlik kaydı süzgeci, hareket akışı süzgeci, kullanıcı sekmesi — hiçbiri
-URL'de. İki sonuç:
+### 4.6 ~~Süzgeçler adreste değil~~ ✔ (2026-08-28)
 
-1. "Geçen haftanın başarısız girişleri" diye bir bağlantı paylaşılamıyor.
-2. **Fotoğraflanamıyor.** Kendi ekran görüntüsü kuralımız bunu yasaklıyor;
-   stok defterinin dört sekmesi tam bu yüzden `?bolum=` ile adreslenmişti.
+Ortak kanca `apps/web/src/lib/url-state.ts`. Altı ekran taşındı: çek portföyü,
+iadeler, bayi başvuruları, güvenlik kaydı, hareket akışı, kullanıcılar.
 
-### 4.7 `orders/[id]` hâlâ kabuksuz
+Dört kural kancanın içinde: varsayılana eşit değer adrese yazılmaz · yalnızca
+kendi anahtarlarına dokunur (`?bolum=` yerinde kalır) · `replace` (geri düğmesi
+kirlenmiyor) · `scroll: false`.
 
-Tasarım dilinin 5. kuralını ("tek kabuk") çiğneyen **tek** ekran, Adım 3'ten
-beri açık. Düzeltmek rolü kabukla eşlemeyi gerektiriyor: süper admin →
-`AdminShell`, plasiyer → `RepNav`, alıcı → `PortalNav` + firma bağlamı.
+**Arama kutuları ayrı**: yazılan metin yerelde, adrese `Enter`da/alandan çıkınca
+işleniyor — her tuşta adres yazmak her tuşta bir sunucu gidiş-dönüşü demek.
 
-### 4.8 `Modal`da odak tuzağı yok
+Ayrıntı ve ekran görüntüleri: REDESIGN.md Adım 14.
 
-Escape ve arka plan tıklaması var; **odak tuzağı ve açılışta ilk alana odak
-yok**. Klavye kullanıcısı pencere açıkken arkadaki sayfada geziniyor. `Modal`
-zaten tek yerde — düzeltme bir kez yazılır, her pencereye yansır.
+### 4.7 ~~`orders/[id]` hâlâ kabuksuz~~ ✔ (2026-08-28)
 
-### 4.9 Ekran görüntüsü regresyon kontrolü
+`app/orders/layout.tsx` + `RoleShell` — rapor tasarımcısındaki çözümün aynısı.
+Rol listesi `lib/order-access.ts`te tek yerde (`ORDER_DETAIL_ROLES`); kabuk ve
+sayfa aynı listeyi okuyor. Tasarım dilinin "tek kabuk" kuralını çiğneyen ekran
+kalmadı.
 
-`pnpm shots` zaten var. `--check` kipi (yeni çekimi git'tekiyle karşılaştır,
-fark varsa sıfırdan farklı çık) tasarım kaymasını CI'da yakalar. Mevcut aracın
-üstüne küçük bir ekleme, yeni bağımlılık yok.
+### 4.8 ~~`Modal`da odak tuzağı yok~~ ✔ (2026-08-28)
 
-⚠ Giriş sahnesi sürekli hareket ediyor (`adim-8/giris`) — o dosya kıyaslamadan
-muaf tutulmalı, yoksa her koşuda kırmızı yanar.
+Açılışta odak içeri · Tab uçlarda sarıyor · kapanışta odak **pencereyi açan
+öğeye** dönüyor. Üçü de `components/form.tsx`te, beş çağrı yerine birden
+yansıyor.
+
+### 4.9 ~~Ekran görüntüsü regresyon kontrolü~~ ✔ (2026-08-28)
+
+```bash
+SHOT_BASE_URL=http://localhost:3100 pnpm shots --check
+```
+
+Piksel kıyaslaması (bayt değil): kanal başına 8'den fazla sapan piksel "farklı",
+eşik yüzde birin onda biri, boy değişimi doğrudan fark. `sharp` zaten
+bağımlılıkta. `adim-8/giris` muaf — sahne sürekli hareket ediyor.
+
+**CI'da koşmuyor** ve bu `pnpm e2e` ile aynı sebep: ayakta bir sunucu ve
+gösterim verisiyle tohumlanmış bir veritabanı istiyor.
 
 ### 4.10 ~~Uzun listeler için sayfalama deseni tek değil~~ ✔ (2026-08-28)
 
@@ -248,19 +261,15 @@ vitrin (2654 kart), yönetim ürün listesi (200 satır), kasa defteri.
 
 ---
 
-### 4.11 Kategoriler ekranı okuma izniyle açılıyor, her düğmesi yazma izni istiyor
+### 4.11 ~~Kategoriler ekranı okuma izniyle açılıyor, her düğmesi yazma izni istiyor~~ ✔ (2026-08-28)
 
-Ekran testleri yazılırken çıktı. `/admin/categories` kapısı `products.view`
-(katalogu _görmek_), ama ekrandaki her mutasyon uçta `categories.manage`
-istiyor. Yalnız `products.view` verilmiş bir kullanıcı ekranı açıyor, kategori
-adını değiştiriyor, düğme 403 alıyor ve sebebini görmüyor.
+Kapı **yükseltilmedi** (o zaman katalogu görmek isteyen kişi ağacı hiç
+göremezdi); izin ekrana taşındı. Yalnız `products.view` olan kullanıcı ekleme
+şeridini, yeniden adlandırma düğmesini, üst kategori kutusunu ve Sil düğmesini
+görmüyor; başlık "salt okunur" diyor, dipnot hangi iznin gerektiğini yazıyor.
+Karar yine sunucuda — bu yalnızca yapılamayacak şeyi önermemek.
 
-İki çözüm de küçük: ya kapı `categories.manage`e çıkar (ama o zaman katalogu
-görmek isteyen kişi kategori ağacını da göremez), ya da ekran izin yokken
-düzenleme kontrollerini çizmez. İkincisi doğru olan — okumak yazmayı
-gerektirmiyor — ve `permission-picker` deseninde karşılığı var.
-
-Test mevcut davranışı sabitledi, yani değiştirildiğinde kırılacak.
+---
 
 ## 5. Özellik önerileri
 

@@ -54,7 +54,7 @@ function toTree(rows: AdminCategoryRow[]): TreeNode[] {
   return out;
 }
 
-export function CategoriesManager() {
+export function CategoriesManager({ canManage }: { canManage: boolean }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
@@ -123,6 +123,7 @@ export function CategoriesManager() {
       {/* Ekleme şeridi listenin üstünde ve gömük zeminde — vade, hacim ve kasa
           ekranlarıyla aynı yer. Ayrı bir panel olduğunda sayfa iki kutuya
           bölünüyordu ve ikisi de "kategori" diyordu. */}
+      {canManage && (
       <div className="flex flex-wrap items-end gap-2 border-b border-line bg-sunken p-4">
         <div>
           <Label htmlFor="new-category">Kategori adı</Label>
@@ -161,6 +162,7 @@ export function CategoriesManager() {
           <ErrorLine error={create.error} />
         </div>
       </div>
+      )}
 
       {query.isLoading && (
         <div className="px-4">
@@ -184,7 +186,14 @@ export function CategoriesManager() {
         </THead>
         <TBody>
           {rows.length === 0 && query.isSuccess && (
-            <TableEmpty colSpan={6} label="Henüz kategori yok." />
+            <TableEmpty
+              colSpan={6}
+              label={
+                canManage
+                  ? "Henüz kategori yok — ürün kategorisiz açılmıyor, ağaç kurulumun ikinci adımı."
+                  : "Henüz kategori yok."
+              }
+            />
           )}
           {rows.map((c) => (
             <tr key={c.id}>
@@ -206,7 +215,7 @@ export function CategoriesManager() {
                       }}
                       className="w-48"
                     />
-                  ) : (
+                  ) : canManage ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -218,6 +227,8 @@ export function CategoriesManager() {
                     >
                       {c.name}
                     </button>
+                  ) : (
+                    <span className="font-medium text-ink">{c.name}</span>
                   )}
                 </span>
               </Td>
@@ -228,44 +239,50 @@ export function CategoriesManager() {
               <Td align="right" numeric>
                 {c.childCount}
               </Td>
-              <Td>
-                <Select
-                  size="sm"
-                  value={c.parentId ?? ""}
-                  onChange={(e) =>
-                    move.mutate({
-                      id: c.id,
-                      newParentId: e.target.value || null,
-                    })
-                  }
-                  className="w-44"
-                  aria-label={`${c.name} üst kategorisi`}
-                >
-                  <option value="">(kök)</option>
-                  {rows
-                    .filter((o) => o.id !== c.id)
-                    .map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {"— ".repeat(o.depth)}
-                        {o.name}
-                      </option>
-                    ))}
-                </Select>
+              <Td muted={!canManage}>
+                {canManage ? (
+                  <Select
+                    size="sm"
+                    value={c.parentId ?? ""}
+                    onChange={(e) =>
+                      move.mutate({
+                        id: c.id,
+                        newParentId: e.target.value || null,
+                      })
+                    }
+                    className="w-44"
+                    aria-label={`${c.name} üst kategorisi`}
+                  >
+                    <option value="">(kök)</option>
+                    {rows
+                      .filter((o) => o.id !== c.id)
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {"— ".repeat(o.depth)}
+                          {o.name}
+                        </option>
+                      ))}
+                  </Select>
+                ) : (
+                  (rows.find((o) => o.id === c.parentId)?.name ?? "(kök)")
+                )}
               </Td>
               <Td align="right">
                 {/* Elli satırın üstünde `dangerQuiet` sağ kenarda kırmızı
                     bir sütuna dönüşüyor — stok partilerindeki ile aynı sebep. */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={remove.isPending}
-                  onClick={() => {
-                    if (confirm(`"${c.name}" kategorisi silinsin mi?`))
-                      remove.mutate(c.id);
-                  }}
-                >
-                  Sil
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={remove.isPending}
+                    onClick={() => {
+                      if (confirm(`"${c.name}" kategorisi silinsin mi?`))
+                        remove.mutate(c.id);
+                    }}
+                  >
+                    Sil
+                  </Button>
+                )}
               </Td>
             </tr>
           ))}

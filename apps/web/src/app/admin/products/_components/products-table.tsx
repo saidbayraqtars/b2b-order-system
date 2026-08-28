@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import type { AdminCategoryRow, AdminProductRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import {
   Badge,
   EmptyState,
@@ -15,14 +16,28 @@ import {
   Table,
   Td,
 } from "@/components/ui";
-import { Button, ErrorLine, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  LinkButton,
+  Select,
+  TextInput,
+} from "@/components/form";
 import { SortableTh, useTableSort } from "@/components/table-sort";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
 
+/** Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = { ara: "", kategori: "" };
+
 export function ProductsTable() {
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const query = filters.value.ara;
+  const categoryId = filters.value.kategori;
+
+  // Kutuya yazılan metin yerelde: arama zaten Enter'da/düğmeyle işleniyordu,
+  // şimdi işlendiği yer adres.
+  const [search, setSearch] = useState(query);
+  useEffect(() => setSearch(query), [query]);
 
   const categories = useQuery({
     queryKey: ["admin", "categories"],
@@ -67,16 +82,19 @@ export function ProductsTable() {
           placeholder="Ürün adı, marka veya SKU"
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") setQuery(search.trim());
+            if (e.key === "Enter") filters.set({ ara: search.trim() });
           }}
           className="w-64"
         />
-        <Button variant="secondary" onClick={() => setQuery(search.trim())}>
+        <Button
+          variant="secondary"
+          onClick={() => filters.set({ ara: search.trim() })}
+        >
           Ara
         </Button>
         <Select
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          onChange={(e) => filters.set({ kategori: e.target.value })}
           className="w-52"
         >
           <option value="">Tüm kategoriler</option>
@@ -91,8 +109,29 @@ export function ProductsTable() {
       {products.isLoading && <LoadingState />}
       <ErrorLine error={products.error} />
 
+      {/* İki ayrı boşluk, iki ayrı sonraki adım: süzgeç boş döndüyse yapılacak
+          şey süzgeci temizlemek, katalog gerçekten boşsa ilk ürünü açmak.
+          Tek metin ikisini birden anlatamıyordu ve "sağ üstten ekleyebilirsiniz"
+          diyerek kullanıcıyı ekranın öbür ucuna yolluyordu. */}
       {products.isSuccess && rows.length === 0 && (
-        <EmptyState label="Ürün bulunamadı. Sağ üstten yeni ürün ekleyebilirsiniz." />
+        <EmptyState
+          label={
+            filters.isFiltered
+              ? "Bu süzgeçle ürün bulunamadı."
+              : "Katalogda ürün yok."
+          }
+          action={
+            filters.isFiltered ? (
+              <Button size="sm" variant="secondary" onClick={filters.clear}>
+                Süzgeci temizle
+              </Button>
+            ) : (
+              <LinkButton size="sm" href="/admin/products/new">
+                Yeni ürün
+              </LinkButton>
+            )
+          }
+        />
       )}
 
       {rows.length > 0 && (

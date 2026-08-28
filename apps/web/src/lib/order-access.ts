@@ -1,7 +1,19 @@
 import { prisma } from "@repo/database";
-import type { SessionUser } from "@repo/types";
+import type { Role, SessionUser } from "@repo/types";
 import { AuthError } from "./guard";
 import { resolveCompanyId } from "./company-access";
+
+/**
+ * Sipariş detayına giren roller — sayfa ve kabuğu aynı listeyi okusun diye
+ * burada. İkisi ayrı yazıldığında kabuk kapıdan geniş kalıyor ve kimin nereye
+ * girdiği iki dosyadan okunuyor.
+ */
+export const ORDER_DETAIL_ROLES: readonly Role[] = [
+  "COMPANY_ADMIN",
+  "COMPANY_STAFF",
+  "SALES_REP",
+  "SUPER_ADMIN",
+];
 
 /**
  * Authorize a caller against one order by going through its company, so a sales

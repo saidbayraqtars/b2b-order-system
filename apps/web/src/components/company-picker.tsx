@@ -8,7 +8,7 @@ import { apiGet } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
 import type { CompanyOption } from "@/components/storefront/company-switcher";
 import { LoadingState, EmptyState } from "@/components/ui";
-import { ErrorLine } from "@/components/form";
+import { Button, ErrorLine } from "@/components/form";
 
 /**
  * "Hangi firma adına?" — vekil kullanıcı (plasiyer / süper admin) henüz firma
@@ -75,6 +75,13 @@ export function CompanyPicker({
             filter
               ? "Firma bulunamadı."
               : "Portföyünüzde firma yok. Yöneticinizle görüşün."
+          }
+          action={
+            filter ? (
+              <Button size="sm" variant="secondary" onClick={() => setFilter("")}>
+                Aramayı temizle
+              </Button>
+            ) : undefined
           }
         />
       ) : (

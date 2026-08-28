@@ -152,7 +152,16 @@ export function PromotionsManager() {
         ) : null}
 
         {promotions.data && rows.length === 0 ? (
-          <EmptyState label="Henüz kampanya yok — kampanya koşul + aksiyon olarak tanımlanır ve fiyatın üzerine uygulanır." />
+          <EmptyState
+            label="Henüz kampanya yok — kampanya koşul + aksiyon olarak tanımlanır ve fiyatın üzerine uygulanır."
+            action={
+              !editing && (
+                <Button size="sm" onClick={() => setEditing("new")}>
+                  Yeni kampanya
+                </Button>
+              )
+            }
+          />
         ) : (
           <Table>
             <THead>

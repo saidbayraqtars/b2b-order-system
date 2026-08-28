@@ -92,10 +92,9 @@ const PAGES: PageCase[] = [
   },
   {
     // Kapı `products.view`: kategoriyi *görmek* katalogu görmenin parçası.
-    // Ekrandaki her düzenleme ise `categories.manage` istiyor (uçta) — yani
-    // yalnız `products.view` olan kullanıcı ekranı açıyor ve düğmelerin hepsi
-    // 403 alıyor. Test mevcut davranışı sabitliyor; iyileştirme notu
-    // KALAN-ISLER §4.11'de.
+    // Düzenleme `categories.manage` istiyor ve ekran artık izni okuyup
+    // kontrolleri ona göre çiziyor (§4.11) — yani okuma izniyle giren kişi
+    // yapamayacağı bir düğmeye basmıyor.
     name: "/admin/categories",
     load: () => import("@/app/admin/categories/page"),
     permission: "products.view",
@@ -223,6 +222,20 @@ const PAGES: PageCase[] = [
     role: "SUPER_ADMIN",
   },
   {
+    // Sayfa değil **layout**: sipariş detayının kabuğu (§4.7). Kayıt defterine
+    // girmesinin sebebi kapı — kabuk `requirePage` çağırıyor ve o çağrı
+    // sayfanınkinden gevşek olursa, ekranı açan kişi menüyü görüp içeriği
+    // göremiyor. Dört soru layout'a da aynen soruluyor.
+    //
+    // `children` verilmesi gerekiyor ama içeriği önemsiz: layout JSX döndürüyor,
+    // ağaç burada çizilmiyor.
+    name: "/orders (kabuk)",
+    load: () => import("@/app/orders/layout"),
+    permission: "orders.view",
+    role: "SUPER_ADMIN",
+    props: { children: null },
+  },
+  {
     name: "/rep",
     load: () => import("@/app/rep/page"),
     role: "SALES_REP",
@@ -303,8 +316,11 @@ suite("ekranlar: kapı ve sunucu tarafı", () => {
         // geri yolluyor. Tarayıcıda bu yönlendirmeyi ara katman yapıyor
         // (sayfaya hiç gelinmiyor) — ikisi aynı yere gidiyor ve `e2e.mjs`
         // bunu ayrıca sınıyor.
-        if (page.name === "/hesabim") expect(target).toBeNull();
-        else expect(target).toBe("/portal");
+        // `/hesabim` her role açık; sipariş kabuğu da bayi personeline açık
+        // (siparişi veren firma onun firması). Gerisi portala geri yolluyor.
+        if (page.name === "/hesabim" || page.name === "/orders (kabuk)") {
+          expect(target).toBeNull();
+        } else expect(target).toBe("/portal");
       });
     }
   });

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ActivityEntry, ActivityKind, CompanyRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import {
   Badge,
   EmptyState,
@@ -12,7 +12,7 @@ import {
   type BadgeTone,
 } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
-import { ErrorLine, Label, Select } from "@/components/form";
+import { Button, ErrorLine, Label, Select } from "@/components/form";
 import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<ActivityKind, string> = {
@@ -44,13 +44,17 @@ function when(iso: string): string {
   });
 }
 
+/** Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = { firma: "", tur: "" };
+
 /**
  * The three histories in one column. Nothing here writes: each source stays the
  * record of truth for its own events, and the merge is a reading convenience.
  */
 export function ActivityClient() {
-  const [companyId, setCompanyId] = useState("");
-  const [kind, setKind] = useState<"" | ActivityKind>("");
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const companyId = filters.value.firma;
+  const kind = filters.value.tur as "" | ActivityKind;
 
   const companies = useQuery({
     queryKey: ["admin-companies", "activity"],
@@ -78,7 +82,7 @@ export function ActivityClient() {
           <Select
             className="w-64"
             value={companyId}
-            onChange={(e) => setCompanyId(e.target.value)}
+            onChange={(e) => filters.set({ firma: e.target.value })}
           >
             <option value="">Tümü</option>
             {(companies.data?.companies ?? []).map((c) => (
@@ -93,7 +97,7 @@ export function ActivityClient() {
           <Select
             className="w-44"
             value={kind}
-            onChange={(e) => setKind(e.target.value as "" | ActivityKind)}
+            onChange={(e) => filters.set({ tur: e.target.value })}
           >
             <option value="">Tümü</option>
             <option value="ORDER_STATUS">Sipariş</option>
@@ -108,7 +112,20 @@ export function ActivityClient() {
       ) : activity.isError ? (
         <ErrorLine error={activity.error} />
       ) : entries.length === 0 ? (
-        <EmptyState label="Bu aralıkta hareket yok." />
+        <EmptyState
+          label={
+            filters.isFiltered
+              ? "Bu süzgeçte hareket yok."
+              : "Henüz hareket yok."
+          }
+          action={
+            filters.isFiltered ? (
+              <Button size="sm" variant="secondary" onClick={filters.clear}>
+                Süzgeci temizle
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <ol className="divide-y divide-line rounded-lg border border-line bg-panel">
           {entries.map((e) => (

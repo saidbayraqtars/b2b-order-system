@@ -10,8 +10,10 @@ import {
   type DealerApplicationView,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import {
   Badge,
+  Chips,
   EmptyState,
   LoadingState,
   StatTile,
@@ -63,11 +65,13 @@ function trDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString("tr-TR") : "—";
 }
 
+/** Süzgeç varsayılanı — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = { durum: "PENDING" };
+
 export function ApplicationBoard() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<"PENDING" | "ALL" | DealerApplicationStatus>(
-    "PENDING",
-  );
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const filter = filters.value.durum as "PENDING" | "ALL" | DealerApplicationStatus;
   const [deciding, setDeciding] = useState<{
     row: DealerApplicationView;
     to: "APPROVE" | "REJECT";
@@ -122,23 +126,11 @@ export function ApplicationBoard() {
         title="Başvurular"
         bodyClassName="p-0"
         action={
-          <div className="flex gap-1">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                aria-pressed={filter === f.key}
-                className={
-                  filter === f.key
-                    ? "rounded border border-accent bg-accent px-2.5 py-1 text-xs font-medium text-on-accent"
-                    : "rounded border border-line px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-subtle"
-                }
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <Chips
+            value={filter}
+            onChange={(durum) => filters.set({ durum })}
+            items={FILTERS}
+          />
         }
       >
         {isLoading ? (
@@ -146,7 +138,20 @@ export function ApplicationBoard() {
             <LoadingState />
           </div>
         ) : rows.length === 0 ? (
-          <EmptyState label="Bu süzgeçte başvuru yok." />
+          <EmptyState
+            label={
+              filters.isFiltered
+                ? "Bu süzgeçte başvuru yok."
+                : "Bekleyen başvuru yok — bayilik başvuruları /kayit adresinden geliyor."
+            }
+            action={
+              filters.isFiltered ? (
+                <Button size="sm" variant="secondary" onClick={filters.clear}>
+                  Süzgeci temizle
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <Table>
             <THead>

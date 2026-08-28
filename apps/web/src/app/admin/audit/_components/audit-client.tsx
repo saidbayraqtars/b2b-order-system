@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
   TextInput,
 } from "@/components/form";
 import { apiGet } from "@/lib/fetcher";
+import { useUrlState } from "@/lib/url-state";
 import {
   Badge,
   LoadingState,
@@ -39,12 +40,29 @@ interface Page {
 /** Actions that mean something went wrong or someone gained power. */
 const ALERT_ACTIONS = new Set<AuditAction>(SECURITY_ACTIONS);
 
+/** Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor. */
+const FILTER_DEFAULTS = {
+  olay: "",
+  ara: "",
+  baslangic: "",
+  bitis: "",
+  guvenlik: "",
+};
+
 export function AuditClient() {
-  const [action, setAction] = useState<"" | AuditAction>("");
-  const [search, setSearch] = useState("");
-  const [securityOnly, setSecurityOnly] = useState(false);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const filters = useUrlState(FILTER_DEFAULTS);
+  const action = filters.value.olay as "" | AuditAction;
+  const search = filters.value.ara;
+  const securityOnly = filters.value.guvenlik === "1";
+  const from = filters.value.baslangic;
+  const to = filters.value.bitis;
+
+  // Arama kutusunun **yazılan** hâli yerelde: her tuşta adres yazmak, her
+  // tuşta bir sunucu gidiş-dönüşü demek. Adrese Enter'da ya da alandan
+  // çıkınca işleniyor — ürün listesindeki arama kutusuyla aynı davranış.
+  const [searchDraft, setSearchDraft] = useState(search);
+  useEffect(() => setSearchDraft(search), [search]);
+
   const [cursor, setCursor] = useState<string | null>(null);
   /** Pages already walked, so "geri" can pop back one. */
   const [trail, setTrail] = useState<string[]>([]);
@@ -81,7 +99,7 @@ export function AuditClient() {
           <Select
             value={action}
             onChange={(e) => {
-              setAction(e.target.value as "" | AuditAction);
+              filters.set({ olay: e.target.value });
               resetPaging();
             }}
           >
@@ -97,9 +115,17 @@ export function AuditClient() {
           <Label>Ara</Label>
           <TextInput
             placeholder="e-posta veya açıklama"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onBlur={() => {
+              if (searchDraft !== search) {
+                filters.set({ ara: searchDraft });
+                resetPaging();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              filters.set({ ara: searchDraft });
               resetPaging();
             }}
           />
@@ -110,7 +136,7 @@ export function AuditClient() {
             type="date"
             value={from}
             onChange={(e) => {
-              setFrom(e.target.value);
+              filters.set({ baslangic: e.target.value });
               resetPaging();
             }}
           />
@@ -121,7 +147,7 @@ export function AuditClient() {
             type="date"
             value={to}
             onChange={(e) => {
-              setTo(e.target.value);
+              filters.set({ bitis: e.target.value });
               resetPaging();
             }}
           />
@@ -130,7 +156,7 @@ export function AuditClient() {
           <Checkbox
             checked={securityOnly}
             onChange={(e) => {
-              setSecurityOnly(e.target.checked);
+              filters.set({ guvenlik: e.target.checked ? "1" : "" });
               resetPaging();
             }}
             label="Sadece güvenlik olayları"
@@ -159,7 +185,28 @@ export function AuditClient() {
               </THead>
               <TBody>
                 {query.data.entries.length === 0 && (
-                  <TableEmpty colSpan={5} label="Bu süzgeçte kayıt yok." />
+                  <TableEmpty
+                    colSpan={5}
+                    label={
+                      filters.isFiltered
+                        ? "Bu süzgeçte kayıt yok."
+                        : "Kayıt yok."
+                    }
+                    action={
+                      filters.isFiltered ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            filters.clear();
+                            resetPaging();
+                          }}
+                        >
+                          Süzgeci temizle
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 )}
                 {query.data.entries.map((e) => (
                   <tr key={e.id}>
