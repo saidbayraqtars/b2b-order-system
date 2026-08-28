@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   FileText,
+  Gauge,
   Inbox,
   LayoutTemplate,
   Landmark,
@@ -194,6 +195,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         label: "Etiket & fiş",
         icon: Sticker,
         permission: "labels.manage",
+      },
+      {
+        href: "/admin/analitik",
+        label: "Yönetici panosu",
+        icon: Gauge,
+        permission: "analytics.view",
       },
       {
         href: "/admin/reports",

@@ -4,6 +4,7 @@ import { syncTcmbRates } from "./exchange-rate-tcmb";
 import { listOrphanMedia, deleteMedia } from "./media";
 import { purgePasswordResetTokens } from "./password-reset";
 import { deliverDueReports } from "./report-delivery";
+import { computeSnapshot, saveSnapshot } from "./analytics";
 
 // ─────────────────────────────────────────────
 // İŞ KAYIT DEFTERİ
@@ -178,6 +179,40 @@ const tcmbRates: JobDefinition = {
   },
 };
 
+/**
+ * Yönetici panosunun gecelik özeti.
+ *
+ * Kohort matrisi, RFM ve ciro köprüsü bütün sipariş geçmişini tarıyor; sayfa
+ * açılışında hesaplanamaz. Gecelik olmasının sebebi hız değil **tutarlılık**:
+ * yönetici sabah baktığında gördüğü kohort tablosuyla öğlen gördüğü aynı olmalı,
+ * yoksa iki sayı arasındaki farkı işin değişmesi sanar.
+ *
+ * Anlık kutular (bugünün cirosu, açık sipariş, kasa) bu işten okumuyor — onlar
+ * canlı sorgu. Ekran hangi bölümün ne zaman hesaplandığını yazıyor.
+ */
+const analyticsSnapshot: JobDefinition = {
+  name: "analytics-snapshot",
+  label: "Yönetici panosu özeti",
+  description:
+    "Büyüme, müşteri, ürün ve nakit bölümlerini hesaplayıp saklar. Anlık kutular etkilenmez.",
+  intervalMinutes: DAY,
+  run: async () => {
+    const started = Date.now();
+    const payload = await computeSnapshot();
+    const durationMs = Date.now() - started;
+    await saveSnapshot(payload, durationMs);
+    return {
+      summary: `4 bölüm hesaplandı (${durationMs} ms)`,
+      meta: {
+        months: payload.growth.months.length,
+        cohorts: payload.customers.cohorts.length,
+        products: payload.products.abc.length,
+        durationMs,
+      },
+    };
+  },
+};
+
 export const JOBS: readonly JobDefinition[] = [
   purgeTokens,
   auditRetention,
@@ -185,6 +220,7 @@ export const JOBS: readonly JobDefinition[] = [
   staleCarts,
   reportDelivery,
   tcmbRates,
+  analyticsSnapshot,
 ];
 
 export function findJob(name: string): JobDefinition | undefined {

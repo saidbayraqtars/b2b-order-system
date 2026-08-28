@@ -2614,3 +2614,29 @@ enum DealerApplicationStatus {
   APPROVED
   REJECTED
 }
+
+/// Yönetici panosunun gecelik özeti.
+///
+/// Kohort matrisi, RFM ve ciro köprüsü bütün sipariş geçmişini tarıyor ve her
+/// sayfa açılışında hesaplanamaz; gecelik iş hesaplayıp buraya yazıyor, ekran
+/// okuyor. **Anlık kutular buradan okunmuyor** — bugünün cirosu ve açık
+/// siparişler canlı sorgudan geliyor, çünkü dün geceden bir "bugün" olmaz.
+///
+/// Ekranda hangi sayının bayat olabileceği yazılı: her bölüm `computedAt`ini
+/// gösteriyor.
+model AnalyticsSnapshot {
+  id String @id @default(cuid())
+
+  /// Bölümün adı: "growth", "customers", "products", "cash".
+  /// Tekil — sürüm geçmişi tutulmuyor, pano dünkü kohort matrisini değil
+  /// bugünkünü soruyor.
+  key String @unique
+
+  payload Json
+
+  computedAt DateTime @default(now())
+
+  /// Hesabın ne kadar sürdüğü. Gecelik iş yavaşlamaya başladığında bunu
+  /// görmenin başka yolu yok.
+  durationMs Int?
+}

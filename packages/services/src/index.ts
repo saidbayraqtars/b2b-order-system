@@ -27,6 +27,8 @@ export * from "./pricing-admin";
 export * from "./ledger";
 export * from "./reports";
 export * from "./search";
+export * from "./analytics";
+export * from "./analytics-math";
 export * from "./report-registry";
 export * from "./report-engine";
 export * from "./report-definition";

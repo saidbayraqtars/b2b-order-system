@@ -4,25 +4,15 @@ import type { ReportRunResult } from "@repo/services";
 import { formatCell, isNumericFormat } from "@/lib/format";
 import { Button, WarnLine } from "@/components/form";
 import { Table, TableEmpty, TBody, Td, Th, THead } from "@/components/ui";
+import { BarChart, LineChart, PieChart } from "@/components/charts";
 
 // Renders whatever the report engine returned: the table, an optional chart and
 // a CSV export. Shared by the builder's live preview and the saved-report view,
 // so both always show the same thing.
 
-/**
- * Grafik rampası — tek renk ailesi, o da mürekkep.
- *
- * Eskiden sekiz renkli kategorik bir palet vardı (indigo, teal, kehribar…) ve
- * tasarım dilinin 1. kuralını tek başına çiğneyen yer orasıydı: renk burada bir
- * işaret değil, yalnızca "bu dilim şu dilim değil" demek. Aynı şeyi ton
- * söyleyebiliyor — dilimler zaten büyüklüğe göre sıralı, göz koyudan açığa
- * okuyor.
- *
- * Değerler `--ink` üzerine saydamlık: koyu temada değişken beyaza döndüğü için
- * rampa da kendiliğinden dönüyor, `dark:` ikizi gerekmiyor.
- */
-const RAMP = [0.88, 0.72, 0.58, 0.46, 0.36, 0.28, 0.21, 0.15] as const;
-const ink = (alpha: number) => `rgb(var(--ink) / ${alpha})`;
+// Grafikler `components/charts.tsx`te: rapor önizlemesi ile yönetici panosu
+// aynı çubuğu, çizgiyi ve pastayı çiziyor ve ikisi ayrı yazılsaydı tasarım
+// dili iki yerden yönetilmeye başlardı.
 
 /**
  * Pano kartında gösterilen satır sayısı.
@@ -140,7 +130,7 @@ export function ReportPreview({
   );
 }
 
-/** Charts are hand-drawn with CSS/SVG — one fewer dependency to keep current. */
+/** Motorun döndürdüğü satırları ortak grafik diline çeviriyor. */
 function Chart({ result }: { result: ReportRunResult }) {
   const chart = result.chart!;
   const catKey = chart.categoryField!;
@@ -157,118 +147,14 @@ function Chart({ result }: { result: ReportRunResult }) {
     .filter((p) => Number.isFinite(p.value));
 
   if (points.length === 0) return null;
-
-  const max = Math.max(...points.map((p) => p.value), 0);
-  const min = Math.min(...points.map((p) => p.value), 0);
-  const span = max - min || 1;
   const fmt = (v: number) => formatCell(v, valueColumn?.format ?? "number");
 
   return (
     <section className="rounded-lg border border-line p-4">
-      {chart.type === "bar" && (
-        <>
-          <div className="flex h-40 items-end gap-1">
-            {points.map((p, i) => (
-              <div
-                key={i}
-                title={`${p.label}: ${fmt(p.value)}`}
-                className="flex-1 rounded-t bg-ink/70 transition-colors hover:bg-ink"
-                style={{
-                  height: `${Math.max(2, ((p.value - min) / span) * 100)}%`,
-                }}
-              />
-            ))}
-          </div>
-          <Axis points={points} />
-        </>
-      )}
-
-      {chart.type === "line" && (
-        <>
-          <svg
-            viewBox="0 0 100 40"
-            preserveAspectRatio="none"
-            className="h-40 w-full"
-          >
-            <polyline
-              fill="none"
-              stroke={ink(0.85)}
-              strokeWidth="0.8"
-              vectorEffect="non-scaling-stroke"
-              points={points
-                .map((p, i) => {
-                  const x =
-                    points.length === 1 ? 50 : (i / (points.length - 1)) * 100;
-                  const y = 40 - ((p.value - min) / span) * 38 - 1;
-                  return `${x},${y}`;
-                })
-                .join(" ")}
-            />
-          </svg>
-          <Axis points={points} />
-        </>
-      )}
-
-      {chart.type === "pie" && <Pie points={points} format={fmt} />}
+      {chart.type === "bar" && <BarChart points={points} format={fmt} />}
+      {chart.type === "line" && <LineChart points={points} />}
+      {chart.type === "pie" && <PieChart slices={points} format={fmt} />}
     </section>
-  );
-}
-
-function Axis({ points }: { points: { label: string }[] }) {
-  return (
-    <p className="mt-2 flex justify-between text-xs text-ink-faint">
-      <span>{points[0]?.label}</span>
-      <span>{points[points.length - 1]?.label}</span>
-    </p>
-  );
-}
-
-function Pie({
-  points,
-  format,
-}: {
-  points: { label: string; value: number }[];
-  format: (v: number) => string;
-}) {
-  const positive = points.filter((p) => p.value > 0).slice(0, 8);
-  const total = positive.reduce((a, p) => a + p.value, 0);
-  if (total <= 0) {
-    return (
-      <p className="text-body-sm text-ink-faint">
-        Pasta grafik için pozitif değer yok.
-      </p>
-    );
-  }
-
-  let cursor = 0;
-  const stops = positive.map((p, i) => {
-    const start = (cursor / total) * 360;
-    cursor += p.value;
-    const end = (cursor / total) * 360;
-    return `${ink(RAMP[i % RAMP.length]!)} ${start}deg ${end}deg`;
-  });
-
-  return (
-    <div className="flex flex-wrap items-center gap-6">
-      <div
-        className="h-40 w-40 shrink-0 rounded-full"
-        style={{ background: `conic-gradient(${stops.join(", ")})` }}
-      />
-      <ul className="space-y-1 text-body-sm">
-        {positive.map((p, i) => (
-          <li key={i} className="flex items-center gap-2">
-            <span
-              className="inline-block h-3 w-3 rounded-sm"
-              style={{ backgroundColor: ink(RAMP[i % RAMP.length]!) }}
-            />
-            <span className="text-ink">{p.label}</span>
-            <span className="tabular-nums text-ink-faint">
-              {format(p.value)} · %{((p.value / total) * 100).toFixed(1)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

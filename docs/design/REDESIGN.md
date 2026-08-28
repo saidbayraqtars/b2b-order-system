@@ -773,6 +773,35 @@ giriş `/login`in altındaki satırdı).
 Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil,
 `next build` başarılı, 5 ekran görüntüsü `adim-11/` altında.
 
+### ✔ Adım 12 — Yönetici panosu (bitti)
+
+`/admin/analitik`, altı bölüm, hepsi `?bolum=` ile adreste.
+
+Bu bir ekran yenilemesi değil **yeni bir ekran**; yenilemenin numaralandırmasına
+girmesinin sebebi tek: grafiklerin ortak dili burada oturdu.
+`components/charts.tsx` — `BarChart`, `LineChart`, `PieChart`, `Waterfall`,
+`HeatCell` — ve rapor önizlemesi de artık oradan besleniyor. İkisi ayrı
+yazılsaydı tasarım dili iki yerden yönetilmeye başlardı.
+
+**Ölçüm ve gerekçe `docs/KALAN-ISLER.md` §6'da**; buraya yalnızca görüntüye ait
+kararlar:
+
+- **Renk yok, ton var.** Kohort ısı haritası, pasta dilimleri ve şelale
+  grafiğinin artı/eksi kolonları `--ink` üzerine saydamlıkla ayrılıyor. Yeşil/
+  kırmızı kullanılmadı çünkü tasarım dilinde renk _durum_ bildiriyor; köprüdeki
+  artı ve eksi bir durum değil bir **yön**.
+- **Isı hücresinin yazı rengi zeminle dönüyor**: %60'ın üstünde `on-accent`,
+  altında `ink`. Sabit bir yazı rengi matrisin bir ucunda okunamaz olurdu.
+- **Sayının yerine cümle.** Yeterli veri olmadığında kutuya 32 puntoluk bir tire
+  konuyordu ve bozuk bir çizim gibi duruyordu (ekran görüntüsünde görüldü);
+  yerine "yetersiz veri" yazıyor, sebebi de altındaki ipucunda.
+- **Her kutu kaynağına bağlı.** Tıklanınca sayıyı üreten listeye gidiyor.
+  Karşılığı olan bir ekran yoksa kutu düz kalıyor — tıklanabilir görünüp hiçbir
+  yere gitmeyen bir kutu, hiç bağlantısı olmayandan kötü.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` yeşil (24 yeni
+matematik testi), `next build` başarılı, 6 ekran görüntüsü `adim-12/` altında.
+
 ### ▢ Adım 9 — Mobil
 
 `apps/mobile` — aynı palet ve tipografi. NativeWind'in bilinen iki tuzağı için

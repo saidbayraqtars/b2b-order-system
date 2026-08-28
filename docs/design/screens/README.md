@@ -15,6 +15,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-7`  | Rapor tasarımcısı ve panolar    |
 | `adim-8`  | Giriş, bayilik başvurusu, hesap |
 | `adim-11` | Saha üçlüsü ve kök              |
+| `adim-12` | Yönetici panosu                 |
 
 ## Yeniden üretmek
 

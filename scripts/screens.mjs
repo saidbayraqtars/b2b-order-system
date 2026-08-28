@@ -344,6 +344,53 @@ export const SCREENS = [
     path: "/403?perm=cash.manage",
   },
 
+  // ── Adım 12 — yönetici panosu ───────────────────────────────────────────
+  // Altı bölüm altı ayrı adres: sekme `?bolum=` ile URL'de, çünkü betik
+  // düğmelere basmıyor ve fotoğraflanamayan ekranın doğru göründüğü
+  // söylenemez.
+  {
+    step: 12,
+    slug: "pano-durum",
+    label: "Yönetici panosu — anlık durum",
+    as: "admin",
+    path: "/admin/analitik?bolum=durum",
+  },
+  {
+    step: 12,
+    slug: "pano-buyume",
+    label: "Yönetici panosu — büyüme ve ciro köprüsü",
+    as: "admin",
+    path: "/admin/analitik?bolum=buyume",
+  },
+  {
+    step: 12,
+    slug: "pano-musteri",
+    label: "Yönetici panosu — RFM, kohort, konsantrasyon",
+    as: "admin",
+    path: "/admin/analitik?bolum=musteri",
+  },
+  {
+    step: 12,
+    slug: "pano-urun",
+    label: "Yönetici panosu — ABC ve ölü stok",
+    as: "admin",
+    path: "/admin/analitik?bolum=urun",
+  },
+  {
+    step: 12,
+    slug: "pano-nakit",
+    label: "Yönetici panosu — DSO ve çek takvimi",
+    as: "admin",
+    path: "/admin/analitik?bolum=nakit",
+  },
+  {
+    step: 12,
+    slug: "pano-gidisat",
+    label: "Yönetici panosu — ay sonu tahmini",
+    as: "admin",
+    path: "/admin/analitik?bolum=gidisat",
+  },
+
   // ── Adım 11 — saha üçlüsü ve kök ────────────────────────────────────────
   // Kök sayfa oturumsuz çekiliyor: giriş yapmış bir tarayıcı için ekran
   // "Panele git" düğmesinden ibaret kalıyor ve ziyaretçinin gördüğü yüzey

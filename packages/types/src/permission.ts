@@ -63,6 +63,7 @@ export const PermissionEnum = z.enum([
   "documents.manage",
   "reports.view",
   "reports.build",
+  "analytics.view",
   // sistem
   "organization.manage",
   "erp.manage",
@@ -112,6 +113,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "documents.manage": "Belge serilerini yönet",
   "reports.view": "Raporları görüntüle",
   "reports.build": "Rapor tasarla",
+  "analytics.view": "Yönetici panosunu gör",
   "organization.manage": "Kuruluş ayarlarını yönet",
   "erp.manage": "ERP köprüsünü yönet",
   "erp.push": "Siparişi ERP'ye aktar",
@@ -139,6 +141,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "analytics.view":
+    "Büyüme, kârlılık ve nakit göstergeleri. **Maliyet ve marj bu ekranda** — `costPrice` müşteriye gösterilmiyor, plasiyere de gösterilmemeli",
   "jobs.manage":
     "Temizlik işlerini açar/kapatır, periyodunu değiştirir, elle çalıştırır",
   "system.update":
@@ -212,6 +216,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
     permissions: [
       "documents.view",
       "documents.manage",
+      "analytics.view",
       "labels.manage",
       "reports.view",
       "reports.build",
@@ -391,6 +396,13 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   // Sahaya da verilmiyor: plasiyerin işi malı satmak, sayım tutmak değil.
   "stock.view": ["SELLER"],
   "stock.manage": ["SELLER"],
+
+  // Yönetici panosu yalnızca satıcının kendi ekibine verilebilir. Sebebi tek
+  // bir alan: `ProductVariant.costPrice`. Pano marj ve ürün kârlılığı
+  // gösteriyor, yani alış fiyatını dolaylı olarak açıyor; bayiye vermek
+  // müşteriye maliyeti göstermek, sahaya vermek plasiyerin elindeki pazarlık
+  // sınırını değiştirmek demek.
+  "analytics.view": ["SELLER"],
 
   // Bayi kendi cari/firma bilgisini görür (ekstre); firma kartını satıcı yönetir.
   "companies.view": ["SELLER", "DEALER", "FIELD"],

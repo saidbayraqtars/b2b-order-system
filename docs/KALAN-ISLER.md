@@ -332,133 +332,77 @@ katılmalı ki sonradan üçüncü bir kanal eklemek her çağrı yerine dokunma
 
 ---
 
-## 6. Yönetici panosu — işletme zekâsı katmanı ★★★
+## 6. ~~Yönetici panosu~~ ✔ (2026-08-28)
 
-**Kullanıcının 2026-08-28 isteği:** _"şirketin anlık durumunu, büyüme
-sistematiğini matematiksel olarak hesaplayıp master admin kullanıcısına rapor
-olarak ekranda versin — Vega'nın rapor sistemi gibi."_
+`/admin/analitik` — altı bölüm, hepsi `?bolum=` ile adreste:
+**anlık durum · büyüme · müşteri · ürün & stok · nakit & alacak · gidişat**.
 
-### 6.1 Bu, rapor tasarımcısının yerine geçmez
+### 6.1 Dört mimari karar — nasıl uygulandı
 
-|        | Rapor tasarımcısı (var)         | Yönetici panosu (yeni) |
-| ------ | ------------------------------- | ---------------------- |
-| Ne     | Kullanıcı tanımlı               | Küratörlü              |
-| Nerede | **Veri** (`ReportDefinition`)   | **Kod**                |
-| Soru   | "Şu sütunları şuna göre grupla" | "Neden büyüdük?"       |
+1. **Gecelik özet.** `AnalyticsSnapshot` tablosu (bölüm başına tek satır,
+   sürüm geçmişi yok), `analytics-snapshot` adlı gecelik iş hesaplıyor,
+   `readSnapshot` okuyor. **Anlık kutular canlı** — "bugünün cirosu" dün
+   geceden olamaz. Hangi bölümün ne zaman hesaplandığı her sekmenin üstünde
+   yazıyor. Gecelik olmasının sebebi hız değil **tutarlılık**: sabah bakılan
+   kohort tablosuyla öğlen bakılan aynı olmalı, yoksa aradaki fark işin
+   değişmesi sanılır.
+2. **Toplama SQL'de, matematik JS'te.** `analytics.ts` sorguları `GROUP BY` ile
+   satır sayısını indiriyor; regresyon, kohort matrisi, HHI, RFM çeyreklikleri
+   ve şelale `analytics-math.ts`te — veritabanına hiç bakmayan, 24 testi olan
+   saf bir dosya.
+3. **İzin `analytics.view`, rol değil.** Kapsamı yalnızca satıcının kendi
+   ekibine verilebiliyor (`PERMISSION_SCOPE`): pano marj gösteriyor, yani
+   `costPrice`ı dolaylı olarak açıyor. Bayiye vermek müşteriye maliyeti
+   göstermek, sahaya vermek plasiyerin pazarlık sınırını değiştirmek olurdu.
+   İzin göçü ayrı dosyada (yükselten kurulumda kimsenin satırına yazmaz).
+4. **Her kutu kaynağına bağlanıyor.** `SourceTile` tıklanınca sayıyı üreten
+   listeye gidiyor — satış raporu, alacak yaşlandırma, kasa defteri, çek
+   portföyü, stok defteri, firma listesi, hedefler. Karşılığı olan bir ekran
+   yoksa kutu düz kalıyor.
 
-Büyüme matematiği bir sütun listesi değil: kohort matrisi, regresyon eğimi ve
-köprü grafiği kullanıcının kuracağı şeyler değil. İkisini tek motora sıkıştırmak
-ikisini de bozar.
+### 6.2 İki dürüstlük kuralı — ve üçüncüsü
 
-**Ama veri kümesi kayıt defterini paylaşırlar.** Güvenlik sınırı orada
-(`report-registry.ts`, 9 küme: ORDERS · ORDER_ITEMS · LEDGER · COMPANIES ·
-CHECKINS · CASH · STOCK · STOCK_LOTS · PROMOTIONS). Panonun kendi ham SQL'i
-olmayacak.
+**Az veriyle yalan söyleme.** Her göstergenin asgari veri şartı kodda:
+trend eğimi 6 ay, CAGR 24 ay, RFM 8 firma, karşılıksız oranı 10 kâğıt.
+Karşılanmıyorsa sayı yerine eksiğin kendisi yazılıyor ("en az 24 ay gerekiyor,
+4 var"). Tabanı sıfır olan seride CAGR'ın sebebi ayrıca söyleniyor — "24 ay
+gerekiyor" demek, 24 ayı olan kullanıcıyı şaşırtır.
 
-### 6.2 Marj hesaplanabilir
+**Mevsimsellik esas.** Karşılaştırma yıl-üstü-yıl; **MoM hiç hesaplanmıyor.**
+Ay sonu projeksiyonu takvim gününe değil **iş gününe** göre, ve geçen yılın
+aynı ayının ritmiyle düzeltiliyor.
 
-`ProductVariant.costPrice` var (ERP'nin `ALISFIYATI`'ndan, şemada _"müşteriye
-gösterilmez — kâr raporu ve ..."_ diye not düşülmüş). Yani panonun en değerli
-yarısı — **kâr, marj, ürün kârlılığı** — bugün hesaplanabilir. Çoğu B2B
-panosunun yapamadığı şey bu.
+Kodu yazarken üçüncü bir kural çıktı: **maliyet kapsamı.** İlk koşuda pano
+"brüt marj %46,7" yazıyordu; oysa 2655 aktif varyantın alış fiyatı boştu ve
+maliyetsiz ürün sıfır maliyetli sayılıp marjı şişiriyordu. Marj artık yalnızca
+cironun en az **%60**'ı maliyeti girilmiş üründen geliyorsa yazılıyor, ve kaç
+varyantın boş olduğu ekranda duruyor.
 
-### 6.3 Bölümler
+Aynı turda bulunan iki sahte gösterge kaldırıldı:
 
-Sekmeler **URL'de** (`?bolum=durum|buyume|musteri|urun|nakit|gidisat`) — ekran
-görüntüsü kuralı gereği; fotoğraflanamayan ekranın doğru göründüğü söylenemez.
+- "Vadesinde ödeme oranı" **her zaman %100** dönüyordu (tahsilat satırının
+  vadesi olmadığı için karşılaştırma kendi kendine doğruydu). Yerine ölçülebilir
+  olan kondu: vadesi geçen borcun toplam alacağa oranı.
+- Trend eğimi, kurulumun açılmasından önceki 22 boş ayı da hesaba katıyordu ve
+  "aylık ortalama +45.826 TL büyüme" diyordu. Serinin başındaki boş aylar artık
+  atılıyor — işin başlamadığı ay bir veri noktası değil.
 
-**A. Anlık durum** — bu ay ciro / geçen yıl aynı ay · hedefe göre gidişat · açık
-sipariş · sevk bekleyen · toplam alacak + vadesi geçmiş · kasa/banka bakiyesi ·
-çek portföyünde bu ay tahsil edilecek · maliyetle stok değeri · brüt marj %.
+### 6.3 Vega sorusu — hâlâ açık
 
-**B. Büyüme**
+Kullanıcı _"Vega'nın rapor sistemi gibi"_ demişti. **Vega'nın rapor ekranları
+depoda yok** ve hangi raporun karşılığının istendiği bilinmiyor. Uydurulmadı:
+yukarıdaki liste sektör standardı bir yönetici panosu. Vega'ya özgü bir rapor
+isteniyorsa kullanıcıdan ekran görüntüsü ya da rapor adı gerekiyor.
 
-- Aylık ciro serisi + 3 aylık hareketli ortalama (gürültüyü ayırmak için)
-- **YoY**, MoM değil — gerekçe §6.5
-- Trend eğimi (en küçük kareler): "aylık ortalama +X TL"
-- CAGR — yalnızca yeterli veri varsa
-- **Ciro köprüsü.** Geçen dönem → bu dönem farkı dörde ayrılır: yeni müşteri (+),
-  kaybedilen müşteri (−), mevcut büyüyen (+), mevcut daralan (−). **Panonun en
-  öğretici tek grafiği** — "neden büyüdük/küçüldük" sorusunu tek bakışta
-  cevaplayan şey bu, toplam ciro çizgisi değil.
+### 6.4 Kalanlar
 
-**C. Müşteri**
-
-- **RFM segmentasyonu**: Recency / Frequency / Monetary → çeyrekliklere böl →
-  şampiyon · sadık · riskli · uykuda · kayıp
-- **Kohort tutundurma**: ilk siparişini şu ayda veren firmaların kaçta kaçı
-  sonraki aylarda hâlâ alıyor
-- **Konsantrasyon riski**: Pareto eğrisi + HHI. "Cironun %80'i 12 firmadan" —
-  tek müşteri kaybının ne kadar acıtacağını söyleyen sayı
-- **Sessizleşen müşteri uyarısı** — dikkat: eşik **sabit 90 gün olmamalı**.
-  Firmanın kendi normal sipariş periyodunun 2 katı. Haftalık alan bayi için 30
-  gün zaten alarmdır, mevsimlik alan için değildir. Sabit eşik ikisini de yanlış
-  bildirir.
-
-**D. Ürün ve stok**
-
-- ABC analizi (ciro Pareto)
-- Stok devir hızı = SMM / ortalama stok · DIO = 365 / devir
-- Ölü stok: X gündür hareketsiz, **maliyet değeriyle** (`StockMovement` defteri
-  bu soruyu zaten cevaplayabiliyor)
-- **Ciro × marj matrisi**: çok satan ama düşük marjlı ürünler. Fiyat kararının
-  doğduğu yer burasıdır
-
-**E. Nakit ve alacak**
-
-- **DSO** = (ortalama alacak / dönem cirosu) × gün
-- Yaşlandırma dağılımı **ve trendi** — tek fotoğraf değil, kötüleşiyor mu
-- Tahsilat performansı: vadesinde ödenen oranı, firma bazlı ortalama gecikme
-- Çek vade takvimi: önümüzdeki 90 gün, haftalık
-- Karşılıksız çek oranı
-
-**F. Gidişat**
-
-- Ay sonu projeksiyonu: ayın kaçıncı **iş gününde** ne kadar yapıldı →
-  mevsimsel indeksle ay sonu tahmini
-- Hedefe göre pace (`SalesTarget` var; Adım 34'ün hedef kartı bunun kardeşi)
-
-### 6.4 Mimari kararlar
-
-1. **Gecelik özet (`AnalyticsSnapshot`).** Kohort matrisi ve RFM her sayfa
-   açılışında hesaplanamaz. `Job` zamanlayıcı zaten var (Adım 43): gecelik iş
-   hesaplar, ekran okur. **Anlık kutular canlı** okunur — "bugünün cirosu" dün
-   geceden olamaz. Hangi sayının bayat olabileceği ekranda yazmalı ("gece
-   03:00 itibarıyla").
-2. **Toplama SQL'de, matematik JS'te.** Adım 18 deseni (`GROUP BY` veritabanında)
-   - Adım 56 kuralı (formül SQL'e gitmez). Regresyon, kohort matrisi ve HHI
-     JS'te.
-3. **Yeni izin `analytics.view`, rol değil** (Adım 30 kuralı). Maliyet ve marj bu
-   ekranda; `costPrice` müşteriye gösterilmiyor, plasiyere de gösterilmemeli —
-   backlog'daki "sunum/maskeleme modu" bunun kardeşi.
-4. **Her kutu kaynağına bağlanır.** Bir sayıya tıklayınca onu üreten satırlara
-   gitmeli. Yoksa yönetici sayıya güvenmez — ve haklıdır. Rapor tasarımcısı o
-   listeleri zaten çizebiliyor.
-
-### 6.5 İki dürüstlük kuralı
-
-**Az veriyle yalan söyleme.** Üç aylık veriyle CAGR göstermek uydurmadır. Her
-göstergenin bir **minimum veri şartı** olmalı ve karşılanmıyorsa sayı yerine
-_"yeterli veri yok — en az N ay gerekiyor"_ yazmalı. Bir panonun en kolay yalan
-söylediği yer burasıdır: boş veriden çıkan bir yüzde de bir yüzde gibi görünür.
-
-**Mevsimsellik esas.** Toptan gıdada MoM karşılaştırma yanıltıcı — ramazan, yaz,
-okul dönemi. Varsayılan karşılaştırma **YoY ve aynı dönem**. MoM gösterilecekse
-"mevsimsellik arındırılmamış" diye işaretlenmeli.
-
-### 6.6 Açık soru — Vega
-
-Kullanıcı _"Vega'nın rapor sistemi gibi"_ dedi. **Vega'nın rapor ekranları
-depoda yok** (`docs/` altında yalnızca kurulum/sunum/teklif var; `apps/erp-agent`
-şema okuyor, rapor değil). Hafızadaki `b2b-vegadb` doğrulanmış **tablo** şeması,
-rapor ekranı değil.
-
-Yani hangi Vega raporunun karşılığının istendiği **bilinmiyor**. Yukarıdaki
-liste sektör standardı yönetici panosu; Vega'ya özgü bir rapor isteniyorsa
-kullanıcıdan ekran görüntüsü ya da rapor adı istenmeli. **Tahmin edip
-uydurmayın** — soruyu KALAN-ISLER.md'ye not düşüp genel panoyla devam edin.
-
----
+- **Kohort penceresi 12 ay, RFM penceresi 365 gün** — sabit. Kullanıcı seçmeli
+  olması istenirse ekranın kendi süzgeci gerekir.
+- **Ortalama gecikme yaklaşık**: borç satırı ile onu kapatan tahsilat kuruşuna
+  kadar eşlenmiyor (o işi ekstredeki FIFO mahsup yapıyor). Ekranda böyle
+  yazıyor.
+- **Resmî tatiller iş günü sayılıyor** — bayram aylarında ay sonu tahmini
+  yüksek çıkar. Tatil takvimi girilirse düzelir.
 
 ## 7. Gözetimsiz yapılmayacaklar
 
