@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    Sekme ikonu. Yoktu: her sayfa açılışında tarayıcı /favicon.ico istiyor ve
+    404 alıyordu — uçtan uca sınama bunu konsol hatası olarak yakaladı.
+
+    Marka harfi değil bir **koli**: ad kiracıdan geliyor (tenants/<slug>) ve
+    statik bir dosya onu okuyamaz; her kurulumda aynı harfi basmak da yanlış
+    olurdu. Şekil giriş ekranındaki sahnenin aynısı.
+
+    Renk `prefers-color-scheme` ile dönüyor: koyu sekme şeridinde siyah bir
+    çizim kaybolur.
+  -->
+  <style>
+    .ink { stroke: #191c1e; }
+    @media (prefers-color-scheme: dark) { .ink { stroke: #e5e7e8; } }
+  </style>
+  <g class="ink" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M16 4.5 27 10.5v11L16 27.5 5 21.5v-11z" />
+    <path d="M5 10.5 16 16.5l11-6" />
+    <path d="M16 16.5v11" />
+  </g>
+</svg>

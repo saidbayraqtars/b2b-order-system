@@ -20,6 +20,7 @@
     "db:studio": "pnpm --filter @repo/database db:studio",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "shots": "node scripts/screenshots.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "test": "turbo run test"
   },
   "devDependencies": {

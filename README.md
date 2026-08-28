@@ -86,6 +86,20 @@ ekranlarının görüntüsüne giriyordu (`plasiyer-…@test.local` satırları)
 Geçmişten kalanı `pnpm db:purge-test-residue` temizliyor (kuru kip varsayılan;
 `--apply` siler).
 
+`pnpm e2e` ayrı duruyor ve CI'da koşmuyor: ayakta bir sunucu ve **gösterim
+verisiyle tohumlanmış** bir veritabanı istiyor (giriş yaptığı hesaplar oradan
+geliyor). Yayın öncesi elle:
+
+```bash
+pnpm --filter web dev -p 3100
+E2E_BASE_URL=http://localhost:3100 pnpm e2e
+```
+
+Playwright kurulmadı; `puppeteer-core` zaten bağımlılıkta (ekran görüntüsü
+betiği kullanıyor) ve sistemdeki Chrome'u sürüyor. Sınanan şey tarayıcılar
+arası uyum değil, uygulamanın gerçek bir tarayıcıda ayakta durması: sayfa
+boyanıyor mu, yönlendirmeler gerçek çerezle çalışıyor mu, konsolda hata var mı.
+
 `pnpm test` iki takım çalıştırıyor. **Birim takımı** saf domain matematiği,
 hiçbir şeye ihtiyacı yok. **Entegrasyon takımı** gerçek bir Postgres ile
 konuşuyor, kendi fixture'ını kuruyor (grup, firma, ürün, fiyat kademeleri,

@@ -83,16 +83,45 @@ başlığında, genel arama (Ctrl+K) üst şeritte. Ayrıntı REDESIGN.md Adım 
 
 ## 3. Ekranlardan sonra — altı yığın
 
-### 3.1 Tek gerçek boşluk: test
+### 3.1 ~~Tek gerçek boşluk: test~~ ✔ (2026-08-28)
 
-`b2b-next-plan` madde 10, "SIRADAKİ" işaretli:
+- **Ekran testleri geldi** (`apps/web/test/pages.test.ts`, 109 test). 28 ekranın
+  her biri dört soruyla sınanıyor: yetkili kullanıcı için açılıyor mu, izin
+  yoksa `/403?perm=` mi, yanlış rol kendi köküne mi, oturumsuz ziyaretçi girişe
+  mi. Test sayfa fonksiyonunu **çağırıyor**, JSX ağacını çizmiyor — bu, kapıyı
+  ve sunucu tarafı veri çekmeyi birlikte sınıyor; bozuk bir sorgu da orada
+  patlıyor.
+- **Tarayıcı seviyesinde e2e geldi** (`pnpm e2e`, 23 senaryo). Playwright
+  kurulmadı: `puppeteer-core` zaten bağımlılıkta ve sistemdeki Chrome'u
+  sürüyor. Sınanan şey sayfanın gerçekten **boyanması** (stil sayfası var,
+  beklenen metin var, konsolda hata yok) ve yönlendirmelerin gerçek çerezle
+  çalışması.
 
-- **41 web sayfası testsiz.** Rota işleyicileri test altında (233), **ekranlar
-  değil**. `requirePage` yönlendirmeleri elle doğrulanıyor.
-- **Tarayıcı seviyesinde e2e yok.** Playwright kurulmadı. `puppeteer-core`
-  zaten bağımlılıkta (ekran görüntüsü betiği kullanıyor) — yeni tarayıcı
-  indirmeden onun üzerine kurulabilir.
-- **`apps/mobile` altında tek test yok.**
+**e2e CI'da koşmuyor** ve bu bir karar: ayakta bir sunucu ve **gösterim
+verisiyle tohumlanmış** bir veritabanı istiyor (giriş yaptığı hesaplar oradan
+geliyor), CI'ın veritabanı ise boş. Yayın öncesi elle koşuluyor:
+
+```bash
+pnpm --filter web dev -p 3100
+E2E_BASE_URL=http://localhost:3100 pnpm e2e
+```
+
+İlk koşuda üç şey buldu ve üçü de düzeltildi:
+
+1. **Ara katman ile sayfa kapısı çelişiyordu.** `requirePage` "yanlış rol kendi
+   köküne, eksik izin `/403`e" diye ayırıyor; ara katman ondan önce çalışıyor
+   ve rol uyuşmazlığını da `/403`e yolluyordu — yani kapının rol dalı tarayıcıda
+   hiç görünmüyordu. Belgelenmiş taraf kazandı: `/403?perm=` her zaman bir izin
+   adı taşıyor, ve bir bayinin `/admin`e yazıp "yetkiniz yok" görmesi orada bir
+   şey olduğunu söylüyor.
+2. **Sekme ikonu yoktu**: her sayfa açılışı `/favicon.ico` için 404 alıyordu.
+   `app/icon.svg` eklendi — marka harfi değil bir koli, çünkü ad kiracıdan
+   geliyor ve statik dosya onu okuyamaz.
+3. `/kayit` beklentisi `tech-label`ın büyük harfe çevirdiği üst etiketi
+   arıyordu; `innerText` çevrilmiş hâli döndürüyor.
+
+**`apps/mobile` altında hâlâ tek test yok** — mobil yenilemesiyle (Adım 9)
+birlikte ele alınacak.
 
 ### 3.2 Kod bitti, canlıda denenmedi
 
@@ -246,6 +275,20 @@ Uygulandığı dört ekranın üçü 6000 piksellik kırpma sınırında kesiliy
 vitrin (2654 kart), yönetim ürün listesi (200 satır), kasa defteri.
 
 ---
+
+### 4.11 Kategoriler ekranı okuma izniyle açılıyor, her düğmesi yazma izni istiyor
+
+Ekran testleri yazılırken çıktı. `/admin/categories` kapısı `products.view`
+(katalogu _görmek_), ama ekrandaki her mutasyon uçta `categories.manage`
+istiyor. Yalnız `products.view` verilmiş bir kullanıcı ekranı açıyor, kategori
+adını değiştiriyor, düğme 403 alıyor ve sebebini görmüyor.
+
+İki çözüm de küçük: ya kapı `categories.manage`e çıkar (ama o zaman katalogu
+görmek isteyen kişi kategori ağacını da göremez), ya da ekran izin yokken
+düzenleme kontrollerini çizmez. İkincisi doğru olan — okumak yazmayı
+gerektirmiyor — ve `permission-picker` deseninde karşılığı var.
+
+Test mevcut davranışı sabitledi, yani değiştirildiğinde kırılacak.
 
 ## 5. Özellik önerileri
 

@@ -11,6 +11,12 @@ import { defineConfig } from "vitest/config";
 // request scope Next.js normally provides, and the Auth.js cookie session.
 // The guard, the permission check, Prisma and every service stay real.
 export default defineConfig({
+  // Ekran testleri sunucu bileşenlerini **çağırıyor** (JSX ağacını çizmeden).
+  // `tsconfig`teki `jsx: "preserve"` Next'in kendi derleyicisi için doğru ama
+  // vitest'e "React.createElement üret" dedirtiyor ve React kapsamda olmadığı
+  // için sayfa `ReferenceError` atıyordu. Otomatik çalışma zamanı, React'i
+  // içe aktarmayan sunucu bileşenlerinin de çalışmasını sağlıyor.
+  esbuild: { jsx: "automatic" },
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),

@@ -39,8 +39,22 @@ export default auth((req) => {
       url.searchParams.set("callbackUrl", path);
       return NextResponse.redirect(url);
     }
-    // Logged in but wrong role → 403 page (or redirect to their home).
-    return NextResponse.redirect(new URL("/403", nextUrl));
+    // Girişli ama **yanlış bölüm** → kendi köküne.
+    //
+    // Burası `/403`e yolluyordu ve `requirePage` ile çelişiyordu: kapı
+    // "yanlış rol kendi köküne, eksik izin /403'e" diye ayırıyor ama ara
+    // katman ondan önce çalıştığı için rol dalı tarayıcıda hiç görünmüyordu —
+    // iki cevap, kullanıcı yalnızca birini görüyor. Çelişkiyi uçtan uca
+    // sınama yakaladı.
+    //
+    // Belgelenmiş olan taraf kazandı, iki sebeple: `/403?perm=` her zaman bir
+    // izin adı taşımak zorunda ve rol uyuşmazlığında adı verilecek tek bir
+    // izin yok; ayrıca bir bayinin `/admin`e yazıp "yetkiniz yok" görmesi,
+    // orada bir şey olduğunu söylüyor — kendi paneline dönmesi hiçbir şey
+    // söylemiyor.
+    return NextResponse.redirect(
+      new URL(defaultRouteForRole(user!.role), nextUrl),
+    );
   }
 
   // Pass the path along so the audit trail can name the endpoint that was
