@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RoleEnum } from "./enums";
+import { NotificationEventEnum, RoleEnum } from "./enums";
 import { passwordSchema } from "./admin";
 
 // Self-service account management + the audit trail's query shape.
@@ -30,6 +30,11 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
  * Changing your own password requires proving you know the current one — an
  * unattended open session must not be enough to take an account over.
  */
+/** Bildirim tercihi: **istemediklerinin** listesi. */
+export const notificationPreferencesSchema = z.object({
+  muted: z.array(NotificationEventEnum).max(50),
+});
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Mevcut şifre gerekli"),

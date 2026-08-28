@@ -21,6 +21,12 @@ module.exports = {
     "coverage/",
     "*.config.js",
     "*.config.cjs",
+    // Bir dosya kopyalama kazasının bıraktığı kopyalar: `admin (1).ts`,
+    // `seed (2).ts` gibi. Kaynak değiller ve depoda izlenmiyorlar, ama derleme
+    // ve lint onları bulup **eski** bir sürümün hatalarını rapor ediyor.
+    // Aynı desen tsconfig'lerin `exclude` listesinde de var.
+    "* (*).ts",
+    "* (*).tsx",
   ],
   rules: {
     // An unused parameter named _foo is intentional (interface conformance).

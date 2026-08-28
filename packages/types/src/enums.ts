@@ -361,6 +361,32 @@ export const COMMISSION_BASE_LABELS: Record<CommissionBase, string> = {
   COLLECTION: "Tahsilat",
 };
 
+/**
+ * Susturulabilir bildirim olayları.
+ *
+ * Susturma **olay bazında**, kanal bazında değil: "sipariş bildirimi istemem"
+ * diyen kişi onu e-postayla da telefonla da istemiyor. Hangi kanalların açık
+ * olduğu kurulumun kararı (bkz. `notification-channel.ts`).
+ */
+export const NotificationEventEnum = z.enum([
+  "ORDER_PLACED",
+  "ORDER_STATUS",
+  "INVOICE_ISSUED",
+]);
+export type NotificationEvent = z.infer<typeof NotificationEventEnum>;
+
+export const NOTIFICATION_EVENT_LABELS: Record<NotificationEvent, string> = {
+  ORDER_PLACED: "Yeni sipariş",
+  ORDER_STATUS: "Sipariş durumu değişti",
+  INVOICE_ISSUED: "Fatura kesildi",
+};
+
+export const NOTIFICATION_EVENT_HINTS: Record<NotificationEvent, string> = {
+  ORDER_PLACED: "Firmanıza sipariş girildiğinde",
+  ORDER_STATUS: "Onay, sevk, teslim ve iptal bildirimleri",
+  INVOICE_ISSUED: "Fatura bir ödeme saati başlatır — kapatmadan önce düşünün",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 

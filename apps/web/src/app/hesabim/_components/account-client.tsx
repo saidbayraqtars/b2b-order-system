@@ -5,8 +5,12 @@ import { signOut } from "next-auth/react";
 import {
   AUDIT_ACTION_LABELS,
   changePasswordSchema,
+  NOTIFICATION_EVENT_HINTS,
+  NOTIFICATION_EVENT_LABELS,
+  NotificationEventEnum,
   updateProfileSchema,
   type AuditEntry,
+  type NotificationEvent,
 } from "@repo/types";
 import type {
   AccountProfile as Account,
@@ -31,7 +35,8 @@ import {
   Th,
   THead,
 } from "@/components/ui";
-import { apiDelete, apiPatch, apiPost } from "@/lib/fetcher";
+import { Checkbox } from "@/components/form";
+import { apiDelete, apiPatch, apiPost, apiPut } from "@/lib/fetcher";
 
 /**
  * Self-service account screen: profile, password and the user's own audit
@@ -52,6 +57,7 @@ export function AccountClient({
   return (
     <div className="flex flex-col gap-6">
       <ProfilePanel account={account} onSaved={setAccount} />
+      <NotificationPanel account={account} onSaved={setAccount} />
       {initialTwoFactor && <TwoFactorPanel initial={initialTwoFactor} />}
       <SecurityPanel account={account} />
       <PasswordPanel />
@@ -135,6 +141,88 @@ function ProfilePanel({
         )}
       </div>
       <ErrorLine error={error} />
+    </Panel>
+  );
+}
+
+/**
+ * Bildirim tercihi.
+ *
+ * Kutular **açıkken alıyorsunuz** demek: kaydedilen şey istemediklerinin
+ * listesi ve ekranda tersi gösteriliyor. Ters kodlansaydı (istediklerinin
+ * listesi) yeni bir bildirim türü eklendiğinde kimse onu almazdı — sessizce
+ * kaybolan bir bildirim, gürültülü olandan kötü.
+ *
+ * Kanal seçimi burada yok, bilerek: "sipariş bildirimi istemem" diyen kişi onu
+ * e-postayla da telefonla da istemiyor. Hangi kanalların açık olduğu kurulumun
+ * kararı.
+ */
+function NotificationPanel({
+  account,
+  onSaved,
+}: {
+  account: Account;
+  onSaved: (next: Account) => void;
+}) {
+  const [muted, setMuted] = useState<string[]>(account.mutedNotifications);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [saved, setSaved] = useState(false);
+
+  const toggle = (event: NotificationEvent, wanted: boolean) => {
+    setSaved(false);
+    setMuted((prev) =>
+      wanted ? prev.filter((e) => e !== event) : [...new Set([...prev, event])],
+    );
+  };
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiPut<{ account: Account }>(
+        "/api/account/bildirimler",
+        { muted },
+      );
+      onSaved(res.account);
+      setSaved(true);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Panel title="Bildirimler">
+      <div className="flex flex-col gap-3">
+        {NotificationEventEnum.options.map((event) => (
+          <Checkbox
+            key={event}
+            checked={!muted.includes(event)}
+            onChange={(e) => toggle(event, e.target.checked)}
+            label={NOTIFICATION_EVENT_LABELS[event]}
+            hint={NOTIFICATION_EVENT_HINTS[event]}
+          />
+        ))}
+      </div>
+
+      <ErrorLine error={error} />
+
+      <div className="mt-4 flex items-center gap-3">
+        <Button loading={busy} onClick={() => void save()}>
+          Kaydet
+        </Button>
+        {saved && (
+          <span className="text-body-sm text-positive">Tercihler kaydedildi</span>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs text-ink-faint">
+        Kapattığınız bildirim hem e-posta hem telefon bildirimi olarak susar.
+        Kapalı bir bildirim yüzünden kaçırılan bir şey olursa, tercihiniz
+        güvenlik kaydında duruyor.
+      </p>
     </Panel>
   );
 }

@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import type {
   ChangePasswordInput,
+  NotificationEvent,
   Role,
   UpdateProfileInput,
 } from "@repo/types";
@@ -27,6 +28,8 @@ export interface AccountProfile {
   lastLoginIp: string | null;
   passwordChangedAt: string | null;
   createdAt: string;
+  /** İstemediği bildirim olayları. Boş = hepsini alır. */
+  mutedNotifications: string[];
 }
 
 const profileSelect = {
@@ -39,6 +42,7 @@ const profileSelect = {
   lastLoginIp: true,
   passwordChangedAt: true,
   createdAt: true,
+  mutedNotifications: true,
   company: { select: { id: true, name: true } },
 } as const;
 
@@ -52,6 +56,7 @@ function toProfile(u: {
   lastLoginIp: string | null;
   passwordChangedAt: Date | null;
   createdAt: Date;
+  mutedNotifications: string[];
   company: { id: string; name: string } | null;
 }): AccountProfile {
   return {
@@ -65,7 +70,52 @@ function toProfile(u: {
     lastLoginIp: u.lastLoginIp,
     passwordChangedAt: u.passwordChangedAt?.toISOString() ?? null,
     createdAt: u.createdAt.toISOString(),
+    mutedNotifications: u.mutedNotifications,
   };
+}
+
+/**
+ * Bildirim tercihi.
+ *
+ * Kaydedilen şey **istemediklerinin** listesi. Ters kodlansaydı (istediklerinin
+ * listesi) yeni bir olay eklendiğinde kimse onu almazdı; sessizce kaybolan bir
+ * bildirim, gürültülü olandan kötüdür.
+ *
+ * Denetim kaydına yazılıyor: "bildirim gelmedi" diye açılan bir destek
+ * kaydının ilk sorusu, kişinin onu kapatıp kapatmadığı.
+ */
+export async function updateNotificationPreferences(
+  userId: string,
+  muted: readonly NotificationEvent[],
+  meta: RequestMeta = {},
+): Promise<AccountProfile> {
+  const before = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, role: true, mutedNotifications: true },
+  });
+  if (!before) throw new BusinessError("USER_NOT_FOUND", "Hesap bulunamadı");
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { mutedNotifications: [...new Set(muted)] },
+    select: profileSelect,
+  });
+
+  await recordAudit({
+    actor: { id: userId, email: before.email, role: before.role },
+    action: "PROFILE_UPDATED",
+    summary: "Bildirim tercihlerini güncelledi",
+    entity: "User",
+    entityId: userId,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+    meta: {
+      before: before.mutedNotifications,
+      after: updated.mutedNotifications,
+    },
+  });
+
+  return toProfile(updated);
 }
 
 export async function getAccount(userId: string): Promise<AccountProfile> {

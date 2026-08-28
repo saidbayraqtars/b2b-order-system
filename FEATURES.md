@@ -225,6 +225,13 @@ görüntüleri `docs/design/screens/` altında.
 - Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
 - **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
 
+### Bildirim kanalları ve tercih
+
+- **Kanal kayıt defteri** (`notification-channel.ts`): e-posta ve telefon bildirimi birer kanal; yeni kanal eklemek `NotificationChannel` yazıp diziye koymak. Çağrı yerleri değişmiyor.
+- Kanallar paralel çalışır ve **hiçbir zaman fırlatmaz**; denetim kaydı kanal kanal sonuç taşır. Tek kanal geçtiyse duyuru başarılı sayılır.
+- **Bildirim tercihi** (`/hesabim` → Bildirimler): kullanıcı olay bazında susturur (`User.mutedNotifications`). Boş = hepsini alır. Susturma hem e-postayı hem telefonu kapatır.
+- **WhatsApp/SMS adaptörü yok**: ücretli API ve sözleşme gerektiriyor, karar kullanıcının. Soyutlama hazır.
+
 ### Kampanya simülatörü (`/admin/promotions?bolum=simulasyon`)
 
 - Bir kampanyayı **geçmiş siparişlerde kuru kuruya** çalıştırır: ne kadar indirim verirdi, kaç siparişe uygulanırdı, cironun yüzde kaçı. Kapalı kampanya da denenebilir.

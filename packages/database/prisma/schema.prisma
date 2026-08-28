@@ -213,43 +213,53 @@ model User {
   // Sales rep portfolio (reverse of Company.salesRep)
   managedCompanies Company[] @relation("SalesRepPortfolio")
 
-  ordersCreated           Order[]                @relation("OrderCreatedBy")
-  ordersApproved          Order[]                @relation("OrderApprovedBy")
-  ordersPushedToErp       Order[]                @relation("OrderErpPushedBy")
-  shipments               Shipment[]             @relation("ShipmentShippedBy")
-  invoicesIssued          Invoice[]              @relation("InvoiceCreatedBy")
-  checkIns                CheckIn[]
-  transactions            Transaction[]          @relation("TransactionRecordedBy")
-  chequeEvents            ChequeEvent[]          @relation("ChequeEventActor")
-  exchangeRates           ExchangeRate[]         @relation("ExchangeRateCreatedBy")
-  jobRuns                 JobRun[]               @relation("JobRunTriggeredBy")
-  cashMovements           CashMovement[]         @relation("CashMovementRecordedBy")
-  stockMovements          StockMovement[]        @relation("StockMovementRecordedBy")
-  pageLayouts             PageLayout[]           @relation("PageLayoutUpdatedBy")
-  paymentIntents          PaymentIntent[]        @relation("PaymentIntentCreatedBy")
-  paymentEvents           PaymentIntentEvent[]   @relation("PaymentIntentActor")
-  statusChanges           OrderStatusHistory[]   @relation("OrderStatusChangedBy")
-  reports                 ReportDefinition[]     @relation("ReportOwner")
-  dashboards              ReportDashboard[]      @relation("DashboardOwner")
-  auditLogs               AuditLog[]             @relation("AuditActor")
-  passwordResets          PasswordResetToken[]
-  salesTargets            SalesTarget[]          @relation("SalesTargetRep")
-  targetsAuthored         SalesTarget[]          @relation("SalesTargetAuthor")
-  pushDevices             PushDevice[]           @relation("PushDeviceOwner")
-  visitRequests           VisitRequest[]         @relation("VisitRequestRep")
-  visitRequestsAuthored   VisitRequest[]         @relation("VisitRequestAuthor")
-  deliveries              Shipment[]             @relation("ShipmentCourier")
-  returnsRequested        ReturnRequest[]        @relation("ReturnRequestedBy")
-  returnsDecided          ReturnRequest[]        @relation("ReturnDecidedBy")
-  applicationsDecided     DealerApplication[]    @relation("DealerApplicationDecidedBy")
-  orderPolicyEdits        OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
-  priceChanges            ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
-  collectionCalls         CollectionCall[]       @relation("CollectionCallBy")
-  commissionPlans         CommissionPlan[]       @relation("CommissionPlanReps")
-  reconciliationsSent     Reconciliation[]       @relation("ReconciliationCreatedBy")
-  reconciliationsAnswered Reconciliation[]       @relation("ReconciliationRespondedBy")
+  ordersCreated         Order[]                @relation("OrderCreatedBy")
+  ordersApproved        Order[]                @relation("OrderApprovedBy")
+  ordersPushedToErp     Order[]                @relation("OrderErpPushedBy")
+  shipments             Shipment[]             @relation("ShipmentShippedBy")
+  invoicesIssued        Invoice[]              @relation("InvoiceCreatedBy")
+  checkIns              CheckIn[]
+  transactions          Transaction[]          @relation("TransactionRecordedBy")
+  chequeEvents          ChequeEvent[]          @relation("ChequeEventActor")
+  exchangeRates         ExchangeRate[]         @relation("ExchangeRateCreatedBy")
+  jobRuns               JobRun[]               @relation("JobRunTriggeredBy")
+  cashMovements         CashMovement[]         @relation("CashMovementRecordedBy")
+  stockMovements        StockMovement[]        @relation("StockMovementRecordedBy")
+  pageLayouts           PageLayout[]           @relation("PageLayoutUpdatedBy")
+  paymentIntents        PaymentIntent[]        @relation("PaymentIntentCreatedBy")
+  paymentEvents         PaymentIntentEvent[]   @relation("PaymentIntentActor")
+  statusChanges         OrderStatusHistory[]   @relation("OrderStatusChangedBy")
+  reports               ReportDefinition[]     @relation("ReportOwner")
+  dashboards            ReportDashboard[]      @relation("DashboardOwner")
+  auditLogs             AuditLog[]             @relation("AuditActor")
+  passwordResets        PasswordResetToken[]
+  salesTargets          SalesTarget[]          @relation("SalesTargetRep")
+  targetsAuthored       SalesTarget[]          @relation("SalesTargetAuthor")
+  pushDevices           PushDevice[]           @relation("PushDeviceOwner")
+  visitRequests         VisitRequest[]         @relation("VisitRequestRep")
+  visitRequestsAuthored VisitRequest[]         @relation("VisitRequestAuthor")
+  deliveries            Shipment[]             @relation("ShipmentCourier")
+  returnsRequested      ReturnRequest[]        @relation("ReturnRequestedBy")
+  returnsDecided        ReturnRequest[]        @relation("ReturnDecidedBy")
+  applicationsDecided   DealerApplication[]    @relation("DealerApplicationDecidedBy")
+  orderPolicyEdits      OrderPolicy[]          @relation("OrderPolicyUpdatedBy")
+  priceChanges          ScheduledPriceChange[] @relation("PriceChangeCreatedBy")
+  collectionCalls       CollectionCall[]       @relation("CollectionCallBy")
+
+  /// Bu kullanıcının **istemediği** bildirim olayları.
+  ///
+  /// Boş = hepsini alır; susturma opt-in. Ters kodlansaydı (istediklerinin
+  /// listesi) yeni bir olay eklendiğinde kimse onu almazdı — sessizce kaybolan
+  /// bir bildirim, gürültülü olandan kötü.
+  ///
+  /// Olay bazında, kanal bazında değil: "sipariş bildirimi istemem" diyen kişi
+  /// onu e-postayla da telefonla da istemiyor.
+  mutedNotifications      String[]           @default([])
+  commissionPlans         CommissionPlan[]   @relation("CommissionPlanReps")
+  reconciliationsSent     Reconciliation[]   @relation("ReconciliationCreatedBy")
+  reconciliationsAnswered Reconciliation[]   @relation("ReconciliationRespondedBy")
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
-  originApplication       DealerApplication?     @relation("DealerApplicationUser")
+  originApplication       DealerApplication? @relation("DealerApplicationUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

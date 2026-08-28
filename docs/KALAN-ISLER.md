@@ -525,12 +525,37 @@ kampanyanın birleşik etkisi bundan farklı olur ve ekran bunu yazıyor.
 
 4 test (`packages/services/test/integration/promotion-simulation.test.ts`).
 
-### 5.11 WhatsApp bildirim kanalı
+### 5.11 ~~Bildirim kanalı soyutlaması~~ ✔ (2026-08-28) · WhatsApp adaptörü **kararınız**
 
-Backlog'da "bildirim motoru: FCM + SendGrid/Twilio" yazıyor. Türkiye'de bayiyle
-asıl konuşulan kanal WhatsApp; e-posta okunmuyor. Business API ücretli ve onay
-istiyor — **karar kullanıcının**, ama kanal soyutlaması yazılırken hesaba
-katılmalı ki sonradan üçüncü bir kanal eklemek her çağrı yerine dokunmasın.
+Yapılan şey **kanal kayıt defteri** (`packages/services/src/notification-channel.ts`),
+WhatsApp adaptörü değil.
+
+Neden böyle: Business API ücretli, onay istiyor ve sözleşme olmadan yazılacak
+kod tahmine dayanır — sanal POS adaptörüyle **birebir aynı gerekçe** (§7).
+Yapılabilecek olan şey, gelecekteki adaptörün tek dosyaya sığmasını sağlamaktı
+ve o yapıldı: `NotificationChannel` yazıp `CHANNELS` dizisine eklemek yeterli,
+`notification.ts` ve hiçbir çağrı yeri değişmiyor.
+
+Öncesinde her `notifyX` fonksiyonu önce `sendMail`, sonra `sendPush` diyordu;
+üçüncü bir kanal eklemek her çağrı yerine dokunmak demekti. Şimdi `announce()`
+yalnızca "şu kitleye şu mesajı" diyor.
+
+Kanallar **paralel** çalışıyor ve **hiçbir zaman fırlatmıyor**: e-postası düşen
+ama telefonuna düşen bir bildirim "başarısız" diye kaydedilmiyor. Denetim kaydı
+artık kanal kanal sonuç taşıyor.
+
+**Bildirim tercihi de geldi** (§3.5'in "ya hepsi ya hiçbiri" maddesi):
+`/hesabim` → Bildirimler. `User.mutedNotifications` **istemediklerinin**
+listesi; ters kodlansaydı yeni bir olay eklendiğinde kimse onu almazdı ve
+sessizce kaybolan bir bildirim, gürültülü olandan kötüdür. Susturma **olay**
+bazında, kanal bazında değil: "sipariş bildirimi istemem" diyen kişi onu
+e-postayla da telefonla da istemiyor.
+
+5 test (`packages/services/test/integration/notification-channel.test.ts`).
+
+**Sizin kararınız bekleyen:** WhatsApp Business API sözleşmesi ve numarası.
+Karar verilirse iş, tek dosyalık bir `whatsappChannel` yazıp `CHANNELS`e
+eklemek — mesajın `short` alanı zaten kısa metin taşıyor.
 
 ---
 

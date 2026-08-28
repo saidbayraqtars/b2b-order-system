@@ -1,8 +1,9 @@
 import type { OrderStatus } from "@prisma/client";
 import { prisma } from "@repo/database";
+import type { NotificationEvent } from "@repo/types";
 import { recordAudit } from "./audit";
-import { appUrl, sendMail, type MailResult } from "./mail";
-import { sendPush } from "./push";
+import { appUrl } from "./mail";
+import { broadcast, type NotificationMessage } from "./notification-channel";
 import {
   invoiceIssuedMail,
   orderPlacedMail,
@@ -51,102 +52,141 @@ function recipients(...addresses: Array<string | null | undefined>): string[] {
   return [...seen];
 }
 
+/** Bildirimi alacak bir kişi: kimliği **ve** adresi bir arada. */
+export interface Listener {
+  id: string;
+  email: string;
+  /** Susturduğu olaylar — kanal seçimi değil, olay seçimi. */
+  muted: readonly string[];
+}
+
 /**
  * Everyone at a company who should hear about its orders: the company admins,
  * plus the company's own address if one is on file.
  */
 async function companyAudience(companyId: string): Promise<{
   name: string;
-  emails: string[];
-  salesRepEmail: string | null;
-  /**
-   * Aynı kitlenin telefon tarafı. E-posta bir adrese gider, push bir **hesaba**
-   * — firmanın genel e-posta kutusunun karşılığı yok, bu yüzden liste yalnızca
-   * gerçek kullanıcılardan oluşuyor.
-   */
-  memberIds: string[];
-  salesRepId: string | null;
+  /** Firmanın genel posta kutusu — bir hesaba ait değil, susturulamıyor. */
+  companyEmail: string | null;
+  members: Listener[];
+  salesRep: Listener | null;
 }> {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     select: {
       name: true,
       email: true,
-      salesRep: { select: { id: true, email: true, isActive: true } },
+      salesRep: {
+        select: {
+          id: true,
+          email: true,
+          isActive: true,
+          mutedNotifications: true,
+        },
+      },
       members: {
         where: { isActive: true, role: "COMPANY_ADMIN" },
-        select: { id: true, email: true },
+        select: { id: true, email: true, mutedNotifications: true },
       },
     },
   });
   if (!company) {
-    return {
-      name: "",
-      emails: [],
-      salesRepEmail: null,
-      memberIds: [],
-      salesRepId: null,
-    };
+    return { name: "", companyEmail: null, members: [], salesRep: null };
   }
 
   const rep = company.salesRep?.isActive ? company.salesRep : null;
 
   return {
     name: company.name,
-    emails: recipients(company.email, ...company.members.map((m) => m.email)),
-    salesRepEmail: rep?.email ?? null,
-    memberIds: company.members.map((m) => m.id),
-    salesRepId: rep?.id ?? null,
+    companyEmail: company.email,
+    members: company.members.map((m) => ({
+      id: m.id,
+      email: m.email,
+      muted: m.mutedNotifications,
+    })),
+    salesRep: rep
+      ? { id: rep.id, email: rep.email, muted: rep.mutedNotifications }
+      : null,
   };
 }
 
-/** Send, then leave a trace either way. Swallows every error by design. */
-async function deliver(params: {
-  to: string[];
-  subject: string;
-  text: string;
-  html?: string;
+/**
+ * Bir olayın kitlesi: susturmayanlar.
+ *
+ * Susturma **olay bazında**, kanal bazında değil: "sipariş bildirimi istemem"
+ * diyen kişi onu e-postayla da telefonla da istemiyor. Kanal seçimi ayrı bir
+ * soru ve bugün kurulumun kararı (bkz. `notification-channel.ts`).
+ *
+ * `extraEmails` bir hesaba ait olmayan adresler (firmanın genel kutusu):
+ * susturulamıyorlar, çünkü arkalarında tercih belirtecek bir kullanıcı yok.
+ */
+function audienceFor(
+  event: NotificationEvent,
+  listeners: ReadonlyArray<Listener | null>,
+  extraEmails: ReadonlyArray<string | null | undefined> = [],
+): { emails: string[]; userIds: string[] } {
+  const wanted = listeners.filter(
+    (l): l is Listener => l !== null && !l.muted.includes(event),
+  );
+  return {
+    emails: recipients(...extraEmails, ...wanted.map((l) => l.email)),
+    userIds: [...new Set(wanted.map((l) => l.id))],
+  };
+}
+
+/**
+ * Duyuruyu **açık kanalların hepsine** gönderir, sonra iz bırakır.
+ *
+ * Eskiden bu iş iki ayrı çağrıydı: `sendMail` ve `sendPush`, her `notifyX`
+ * fonksiyonunda elle. Üçüncü bir kanal eklemek o hâlde her çağrı yerine
+ * dokunmak demekti; artık kanal kayıt defterinde ve burası yalnızca "şu
+ * kitleye şu mesajı" diyor.
+ *
+ * Tasarım kuralı değişmedi: **hiçbir zaman fırlatmaz.** Bildirim, olmuş bitmiş
+ * bir işin duyurusudur; duyuru düşerse iş geri alınmaz.
+ */
+async function announce(params: {
+  event: NotificationEvent;
+  audience: { emails: string[]; userIds: string[] };
+  message: NotificationMessage;
   entity: string;
   entityId: string;
   summary: string;
-}): Promise<MailResult | null> {
-  if (params.to.length === 0) return null;
-
-  let result: MailResult;
-  try {
-    result = await sendMail({
-      to: params.to,
-      subject: params.subject,
-      text: params.text,
-      ...(params.html ? { html: params.html } : {}),
-    });
-  } catch (err) {
-    result = {
-      ok: false,
-      transport: "smtp",
-      error: err instanceof Error ? err.message : "bilinmeyen hata",
-    };
+}): Promise<void> {
+  if (params.audience.emails.length === 0 && params.audience.userIds.length === 0) {
+    return;
   }
+
+  const results = await broadcast(params.audience, params.message);
+  const attempted = results.filter((r) => !r.skipped);
+  // Tek kanal bile geçtiyse duyuru yapılmış sayılıyor: e-postası düşen ama
+  // telefonuna düşen bir bildirim, "başarısız" diye kaydedilmemeli.
+  const ok = attempted.length === 0 || attempted.some((r) => r.ok);
 
   await recordAudit({
     // Nobody clicked "send" — the system did, as a consequence of a committed
     // change. The entity/entityId below is what makes the line meaningful.
     actor: { id: null, email: "sistem", role: null },
-    action: result.ok ? "NOTIFICATION_SENT" : "NOTIFICATION_FAILED",
+    action: ok ? "NOTIFICATION_SENT" : "NOTIFICATION_FAILED",
     summary: params.summary,
     entity: params.entity,
     entityId: params.entityId,
     meta: {
-      to: params.to,
-      transport: result.transport,
-      ...(result.error ? { error: result.error } : {}),
+      event: params.event,
+      to: params.audience.emails,
+      userCount: params.audience.userIds.length,
+      channels: results.map((r) => ({
+        channel: r.channel,
+        ok: r.ok,
+        transport: r.transport,
+        ...(r.skipped ? { skipped: true } : {}),
+        ...(r.error ? { error: r.error } : {}),
+      })),
     },
   }).catch(() => {
     // The audit trail is best-effort here too: a notification must not be able
     // to fail a request by failing to log that it failed.
   });
-
-  return result;
 }
 
 /**
@@ -174,12 +214,6 @@ export async function notifyOrderPlaced(orderId: string): Promise<void> {
   const needsApproval =
     order.status === "PENDING_APPROVAL" || order.status === "PENDING_CREDIT";
 
-  const to = recipients(
-    ...audience.emails,
-    order.createdBy.email,
-    needsApproval ? null : audience.salesRepEmail,
-  );
-
   const mail = orderPlacedMail({
     orderNumber: order.orderNumber,
     companyName: audience.name,
@@ -189,29 +223,40 @@ export async function notifyOrderPlaced(orderId: string): Promise<void> {
     link: appUrl(`/orders/${orderId}`),
   });
 
-  await deliver({
-    to,
-    ...mail,
+  // Telefona düşen kısım siparişi **girenden** başkasına gidiyor: kendi
+  // yaptığın işi sana bildiren bir uygulama, bir hafta sonra bildirimleri
+  // kapattırır. E-posta tarafında siparişi giren listede kalıyor — o bir
+  // makbuz, bir uyarı değil.
+  //
+  // Onay bekleyen bir sipariş firma yöneticisinin işi; canlıya geçmiş bir
+  // sipariş plasiyerin haberi.
+  const phoneSide = audienceFor(
+    "ORDER_PLACED",
+    [...audience.members, needsApproval ? null : audience.salesRep],
+    [],
+  );
+  const mailSide = audienceFor(
+    "ORDER_PLACED",
+    [...audience.members, needsApproval ? null : audience.salesRep],
+    [audience.companyEmail, order.createdBy.email],
+  );
+
+  await announce({
+    event: "ORDER_PLACED",
+    audience: {
+      emails: mailSide.emails,
+      userIds: phoneSide.userIds.filter((id) => id !== order.createdById),
+    },
+    message: {
+      ...mail,
+      subject: needsApproval ? "Onay bekleyen sipariş" : "Yeni sipariş",
+      short: `${audience.name} · ${order.orderNumber} · ${formatTotal(order.grandTotal)}`,
+      route: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
+    },
     entity: "Order",
     entityId: orderId,
     summary: `Sipariş bildirimi: ${order.orderNumber}`,
   });
-
-  // Telefona düşen kısım siparişi **girenden** başkasına gidiyor: kendi
-  // yaptığın işi sana bildiren bir uygulama, bir hafta sonra bildirimleri
-  // kapattırır. Onay bekleyen bir sipariş firma yöneticisinin işi; canlıya
-  // geçmiş bir sipariş plasiyerin haberi.
-  await sendPush(
-    [
-      ...audience.memberIds,
-      ...(needsApproval ? [] : [audience.salesRepId ?? ""]),
-    ].filter((id) => id && id !== order.createdById),
-    {
-      title: needsApproval ? "Onay bekleyen sipariş" : "Yeni sipariş",
-      body: `${audience.name} · ${order.orderNumber} · ${formatTotal(order.grandTotal)}`,
-      data: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
-    },
-  );
 }
 
 /** Bildirim metni için kısa tutar. Kuruş, iki satırlık bir bildirimde yer kaplar. */
@@ -254,8 +299,6 @@ export async function notifyOrderStatusChanged(
   if (!order) return;
 
   const audience = await companyAudience(order.companyId);
-  const to = recipients(...audience.emails, order.createdBy.email);
-
   const mail = orderStatusMail({
     orderNumber: order.orderNumber,
     status: orderStatusLabel(status),
@@ -263,21 +306,31 @@ export async function notifyOrderStatusChanged(
     link: appUrl(`/orders/${orderId}`),
   });
 
-  await deliver({
-    to,
-    ...mail,
-    entity: "Order",
-    entityId: orderId,
-    summary: `Sipariş durum bildirimi: ${order.orderNumber} → ${status}`,
-  });
-
   // Durum değişimi siparişi girenin beklediği haber — onaylandı mı, yola çıktı
   // mı. Firma yöneticileri de listede: onay kendilerinde olmasa bile firmanın
   // siparişinin reddedildiğini duymaları gerekiyor.
-  await sendPush([order.createdById, ...audience.memberIds], {
-    title: `Sipariş ${orderStatusLabel(status).toLocaleLowerCase("tr")}`,
-    body: `${order.orderNumber}${note ? ` · ${note}` : ""}`,
-    data: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
+  const buyer = await prisma.user.findUnique({
+    where: { id: order.createdById },
+    select: { id: true, email: true, mutedNotifications: true },
+  });
+  const target = audienceFor(
+    "ORDER_STATUS",
+    [...audience.members, buyer ? { ...buyer, muted: buyer.mutedNotifications } : null],
+    [audience.companyEmail],
+  );
+
+  await announce({
+    event: "ORDER_STATUS",
+    audience: target,
+    message: {
+      ...mail,
+      subject: `Sipariş ${orderStatusLabel(status).toLocaleLowerCase("tr")}`,
+      short: `${order.orderNumber}${note ? ` · ${note}` : ""}`,
+      route: { screen: "OrderDetail", orderId, orderNumber: order.orderNumber },
+    },
+    entity: "Order",
+    entityId: orderId,
+    summary: `Sipariş durum bildirimi: ${order.orderNumber} → ${status}`,
   });
 }
 
@@ -297,8 +350,6 @@ export async function notifyInvoiceIssued(invoiceId: string): Promise<void> {
   if (!invoice) return;
 
   const audience = await companyAudience(invoice.companyId);
-  const to = recipients(...audience.emails, invoice.order.createdBy.email);
-
   const mail = invoiceIssuedMail({
     documentNumber: invoice.documentNumber,
     orderNumber: invoice.order.orderNumber,
@@ -307,9 +358,21 @@ export async function notifyInvoiceIssued(invoiceId: string): Promise<void> {
     link: appUrl(`/documents/invoices/${invoiceId}`),
   });
 
-  await deliver({
-    to,
-    ...mail,
+  // Fatura bir ödeme saati başlatıyor; susturulabilir ama varsayılanı açık.
+  const target = audienceFor(
+    "INVOICE_ISSUED",
+    audience.members,
+    [audience.companyEmail, invoice.order.createdBy.email],
+  );
+
+  await announce({
+    event: "INVOICE_ISSUED",
+    audience: target,
+    message: {
+      ...mail,
+      short: `${invoice.documentNumber} · ${formatTotal(invoice.grandTotal)}`,
+      route: { screen: "OrderDetail", orderId: invoice.orderId, orderNumber: invoice.order.orderNumber },
+    },
     entity: "Invoice",
     entityId: invoiceId,
     summary: `Fatura bildirimi: ${invoice.documentNumber}`,

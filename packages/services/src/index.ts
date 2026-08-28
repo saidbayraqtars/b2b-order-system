@@ -12,6 +12,7 @@ export * from "./reconciliation";
 export * from "./collection-worklist";
 export * from "./commission";
 export * from "./promotion-simulation";
+export * from "./notification-channel";
 export * from "./order-quote";
 export * from "./document-series";
 export * from "./shipment";
