@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
+import { listShipmentLots } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { assertShipmentVisible } from "@/lib/order-access";
 import {
@@ -17,6 +18,19 @@ const ALL_ROLES = [
 
 function trDate(d: Date): string {
   return d.toLocaleDateString("tr-TR");
+}
+
+/** Parti satırı: "P-2411 (SKT 12.03.2027) · 24 adet". */
+function lotLabel(lot: {
+  code: string | null;
+  expiryDate: string | null;
+  quantity: number;
+}): string {
+  const head = lot.code ?? "parti girilmemiş";
+  const skt = lot.expiryDate
+    ? ` (SKT ${trDate(new Date(lot.expiryDate))})`
+    : "";
+  return `${head}${skt} · ${lot.quantity} adet`;
 }
 
 export default async function ShipmentDocumentPage({
@@ -70,6 +84,19 @@ export default async function ShipmentDocumentPage({
   });
   if (!shipment) notFound();
 
+  // Parti dökümü **basılıyor**, deftere gidip aranmıyor: geri çağırmada
+  // aranacak tek kâğıt bu, ve "hangi SKT'li mal kime gitti" sorusunun cevabı
+  // müşterinin elindeki nüshada da durmalı.
+  //
+  // Sipariş başına değil irsaliye başına: parça parça sevk edilen bir siparişin
+  // bütün partilerini ilk irsaliyeye basmak, depoda duran malı teslim edilmiş
+  // göstermek olurdu (bkz. `listShipmentLots`).
+  const lotLines = await listShipmentLots(params.id);
+  const lotsByItem = new Map(lotLines.map((l) => [l.shipmentItemId, l.lots]));
+  const anyLots = lotLines.some((l) =>
+    l.lots.some((lot) => lot.code !== null),
+  );
+
   const address = shipment.order.shippingAddress;
 
   return (
@@ -115,16 +142,28 @@ export default async function ShipmentDocumentPage({
           </tr>
         </thead>
         <tbody>
-          {shipment.items.map((i) => (
-            <tr key={i.id} className="border-b border-neutral-200">
-              <td className="py-2">{i.orderItem.productName}</td>
-              <td className="py-2 text-neutral-500">{i.orderItem.sku}</td>
-              <td className="py-2 text-right tabular-nums">{i.quantity}</td>
-              <td className="py-2 text-right tabular-nums text-neutral-500">
-                {i.orderItem.quantity}
-              </td>
-            </tr>
-          ))}
+          {shipment.items.map((i) => {
+            const lots = (lotsByItem.get(i.id) ?? []).filter(
+              (lot) => lot.code !== null,
+            );
+            return (
+              <tr key={i.id} className="border-b border-neutral-200">
+                <td className="py-2">
+                  {i.orderItem.productName}
+                  {lots.length > 0 && (
+                    <span className="block text-xs text-neutral-500">
+                      Parti: {lots.map(lotLabel).join(" · ")}
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 text-neutral-500">{i.orderItem.sku}</td>
+                <td className="py-2 text-right tabular-nums">{i.quantity}</td>
+                <td className="py-2 text-right tabular-nums text-neutral-500">
+                  {i.orderItem.quantity}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -145,6 +184,13 @@ export default async function ShipmentDocumentPage({
           />
         )}
       </section>
+
+      {anyLots && (
+        <p className="mt-3 text-xs text-neutral-500">
+          Parti ve son kullanma tarihleri sevk sırasına göre yazılmıştır. Parti
+          takibi olmayan kalemlerde satır boş kalır.
+        </p>
+      )}
 
       {shipment.note && (
         <p className="mt-6 border-t border-neutral-200 pt-3 text-neutral-600">

@@ -443,6 +443,193 @@ export async function listOrderLots(orderId: string): Promise<OrderLotLine[]> {
   }));
 }
 
+/**
+ * Bir **irsaliyenin** parti dökümü — kâğıda basılan hâli.
+ *
+ * `listOrderLots` siparişin tamamını veriyor ve irsaliyeye o basılamaz: bir
+ * sipariş parça parça sevk edilebiliyor ve siparişin bütün partilerini ilk
+ * irsaliyeye basmak, depoda duran malı da müşteriye teslim edilmiş göstermek
+ * olurdu. İkinci irsaliye de aynı partileri ikinci kez yazardı.
+ *
+ * Parti seçimi **sipariş anında** yapılıyor (FEFO), sevk anında değil — stok da
+ * o an düşüyor, yoksa aynı son kutu iki müşteriye satılırdı. Yani irsaliye
+ * başına bir parti kaydı yok, ve uydurulacak da değil: bu fonksiyon siparişin
+ * ayırdığı partileri **sevk sırasına göre** bölüştürüyor. Aynı siparişin daha
+ * önce çıkmış irsaliyelerinin tükettiği adet atlanıyor, kalanın başından bu
+ * irsaliyenin adedi kadarı alınıyor. Fiziksel gerçekle aynı: FEFO sırasındaki
+ * ilk kutu ilk kamyona biniyor.
+ *
+ * Sıra `shippedAt`, eşitlikte `createdAt`, onda da eşitlikte `id`: iki irsaliye
+ * aynı saniyede kesilirse bile bölüşüm her çağrıda aynı çıkmalı, yoksa aynı
+ * kâğıt iki kez basıldığında iki farklı parti yazardı.
+ *
+ * Ayrılmış parti, sevk edilen adedi karşılamıyorsa kalan adet `lotCode: null`
+ * ile dönüyor — "partisi girilmemiş mal" gerçek bir durum (parti takibi kapalı
+ * kalemler, eski bakiye) ve kâğıtta boş görünmesi, olmayan bir partiyi
+ * yazmaktan iyi.
+ */
+export interface ShipmentLotLine {
+  shipmentItemId: string;
+  sku: string;
+  productName: string;
+  /** Sevk edilen adet — satırın toplamı. */
+  quantity: number;
+  lots: Array<{ code: string | null; expiryDate: string | null; quantity: number }>;
+}
+
+export async function listShipmentLots(
+  shipmentId: string,
+): Promise<ShipmentLotLine[]> {
+  const shipment = await prisma.shipment.findUnique({
+    where: { id: shipmentId },
+    select: {
+      orderId: true,
+      shippedAt: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          quantity: true,
+          orderItem: {
+            select: {
+              variantId: true,
+              sku: true,
+              productName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!shipment) return [];
+
+  // Aynı siparişin **daha önceki** irsaliyeleri: variant başına kaç adet
+  // gitmişti. Bu irsaliye o adetlerin bittiği yerden başlıyor.
+  const earlier = await prisma.shipment.findMany({
+    where: { orderId: shipment.orderId },
+    orderBy: [{ shippedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      shippedAt: true,
+      createdAt: true,
+      items: {
+        select: { quantity: true, orderItem: { select: { variantId: true } } },
+      },
+    },
+  });
+
+  const consumed = new Map<string, number>();
+  for (const s of earlier) {
+    if (s.id === shipmentId) break;
+    for (const item of s.items) {
+      const key = item.orderItem.variantId;
+      consumed.set(key, (consumed.get(key) ?? 0) + item.quantity);
+    }
+  }
+
+  // Siparişin parti ayrımı. Ters kaydı olan çıkışlar dışarıda: iptal edilip
+  // geri verilmiş bir parti sevk edilmedi.
+  const outs = await prisma.stockMovement.findMany({
+    where: {
+      orderId: shipment.orderId,
+      source: "ORDER",
+      direction: "OUT",
+      reversedBy: null,
+    },
+    orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+    select: {
+      variantId: true,
+      quantity: true,
+      lot: { select: { code: true, expiryDate: true } },
+    },
+  });
+
+  const byVariant = new Map<
+    string,
+    Array<{ code: string | null; expiryDate: string | null; quantity: number }>
+  >();
+  for (const out of outs) {
+    const list = byVariant.get(out.variantId) ?? [];
+    list.push({
+      code: out.lot?.code ?? null,
+      expiryDate: out.lot?.expiryDate?.toISOString() ?? null,
+      quantity: out.quantity,
+    });
+    byVariant.set(out.variantId, list);
+  }
+
+  return shipment.items.map((item) => {
+    const variantId = item.orderItem.variantId;
+    const lots = takeSlice(
+      byVariant.get(variantId) ?? [],
+      consumed.get(variantId) ?? 0,
+      item.quantity,
+    );
+    return {
+      shipmentItemId: item.id,
+      sku: item.orderItem.sku,
+      productName: item.orderItem.productName,
+      quantity: item.quantity,
+      lots,
+    };
+  });
+}
+
+/**
+ * Ayrım listesinden `skip` adet atla, `take` adet al.
+ *
+ * Bir parti iki irsaliye arasında bölünebiliyor — 40 adetlik partinin 25'i ilk
+ * kamyona, 15'i ikinciye. Bu yüzden atlanan/alınan **adet**, satır değil.
+ *
+ * Ayrım yetmezse kalan adet partisiz dönüyor: kâğıtta boş bir parti hücresi,
+ * olmayan bir parti kodundan iyi.
+ */
+function takeSlice(
+  allocations: ReadonlyArray<{
+    code: string | null;
+    expiryDate: string | null;
+    quantity: number;
+  }>,
+  skip: number,
+  take: number,
+): Array<{ code: string | null; expiryDate: string | null; quantity: number }> {
+  const out: Array<{
+    code: string | null;
+    expiryDate: string | null;
+    quantity: number;
+  }> = [];
+  let remainingSkip = skip;
+  let remainingTake = take;
+
+  for (const a of allocations) {
+    if (remainingTake <= 0) break;
+    let available = a.quantity;
+    if (remainingSkip > 0) {
+      const skipped = Math.min(remainingSkip, available);
+      remainingSkip -= skipped;
+      available -= skipped;
+      if (available === 0) continue;
+    }
+    const used = Math.min(available, remainingTake);
+    remainingTake -= used;
+    const last = out[out.length - 1];
+    // Aynı parti arka arkaya iki satır yazmışsa (aynı partiden iki kez
+    // düşülmüş) kâğıtta tek satır görünmeli.
+    if (last && last.code === a.code && last.expiryDate === a.expiryDate) {
+      last.quantity += used;
+    } else {
+      out.push({ code: a.code, expiryDate: a.expiryDate, quantity: used });
+    }
+  }
+
+  if (remainingTake > 0) {
+    const last = out[out.length - 1];
+    if (last && last.code === null) last.quantity += remainingTake;
+    else out.push({ code: null, expiryDate: null, quantity: remainingTake });
+  }
+  return out;
+}
+
 // ─────────────────────────────────────────────
 // TARİH YARDIMCILARI
 // ─────────────────────────────────────────────
