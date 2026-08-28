@@ -28,6 +28,8 @@ export interface CompanyRow {
   availableCredit: string;
   paymentTermDays: number;
   requiresOrderApproval: boolean;
+  /** Bu müşteriye özel asgari sipariş tutarı; null = genel kural, "0.00" = muaf. */
+  minOrderAmount: string | null;
   isActive: boolean;
   customerGroup: { id: string; name: string } | null;
   salesRep: { id: string; name: string } | null;
@@ -74,6 +76,7 @@ const companySelect = {
   phone: true,
   email: true,
   creditLimit: true,
+  minOrderAmount: true,
   currentBalance: true,
   paymentTermDays: true,
   requiresOrderApproval: true,
@@ -105,6 +108,7 @@ function toRow(c: CompanyPayload): CompanyRow {
     availableCredit: c.creditLimit.minus(c.currentBalance).toFixed(2),
     paymentTermDays: c.paymentTermDays,
     requiresOrderApproval: c.requiresOrderApproval,
+    minOrderAmount: c.minOrderAmount?.toFixed(2) ?? null,
     isActive: c.isActive,
     customerGroup: c.customerGroup,
     salesRep: c.salesRep,
@@ -263,6 +267,7 @@ export async function createCompany(
       email: input.email ?? null,
       phone: input.phone ?? null,
       creditLimit: input.creditLimit,
+      minOrderAmount: input.minOrderAmount ?? null,
       paymentTermDays: input.paymentTermDays,
       requiresOrderApproval: input.requiresOrderApproval,
       isActive: input.isActive,
@@ -305,6 +310,11 @@ export async function updateCompany(
       ...(input.email !== undefined ? { email: input.email ?? null } : {}),
       ...(input.phone !== undefined ? { phone: input.phone ?? null } : {}),
       ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
+      // `null` gönderilebiliyor ve anlamı var ("genel kural"), o yüzden
+      // `undefined` kontrolü — `??` ile yazılırsa boşaltmak imkânsızlaşır.
+      ...(input.minOrderAmount !== undefined
+        ? { minOrderAmount: input.minOrderAmount }
+        : {}),
       ...(input.paymentTermDays !== undefined
         ? { paymentTermDays: input.paymentTermDays }
         : {}),

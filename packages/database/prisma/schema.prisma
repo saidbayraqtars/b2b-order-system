@@ -72,6 +72,20 @@ enum FieldEntrySource {
   WEB
 }
 
+/// Siparişin hangi **kanaldan** girildiği.
+///
+/// `FieldEntrySource` ile aynı üyeler ama ayrı bir tür: o, saha kaydının
+/// nereden geldiğini söylüyor ve ikisi ayrı ayrı büyüyebilir (siparişe bir gün
+/// telefon ya da ERP eklenir, ziyarete eklenmez).
+///
+/// **Kim** girdi sorusunun cevabı burada değil, `Order.createdBy.role`da:
+/// aynı bilgiyi iki kolona yazmak, ikisinin bir gün birbirini yalanlaması
+/// demek. Rapor kırılımı ikisini çaprazlıyor — "mobilden, plasiyer eliyle".
+enum OrderSource {
+  WEB
+  MOBILE
+}
+
 enum DiscountType {
   PERCENTAGE
   FIXED
@@ -228,6 +242,7 @@ model User {
   returnsRequested      ReturnRequest[]      @relation("ReturnRequestedBy")
   returnsDecided        ReturnRequest[]      @relation("ReturnDecidedBy")
   applicationsDecided   DealerApplication[]  @relation("DealerApplicationDecidedBy")
+  orderPolicyEdits      OrderPolicy[]        @relation("OrderPolicyUpdatedBy")
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
   originApplication     DealerApplication?   @relation("DealerApplicationUser")
 
@@ -302,6 +317,14 @@ model Company {
   /// one cari without touching the ladder everyone else is on.
   volumeTierId String?
   volumeTier   VolumeTier? @relation(fields: [volumeTierId], references: [id])
+
+  /// Bu müşteri için asgari sipariş tutarı (net mal bedeli, ₺).
+  ///
+  /// **null = genel kural** (`OrderPolicy.minOrderAmount`). Sıfır ise bu
+  /// müşteriye asgari uygulanmıyor demek — yani "muaf" ile "genel kural"
+  /// birbirinden ayrılabiliyor. Sözleşmeyle muaf tutulan bayi, genel eşik
+  /// yükseldiğinde kendiliğinden etkilenmemeli.
+  minOrderAmount Decimal? @db.Decimal(14, 2)
 
   // If true, COMPANY_STAFF orders go to PENDING_APPROVAL before credit check.
   requiresOrderApproval Boolean @default(false)
@@ -1248,6 +1271,47 @@ model PromotionRedemption {
 // ORDER
 // ─────────────────────────────────────────────
 
+/// Sipariş kabul kuralları — tek satırlık ayar tablosu.
+///
+/// Neden veritabanı, neden `tenant.json` değil: kiracı dosyası **elle
+/// düzenlenen** bir destek birimi ve ekranda salt okunur duruyor. Asgari tutar
+/// ve kesim saati ise ticari politika — müşterinin kendi yöneticisi dosyaya
+/// erişmeden değiştirebilmeli. Kimlik dosyada, politika burada.
+///
+/// Tek satır: `id` sabit `"singleton"`. İkinci bir satır "hangi kural
+/// geçerli" sorusunu doğurur ve o sorunun iyi bir cevabı yok.
+model OrderPolicy {
+  id String @id @default("singleton")
+
+  /// Asgari sipariş tutarı — **net mal bedeli**, KDV ve navlun hariç.
+  ///
+  /// KDV dahil olsaydı eşik, oran değiştiğinde kendiliğinden oynardı; navlun
+  /// dahil olsaydı uzak müşteri aynı malla eşiği geçer, yakın müşteri geçmezdi.
+  /// Hacim iskontosunun ciro tanımıyla da aynı taban (bkz. volume-discount).
+  /// 0 = asgari yok.
+  minOrderAmount Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Asgari koli adedi. Tutardan ayrı bir kapı: toptancının sevkiyat maliyeti
+  /// paraya değil hacme bağlı. İkisi birden doluysa **ikisi de** sağlanmalı.
+  /// 0 = koli şartı yok.
+  minOrderCases Int @default(0)
+
+  /// Sevkiyat kesim saati (0-23, kurulumun saat diliminde).
+  ///
+  /// **Engel değil, söz.** 16:01'de gelen siparişi reddetmek iş kaybı; ekran
+  /// yalnızca "yarın çıkar" diyor. null = söz verilmiyor, ekranda hiçbir şey
+  /// yazmıyor.
+  cutoffHour Int?
+
+  /// Cumartesi sevkiyat var mı — kesim saati hesabında iş günü sayılır.
+  /// Pazar her hâlükârda kapalı; iki ayrı bayrak yapmanın karşılığı yok.
+  shipsOnSaturday Boolean @default(false)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("OrderPolicyUpdatedBy", fields: [updatedById], references: [id])
+}
+
 model Order {
   id            String        @id @default(cuid())
   orderNumber   String        @unique // human-readable serial
@@ -1306,6 +1370,11 @@ model Order {
   couponCode String?
 
   note String?
+
+  /// Hangi kanaldan girildi. **Sunucu karar veriyor**, istemci söylemiyor:
+  /// tarayıcı kendini telefon ilan edemez (bkz. `requestChannel`, ziyaret
+  /// kaydındaki kuralın aynısı).
+  source OrderSource @default(WEB)
 
   // Fulfillment (set as the order moves through PROCESSING → SHIPPED → DELIVERED)
   carrier        String?

@@ -52,6 +52,13 @@ export const createCompanySchema = z.object({
   // "USD" işaretlemek hiçbir hesabı değiştirmiyordu, yalnız ekstre belgesine
   // yanlış bir satır bastırıyordu. Yabancı para **liste fiyatının** özelliği.
   requiresOrderApproval: z.boolean().default(false),
+  /**
+   * Bu müşteriye özel asgari sipariş tutarı — **null = genel kural**, 0 = muaf.
+   *
+   * İkisinin ayrı olması gerekiyor: sözleşmeyle muaf tutulmuş bir bayi, genel
+   * eşik yükseldiğinde kendiliğinden etkilenmemeli.
+   */
+  minOrderAmount: money.nullable().optional(),
   isActive: z.boolean().default(true),
   customerGroupId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
   salesRepId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
@@ -79,6 +86,8 @@ export const updateCompanySchema = z
     creditLimit: money.optional(),
     paymentTermDays: z.coerce.number().int().min(0).max(365).optional(),
     requiresOrderApproval: z.boolean().optional(),
+    /** Nullable: boşaltmak "genel kural geçerli" demek, 0 ise "muaf". */
+    minOrderAmount: money.nullable().optional(),
     isActive: z.boolean().optional(),
     customerGroupId: z.string().cuid().nullable().optional(),
     salesRepId: z.string().cuid().nullable().optional(),

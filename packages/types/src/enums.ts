@@ -285,6 +285,20 @@ export const LABEL_TEMPLATE_KIND_LABELS: Record<LabelTemplateKind, string> = {
 export const FieldEntrySourceEnum = z.enum(["MOBILE", "WEB"]);
 export type FieldEntrySource = z.infer<typeof FieldEntrySourceEnum>;
 
+/**
+ * Siparişin hangi kanaldan girildiği.
+ *
+ * `FieldEntrySource` ile aynı üyeler, ayrı tür: ikisi ayrı ayrı büyüyebilir.
+ * **Kim** girdi sorusu burada değil, `Order.createdBy.role`da.
+ */
+export const OrderSourceEnum = z.enum(["WEB", "MOBILE"]);
+export type OrderSource = z.infer<typeof OrderSourceEnum>;
+
+export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
+  WEB: "Web",
+  MOBILE: "Mobil",
+};
+
 export const DiscountTypeEnum = z.enum(["PERCENTAGE", "FIXED"]);
 export type DiscountType = z.infer<typeof DiscountTypeEnum>;
 

@@ -5,6 +5,7 @@ export * from "./catalog";
 export * from "./order";
 export * from "./order-approval";
 export * from "./order-lifecycle";
+export * from "./order-policy";
 export * from "./order-quote";
 export * from "./document-series";
 export * from "./shipment";

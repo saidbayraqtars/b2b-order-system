@@ -406,6 +406,11 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   NOT_CASE_MULTIPLE: 422,
   INSUFFICIENT_STOCK: 409,
   EMPTY_ORDER: 422,
+  // Sipariş kabul kuralları. Asgarinin altı 422: istek biçimsel olarak
+  // doğru, iş kuralı reddediyor — MOQ ve koli katı ile aynı aile.
+  BELOW_MINIMUM_ORDER: 422,
+  INVALID_MINIMUM: 422,
+  INVALID_CUTOFF: 422,
   FORBIDDEN_APPROVAL: 403,
   INVALID_STATE: 409,
   CHECKIN_NOT_FOUND: 404,

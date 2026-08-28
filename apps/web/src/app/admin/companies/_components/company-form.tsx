@@ -39,6 +39,8 @@ export interface CompanyFormValues {
   phone: string;
   creditLimit: string;
   paymentTermDays: string;
+  /** Boş dize = genel kural geçerli; "0" = bu müşteri muaf. */
+  minOrderAmount: string;
   requiresOrderApproval: boolean;
   isActive: boolean;
   customerGroupId: string;
@@ -66,6 +68,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       phone: "",
       creditLimit: "0",
       paymentTermDays: "0",
+      minOrderAmount: "",
       requiresOrderApproval: false,
       isActive: true,
       customerGroupId: "",
@@ -129,6 +132,11 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         phone: v.phone || (editing ? null : undefined),
         creditLimit: Number(v.creditLimit || 0),
         paymentTermDays: Number(v.paymentTermDays || 0),
+        // Boş bırakmak `null` gönderiyor: "genel kural geçerli". 0 yazmak
+        // muafiyet — ikisi ayrı şey ve kutu boşken 0 göndermek, genel eşik
+        // yükseldiğinde bu firmayı sessizce muaf bırakırdı.
+        minOrderAmount:
+          v.minOrderAmount.trim() === "" ? null : Number(v.minOrderAmount),
         requiresOrderApproval: v.requiresOrderApproval,
         isActive: v.isActive,
         customerGroupId: v.customerGroupId || (editing ? null : undefined),
@@ -221,6 +229,19 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             max={365}
             value={v.paymentTermDays}
             onChange={(e) => set("paymentTermDays", e.target.value)}
+          />
+        </label>
+        <label>
+          <Label hint="boş = genel kural, 0 = muaf">
+            Asgari sipariş (₺)
+          </Label>
+          <TextInput
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="genel kural"
+            value={v.minOrderAmount}
+            onChange={(e) => set("minOrderAmount", e.target.value)}
           />
         </label>
         {/* Firma para birimi alanı kaldırıldı: defter TL ve buraya "USD"

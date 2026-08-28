@@ -1,6 +1,13 @@
 import { Prisma, prisma } from "@repo/database";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
+import {
+  checkMinimum,
+  despatchPromise,
+  getOrderPolicy,
+  type DespatchPromise,
+  type MinimumCheck,
+} from "./order-policy";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
 import { createsReceivable, resolvePaymentTerm } from "./payment-terms";
@@ -88,6 +95,8 @@ export interface QuoteCompany {
   requiresOrderApproval: boolean;
   customerGroupId: string | null;
   paymentTermDays: number;
+  /** Bu müşteriye özel asgari; null = genel kural, 0 = muaf. */
+  minOrderAmount: Money | null;
 }
 
 /** The settlement the quote was priced under, already validated for this customer. */
@@ -129,6 +138,16 @@ export interface OrderQuote {
    * name it, the way a campaign line names itself.
    */
   volumeDiscount: (ResolvedVolumeDiscount & { amount: Money }) | null;
+  /**
+   * Asgari sipariş kontrolü — **hesap, karar değil.**
+   *
+   * Teklif bunu fırlatmıyor, döndürüyor: sepet paneli "eşiğe 340 ₺ kaldı"
+   * diyebilmeli ve bunu bir hatadan okumak zorunda kalmamalı. Kapıyı sipariş
+   * yaratma adımı kapatıyor ve yalnızca alıcı tarafına (`isSeller` değilken).
+   */
+  minimum: MinimumCheck;
+  /** Bu sipariş hangi gün çıkar — kesim saati tanımlıysa. */
+  despatch: DespatchPromise;
 }
 
 /**
@@ -146,6 +165,10 @@ export async function buildQuote(
     throw new BusinessError("EMPTY_ORDER", "Sepet boş olamaz");
   }
 
+  // Kurallar teklifin başında okunuyor: asgari hesabı sonda yapılıyor ama
+  // sorgu burada, firma satırıyla aynı turda.
+  const policy = await getOrderPolicy();
+
   const company = await client.company.findUnique({
     where: { id: input.companyId },
     select: {
@@ -155,6 +178,7 @@ export async function buildQuote(
       requiresOrderApproval: true,
       customerGroupId: true,
       paymentTermDays: true,
+      minOrderAmount: true,
       allowedPaymentMethods: true,
       volumeDiscountMode: true,
       volumeTierId: true,
@@ -420,6 +444,7 @@ export async function buildQuote(
       requiresOrderApproval: company.requiresOrderApproval,
       customerGroupId: company.customerGroupId,
       paymentTermDays: company.paymentTermDays,
+      minOrderAmount: company.minOrderAmount,
     },
     terms: {
       method: resolvedTerm.method,
@@ -430,6 +455,15 @@ export async function buildQuote(
     volumeDiscount: volumeDiscount
       ? { ...volumeDiscount, amount: round2(volumeTotal) }
       : null,
+    // Asgari **net mal bedeline** bakıyor: `subtotal` iskontolardan önceki
+    // tutar ve KDV'siz. Kampanya hediyesi satırları zaten sıfır net, kendi
+    // kendine dışarıda kalıyor.
+    minimum: checkMinimum(policy, {
+      netGoods: round2(subtotal.sub(discountTotal).sub(promotionTotal)),
+      caseCounts: lines.map((l) => l.caseCount),
+      companyMinimum: company.minOrderAmount,
+    }),
+    despatch: despatchPromise(policy),
   };
 }
 
@@ -609,6 +643,13 @@ export interface OrderQuoteView {
    * not subtract it again.
    */
   volumeDiscount: { tierName: string; percent: string; amount: string } | null;
+  /**
+   * Asgari sipariş durumu. Panel bunu bir hatadan değil, sayıdan okuyor:
+   * "eşiğe 340 ₺ kaldı" diyebilmek için eksiğin kendisi gerekiyor.
+   */
+  minimum: MinimumCheck;
+  /** Bu sipariş hangi gün çıkar; `cutoffHour` null ise ekran bir şey yazmıyor. */
+  despatch: DespatchPromise;
 }
 
 /** Price a cart for the portal without touching stock, orders or the ledger. */
@@ -655,5 +696,7 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
           amount: quote.volumeDiscount.amount.toFixed(2),
         }
       : null,
+    minimum: quote.minimum,
+    despatch: quote.despatch,
   };
 }

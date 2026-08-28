@@ -581,6 +581,15 @@ export const SCREENS = [
     path: "/admin/reports?bolum=alacak",
   },
 
+  // ── Adım 15 — sipariş kuralları ─────────────────────────────────────────
+  {
+    step: 15,
+    slug: "siparis-kurallari",
+    label: "Sipariş kuralları — asgari ve kesim saati",
+    as: "admin",
+    path: "/admin/siparis-kurallari",
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:

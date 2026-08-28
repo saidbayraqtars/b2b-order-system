@@ -180,6 +180,15 @@ görüntüleri `docs/design/screens/` altında.
 - **Cari borç** yalnızca `CONFIRMED` + açık hesapta yazılır — bekleyen siparişler onay anında borçlanır.
 - Sipariş numarası `ORD-YYYYMMDD-NNNN`, yarış durumunda 2 kez yeniden dener.
 - Tamamı tek transaction içinde — stok, borç ve bakiye asla birbirinden ayrışmaz.
+- **Sipariş kanalı** (`Order.source`): `WEB` / `MOBILE`, sunucunun taşıdığı kimlikten okunuyor — istemci kendi kanalını ilan edemez. Rapor tasarımcısında "Kanal" olarak gruplanabiliyor; **kim** girdiği ayrı eksen (`createdBy.role`).
+
+### Sipariş kabul kuralları (`/admin/siparis-kurallari`)
+
+- **Asgari sipariş tutarı ve koli adedi.** Taban **net mal bedeli** — KDV ve navlun hariç, hacim iskontosunun ciro tanımıyla aynı. İkisi de doluysa ikisi de gerekiyor.
+- **Alıcıyı bağlar, satıcıyı bağlamaz:** plasiyer ve yönetici eşiğin altında sipariş geçebilir.
+- **Firma başına istisna** (`Company.minOrderAmount`): boş = genel kural, `0` = muaf. İkisi ayrı şey — muaf bayi, genel eşik yükseldiğinde etkilenmiyor.
+- Teklif eksiği **hesaplıyor**, fırlatmıyor: sepet "4.000,00 ₺ daha ekleyin" diyebiliyor ve sipariş düğmesi kapanıyor.
+- **Sevkiyat kesim saati** engel değil söz: kesimden sonraki sipariş reddedilmiyor, sepette hangi gün çıkacağı yazıyor. Pazar her zaman kapalı, cumartesi ayara bağlı.
 
 ### Onay akışı
 

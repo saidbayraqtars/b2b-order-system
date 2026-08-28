@@ -56,6 +56,7 @@ export const PermissionEnum = z.enum([
   "cash.manage",
   "payment_terms.manage",
   "volume_tiers.manage",
+  "order_policy.manage",
   "payments.view",
   "cheques.manage",
   // belge & rapor
@@ -107,6 +108,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "cash.manage": "Kasa hareketi işle",
   "payment_terms.manage": "Vadeleri yönet",
   "volume_tiers.manage": "Hacim iskontosunu yönet",
+  "order_policy.manage": "Sipariş kabul kurallarını yönet",
   "payments.view": "Kart tahsilatlarını görüntüle",
   "cheques.manage": "Çek/senet portföyünü yönet",
   "documents.view": "Belgeleri görüntüle",
@@ -141,6 +143,8 @@ export const PERMISSION_HINTS: Partial<Record<Permission, string>> = {
   "audit.view": "Giriş denemeleri, reddedilen istekler, yetki değişiklikleri",
   "audit.manage": "Kaydı dosya olarak indirir ve saklama süresini uygular — geri alınamaz",
   "reports.build": "Kendi rapor tanımını kurar; satırlar zaten kendi kapsamıyla sınırlı",
+  "order_policy.manage":
+    "Asgari sipariş tutarı/kolisi ve sevkiyat kesim saati. Asgari **alıcıyı** bağlar; plasiyer ve yönetici eşiğin altında sipariş geçebilir",
   "analytics.view":
     "Büyüme, kârlılık ve nakit göstergeleri. **Maliyet ve marj bu ekranda** — `costPrice` müşteriye gösterilmiyor, plasiyere de gösterilmemeli",
   "jobs.manage":
@@ -209,6 +213,7 @@ export const PERMISSION_GROUPS: ReadonlyArray<{
       "cheques.manage",
       "payment_terms.manage",
       "volume_tiers.manage",
+      "order_policy.manage",
     ],
   },
   {
@@ -447,6 +452,7 @@ export const PERMISSION_SCOPE: Record<Permission, readonly RoleFamily[]> = {
   "cash.manage": ["SELLER", "FIELD"],
   "payment_terms.manage": ["SELLER"],
   "volume_tiers.manage": ["SELLER"],
+  "order_policy.manage": ["SELLER"],
   "payments.view": ["SELLER"],
   // Portföy satıcının alacağı. Saha çek *toplar* (tahsilat kaydı) ama kâğıdın
   // tahsile verilmesi, karşılıksız işaretlenmesi ve ciro edilmesi ofisin işi:

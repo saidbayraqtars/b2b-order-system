@@ -14,7 +14,14 @@ import { useCart, cartTotals } from "@/store/cart";
 import { formatTRY } from "@/lib/format";
 import { CurrencyNote } from "@/components/currency-note";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { Button, ErrorLine, Label, Select, TextInput } from "@/components/form";
+import {
+  Button,
+  ErrorLine,
+  Label,
+  Select,
+  TextInput,
+  WarnLine,
+} from "@/components/form";
 import { LoadingState } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -358,12 +365,43 @@ export function CartPanel({ companyId }: { companyId: string }) {
               )}
             </div>
 
+            {/* Asgari sipariş — **eksik kadarıyla**.
+                "Asgari tutarın altındasınız" diyen bir uyarı, sepete ne
+                ekleyeceğini bilmeyen bir müşteri bırakıyor; eksiği rakamla
+                söylemek onu bir sonraki adıma götürüyor. Düğme de kapanıyor:
+                sunucu zaten reddedecek ve reddi tıklamadan sonra görmek,
+                sepeti kapattığını sanan müşteriyi geri döndürüyor. */}
+            {priced && !q.minimum.ok && (
+              <WarnLine>
+                {[
+                  Number(q.minimum.amountShortfall) > 0 &&
+                    `${formatTRY(Number(q.minimum.requiredAmount))} asgari tutar için ${formatTRY(Number(q.minimum.amountShortfall))} daha ekleyin`,
+                  q.minimum.casesShortfall > 0 &&
+                    `${q.minimum.requiredCases} koli asgari için ${q.minimum.casesShortfall} koli daha ekleyin`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </WarnLine>
+            )}
+
+            {/* Sevkiyat sözü. Kesim saati tanımlı değilse hiçbir şey yazmıyor —
+                söz verilmeyen bir gün, verilmiş gibi görünmemeli. */}
+            {priced && q.despatch.cutoffHour !== null && (
+              <p className="text-xs text-ink-faint">
+                {q.despatch.sameDay
+                  ? `${String(q.despatch.cutoffHour).padStart(2, "0")}:00'a kadar verilen siparişler bugün çıkar.`
+                  : `Sevkiyat ${new Date(`${q.despatch.despatchDate}T00:00:00`).toLocaleDateString("tr-TR", { day: "2-digit", month: "long", weekday: "long" })} günü.`}
+              </p>
+            )}
+
             <ErrorLine error={mutation.error} />
 
             <Button
               className="w-full"
               loading={mutation.isPending}
-              disabled={quote.isError || quote.isLoading}
+              disabled={
+                quote.isError || quote.isLoading || (priced && !q.minimum.ok)
+              }
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Gönderiliyor…" : "Siparişi oluştur"}

@@ -5,6 +5,7 @@ import {
   CashMovementSourceEnum,
   CURRENCIES,
   FieldEntrySourceEnum,
+  OrderSourceEnum,
   PaymentMethodEnum,
   StockDirectionEnum,
   StockMovementSourceEnum,
@@ -137,6 +138,7 @@ const ORDER_STATUSES = [
 ] as const;
 
 const PAYMENT_METHODS = PaymentMethodEnum.options;
+const ORDER_SOURCES = OrderSourceEnum.options;
 const TRANSACTION_TYPES = ["DEBIT", "CREDIT"] as const;
 const CASH_DIRECTIONS = CashDirectionEnum.options;
 const CASH_SOURCES = CashMovementSourceEnum.options;
@@ -258,6 +260,16 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         path: "paymentMethod",
         groupable: true,
         enumValues: PAYMENT_METHODS,
+      },
+      // Kanal kırılımı. "Kim girdi" ise `createdBy` üzerinden zaten
+      // gruplanabiliyor; ikisini çaprazlamak "mobilden, plasiyer eliyle"
+      // sorusunu cevaplıyor.
+      source: {
+        label: "Kanal",
+        type: "enum",
+        path: "source",
+        groupable: true,
+        enumValues: ORDER_SOURCES,
       },
       volumeTierName: text("Hacim basamağı", "volumeTierName", true),
       volumeDiscountPercent: {

@@ -11,6 +11,11 @@ export type BusinessErrorCode =
   | "NOT_CASE_MULTIPLE"
   | "INSUFFICIENT_STOCK"
   | "EMPTY_ORDER"
+  // ── sipariş kabul kuralları ──
+  /** Sepet asgari tutarın/kolinin altında. Yalnızca alıcı tarafında doğuyor. */
+  | "BELOW_MINIMUM_ORDER"
+  | "INVALID_MINIMUM"
+  | "INVALID_CUTOFF"
   | "FORBIDDEN_APPROVAL"
   | "INVALID_STATE"
   | "CHECKIN_NOT_FOUND"

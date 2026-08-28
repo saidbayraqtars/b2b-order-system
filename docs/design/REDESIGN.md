@@ -818,6 +818,39 @@ imza ve uygulama satırların tamamından çıkıyor.
 
 Gerekçe ve sunucu tarafı `docs/KALAN-ISLER.md` §5.1'de.
 
+### ✔ Adım 15 — Sipariş kuralları (bitti)
+
+Yeni ekran: **`/admin/siparis-kurallari`** (Finans grubunda, `order_policy.manage`).
+İki panel, iki ayrı soru — tek panelde alt alta dursalardı tek bir kural gibi
+okunurlardı:
+
+- **Asgari sipariş**: tutar (net mal bedeli) ve koli adedi. İkisi de doluysa
+  ikisi de gerekiyor.
+- **Sevkiyat kesim saati**: saat + "cumartesi sevkiyat var".
+
+Her iki panelin altında kuralın **düz cümleyle okunuşu** duruyor ve girilen
+rakamla birlikte değişiyor ("Bayi en az 5.000,00 ₺ ve 3 koli sipariş vermeden
+sepeti kapatamıyor"). İki sayı kutusuna bakıp ne olacağını çıkarmak, cümleyi
+okumaktan zor.
+
+Sepet tarafında iki ekleme:
+
+- Eşiğin altındaki sepet **eksiği rakamla** söylüyor ("5.000,00 ₺ asgari tutar
+  için 4.000,00 ₺ daha ekleyin") ve sipariş düğmesi kapanıyor. "Asgari tutarın
+  altındasınız" diyen bir uyarı, sepete ne ekleyeceğini bilmeyen bir müşteri
+  bırakırdı; reddi tıklamadan sonra göstermek ise sepeti kapattığını sanan
+  müşteriyi geri döndürürdü.
+- Kesim saati tanımlıysa sevkiyat günü yazıyor. Tanımlı değilse **hiçbir şey**
+  yazmıyor: söz verilmeyen bir gün, verilmiş gibi görünmemeli.
+
+Firma sayfasına da bir alan geldi: **asgari sipariş (₺)**, ipucu "boş = genel
+kural, 0 = muaf".
+
+Ekran görüntüsü: `adim-15/siparis-kurallari.png`.
+
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 352 + 616
+geçti, `next build` başarılı.
+
 ### ✔ Adım 14 — Arayüz artıkları (bitti)
 
 Beş küçük madde ve bir bulgu. Hepsi tek tek küçük, ama beşi de aynı şeyi

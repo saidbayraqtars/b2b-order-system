@@ -345,15 +345,52 @@ Sektörde plasiyer primle çalışır ve prim **iki tabandan** hesaplanır: ciro
 Sipariş, tahsilat ve plasiyer bağı zaten kayıtlı. Kural motoru gerekmiyor:
 oran + taban + dönem + (opsiyonel) hedefe bağlı çarpan.
 
-### 5.5–5.9 Ucuz olanlar
+### 5.5, 5.6, 5.9 ~~Asgari sipariş · kesim saati · sipariş kanalı~~ ✔ (2026-08-28)
 
-| Fikir                             | Durum | Neden                                                                                                    |
-| --------------------------------- | ----- | -------------------------------------------------------------------------------------------------------- |
-| **Minimum sipariş tutarı/koli**   | yok   | Toptanda standart. Firma başına ya da genel; tek alan + sepette tek kontrol                              |
-| **Sipariş kesim saati (cut-off)** | yok   | Gıda toptanında "16:00'dan sonrası yarına". Sevkiyat planını o belirliyor                                |
-| **Zamanlı fiyat değişimi**        | yok   | "1 Eylül'den itibaren zam". `Price`'ta `validFrom` yok; `Job` zamanlayıcı hazır                          |
-| **Backorder / bekleyen bakiye**   | yok   | Kısmi sevkiyat var (`quantityShipped`), ama "40 koli bekliyor, mal gelince sevk et" takibi yok           |
-| **`Order.source`**                | yok   | Sipariş web'den mi, mobilden mi, plasiyerden mi geldi — tek enum alanı, sonrası rapor kırılımında bedava |
+Üçü tek turda, çünkü üçü de sipariş **alınırken** cevaplanan sorular.
+
+**Asgari sipariş** (`OrderPolicy.minOrderAmount` + `minOrderCases`, firma başına
+`Company.minOrderAmount`). Dört karar:
+
+1. **Taban net mal bedeli** — KDV ve navlun hariç. KDV dahil olsaydı eşik oran
+   değiştiğinde kendiliğinden oynardı; navlun dahil olsaydı uzak müşteri aynı
+   malla eşiği geçer, yakın müşteri geçmezdi. Hacim iskontosunun ciro tanımıyla
+   aynı taban.
+2. **Alıcıyı bağlar, satıcıyı bağlamaz.** Plasiyer ve yönetici eşiğin altında
+   sipariş geçebilir — pazarlık onların işi. Vade kuralının aynası, ters yönde.
+3. **Firma kolonunda `null` ile `0` ayrı şeyler**: `null` = genel kural,
+   `0` = muaf. Sözleşmeyle muaf tutulan bayi, genel eşik yükseldiğinde
+   kendiliğinden etkilenmemeli.
+4. **Teklif fırlatmıyor, hesaplıyor.** `quoteOrder` eksiği döndürüyor, kapıyı
+   sipariş yaratma adımı kapatıyor — sepet "340 ₺ daha ekleyin" diyebilsin.
+
+**Kesim saati** (`OrderPolicy.cutoffHour` + `shipsOnSaturday`). **Engel değil,
+söz**: 16:01'de gelen siparişi reddetmek iş kaybı, ekran yalnızca hangi gün
+çıkacağını yazıyor. Gün ilerletme UTC gün sayısı üzerinden — yerel takvimde bir
+gün eklemek yaz saati geçişinde 23 ya da 25 saat sürüyor. Pazar her zaman
+kapalı; iki ayrı bayrak yapmanın karşılığı yok.
+
+**Sipariş kanalı** (`Order.source`, `WEB | MOBILE`). Sunucu karar veriyor,
+istemci söylemiyor — ziyaret kaydındaki kuralın aynısı. **Kim** girdiği burada
+değil, `createdBy.role`da: aynı bilgiyi iki kolona yazmak, ikisinin bir gün
+birbirini yalanlaması demek. Rapor tasarımcısında "Kanal" alanı olarak
+gruplanabiliyor; iki eksen çaprazlanınca "mobilden, plasiyer eliyle" sorusu
+cevaplanıyor.
+
+Ayarlar **veritabanında**, `tenant.json`da değil: kiracı dosyası elle düzenlenen
+bir destek birimi ve ekranda salt okunur. Ticari politikayı müşterinin kendi
+yöneticisi dosyaya erişmeden değiştirebilmeli — kimlik dosyada, politika
+veritabanında.
+
+13 test (`packages/services/test/integration/order-policy.test.ts`); altısı saf
+kesim saati hesabı (cuma akşamı → pazartesi, cumartesi açık/kapalı, pazar).
+
+### 5.7, 5.8 Kalan ucuzlar
+
+| Fikir                        | Durum | Neden                                                                                            |
+| ---------------------------- | ----- | ------------------------------------------------------------------------------------------------ |
+| **Zamanlı fiyat değişimi**   | yok   | "1 Eylül'den itibaren zam". `Price`'ta `validFrom` yok; `Job` zamanlayıcı hazır                  |
+| **Backorder / bekleyen bakiye** | yok | Kısmi sevkiyat var (`quantityShipped`), ama "40 koli bekliyor, mal gelince sevk et" takibi yok |
 
 ### 5.10 Kampanya simülatörü
 

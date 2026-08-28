@@ -1,5 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
-import type { CreateOrderInput, OrderStatus, Role } from "@repo/types";
+import type { CreateOrderInput, OrderSource, OrderStatus, Role } from "@repo/types";
 import { postOrderCashIn } from "./cash";
 import { BusinessError } from "./errors";
 import { Dec } from "./money";
@@ -7,12 +7,19 @@ import { buildQuote } from "./order-quote";
 import { recordStatusChange } from "./order-lifecycle";
 import { openIntentForOrder } from "./payment-intent";
 import { requiresPaymentIntent } from "./payment-terms";
+import { assertMinimum } from "./order-policy";
 import { recordRedemptions } from "./promotion";
 import { recordOrderStockOut } from "./stock-ledger";
 
 export interface CreateOrderContext {
   createdById: string;
   createdByRole: Role;
+  /**
+   * Hangi kanaldan geldi. **Sunucu karar veriyor** — istemcinin gönderdiği bir
+   * alan değil, taşıdığı kimlikten okunuyor (bkz. `requestChannel`). Varsayılan
+   * `WEB`: kanalı söylemeyen bir çağrı tarayıcıdan geliyor demek.
+   */
+  source?: OrderSource;
 }
 
 export interface CreateOrderResult {
@@ -104,6 +111,14 @@ async function buildOrder(
   const { company, subtotal, discountTotal, promotionTotal, taxTotal, grandTotal } =
     quote;
 
+  // Asgari sipariş kapısı — **yalnızca alıcı tarafında.**
+  //
+  // Plasiyer ve yönetici pazarlık ediyor: sahada "bu sefer yarım koli
+  // gönderelim" diyebilen kişi sistemin de aynısını demesini bekliyor. Vade
+  // kuralının aynası, ters yönde: orada alıcı kendi vadesini uyduramıyordu,
+  // burada satıcı eşiği geçebiliyor.
+  if (!isSeller) assertMinimum(quote.minimum);
+
   const itemsData: Prisma.OrderItemCreateWithoutOrderInput[] = quote.lines.map(
     (l) => ({
       variant: { connect: { id: l.variantId } },
@@ -172,6 +187,7 @@ async function buildOrder(
         ? { shippingAddress: { connect: { id: input.shippingAddressId } } }
         : {}),
       note: input.note ?? null,
+      source: ctx.source ?? "WEB",
       couponCode: quote.coupon,
       subtotal,
       discountTotal,

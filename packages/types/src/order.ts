@@ -37,6 +37,20 @@ export const createOrderSchema = z.object({
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
+/**
+ * Sipariş kabul kuralları.
+ *
+ * `cutoffHour` null gönderilebilir ve bu "söz verme" demek — 0 ile null ayrı
+ * şeyler: 0 gece yarısı kesim, null hiç kesim yok.
+ */
+export const saveOrderPolicySchema = z.object({
+  minOrderAmount: z.number().min(0).max(10_000_000),
+  minOrderCases: z.number().int().min(0).max(10_000),
+  cutoffHour: z.number().int().min(0).max(23).nullable(),
+  shipsOnSaturday: z.boolean(),
+});
+export type SaveOrderPolicyInput = z.infer<typeof saveOrderPolicySchema>;
+
 export const recordPaymentSchema = z.object({
   companyId: z.string().cuid(),
   amount: z.number().positive(),

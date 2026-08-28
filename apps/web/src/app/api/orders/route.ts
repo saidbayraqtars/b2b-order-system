@@ -7,7 +7,12 @@ import {
   notifyOrderPlaced,
 } from "@repo/services";
 import { createOrderSchema, OrderStatusEnum } from "@repo/types";
-import { InputError, requireUser, withAuthErrors } from "@/lib/guard";
+import {
+  InputError,
+  requestChannel,
+  requireUser,
+  withAuthErrors,
+} from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
 
 const ALL_BUYERS = [
@@ -32,9 +37,14 @@ export function POST(req: NextRequest) {
     // Authorize the target company for this caller.
     await resolveCompanyId(user, input.companyId);
 
+    // Kanal burada belirleniyor, gövdede değil: bir tarayıcı kendini telefon
+    // ilan edemez. Ziyaret kaydındaki kuralın aynısı.
+    const channel = await requestChannel();
+
     const result = await createOrder(input, {
       createdById: user.id,
       createdByRole: user.role,
+      source: channel === "mobile" ? "MOBILE" : "WEB",
     });
     // The basket has become an order; leaving it full invites the same order
     // twice from the second tab. Cleared here rather than in the browser so it
