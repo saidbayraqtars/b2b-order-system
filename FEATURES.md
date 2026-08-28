@@ -225,6 +225,12 @@ görüntüleri `docs/design/screens/` altında.
 - Borcu aşan tahsilat negatif borç olarak değil, **mahsup edilmemiş alacak (avans)** olarak raporlanır.
 - **CSV dışa aktarım:** noktalı virgül ayraç + virgüllü ondalık + UTF-8 BOM — Türkçe Excel sihirbaz sormadan açar.
 
+### Kampanya simülatörü (`/admin/promotions?bolum=simulasyon`)
+
+- Bir kampanyayı **geçmiş siparişlerde kuru kuruya** çalıştırır: ne kadar indirim verirdi, kaç siparişe uygulanırdı, cironun yüzde kaçı. Kapalı kampanya da denenebilir.
+- **Hiçbir şey yazmaz**: kullanım kaydı açılmaz, sipariş tutarları değişmez.
+- Satır neti kampanya öncesine geri sarılır (`lineTotal + promotionDiscount`); kotalar zaman sırasında tükenir; `FIRST_ORDER` koşulu o günkü sipariş sayısına bakar.
+
 ### Plasiyer primi (`/admin/prim`)
 
 - **Plan = taban + oran + dönem + hedef çarpanı.** Kural motoru yok. İki taban ayrı plan: **ciro** (net mal bedeli, hacim iskontosuyla aynı tanım) ve **tahsilat** (defterin alacak satırları). Bir plasiyere iki plan birden atanabilir.

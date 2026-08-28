@@ -873,7 +873,13 @@ göstermenin karşılığı yok. Cevaplanmamış mektup yoksa panel **hiç
 Ekran görüntüleri: `adim-15/siparis-kurallari.png`,
 `adim-15/zamanli-fiyatlar.png`, `adim-15/bekleyen-bakiye.png`,
 `adim-15/mutabakat.png`, `adim-15/mutabakat-portal.png`,
-`adim-15/tahsilat-listesi.png`, `adim-15/plasiyer-primi.png`.
+`adim-15/tahsilat-listesi.png`, `adim-15/plasiyer-primi.png`,
+`adim-15/kampanya-simulasyon.png`.
+
+**Kampanya ekranı ikiye ayrıldı** (`?bolum=tanimlar` / `?bolum=simulasyon`).
+Simülatör ayrı bir sayfaya konmadı: oranı yazan kişi sonucunu aynı ekranda
+görebilmeli. Simülasyonun kendi süzgeçleri de adreste — sonuç bir yöneticiye
+"şuna bak" diye gönderilebilmeli.
 
 **Prim ekranı** planları ve hakedişi yan yana gösteriyor. Ayrı sayfalara koymak,
 oranı değiştiren kişinin sonucunu göremediği bir düzen olurdu.
@@ -884,7 +890,7 @@ ekranı açan plasiyerin sorusu "hangi firma" değil, "bugün kimi arayacağım"
 Seçici altında duruyor ve orada kalıyor, çünkü listede olmayan bir cariye de
 tahsilat girilebilmeli.
 
-Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 360 + 642
+Doğrulama: `tsc --noEmit` temiz, `next lint` temiz, `vitest run` 360 + 646
 geçti, `next build` başarılı.
 
 ### ✔ Adım 14 — Arayüz artıkları (bitti)

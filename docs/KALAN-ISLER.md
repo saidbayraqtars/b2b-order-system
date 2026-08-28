@@ -495,12 +495,35 @@ Sıralama tutara değil **süreye** göre: bekleyen bakiyede en eski borç en ü
 
 5 test (`packages/services/test/integration/backorder.test.ts`).
 
-### 5.10 Kampanya simülatörü
+### 5.10 ~~Kampanya simülatörü~~ ✔ (2026-08-28)
 
-_"Bu kampanyayı açsaydım geçen ayki siparişlerde ne kadar indirim verirdim?"_
+`/admin/promotions?bolum=simulasyon` — _"bu kampanyayı açsaydım geçen ayki
+siparişlerde ne kadar indirim verirdim?"_
 
-Promosyon motoru **ve** sipariş geçmişi ikisi de var; motoru geçmiş siparişlere
-kuru kuruya koşturmak yetiyor. Pahalı bir hatayı yayına almadan yakalar.
+Motor **ve** sipariş geçmişi zaten vardı; eksik olan tek şey ikisini bir araya
+getirmekti. Pahalı bir hatayı yayına almadan yakalıyor: %20'lik bir kampanya
+tanımlayıp "bir deneyelim" demek, geçen ayın cirosunun beşte birini kaybetmeyi
+göze almak demek.
+
+**Hiçbir şey yazmıyor** — kuru koşu. `PromotionRedemption` açılmıyor, sipariş
+tutarları değişmiyor; test bunu satır satır doğruluyor. Uç `GET`, çünkü sonuç
+paylaşılabilir bir adres olarak durabilmeli.
+
+Üç ayrıntı sonucu gerçekçi kılıyor:
+
+1. **Satır neti kampanya öncesine geri sarılıyor.** `lineTotal` kayıtlı
+   kampanyanın indirimini zaten düşmüş; `lineTotal + promotionDiscount` motorun
+   beklediği taban. Geri sarılmasaydı indirim ikinci kez uygulanırdı.
+2. **Kotalar zaman sırasında tükeniyor.** Kullanım limiti olan bir kampanya
+   gerçekte de ilk gelen siparişlere uygulanırdı; simülasyon eskiden yeniye
+   yürüyor ve kotaya takılanları ayrıca sayıyor.
+3. **`previousOrderCount` o günkü değeriyle.** "İlk sipariş" koşulu, bugün otuz
+   siparişi olan bir müşterinin ilk siparişinde de doğruydu.
+
+Sonuç **tek kampanyanın tek başına** ne vereceğidir; aynı anda çalışacak iki
+kampanyanın birleşik etkisi bundan farklı olur ve ekran bunu yazıyor.
+
+4 test (`packages/services/test/integration/promotion-simulation.test.ts`).
 
 ### 5.11 WhatsApp bildirim kanalı
 

@@ -638,6 +638,32 @@ export const SCREENS = [
     path: "/admin/prim",
   },
 
+  {
+    step: 15,
+    slug: "kampanya-simulasyon",
+    label: "Kampanya simülatörü — kuru koşu",
+    as: "admin",
+    path: async (db) => {
+      // Kuponlu kampanya: gösterim verisinde geçen ayın siparişlerine
+      // gerçekten uygulanan tek kampanya, yani sonucu dolu bir ekran veriyor.
+      // Ad yazılmıyor (`reportId` deseninin aksine) çünkü kupon **tek**.
+      const row =
+        (await db.promotion.findFirst({
+          where: { code: { not: null } },
+          select: { id: true },
+        })) ?? (await db.promotion.findFirst({ select: { id: true } }));
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      const iso = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return (
+        row &&
+        `/admin/promotions?bolum=simulasyon&kampanya=${row.id}&baslangic=${iso(start)}&bitis=${iso(end)}`
+      );
+    },
+  },
+
   // ── Adım 14 — arayüz artıkları ──────────────────────────────────────────
   //
   // Bu adımın çektiği şey yeni bir ekran değil, **adreslenebilir bir durum**:
