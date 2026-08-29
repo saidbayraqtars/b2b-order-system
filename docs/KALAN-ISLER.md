@@ -700,12 +700,35 @@ Aynı turda bulunan iki sahte gösterge kaldırıldı:
   "aylık ortalama +45.826 TL büyüme" diyordu. Serinin başındaki boş aylar artık
   atılıyor — işin başlamadığı ay bir veri noktası değil.
 
-### 6.3 Vega sorusu — hâlâ açık
+### 6.3 ~~Vega sorusu~~ ✔ cevaplandı (2026-08-28) — iş hâlâ yapılmadı
 
-Kullanıcı _"Vega'nın rapor sistemi gibi"_ demişti. **Vega'nın rapor ekranları
-depoda yok** ve hangi raporun karşılığının istendiği bilinmiyor. Uydurulmadı:
-yukarıdaki liste sektör standardı bir yönetici panosu. Vega'ya özgü bir rapor
-isteniyorsa kullanıcıdan ekran görüntüsü ya da rapor adı gerekiyor.
+Kullanıcı _"Vega'nın rapor sistemi gibi"_ demişti ve hangi rapor olduğu
+bilinmiyordu; uydurulmadı, pano sektör standardı göstergelerle kuruldu.
+
+**2026-08-28'de kullanıcı söyledi: kastedilen şey
+`C:\Users\saidb\Desktop\projeler\vega_sorgu` projesi.** Aynı oturumda
+"bu pencere üzerinden ilerlemeyeceğim" dedi, yani **karşılaştırma yapılmadı ve
+kod yazılmadı** — bu bir sonraki sohbetin işi.
+
+SQL Server'daki Arctos/Vega ERP'ye bağlanan localhost dashboard'u. Firma +
+dönem seçiliyor (`F{firma}D{dönem}` tablo şablonu), günlük nakit / visa /
+çek-senet hareketleri gösteriliyor. Dokuz rapor sayfası
+(`client/src/pages/`):
+
+`Home` · `SonIslemler` · `CariKartlar` · `BankaHareket` · `BankaRaporlari` ·
+`CekRaporlari` · `SenetPortfoy` · `VisaRaporlari` · **`SatisKarlilik`**
+
+İlk iş, bu dokuzun b2b'de hangisinin zaten karşılandığını çıkarmak olmalı —
+çek/senet portföyü (Adım 41), banka/kasa defteri (Adım 27) ve cari kartlar
+zaten var; eksik görünen `SatisKarlilik`.
+
+⚠ **`vega_sorgu/README.md`'deki izahat kodu haritası bayat ve yanlış.** Aynı
+depodaki `client/src/constants/izahat.js` onu düzeltiyor ve gerekçesini
+yazıyor: canlı DB'de (F0101 D0017) ampirik eşleştirilmiş, ve
+"21-24 = Çek/Senet, 13/14 = Visa" haritası **yanlışmış** — çek/senet kendi
+tablolarında (`TBLCEK*` / `TBLSENET*`). Kaynak olarak `izahat.js` alınmalı, ve
+§6.3'ün açık kalan bir yan işi olarak Vega Kılavuzu'ndaki eşleme bilgisi bu
+dosyaya karşı bir kez doğrulanmalı.
 
 ### 6.4 Kalanlar
 
@@ -852,6 +875,7 @@ kapandı. Kalanlar, bağımlılık ve maliyet/etki sırasıyla — söz değil, 
 9. **§3.2 ERP'ye canlı yazma denemesi** — ⚠ gözetim gerektiriyor (§7).
 10. **§3.3 sanal POS adaptörü ve iOS** — dış bağımlılık.
 
-**Vega sorusu hâlâ açık** (§6.3): "Vega'nın rapor sistemi gibi" denen şeyin
-hangi rapor olduğu bilinmiyor. Uydurulmadı; ekran görüntüsü ya da rapor adı
-gerekiyor.
+**Vega sorusu cevaplandı, işi yapılmadı** (§6.3): kastedilen şey
+`projeler/vega_sorgu` dashboard'u — dokuz rapor sayfası. Kullanıcı bu turda
+ilerlemek istemedi. İlk adım, o dokuzun hangisinin b2b'de zaten karşılandığını
+çıkarmak; eksik görünen `SatisKarlilik`.
