@@ -30,6 +30,7 @@ export const ANALYTICS_SECTIONS = [
   "buyume",
   "musteri",
   "urun",
+  "karlilik",
   "nakit",
   "gidisat",
 ] as const;
@@ -41,6 +42,7 @@ export const ANALYTICS_SECTION_LABELS: Record<AnalyticsSection, string> = {
   buyume: "Büyüme",
   musteri: "Müşteri",
   urun: "Ürün & stok",
+  karlilik: "Kârlılık",
   nakit: "Nakit & alacak",
   gidisat: "Gidişat",
 };

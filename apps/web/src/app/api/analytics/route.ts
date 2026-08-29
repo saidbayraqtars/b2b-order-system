@@ -13,20 +13,28 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // GET /api/analytics?bolum= — yönetici panosunun tek ucu.
 //
 // Bölüm bazlı, çünkü ekranın sekmesi de bölüm bazlı: açılan sekmenin verisi
-// iniyor, altı bölümün hepsi değil. "Durum" ve "gidişat" canlı sorgudan,
-// diğer dördü gecelik özetten geliyor ve cevabın içinde **ne zaman
+// iniyor, yedi bölümün hepsi değil. "Durum" ve "gidişat" canlı sorgudan,
+// diğer beşi gecelik özetten geliyor ve cevabın içinde **ne zaman
 // hesaplandığı** da var — bayat olabilecek bir sayının yanında o tarih
 // yazmadan gösterilmesi §6.5'in ihlali olurdu.
 //
 // İzin `analytics.view`, rol değil: maliyet ve marj bu ekranda ve `costPrice`
 // müşteriye gösterilmiyor, plasiyere de gösterilmemeli.
 
-type Section = "durum" | "buyume" | "musteri" | "urun" | "nakit" | "gidisat";
+type Section =
+  | "durum"
+  | "buyume"
+  | "musteri"
+  | "urun"
+  | "karlilik"
+  | "nakit"
+  | "gidisat";
 
 const SNAPSHOT_KEY: Partial<Record<Section, keyof AnalyticsSnapshotPayload>> = {
   buyume: "growth",
   musteri: "customers",
   urun: "products",
+  karlilik: "margin",
   nakit: "cash",
 };
 

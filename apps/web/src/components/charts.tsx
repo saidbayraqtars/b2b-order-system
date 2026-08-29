@@ -281,7 +281,11 @@ export function Waterfall({
             <p className="truncate text-xs tabular-nums text-ink-faint">
               {c.delta === null
                 ? format(i === 0 ? start.value : end.value)
-                : `${c.delta >= 0 ? "+" : "−"}${format(Math.abs(c.delta))}`}
+                : // Sıfır adım işaretsiz: `-0 >= 0` doğru olduğu için "+₺0,00"
+                  // yazılıyordu ve o, para **eklendiğini** söyleyen bir cümle.
+                  c.delta === 0
+                  ? format(0)
+                  : `${c.delta > 0 ? "+" : "−"}${format(Math.abs(c.delta))}`}
             </p>
           </div>
         ))}

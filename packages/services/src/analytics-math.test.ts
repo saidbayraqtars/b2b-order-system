@@ -8,6 +8,9 @@ import {
   dayKeyUtc,
   dso,
   inventoryTurnover,
+  marginBridge,
+  marginPct,
+  marginRanking,
   median,
   monthEndProjection,
   movingAverage,
@@ -286,5 +289,106 @@ describe("ortanca", () => {
 
   it("boş dizide null", () => {
     expect(median([])).toBeNull();
+  });
+});
+
+describe("kârlılık", () => {
+  const full = {
+    listValue: 1000,
+    companyDiscount: 60,
+    volumeDiscount: 30,
+    promotionDiscount: 10,
+    netRevenue: 900,
+    cost: 630,
+    coveredRevenue: 900,
+  };
+
+  it("köprü liste bedelinden brüt kâra kapanıyor", () => {
+    const b = marginBridge(full);
+    const spent = b.steps.reduce((a, s) => a + s.amount, 0);
+    expect(b.listValue - spent).toBeCloseTo(b.netRevenue);
+    expect(b.netRevenue - b.cost).toBeCloseTo(b.grossProfit);
+    expect(b.discountTotal).toBeCloseTo(100);
+    expect(b.discountSharePct).toBeCloseTo(10);
+  });
+
+  it("üç iskonto kalemi ayrı duruyor", () => {
+    // Tek "iskonto" satırına toplansaydı hangisinin pahalı olduğu görünmezdi;
+    // üçünün sahibi ayrı (anlaşma, kural, karar) ve ayrı kısılıyorlar.
+    expect(marginBridge(full).steps.map((s) => [s.key, s.amount])).toEqual([
+      ["company", 60],
+      ["volume", 30],
+      ["promotion", 10],
+    ]);
+  });
+
+  it("maliyet kapsamı eşiğin altındaysa marj yazılmıyor", () => {
+    // Maliyetsiz varyantın maliyeti sıfır sayılıyor: kapsam düştükçe marj
+    // yukarı şişer. Burada gerçek marj %30, kapsamsız hesap %70 derdi.
+    const thin = marginPct(900, 270, 300);
+    expect(thin.ok).toBe(false);
+    if (!thin.ok) expect(thin.reason).toContain("alış fiyatı");
+  });
+
+  it("eşiğin üstünde marj net ciro üzerinden", () => {
+    const m = marginPct(900, 630, 900);
+    expect(m.ok).toBe(true);
+    if (m.ok) expect(m.value).toBeCloseTo(30);
+  });
+
+  it("ciro yokken marj sıfır değil, yok", () => {
+    const m = marginPct(0, 0, 0);
+    expect(m.ok).toBe(false);
+  });
+
+  const row = (
+    key: string,
+    netRevenue: number,
+    cost: number,
+    orderCount: number,
+    coveredRevenue = netRevenue,
+  ) => ({
+    key,
+    label: key,
+    listValue: netRevenue * 1.2,
+    discountTotal: netRevenue * 0.2,
+    netRevenue,
+    cost,
+    coveredRevenue,
+    orderCount,
+  });
+
+  it("üçten az siparişli satır sıralamaya girmiyor", () => {
+    const out = marginRanking([
+      row("çok", 1000, 700, 5),
+      row("tek", 100, 10, 1),
+    ]);
+    expect(out.rows.map((r) => r.key)).toEqual(["çok"]);
+    expect(out.excluded).toBe(1);
+  });
+
+  it("sıralama marja göre, tutara göre değil", () => {
+    // Büyük müşteri kârlı müşteri değil: tutara göre dizmek tam olarak o
+    // yanılgıyı üretiyor.
+    const out = marginRanking([
+      row("büyük", 100_000, 95_000, 20),
+      row("küçük", 5_000, 2_500, 4),
+    ]);
+    expect(out.rows.map((r) => r.key)).toEqual(["küçük", "büyük"]);
+  });
+
+  it("kapsamı olmayan satır dibe değil sona yazılıyor", () => {
+    // `null`u sıfır sayıp en alta koymak "bu firma zarar ettiriyor" derdi.
+    const out = marginRanking([
+      row("kapsamsız", 10_000, 1_000, 6, 1_000),
+      row("zayıf", 10_000, 9_500, 6),
+    ]);
+    expect(out.rows.map((r) => r.key)).toEqual(["zayıf", "kapsamsız"]);
+    expect(out.rows[1]!.marginPct).toBeNull();
+  });
+
+  it("iskonto oranı liste bedelinin payı", () => {
+    const out = marginRanking([row("a", 1000, 500, 3)]);
+    expect(out.rows[0]!.discountPct).toBeCloseTo((200 / 1200) * 100);
   });
 });

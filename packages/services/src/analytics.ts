@@ -9,6 +9,10 @@ import {
   dso,
   insufficient,
   inventoryTurnover,
+  marginBridge,
+  marginPct,
+  marginRanking,
+  MARGIN_MIN_COST_COVERAGE,
   median,
   monthEndProjection,
   movingAverage,
@@ -21,6 +25,9 @@ import {
   trimLeadingEmpty,
   yearOverYear,
   type Indicator,
+  type MarginBridge,
+  type MarginRow,
+  type MarginRowInput,
   type MonthPoint,
   type HolidayMap,
   type QuietInput,
@@ -85,16 +92,6 @@ export interface LiveStatus {
   costCoveragePct: number | null;
   variantsWithoutCost: number;
 }
-
-/**
- * Marjın yazılabilmesi için gereken maliyet kapsamı.
- *
- * Kataloğun tamamına alış fiyatı girilmemiş bir kurulumda "brüt marj %46,7"
- * cümlesi uydurmadır: maliyetsiz ürünlerin maliyeti sıfır sayılıyor ve marj
- * yukarı şişiyor. Kapsam altındaysa sayı yerine eksiğin kendisi gösteriliyor
- * (§6.5, "az veriyle yalan söyleme").
- */
-export const MARGIN_MIN_COST_COVERAGE = 60;
 
 export async function liveStatus(now = new Date()): Promise<LiveStatus> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -518,19 +515,21 @@ export interface AnalyticsSnapshotPayload {
   customers: CustomerSnapshot;
   products: ProductSnapshot;
   cash: CashSnapshot;
+  margin: MarginSnapshot;
 }
 
 /** Gecelik iş bunu çağırıyor; ekran `readSnapshot` ile okuyor. */
 export async function computeSnapshot(
   now = new Date(),
 ): Promise<AnalyticsSnapshotPayload> {
-  const [growth, customers, products, cash] = await Promise.all([
+  const [growth, customers, products, cash, margin] = await Promise.all([
     computeGrowth(now),
     computeCustomers(now),
     computeProducts(now),
     computeCash(now),
+    computeMargin(now),
   ]);
-  return { growth, customers, products, cash };
+  return { growth, customers, products, cash, margin };
 }
 
 export async function saveSnapshot(
@@ -958,6 +957,182 @@ async function computeProducts(now: Date): Promise<ProductSnapshot> {
       lastMovementAt: d.lastMovementAt?.toISOString() ?? null,
     })),
     variantsWithoutCost: await variantsWithoutCost(),
+  };
+}
+
+// ── kârlılık ────────────────────────────────────────────────────────────────
+
+/**
+ * Kârlılığın penceresi — bir yıl, ürün bölümüyle aynı sebeple.
+ *
+ * Marj mevsimlik oynuyor: ramazan öncesi iskonto artar, okul döneminde
+ * kampanya biter. Üç aylık bir pencerede "marj düştü" cümlesi çoğu zaman
+ * mevsimin kendisidir. Aylık seri yine de ayrı duruyor — trendi orada
+ * okuyacaksınız, tek sayıda değil.
+ */
+const MARGIN_WINDOW_DAYS = 365;
+
+/** Aylık marj serisinin uzunluğu. */
+const MARGIN_TREND_MONTHS = 12;
+
+/** Alış fiyatı **girilmiş** varyant: `NULL` da `0` da girilmiş sayılmıyor. */
+const HAS_COST = Prisma.sql`v."costPrice" IS NOT NULL AND v."costPrice" > 0`;
+
+export interface MarginSnapshot {
+  windowDays: number;
+  bridge: MarginBridge;
+  /** Aylık net ciro, maliyet ve marj — kapsam yetmeyen ay `null`. */
+  trend: Array<{
+    month: string;
+    netRevenue: number;
+    cost: number;
+    marginPct: number | null;
+  }>;
+  byCompany: { rows: MarginRow[]; excluded: number };
+  byCategory: { rows: MarginRow[]; excluded: number };
+  /**
+   * Plasiyer kırılımı — "kim ne kadar iskonto dağıttı".
+   *
+   * Yalnızca `SALES_REP` rolündeki kullanıcının girdiği siparişler: bayinin
+   * portaldan kendi girdiği sipariş kimsenin performansı değil.
+   */
+  byRep: { rows: MarginRow[]; excluded: number };
+}
+
+async function computeMargin(now: Date): Promise<MarginSnapshot> {
+  const windowStart = new Date(now.getTime() - MARGIN_WINDOW_DAYS * 86_400_000);
+  const trendStart = new Date(
+    now.getFullYear(),
+    now.getMonth() - MARGIN_TREND_MONTHS + 1,
+    1,
+  );
+
+  // Tek `SELECT` listesi dört sorguda da aynı: liste bedeli, üç iskonto
+  // kalemi, net, maliyet ve kapsanan ciro. Farklı olan yalnızca `GROUP BY`.
+  const totals = Prisma.sql`
+    SUM(oi."quantity" * oi."unitPrice")::float8 AS "listValue",
+    SUM(oi."quantity" * (oi."discount" - oi."volumeDiscount"))::float8 AS "companyDiscount",
+    SUM(oi."quantity" * oi."volumeDiscount")::float8 AS "volumeDiscount",
+    SUM(oi."promotionDiscount")::float8 AS "promotionDiscount",
+    SUM(oi."lineTotal")::float8 AS "netRevenue",
+    SUM(oi."quantity" * COALESCE(v."costPrice", 0))::float8 AS cost,
+    SUM(CASE WHEN ${HAS_COST} THEN oi."lineTotal" ELSE 0 END)::float8 AS "coveredRevenue"
+  `;
+
+  const [head] = await prisma.$queryRaw<
+    Array<{
+      listValue: number | null;
+      companyDiscount: number | null;
+      volumeDiscount: number | null;
+      promotionDiscount: number | null;
+      netRevenue: number | null;
+      cost: number | null;
+      coveredRevenue: number | null;
+    }>
+  >`
+    SELECT ${totals}
+    FROM "OrderItem" oi
+    JOIN "Order" o ON o."id" = oi."orderId"
+    JOIN "ProductVariant" v ON v."id" = oi."variantId"
+    WHERE ${LIVE_STATUSES} AND o."createdAt" >= ${windowStart}
+  `;
+
+  const trendRows = await prisma.$queryRaw<
+    Array<{ month: string; netRevenue: number; cost: number; coveredRevenue: number }>
+  >`
+    SELECT to_char(o."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${REPORT_TZ}, 'YYYY-MM') AS month,
+           SUM(oi."lineTotal")::float8 AS "netRevenue",
+           SUM(oi."quantity" * COALESCE(v."costPrice", 0))::float8 AS cost,
+           SUM(CASE WHEN ${HAS_COST} THEN oi."lineTotal" ELSE 0 END)::float8 AS "coveredRevenue"
+    FROM "OrderItem" oi
+    JOIN "Order" o ON o."id" = oi."orderId"
+    JOIN "ProductVariant" v ON v."id" = oi."variantId"
+    WHERE ${LIVE_STATUSES} AND o."createdAt" >= ${trendStart}
+    GROUP BY 1 ORDER BY 1
+  `;
+
+  const [companies, categories, reps] = await Promise.all([
+    prisma.$queryRaw<MarginGroupRow[]>`
+      SELECT c."id" AS key, c."name" AS label, COUNT(DISTINCT o."id") AS "orderCount", ${totals}
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o."id" = oi."orderId"
+      JOIN "ProductVariant" v ON v."id" = oi."variantId"
+      JOIN "Company" c ON c."id" = o."companyId"
+      WHERE ${LIVE_STATUSES} AND o."createdAt" >= ${windowStart}
+      GROUP BY 1, 2
+    `,
+    prisma.$queryRaw<MarginGroupRow[]>`
+      SELECT cat."id" AS key, cat."name" AS label, COUNT(DISTINCT o."id") AS "orderCount", ${totals}
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o."id" = oi."orderId"
+      JOIN "ProductVariant" v ON v."id" = oi."variantId"
+      JOIN "Product" p ON p."id" = v."productId"
+      JOIN "Category" cat ON cat."id" = p."categoryId"
+      WHERE ${LIVE_STATUSES} AND o."createdAt" >= ${windowStart}
+      GROUP BY 1, 2
+    `,
+    prisma.$queryRaw<MarginGroupRow[]>`
+      SELECT u."id" AS key, u."name" AS label, COUNT(DISTINCT o."id") AS "orderCount", ${totals}
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o."id" = oi."orderId"
+      JOIN "ProductVariant" v ON v."id" = oi."variantId"
+      JOIN "User" u ON u."id" = o."createdById"
+      WHERE ${LIVE_STATUSES} AND o."createdAt" >= ${windowStart}
+        AND u."role" = 'SALES_REP'
+      GROUP BY 1, 2
+    `,
+  ]);
+
+  return {
+    windowDays: MARGIN_WINDOW_DAYS,
+    bridge: marginBridge({
+      listValue: head?.listValue ?? 0,
+      companyDiscount: head?.companyDiscount ?? 0,
+      volumeDiscount: head?.volumeDiscount ?? 0,
+      promotionDiscount: head?.promotionDiscount ?? 0,
+      netRevenue: head?.netRevenue ?? 0,
+      cost: head?.cost ?? 0,
+      coveredRevenue: head?.coveredRevenue ?? 0,
+    }),
+    trend: trendRows.map((r) => {
+      const pct = marginPct(r.netRevenue, r.cost, r.coveredRevenue);
+      return {
+        month: r.month,
+        netRevenue: r.netRevenue,
+        cost: r.cost,
+        marginPct: pct.ok ? pct.value : null,
+      };
+    }),
+    byCompany: marginRanking(companies.map(toMarginRow)),
+    byCategory: marginRanking(categories.map(toMarginRow)),
+    byRep: marginRanking(reps.map(toMarginRow)),
+  };
+}
+
+interface MarginGroupRow {
+  key: string;
+  label: string;
+  orderCount: bigint;
+  listValue: number | null;
+  companyDiscount: number | null;
+  volumeDiscount: number | null;
+  promotionDiscount: number | null;
+  netRevenue: number | null;
+  cost: number | null;
+  coveredRevenue: number | null;
+}
+
+function toMarginRow(r: MarginGroupRow): MarginRowInput {
+  return {
+    key: r.key,
+    label: r.label,
+    listValue: r.listValue ?? 0,
+    discountTotal:
+      (r.companyDiscount ?? 0) + (r.volumeDiscount ?? 0) + (r.promotionDiscount ?? 0),
+    netRevenue: r.netRevenue ?? 0,
+    cost: r.cost ?? 0,
+    coveredRevenue: r.coveredRevenue ?? 0,
+    orderCount: Number(r.orderCount),
   };
 }
 

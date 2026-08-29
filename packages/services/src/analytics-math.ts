@@ -26,7 +26,7 @@ export type Indicator<T> =
       ok: false;
       need: number;
       have: number;
-      unit: "ay" | "sipariş" | "firma" | "kâğıt";
+      unit: "ay" | "sipariş" | "firma" | "kâğıt" | "yüzde";
       /** Sayının neden yokluğu; "az veri"den başka bir sebep varsa. */
       reason?: string;
     };
@@ -34,7 +34,7 @@ export type Indicator<T> =
 export function insufficient<T>(
   need: number,
   have: number,
-  unit: "ay" | "sipariş" | "firma" | "kâğıt",
+  unit: "ay" | "sipariş" | "firma" | "kâğıt" | "yüzde",
   reason?: string,
 ): Indicator<T> {
   return { ok: false, need, have, unit, ...(reason ? { reason } : {}) };
@@ -415,6 +415,224 @@ export function inventoryTurnover(
   if (averageStockValue <= 0 || cogs <= 0) return null;
   const turnover = cogs / averageStockValue;
   return { turnover, dioDays: 365 / turnover };
+}
+
+// ─────────────────────────────────────────────
+// KÂRLILIK
+// ─────────────────────────────────────────────
+//
+// Panonun ilk beş bölümü "ne kadar sattık" sorusunu farklı açılardan soruyor.
+// Bu bölüm başka bir soru soruyor: **satarken ne bıraktık.** Toptan gıdada
+// ciro büyürken kârın küçülmesi olağan bir kaza — iskontonun üç ayrı kaynağı
+// var (firma anlaşması, hacim merdiveni, kampanya) ve üçü aynı satırda
+// toplanınca kimse tek tek ne verdiğini görmüyor.
+
+/**
+ * Marjın yazılabilmesi için gereken maliyet kapsamı.
+ *
+ * Kataloğun tamamına alış fiyatı girilmemiş bir kurulumda "brüt marj %46,7"
+ * cümlesi uydurmadır: maliyetsiz ürünlerin maliyeti sıfır sayılıyor ve marj
+ * yukarı şişiyor. Kapsam altındaysa sayı yerine eksiğin kendisi gösteriliyor
+ * (§6.5, "az veriyle yalan söyleme").
+ */
+export const MARGIN_MIN_COST_COVERAGE = 60;
+
+/**
+ * Bir satırın (firma, kategori, plasiyer) sıralamaya girebilmesi için gereken
+ * sipariş sayısı.
+ *
+ * Tek siparişlik bir firma listenin başına da sonuna da oturabilir ve ikisi de
+ * bir şey anlatmaz: o tek siparişte verilen kampanya iskontosu, firmanın
+ * kârlılığı değil o günün kampanyasıdır. Eşiğin altındakiler sıralamadan
+ * düşüyor ve **kaç tanesinin düştüğü yazılıyor** — sessizce elenen satır,
+ * listeyi olduğundan temiz gösterir.
+ */
+export const MARGIN_MIN_ORDERS = 3;
+
+export interface MarginInput {
+  /** İskontosuz liste bedeli: adet × birim fiyat, KDV hariç. */
+  listValue: number;
+  /** Firmanın kendi anlaşmalı iskontosu (hacim merdiveni hariç). */
+  companyDiscount: number;
+  /** Hacim merdiveninin eklediği pay. */
+  volumeDiscount: number;
+  /** Kampanyaların satıra dağıtılmış payı. */
+  promotionDiscount: number;
+  /** Net mal bedeli, KDV ve navlun hariç. */
+  netRevenue: number;
+  /** Satılan malın maliyeti — alış fiyatı girilmemiş varyant sıfır sayılır. */
+  cost: number;
+  /** Net cironun alış fiyatı **girilmiş** üründen gelen kısmı. */
+  coveredRevenue: number;
+}
+
+export interface MarginStep {
+  key: "company" | "volume" | "promotion";
+  label: string;
+  amount: number;
+  /** Liste bedelinin yüzde kaçı. */
+  sharePct: number | null;
+}
+
+export interface MarginBridge {
+  listValue: number;
+  steps: MarginStep[];
+  discountTotal: number;
+  discountSharePct: number | null;
+  netRevenue: number;
+  cost: number;
+  grossProfit: number;
+  grossMarginPct: Indicator<number>;
+  costCoveragePct: number | null;
+}
+
+/** Net cironun yüzde kaçının arkasında bir alış fiyatı var. */
+export function costCoverage(
+  coveredRevenue: number,
+  netRevenue: number,
+): number | null {
+  if (netRevenue <= 0) return null;
+  return (coveredRevenue / netRevenue) * 100;
+}
+
+/**
+ * Brüt marj yüzdesi — kapsam yetmiyorsa **sayı yerine eksiğin kendisi**.
+ *
+ * Maliyetsiz varyant maliyeti sıfır sayılır; kapsam düştükçe marj yukarı
+ * şişer. Eşiğin altında bir yüzde basmak, en kolay inanılan yalanı basmak
+ * olurdu — ekranda "%78 marj" yazarken gerçeğin %31 olduğu bir kurulum,
+ * fiyat kararlarını o yalanın üstüne kurar.
+ */
+export function marginPct(
+  netRevenue: number,
+  cost: number,
+  coveredRevenue: number,
+): Indicator<number> {
+  const coverage = costCoverage(coveredRevenue, netRevenue);
+  if (netRevenue <= 0) {
+    return insufficient(1, 0, "sipariş", "dönemde net ciro yok");
+  }
+  if (coverage === null || coverage < MARGIN_MIN_COST_COVERAGE) {
+    const have = Math.round(coverage ?? 0);
+    return insufficient(
+      MARGIN_MIN_COST_COVERAGE,
+      have,
+      "yüzde",
+      `cironun yalnızca %${have}'inde alış fiyatı var; marj için en az %${MARGIN_MIN_COST_COVERAGE} gerekiyor`,
+    );
+  }
+  return ok(((netRevenue - cost) / netRevenue) * 100);
+}
+
+/**
+ * Liste bedelinden brüt kâra giden köprü.
+ *
+ * Panonun ciro köprüsünün kardeşi ve aynı işi yapıyor: toplam "net ciro
+ * 4,2 milyon" diyor, bu *hangi basamakta ne kaybedildiğini* söylüyor. Üç
+ * iskonto kalemi ayrı duruyor çünkü üçünün sahibi ayrı — firma iskontosu bir
+ * anlaşma, hacim merdiveni bir kural, kampanya bir karar; hangisinin pahalı
+ * olduğunu görmeden hiçbiri kısılamaz.
+ */
+export function marginBridge(input: MarginInput): MarginBridge {
+  const share = (amount: number): number | null =>
+    input.listValue > 0 ? (amount / input.listValue) * 100 : null;
+
+  const steps: MarginStep[] = [
+    {
+      key: "company",
+      label: "Firma iskontosu",
+      amount: input.companyDiscount,
+      sharePct: share(input.companyDiscount),
+    },
+    {
+      key: "volume",
+      label: "Hacim iskontosu",
+      amount: input.volumeDiscount,
+      sharePct: share(input.volumeDiscount),
+    },
+    {
+      key: "promotion",
+      label: "Kampanya",
+      amount: input.promotionDiscount,
+      sharePct: share(input.promotionDiscount),
+    },
+  ];
+
+  const discountTotal =
+    input.companyDiscount + input.volumeDiscount + input.promotionDiscount;
+
+  return {
+    listValue: input.listValue,
+    steps,
+    discountTotal,
+    discountSharePct: share(discountTotal),
+    netRevenue: input.netRevenue,
+    cost: input.cost,
+    grossProfit: input.netRevenue - input.cost,
+    grossMarginPct: marginPct(input.netRevenue, input.cost, input.coveredRevenue),
+    costCoveragePct: costCoverage(input.coveredRevenue, input.netRevenue),
+  };
+}
+
+export interface MarginRowInput {
+  key: string;
+  label: string;
+  listValue: number;
+  discountTotal: number;
+  netRevenue: number;
+  cost: number;
+  coveredRevenue: number;
+  orderCount: number;
+}
+
+export interface MarginRow extends MarginRowInput {
+  /** Kapsam yetersizse `null` — `marginPct` ile aynı kural. */
+  marginPct: number | null;
+  grossProfit: number;
+  /** Liste bedelinin yüzde kaçı iskonto olarak verildi. */
+  discountPct: number | null;
+}
+
+/**
+ * Kırılım sıralaması — firma, kategori ya da plasiyer, hepsi aynı fonksiyon.
+ *
+ * Sıralama ölçütü **marj yüzdesi**, brüt kâr tutarı değil: "en kârsız
+ * müşteri" sorusunun cevabı yüzdedir. Küçük ama %8 marjla çalışan bir bayi
+ * fiyat görüşmesi gerektiriyor, büyük ve %31 marjlı olan gerektirmiyor.
+ * Tutar da satırda duruyor, sıralama ölçütü olmadan.
+ */
+export function marginRanking(
+  rows: readonly MarginRowInput[],
+  minOrders = MARGIN_MIN_ORDERS,
+): { rows: MarginRow[]; excluded: number } {
+  const eligible = rows.filter((r) => r.orderCount >= minOrders && r.netRevenue > 0);
+  return {
+    rows: eligible
+      .map((r) => {
+        const coverage = costCoverage(r.coveredRevenue, r.netRevenue);
+        return {
+          ...r,
+          grossProfit: r.netRevenue - r.cost,
+          marginPct:
+            coverage !== null && coverage >= MARGIN_MIN_COST_COVERAGE
+              ? ((r.netRevenue - r.cost) / r.netRevenue) * 100
+              : null,
+          discountPct:
+            r.listValue > 0 ? (r.discountTotal / r.listValue) * 100 : null,
+        };
+      })
+      .sort((a, b) => {
+        // Kapsamı olmayan satır sıralamanın sonunda: yüzdesi yok, ve `null`u
+        // sıfır saymak "bu firma zarar ettiriyor" demek olurdu.
+        if (a.marginPct === null && b.marginPct === null) {
+          return b.netRevenue - a.netRevenue;
+        }
+        if (a.marginPct === null) return 1;
+        if (b.marginPct === null) return -1;
+        return b.marginPct - a.marginPct;
+      }),
+    excluded: rows.length - eligible.length,
+  };
 }
 
 // ─────────────────────────────────────────────

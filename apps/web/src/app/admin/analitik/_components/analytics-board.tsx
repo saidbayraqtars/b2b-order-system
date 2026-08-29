@@ -8,6 +8,7 @@ import type {
   GrowthSnapshot,
   Indicator,
   LiveStatus,
+  MarginSnapshot,
   Pace,
   ProductSnapshot,
 } from "@repo/services";
@@ -28,6 +29,7 @@ import { CashSection } from "./cash-section";
 import { CustomerSection } from "./customer-section";
 import { GrowthSection } from "./growth-section";
 import { LiveSection } from "./live-section";
+import { MarginSection } from "./margin-section";
 import { PaceSection } from "./pace-section";
 import { ProductSection } from "./product-section";
 import { Stale } from "./shared";
@@ -36,8 +38,8 @@ import { Stale } from "./shared";
 // hesaplandı" satırı.
 //
 // Sekme **URL'de** (`?bolum=`): fotoğraflanamayan ekranın doğru göründüğü
-// söylenemez ve betik düğmelere basmıyor. Ayrıca altı bölümün altısını birden
-// indirmek, açılışta altı ağır sorgu demek olurdu.
+// söylenemez ve betik düğmelere basmıyor. Ayrıca yedi bölümün yedisini birden
+// indirmek, açılışta yedi ağır sorgu demek olurdu.
 
 export type Section = AnalyticsSection;
 
@@ -176,6 +178,8 @@ function Body({
       );
     case "urun":
       return <ProductSection data={envelope.data as ProductSnapshot} />;
+    case "karlilik":
+      return <MarginSection data={envelope.data as MarginSnapshot} />;
     case "nakit":
       return <CashSection data={envelope.data as CashSnapshot} />;
     case "gidisat":
