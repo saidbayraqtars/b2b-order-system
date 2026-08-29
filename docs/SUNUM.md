@@ -5,6 +5,10 @@
 **Süre:** 18–22 dakika demo + 10 dakika soru.
 **Kural:** her ekranda **bir** cümle problem, **bir** hareket, **bir** cümle sonuç.
 
+> Toplantıdan **önce** gönderilen 4–5 dakikalık tanıtım videosunun çekim
+> senaryosu ayrı belgede: [`DEMO-VIDEO.md`](DEMO-VIDEO.md). Bu belge karşında
+> oturan müşteri için, o henüz tanışmadığın müşteri için.
+
 ---
 
 ## Müşteriye özel — sunumdan önce oku

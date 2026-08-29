@@ -11,7 +11,7 @@ Katalogdan siparişe, sevkiyattan tahsilata, cari defterden yönetici panosuna �
 ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748?logo=prisma&logoColor=white)
 ![Expo](https://img.shields.io/badge/Expo-React_Native-000?logo=expo&logoColor=white)
 ![Turborepo](https://img.shields.io/badge/Turborepo-pnpm-EF4444?logo=turborepo&logoColor=white)
-![Tests](https://img.shields.io/badge/test-1079_yeşil-16a34a)
+![Tests](https://img.shields.io/badge/test-1091_yeşil-16a34a)
 
 </div>
 
@@ -22,10 +22,10 @@ aynı uçları Expo mobil uygulaması da kullanıyor. Her müşteri için **ayr�
 |                |                                                                     |
 | -------------- | ------------------------------------------------------------------- |
 | Veri modeli    | 62 Prisma modeli                                                    |
-| API            | 164 route handler                                                   |
-| Arayüz         | 70 sayfa · 93 arşivlenmiş ekran görüntüsü                           |
+| API            | 165 route handler                                                   |
+| Arayüz         | 70 sayfa · 96 arşivlenmiş ekran görüntüsü                           |
 | Domain katmanı | 177 dosya (`packages/services`) — fiyatlama, defter, kampanya, rapor |
-| Test           | **1.079** (386 web · 675 servis · 18 ERP ajanı) + 23 e2e senaryo    |
+| Test           | **1.091** (383 web · 690 servis · 18 ERP ajanı) + 23 e2e senaryo    |
 | CI             | `typecheck → lint → test → build`, dördü de yeşil                   |
 
 ---
