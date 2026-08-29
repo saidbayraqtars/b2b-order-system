@@ -1,0 +1,16 @@
+{
+  "extends": "@repo/tsconfig/base.json",
+  "compilerOptions": {
+    // Kabuk, ajan gibi, derlenmiş JavaScript olarak dağıtılıyor: paket içinde
+    // `dist/main.js` çalışıyor, bir paketleyici yok.
+    "noEmit": false,
+    "outDir": "dist",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "types": ["node"],
+    // Electron'un kendi tipleri paketin içinde; ayrı bir @types yok.
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

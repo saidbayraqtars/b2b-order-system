@@ -76,6 +76,10 @@ services:
       # okuyor — güncellemeyi başlatan bir uç yok ve olmamalı (docker soketini
       # kapsayıcıya vermek, uygulamayı ele geçirene host'ta root vermektir).
       UPDATE_STATE_FILE: /data/state/update-state.json
+      # Masaüstü kabuğünün kurulum dosyaları (`latest.yml` + `.exe`). Kabuk
+      # güncellemesini kendi sunucusundan alıyor; satıcı dosyaları bu klasöre
+      # bırakıyor (`pnpm --filter desktop yayimla`).
+      DESKTOP_RELEASE_DIR: /data/masaustu
     volumes:
       # Kiracı klasörü salt okunur bağlanıyor: destek akışında elden ele giden
       # bir klasör ve uygulamanın oraya yazması gereken hiçbir şey yok.
@@ -85,6 +89,8 @@ services:
       # taşıyarak güncelliyor (yarısı yazılmış JSON okunmasın diye) ve bind ile
       # bağlanan tek bir dosya eski inode'a takılı kalıp bir daha hiç değişmez.
       - ${UPDATE_STATE_DIR:-./var}:/data/state:ro
+      # Salt okunur: web yalnızca servis ediyor, oraya yazan bir kod yok.
+      - ${DESKTOP_RELEASE_SOURCE:-./var/masaustu}:/data/masaustu:ro
     ports:
       # Doğrudan 80/443'e değil: TLS'i öndeki ters vekil (nginx/Caddy/Traefik)
       # sonlandırıyor. Tek makinede tek servis varsa bu satır 80:3000 yapılabilir.

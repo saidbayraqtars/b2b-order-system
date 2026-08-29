@@ -1,0 +1,65 @@
+# Paketleme yapılandırması.
+#
+# İki çıktı üretiliyor ve ikisinin de bir işi var:
+#   • **NSIS kurulumu** — müşterinin bilgisayarına kurulan asıl dosya. Başlat
+#     menüsüne ve masaüstüne kısayol koyuyor, güncellemeyi kendisi kuruyor.
+#   • **Taşınabilir (portable)** — kurulum yapmadan çift tıkla açılan tek
+#     dosya. Sunumda "kurulum bekleyelim" dakikası olmasın diye.
+#
+# İmza yok: kod imzalama sertifikası satın alınana kadar Windows SmartScreen
+# ilk açılışta uyarı gösterecek. Uyarıyı gizlemenin yolu sertifika, ve bunu
+# belgede açıkça yazmak, müşteriye kurulumda "normal mi bu" dedirtmemek için
+# gerekiyor.
+
+# Electron sürümü açık yazılıyor: depo `node-linker=hoisted` kullanıyor ve
+# electron kökteki `node_modules`ta duruyor — electron-builder onu paketin
+# kendi klasöründe arayip bulamiyor ("Cannot compute electron version").
+electronVersion: 33.4.11
+
+appId: com.b2b.masaustu
+productName: B2B
+copyright: ""
+
+directories:
+  output: cikti
+  buildResources: yapim
+
+# Kabuk yalnızca kabuk: derlenmiş ana süreç, iki yerel HTML ve
+# `electron-updater`. Arayüz sunucudan geldiği için paketin içinde web
+# uygulamasının hiçbir parçası yok — paket bu yüzden küçük ve nadiren
+# güncelleniyor.
+files:
+  - dist/**/*
+  - arayuz/**/*
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: B2B-Kurulum-${version}.${ext}
+
+portable:
+  artifactName: B2B-Tasinabilir-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: B2B
+  # Kurulum dili: kurulumu yapan çoğu zaman müşterinin kendi personeli.
+  installerLanguages:
+    - tr_TR
+  language: "1055"
+
+# Güncelleme akışı **müşterinin kendi sunucusundan** okunuyor; adres çalışma
+# anında `setFeedURL` ile veriliyor (bkz. src/guncelleme.ts), çünkü her
+# kurulumun adresi ayrı ve paketin içine yazılamaz. Buradaki `publish` yalnızca
+# electron-builder'ın `latest.yml` üretmesi için duruyor.
+publish:
+  provider: generic
+  url: https://ornek.invalid/api/masaustu

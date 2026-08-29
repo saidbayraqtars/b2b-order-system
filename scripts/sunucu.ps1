@@ -314,6 +314,10 @@ if (SaglikliMi $Port) {
   # degistirilmis bir dosya kalmiyor.
   $env:DEMO_LOGIN = "1"
   $env:AUTH_TRUST_HOST = "true"
+  # Masaüstü kabuğunun güncelleme klasörü. Varsayılanı çalışan sürecin
+  # dizinine göre çözülüyor ve o dizin `apps/web`; depo kökündeki klasörü
+  # göstermek için açıkça veriliyor.
+  $env:DESKTOP_RELEASE_DIR = (Join-Path $ROOT "var\masaustu")
   if ($publicUrl) { $env:APP_URL = $publicUrl } else { $env:APP_URL = "http://localhost:$Port" }
 
   $webLog = Join-Path $VAR "web.log"

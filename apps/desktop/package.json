@@ -1,0 +1,28 @@
+{
+  "name": "desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B2B masaüstü kabuğu",
+  "author": "B2B",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "pnpm build && electron .",
+    "paket": "pnpm build && electron-builder --win --publish never",
+    "yayimla": "node yayimla.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts --max-warnings 0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:^",
+    "@repo/tsconfig": "workspace:*",
+    "@types/node": "^20.16.11",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^8.57.1",
+    "typescript": "^5.6.3"
+  }
+}

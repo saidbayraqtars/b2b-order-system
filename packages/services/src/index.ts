@@ -88,6 +88,7 @@ export * from "./stock-ledger";
 export * from "./stock-lot";
 export * from "./runtime-env";
 export * from "./update-channel";
+export * from "./desktop-release";
 export * from "./cheque";
 export * from "./exchange-rate";
 export * from "./exchange-rate-tcmb";

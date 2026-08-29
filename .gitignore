@@ -24,6 +24,10 @@ apps/mobile/ios/
 *.keystore
 apps/mobile/android-signing/
 
+# Masaüstü paketleme çıktısı: 80 MB'lık .exe'ler. Sürüm dosyaları müşterinin
+# sunucusuna `yayimla` ile gidiyor, depoya değil.
+apps/desktop/cikti/
+
 # tsc incremental build artifacts
 *.tsbuildinfo
 

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      Sunucuya ulaşılamadığında ana pencerenin gösterdiği sayfa.
+
+      Köprüsü **yok** — ana pencere uzak içerik yüklediği için preload
+      taşımıyor ve bu sayfa da onun içinde açılıyor. Bu yüzden "yeniden dene"
+      bir düğme değil, sunucuya giden düz bir bağlantı: köprü gerektirmeyen
+      tek çözüm o. Adres değiştirme menüde (Dosya → Sunucu adresi…).
+    -->
+    <title>Bağlanılamadı</title>
+    <style>
+      body {
+        font: 14px/1.6 "Segoe UI", system-ui, sans-serif;
+        margin: 0; min-height: 100vh; display: flex; align-items: center;
+        justify-content: center; background: #f6f6f5; color: #18181b;
+      }
+      .kart {
+        background: #fff; border: 1px solid #e4e4e7; border-radius: 12px;
+        padding: 34px 36px; max-width: 520px; width: 100%;
+      }
+      h1 { font-size: 18px; margin: 0 0 10px; }
+      p { color: #52525b; margin: 0 0 14px; }
+      .adres { font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+               background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 6px;
+               padding: 9px 11px; word-break: break-all; color: #18181b; }
+      .neden { font-size: 12.5px; color: #a1a1aa; margin-top: 10px; }
+      a.dugme {
+        display: inline-block; margin-top: 22px; padding: 10px 18px;
+        background: #18181b; color: #fff; text-decoration: none; border-radius: 6px;
+      }
+      ul { color: #52525b; padding-left: 18px; margin: 6px 0 0; }
+      li { margin-bottom: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="kart">
+      <h1>Sunucuya bağlanılamadı</h1>
+      <p>Uygulama şu adresi açmayı denedi:</p>
+      <div class="adres" id="adres">—</div>
+      <div class="neden" id="neden"></div>
+
+      <p style="margin-top: 18px">Sık sebepler:</p>
+      <ul>
+        <li>Sunucu kapalı ya da henüz açılıyor</li>
+        <li>Bu bilgisayar ağa bağlı değil</li>
+        <li>Adres yanlış — <b>Dosya → Sunucu adresi…</b> menüsünden düzeltin</li>
+      </ul>
+
+      <a class="dugme" id="yeniden" href="#">Yeniden dene</a>
+    </div>
+
+    <script>
+      const p = new URLSearchParams(location.search);
+      const sunucu = p.get("sunucu") || "";
+      document.getElementById("adres").textContent = p.get("adres") || sunucu || "—";
+      const kod = p.get("kod");
+      const mesaj = p.get("mesaj");
+      if (kod || mesaj) {
+        document.getElementById("neden").textContent = "Hata: " + (mesaj || "") + (kod ? " (" + kod + ")" : "");
+      }
+      const dugme = document.getElementById("yeniden");
+      if (sunucu) dugme.setAttribute("href", sunucu);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      Kurulum ekranı — uygulamanın ilk açılışta sorduğu tek soru.
+
+      Adres **denenmeden** kaydedilmiyor: yanlış yazılmış bir adres,
+      uygulamayı bir daha açılmayan bir pencereye çevirir ve kullanıcı hatayı
+      ancak boş ekranda görür. Deneme sunucunun sağlık ucuna gidiyor.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>B2B — sunucu adresi</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+        margin: 0; padding: 32px 30px; background: #f6f6f5; color: #18181b;
+        user-select: none;
+      }
+      h1 { font-size: 19px; margin: 0 0 6px; }
+      p.alt { color: #71717a; margin: 0 0 24px; }
+      label { display: block; font-size: 12px; text-transform: uppercase;
+              letter-spacing: .06em; color: #71717a; margin-bottom: 6px; }
+      input[type="text"] {
+        width: 100%; padding: 11px 12px; font-size: 15px; font-family: inherit;
+        border: 1px solid #d4d4d8; border-radius: 6px; background: #fff;
+        color: #18181b; user-select: text;
+      }
+      input[type="text"]:focus { outline: 2px solid #18181b; outline-offset: -1px; }
+      .ornek { color: #a1a1aa; font-size: 12.5px; margin: 8px 0 0; }
+      .satir { display: flex; gap: 10px; margin-top: 22px; }
+      button {
+        font: inherit; padding: 10px 18px; border-radius: 6px; cursor: pointer;
+        border: 1px solid #18181b; background: #18181b; color: #fff;
+      }
+      button.ikincil { background: #fff; color: #18181b; }
+      button:disabled { opacity: .5; cursor: default; }
+      .kutu { margin-top: 20px; padding: 12px 14px; border-radius: 6px;
+              font-size: 13px; display: none; }
+      .kutu.iyi { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+      .kutu.kotu { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; }
+      .kutu.bekle { display: block; background: #fff; border: 1px solid #e4e4e7; color: #52525b; }
+      .secim { margin-top: 24px; display: flex; gap: 9px; align-items: flex-start;
+               font-size: 13px; color: #52525b; }
+      .not { margin-top: 26px; padding-top: 18px; border-top: 1px solid #e4e4e7;
+             color: #a1a1aa; font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <h1>Sunucu adresi</h1>
+    <p class="alt">Uygulamanın bağlanacağı B2B sunucusunu yazın. Bu ayar bu bilgisayara özeldir.</p>
+
+    <label for="adres">Adres</label>
+    <input id="adres" type="text" placeholder="siparis.firmaniz.com" autocomplete="off" spellcheck="false" />
+    <p class="ornek">
+      Örnekler: <b>siparis.firmaniz.com</b> · <b>192.168.1.6:3000</b> · <b>localhost:3000</b><br />
+      Şema yazmanız gerekmiyor; yerel adresler <b>http</b>, diğerleri <b>https</b> kabul edilir.
+    </p>
+
+    <div class="satir">
+      <button id="dene" class="ikincil">Bağlantıyı dene</button>
+      <button id="kaydet" disabled>Kaydet ve aç</button>
+    </div>
+
+    <div id="sonuc" class="kutu"></div>
+
+    <label class="secim">
+      <input id="otomatik" type="checkbox" checked />
+      <span>Güncellemeleri kendiliğinden indir ve uygulamayı kapatınca kur.</span>
+    </label>
+
+    <p class="not">
+      Arayüz sunucudan geliyor: sunucuya çıkan bir düzeltme bu uygulamada da
+      anında görünür, indirmeniz gereken bir şey olmaz. Bu pencereye
+      <b>Dosya → Sunucu adresi…</b> menüsünden her zaman dönebilirsiniz.
+    </p>
+
+    <script>
+      const adres = document.getElementById("adres");
+      const dene = document.getElementById("dene");
+      const kaydet = document.getElementById("kaydet");
+      const sonuc = document.getElementById("sonuc");
+      const otomatik = document.getElementById("otomatik");
+
+      let dogrulanan = "";
+
+      function yaz(sinif, mesaj) {
+        sonuc.className = "kutu " + sinif;
+        sonuc.textContent = mesaj;
+      }
+
+      window.kabuk.ayarlariOku().then((a) => {
+        adres.value = a.sunucu || "";
+        otomatik.checked = a.otomatikGuncelle !== false;
+        adres.focus();
+      });
+
+      // Adres değişince önceki doğrulama geçersiz: kullanıcı deneyip sonra
+      // adresi düzeltirse, kaydedilen şey denenmemiş adres olurdu.
+      adres.addEventListener("input", () => {
+        dogrulanan = "";
+        kaydet.disabled = true;
+        sonuc.className = "kutu";
+      });
+
+      async function denemeYap() {
+        dene.disabled = true;
+        yaz("bekle", "Deneniyor…");
+        const cevap = await window.kabuk.dene(adres.value);
+        dene.disabled = false;
+        if (cevap.ok) {
+          dogrulanan = cevap.adres;
+          kaydet.disabled = false;
+          yaz("iyi", cevap.mesaj + "  (" + cevap.adres + ")");
+        } else {
+          dogrulanan = "";
+          kaydet.disabled = true;
+          yaz("kotu", cevap.mesaj);
+        }
+      }
+
+      dene.addEventListener("click", denemeYap);
+      adres.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          if (!kaydet.disabled) kaydet.click();
+          else denemeYap();
+        }
+      });
+
+      kaydet.addEventListener("click", async () => {
+        kaydet.disabled = true;
+        await window.kabuk.kaydet({
+          sunucu: dogrulanan || adres.value,
+          otomatikGuncelle: otomatik.checked,
+        });
+      });
+    </script>
+  </body>
+</html>

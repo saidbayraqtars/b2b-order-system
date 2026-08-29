@@ -139,6 +139,8 @@ Nerede kalındı, sırada ne var: **[docs/KALAN-ISLER.md](docs/KALAN-ISLER.md)**
 apps/
   web/        Next.js App Router — Admin panel + B2B portal + API
   mobile/     Expo React Native — Plasiyer + Müşteri uygulaması
+  desktop/    Electron kabuğu — sunucudaki arayüzü kendi penceresinde açar
+  erp-agent/  Müşterinin makinesinde çalışan ERP köprüsü ajanı
 packages/
   database/       Prisma şeması, client singleton, seed
   types/          Zod şemaları + türetilmiş TS tipleri (edge-safe tek kaynak)

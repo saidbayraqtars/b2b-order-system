@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-29 · Adım 64 + arayüz yenilemesi (Adım 1-17) sonu
+Son güncelleme: 2026-08-30 · Adım 65 (masaüstü kabuğu) + arayüz yenilemesi (Adım 1-17) sonu
 
 ---
 
@@ -3121,6 +3121,8 @@ bırakıyordu — kullanıcı ekranının görüntüsünde `…@test.local` sat�
 | GET                  | `/api/analytics?bolum=musteri&rfm=&kohort=`                                    | süper admin (`analytics.view`; varsayılan dışı pencere canlı hesaplanır)                      |
 | GET                  | `/api/analytics?bolum=karlilik`                                                | süper admin (`analytics.view`; gecelik özetten)                                                   |
 | GET · POST           | `/api/reports/templates`                                                      | 3 rol (`reports.build`; POST şablonu çağıranın kendi raporuna kopyalar)                        |
+| GET                  | `/api/masaustu`                                                               | herkes (yayımlanan masaüstü sürümünün özeti)                                            |
+| GET                  | `/api/masaustu/<dosya>`                                                       | herkes (yalnızca .yml/.exe/.blockmap/.zip; güncelleyici oturum açamaz)              |
 
 ---
 
@@ -3272,6 +3274,64 @@ yararlı satırı adı değil **sorusu**: "Masada ne bıraktık, hangi kaynaktan
 Gösterim verisindeki dört rapor tanımı (`demo-reports.ts`) artık bu katalogdan
 besleniyor; aynı dört rapor iki dosyada duruyordu ve biri düzeltilince diğeri
 sessizce eskiyordu.
+
+## 64. Masaüstü Kabuğu (2026-08-30)
+
+`apps/desktop` — Electron kabuğu, Windows kurulumu (`B2B-Kurulum-<sürüm>.exe`)
+ve kurulumsuz taşınabilir sürüm. `apps/desktop/README.md` ayrıntıda.
+
+**Kabuk arayüzü taşımıyor, gösteriyor.** Pencere sunucudaki adresi açıyor;
+paketin içinde web uygulamasının hiçbir parçası yok. Bunun doğrudan sonucu:
+web'e çıkan bir düzeltme aynı anda masaüstünde de var, kullanıcının indirmesi
+gereken bir şey yok. Kabuk yalnızca kabuk — pencere, menü, sunucu adresi,
+kendi güncellemesi.
+
+### İki ayrı güncelleme
+
+| Ne         | Nereden                    | Ne zaman                        |
+| ---------- | -------------------------- | ------------------------------- |
+| **Arayüz** | Sunucudan, her açılışta    | Anında                          |
+| **Kabuk**  | `<sunucu>/api/masaustu`    | Açılışta ve 6 saatte bir denetim |
+
+Kabuk için **ayrı bir dağıtım kanalı kurulmadı**: müşterinin sunucusu zaten
+merkezden güncelleniyor (Adım 50), yani satıcı yeni sürümü bir kez yayımlıyor,
+sunucu kendini güncelliyor, masaüstü dosyayı o sunucudan çekiyor. İkinci bir
+kanal, iki ayrı yerde "hangi sürüm yayında" sorusu demekti. Müşterinin
+bilgisayarı yalnızca kendi sunucusuna bağlanıyor, dışarıya değil.
+
+Sunucu tarafı `/api/masaustu` (özet) ve `/api/masaustu/<dosya>` (akış).
+`DESKTOP_RELEASE_DIR` klasöründen **yalnızca** `.yml`, `.exe`, `.blockmap`,
+`.zip` veriliyor; dizin listesi yok, yol geçişi reddediliyor. Uç kimlik
+istemiyor ve gerekçesi sağlık ucundakiyle aynı: isteği yapan güncelleyici,
+çoğu zaman kullanıcı henüz giriş yapmamışken çalışıyor. Ad süzgeci bir
+kolaylık değil güvenlik sınırı, ve testi ne verilmediğine bakıyor.
+
+### Sunucu adresi bir cihaz ayarı
+
+Aynı `.exe` her müşteriye gidiyor; adres pakete gömülseydi her kurulum için
+ayrı dosya derlemek gerekirdi (mobilde de aynı karar, Adım 48). İlk açılışta
+sorulan tek şey bu, `%APPDATA%/B2B/ayarlar.json`da duruyor, menüden
+değiştiriliyor.
+
+Adres **denenmeden kaydedilmiyor**: `/api/health` çağrılıyor ve cevap
+gelmezse sebebi kurulum ekranında yazıyor. Yanlış yazılmış bir adres, aksi
+hâlde uygulamayı bir daha açılmayan bir pencereye çevirir ve kullanıcı hatayı
+ancak boş ekranda görür. Şema yazmak gerekmiyor: yerel adresler `http`,
+diğerleri `https` kabul ediliyor — "https://192.168.1.6:3000" hiçbir zaman
+açılmaz.
+
+### Bilerek yapılmayanlar
+
+- **Ana pencerede preload yok.** Uzak sayfa `kabuk.*` köprüsünü göremiyor:
+  sunucudan gelen bir sayfaya ayar yazma yetkisi verilmez. Köprüyü yalnızca
+  yerel kurulum ekranı taşıyor.
+- **Kod imzası yok.** Sertifika alınana kadar SmartScreen "bilinmeyen
+  yayımcı" diyecek; müşteriye kurulumdan önce söylenmeli.
+- **Çevrimdışı çalışmıyor.** Sunucu kapalıysa "bağlanılamadı" ekranı çıkıyor.
+  Kabuğun içinde kopya olmadığı için gösterecek başka bir şey de yok —
+  mimarinin bedeli, bilerek ödendi.
+- **Taşınabilir sürüm güncelleme akışına girmiyor** (`yayimla` onu
+  kopyalamıyor): güncelleyici onu kurulum sanardı.
 
 ---
 
