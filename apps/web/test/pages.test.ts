@@ -240,6 +240,12 @@ const PAGES: PageCase[] = [
     role: "SUPER_ADMIN",
   },
   {
+    name: "/reports/sablonlar",
+    load: () => import("@/app/reports/sablonlar/page"),
+    permission: "reports.build",
+    role: "SUPER_ADMIN",
+  },
+  {
     // Sayfa değil **layout**: sipariş detayının kabuğu (§4.7). Kayıt defterine
     // girmesinin sebebi kapı — kabuk `requirePage` çağırıyor ve o çağrı
     // sayfanınkinden gevşek olursa, ekranı açan kişi menüyü görüp içeriği

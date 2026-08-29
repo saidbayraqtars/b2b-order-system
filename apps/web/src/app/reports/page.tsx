@@ -15,6 +15,9 @@ export default async function ReportsPage() {
         subtitle="Kendi raporlarınız ve sizinle paylaşılanlar"
         actions={
           <>
+            <LinkButton href="/reports/sablonlar" size="md">
+              Hazır raporlar
+            </LinkButton>
             <LinkButton href="/reports/dashboards" size="md">
               Panolar
             </LinkButton>

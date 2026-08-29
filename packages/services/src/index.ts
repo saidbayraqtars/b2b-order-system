@@ -34,6 +34,7 @@ export * from "./slug";
 export * from "./catalog-admin";
 export * from "./pricing-admin";
 export * from "./ledger";
+export * from "./report-templates";
 export * from "./reports";
 export * from "./search";
 export * from "./analytics";

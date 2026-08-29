@@ -845,4 +845,28 @@ export const SCREENS = [
     as: "admin",
     path: "/admin/promotions?bolum=performans&pencere=90",
   },
+  // ── Adım 17: kârlılık bölümü ve hazır rapor şablonları ──────────────────
+  {
+    step: 17,
+    slug: "pano-karlilik",
+    label: "Yönetici panosu — kârlılık: marj köprüsü ve üç kırılım",
+    as: "admin",
+    path: "/admin/analitik?bolum=karlilik",
+  },
+
+  {
+    step: 17,
+    slug: "rapor-sablonlari",
+    label: "Hazır rapor şablonları",
+    as: "admin",
+    path: "/reports/sablonlar",
+  },
+
+  {
+    step: 17,
+    slug: "rapor-sablonlari-kategori",
+    label: "Hazır raporlar — kategori süzgeci adreste",
+    as: "admin",
+    path: `/reports/sablonlar?kategori=${encodeURIComponent("Tahsilat")}`,
+  },
 ];

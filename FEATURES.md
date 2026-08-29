@@ -6,7 +6,7 @@ B2B Sipariş & Yönetim Sistemi'nde **şu an çalışan** özelliklerin listesi.
 > buraya ancak kodda çalışır durumdayken eklenir — planlananlar en alttaki
 > "Sonraki Adımlar" bölümünde durur.
 
-Son güncelleme: 2026-08-28 (ikinci tur) · Adım 64 + arayüz yenilemesi (Adım 1-16) sonu
+Son güncelleme: 2026-08-29 · Adım 64 + arayüz yenilemesi (Adım 1-17) sonu
 
 ---
 
@@ -3119,6 +3119,8 @@ bırakıyordu — kullanıcı ekranının görüntüsünde `…@test.local` sat�
 | DELETE               | `/api/admin/holidays/:id`                                                     | süper admin (`organization.manage`)                                                           |
 | GET                  | `/api/admin/promotions/performance`                                           | süper admin (`promotions.manage`; `?pencere=30\|90\|365\|tumu`)                               |
 | GET                  | `/api/analytics?bolum=musteri&rfm=&kohort=`                                    | süper admin (`analytics.view`; varsayılan dışı pencere canlı hesaplanır)                      |
+| GET                  | `/api/analytics?bolum=karlilik`                                                | süper admin (`analytics.view`; gecelik özetten)                                                   |
+| GET · POST           | `/api/reports/templates`                                                      | 3 rol (`reports.build`; POST şablonu çağıranın kendi raporuna kopyalar)                        |
 
 ---
 
@@ -3191,6 +3193,85 @@ iki farklı parti yazamaz.
 Ters kayıtlı (iptal) çıkış hiçbir irsaliyeye girmiyor. Ayrım sevk edilen adedi
 karşılamıyorsa kalan adet **partisiz** basılıyor — parti takibi ambalaj ve
 sarfta meşru olarak kapalı, ve boş bir hücre uydurulmuş bir parti kodundan iyi.
+
+## 63. Kârlılık Bölümü & Hazır Rapor Şablonları (2026-08-29)
+
+İki iş, iki commit. Ortak yanları **rapor tarafının genişlemesi**: biri panoya
+eksik kalan soruyu ekliyor, diğeri rapor tasarımcısının boş tuvalini
+dolduruyor.
+
+### Kârlılık bölümü
+
+`/admin/analitik?bolum=karlilik` (`analytics.view`). Panonun yedinci sekmesi ve
+`docs/KALAN-ISLER.md` §6.3'te "b2b'de karşılığı yok" diye işaretlenen
+`SatisKarlilik` boşluğu.
+
+Panonun ilk altı bölümü "ne kadar sattık" sorusunu farklı açılardan soruyor; bu
+bölüm **satarken ne bıraktık** diye soruyor. Beş yüzey:
+
+- **Marj köprüsü.** Liste bedeli → firma iskontosu → hacim iskontosu →
+  kampanya → satılan malın maliyeti → brüt kâr. Üç iskonto kalemi ayrı
+  duruyor çünkü üçünün sahibi ayrı: firma iskontosu bir anlaşma, hacim
+  merdiveni bir kural, kampanya bir karar. Tek "iskonto" satırına toplansaydı
+  hangisinin pahalı olduğu görünmezdi, ve görünmeyen kalem kısılamaz.
+- **Aylık kârlılık.** Sütunlar **tutar** (brüt kâr), altındaki tablo yüzde.
+  İlk denemede sütunlar yüzdeydi ve ekran görüntüsü onu yakaladı: marj %38 ile
+  %42 arasında gezinirken sıfır tabanlı sütunlarda bütün aylar aynı boyda
+  çıkıyor, grafik hiçbir şey söylemiyordu.
+- **Üç kırılım**: firma, kategori, plasiyer. Üçü de aynı tablo, sıralama
+  **marj yüzdesine** göre — brüt kâr tutarına göre dizmek "büyük müşteri kârlı
+  müşteridir" yanılgısını üretirdi. Üçten az siparişli satır sıralamaya
+  girmiyor ve **kaç tanesinin düştüğü yazılıyor**: tek siparişteki marj,
+  firmanın kârlılığı değil o günün kampanyasıdır.
+
+İki dürüstlük kuralı, ikisi de sayının **yazılmamasıyla** işliyor:
+
+1. **Maliyet kapsamı.** Alış fiyatı girilmemiş varyantın maliyeti sıfır
+   sayılıyor, yani kapsam düştükçe marj yukarı şişiyor. Kapsam %60'ın
+   altındaysa marj yerine eksiğin kendisi yazılıyor — ve aynı kural **brüt kâr
+   tutarına** da uygulanıyor: maliyeti boş bir kategorinin "kârı" kendi
+   cirosuna eşit çıkıyordu, ekran görüntüsü onu da yakaladı.
+2. **Payda mal bedeli.** Marj KDV ve navlun hariç net mal bedeli üzerinden.
+   Panonun ciro kutuları KDV dahil genel toplamı sayıyor; ikisi bilerek farklı,
+   çünkü KDV paydaya girseydi KDV oranı marjı değiştirirdi.
+
+Plasiyer kırılımı yalnızca `SALES_REP` rolündeki kullanıcının girdiği
+siparişleri sayıyor: bayinin portaldan kendi geçtiği sipariş kimsenin
+performansı değil. Prim hesabı bu ekranı görmüyor — o ciroya bakıyor, bu
+iskontoya.
+
+Hesap gecelik özette (`computeSnapshot`), matematik `analytics-math.ts`te
+(`marginBridge`, `marginPct`, `marginRanking`), toplama SQL'de. Adım 18'in
+deseninin aynısı.
+
+### Hazır rapor şablonları
+
+`/reports/sablonlar` (`reports.build`). Yirmi üç hazır rapor tanımı, altı
+kategoride: satış, kârlılık, tahsilat, stok, saha, kampanya.
+
+Rapor tasarımcısı boş tuvalle açılıyordu ve boş tuval kurulumun ilk gününde en
+pahalı ekran: dokuz veri kümesi, yüzlerce alan, ve "neyi sorabileceğimi
+bilmiyorum" diyen bir kullanıcı. Her kart tam bir rapor tanımı ve kartın en
+yararlı satırı adı değil **sorusu**: "Masada ne bıraktık, hangi kaynaktan?",
+"Hangi mal elde kalırsa çöpe gider?".
+
+Üç karar:
+
+- **Kopya, bağlantı değil.** Kurulan raporun şablonla ilişkisi kalmıyor;
+  bağlantı olsaydı şablonun yeni sürümü kullanıcının elle değiştirdiği raporu
+  geri alırdı. Aynı şablon ikinci kez kurulabiliyor, ad sonuna sayı alıyor.
+- **Kayıt defteri yine tek yetkili.** Şablonun tanımı da `normalizeConfig`
+  üstünden geçiyor: kodda yazılı olması onu güvenli yapmıyor. Testi her şablonu
+  ayrı ayrı sınıyor — alan adı değiştiğinde şablon derlemede değil, kullanıcı
+  "Kur"a bastığında bozulurdu.
+- **Kapsam kurulanın.** Rapor çağıranın adına açılıyor ve onun satır kapsamıyla
+  çalışıyor: plasiyerin kurduğu "firma bakiyeleri" kendi portföyünü gösteriyor.
+  Kurulan rapor paylaşık da değil — şablon kurmak onu bütün ekibe açmak
+  değildir.
+
+Gösterim verisindeki dört rapor tanımı (`demo-reports.ts`) artık bu katalogdan
+besleniyor; aynı dört rapor iki dosyada duruyordu ve biri düzeltilince diğeri
+sessizce eskiyordu.
 
 ---
 

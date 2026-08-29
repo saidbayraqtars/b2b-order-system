@@ -20,6 +20,7 @@ demek, düğmenin siyah üstüne siyah düştüğünü söylemiyor — görünt�
 | `adim-14` | Arayüz artıkları                |
 | `adim-15` | §5 özellikleri                  |
 | `adim-16` | Pano pencereleri, tatil takvimi, kampanya karnesi |
+| `adim-17` | Kârlılık bölümü ve hazır rapor şablonları |
 
 ## Yeniden üretmek
 

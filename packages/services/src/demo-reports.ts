@@ -6,6 +6,7 @@ import type {
 } from "@repo/types";
 import { createReportDefinition, updateReportDefinition } from "./report-definition";
 import { createDashboard, updateDashboard } from "./report-dashboard";
+import { findReportTemplate } from "./report-templates";
 import type { ReportContext } from "./report-registry";
 
 // Gösterim rapor tanımları ve bir pano.
@@ -20,112 +21,29 @@ import type { ReportContext } from "./report-registry";
 // `/reports/dashboards` ve yazdırma yüzeyi dört boş kutu olarak
 // fotoğraflanıyordu — dördü de ekranın kendisi hakkında hiçbir şey söylemiyor.
 
-/** Ciro tanımı her yerde aynı: iptal ve red sayılmaz. */
-const LIVE_ORDERS = {
-  field: "status",
-  operator: "notIn" as const,
-  value: ["CANCELLED", "REJECTED"],
-};
+// Gösterimde kullanılan dört tanım **hazır şablon kataloğundan** geliyor
+// (`report-templates.ts`). Eskiden burada ayrı ayrı yazılıydılar ve aynı dört
+// rapor iki dosyada duruyordu: biri düzeltilince diğeri sessizce eskiyordu.
+// Katalog zaten test ediliyor, gösterim de ondan besleniyor.
+const DEMO_TEMPLATE_KEYS = [
+  "aylik-ciro",
+  "firma-ciro",
+  "kategori-kirilimi",
+  "plasiyer-ciro-90",
+] as const;
 
-const DEFINITIONS: CreateReportDefinitionInput[] = [
-  {
-    name: "Aylık ciro",
-    description: "Ay ay net ciro ve sipariş adedi",
-    dataset: "ORDERS",
+/** Gösterim tanımları **paylaşık**: diğer gösterim hesapları da görsün. */
+const DEFINITIONS: CreateReportDefinitionInput[] = DEMO_TEMPLATE_KEYS.map((key) => {
+  const template = findReportTemplate(key);
+  if (!template) throw new Error(`Gösterim şablonu yok: ${key}`);
+  return {
+    name: template.name,
+    description: template.description,
+    dataset: template.dataset,
     isShared: true,
-    config: {
-      columns: [
-        { field: "createdAt_month", label: "Ay" },
-        { field: "grandTotal", aggregate: "SUM", label: "Ciro", format: "money" },
-        { field: "orderNumber", aggregate: "COUNT", label: "Sipariş", format: "number" },
-      ],
-      computed: [],
-      filters: [LIVE_ORDERS],
-      groupBy: ["createdAt_month"],
-      sort: [{ field: "createdAt_month", direction: "asc" }],
-      chart: {
-        type: "bar",
-        categoryField: "createdAt_month",
-        valueField: "grandTotal__sum",
-      },
-    },
-  },
-  {
-    name: "Firma bazında ciro",
-    description: "En çok alan 20 firma, ortalama sepetiyle",
-    dataset: "ORDERS",
-    isShared: true,
-    config: {
-      columns: [
-        { field: "companyName", label: "Firma", width: 240 },
-        { field: "grandTotal", aggregate: "SUM", label: "Ciro", format: "money" },
-        { field: "orderNumber", aggregate: "COUNT", label: "Sipariş", format: "number" },
-      ],
-      // Hesaplanmış sütun sorguya gitmiyor, sonucun üstünde çalışıyor: bölme
-      // SQL'de yapılsaydı gruplama başına bir kez değil satır başına bir kez
-      // yapılırdı ve ortalama, ortalamaların ortalaması olurdu.
-      computed: [
-        {
-          key: "ortalamaSepet",
-          label: "Ortalama sepet",
-          expression: "grandTotal__sum / orderNumber__count",
-          format: "money",
-        },
-      ],
-      filters: [LIVE_ORDERS],
-      groupBy: ["companyName"],
-      sort: [{ field: "grandTotal__sum", direction: "desc" }],
-      limit: 20,
-      chart: { type: "table" },
-    },
-  },
-  {
-    name: "Kategori kırılımı",
-    description: "Satılan malın kategorilere dağılımı",
-    dataset: "ORDER_ITEMS",
-    isShared: true,
-    config: {
-      columns: [
-        { field: "categoryName", label: "Kategori" },
-        { field: "lineTotal", aggregate: "SUM", label: "Tutar", format: "money" },
-        { field: "quantity", aggregate: "SUM", label: "Adet", format: "number" },
-      ],
-      computed: [],
-      filters: [],
-      groupBy: ["categoryName"],
-      sort: [{ field: "lineTotal__sum", direction: "desc" }],
-      limit: 10,
-      chart: {
-        type: "pie",
-        categoryField: "categoryName",
-        valueField: "lineTotal__sum",
-      },
-    },
-  },
-  {
-    name: "Plasiyer cirosu (90 gün)",
-    description: "Son 90 günün cirosu, portföy sahibine göre",
-    dataset: "ORDERS",
-    isShared: true,
-    config: {
-      columns: [
-        { field: "salesRepName", label: "Plasiyer" },
-        { field: "grandTotal", aggregate: "SUM", label: "Ciro", format: "money" },
-        { field: "orderNumber", aggregate: "COUNT", label: "Sipariş", format: "number" },
-      ],
-      computed: [],
-      // Kayan pencere: kaydedilen rapor tarih donduğu anda bayatlar.
-      filters: [LIVE_ORDERS, { field: "createdAt", operator: "lastNDays", value: 90 }],
-      groupBy: ["salesRepName"],
-      sort: [{ field: "grandTotal__sum", direction: "desc" }],
-      chart: {
-        type: "bar",
-        categoryField: "salesRepName",
-        valueField: "grandTotal__sum",
-      },
-    },
-  },
-];
+    config: template.config,
+  };
+});
 
 const DASHBOARD_NAME = "Yönetim özeti";
 
