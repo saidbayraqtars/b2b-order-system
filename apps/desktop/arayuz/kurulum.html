@@ -61,6 +61,22 @@
       Şema yazmanız gerekmiyor; yerel adresler <b>http</b>, diğerleri <b>https</b> kabul edilir.
     </p>
 
+    <div id="kimlik" style="display: none; margin-top: 18px">
+      <!--
+        Yalnizca sunucu 401 dondugunde aciliyor. Bir sunum tunelinin onunde
+        parola kapisi olabiliyor; tarayici o kutuyu kendisi acar, Electron
+        acmaz — uygulamanin parolayi bilmesi gerekiyor.
+      -->
+      <label for="kullanici">Kapı kullanıcı adı</label>
+      <input id="kullanici" type="text" placeholder="demo" autocomplete="off" spellcheck="false" />
+      <label for="parola" style="margin-top: 12px">Kapı parolası</label>
+      <input id="parola" type="text" placeholder="sunucu ekranında yazan parola" autocomplete="off" spellcheck="false" />
+      <p class="ornek">
+        Bunlar sunucunun önündeki parola kapısı için; B2B kullanıcı adınız
+        değil. Kapı yoksa boş bırakın.
+      </p>
+    </div>
+
     <div class="satir">
       <button id="dene" class="ikincil">Bağlantıyı dene</button>
       <button id="kaydet" disabled>Kaydet ve aç</button>
@@ -85,6 +101,9 @@
       const kaydet = document.getElementById("kaydet");
       const sonuc = document.getElementById("sonuc");
       const otomatik = document.getElementById("otomatik");
+      const kimlik = document.getElementById("kimlik");
+      const kullanici = document.getElementById("kullanici");
+      const parola = document.getElementById("parola");
 
       let dogrulanan = "";
 
@@ -96,21 +115,30 @@
       window.kabuk.ayarlariOku().then((a) => {
         adres.value = a.sunucu || "";
         otomatik.checked = a.otomatikGuncelle !== false;
+        kullanici.value = a.kullanici || "";
+        parola.value = a.parola || "";
+        if (a.kullanici || a.parola) kimlik.style.display = "block";
         adres.focus();
       });
 
       // Adres değişince önceki doğrulama geçersiz: kullanıcı deneyip sonra
       // adresi düzeltirse, kaydedilen şey denenmemiş adres olurdu.
-      adres.addEventListener("input", () => {
-        dogrulanan = "";
-        kaydet.disabled = true;
-        sonuc.className = "kutu";
-      });
+      for (const alan of [adres, kullanici, parola]) {
+        alan.addEventListener("input", () => {
+          dogrulanan = "";
+          kaydet.disabled = true;
+          sonuc.className = "kutu";
+        });
+      }
 
       async function denemeYap() {
         dene.disabled = true;
         yaz("bekle", "Deneniyor…");
-        const cevap = await window.kabuk.dene(adres.value);
+        const cevap = await window.kabuk.dene({
+          sunucu: adres.value,
+          kullanici: kullanici.value,
+          parola: parola.value,
+        });
         dene.disabled = false;
         if (cevap.ok) {
           dogrulanan = cevap.adres;
@@ -119,6 +147,13 @@
         } else {
           dogrulanan = "";
           kaydet.disabled = true;
+          // Kapi varsa alanlari ac ve odagi oraya al: kullanici hatayi
+          // okuduktan sonra nereye yazacagini aramak zorunda kalmasin.
+          if (cevap.parolaGerekli) {
+            kimlik.style.display = "block";
+            if (!kullanici.value) kullanici.value = "demo";
+            parola.focus();
+          }
           yaz("kotu", cevap.mesaj);
         }
       }
@@ -136,6 +171,8 @@
         await window.kabuk.kaydet({
           sunucu: dogrulanan || adres.value,
           otomatikGuncelle: otomatik.checked,
+          kullanici: kullanici.value,
+          parola: parola.value,
         });
       });
     </script>

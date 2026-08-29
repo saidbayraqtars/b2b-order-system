@@ -50,6 +50,7 @@ Parola        : demo / 5rnagbmj
 .\scripts\sunucu.ps1 -Parolasiz      # dış adres parola sormasın (dikkat)
 .\scripts\sunucu.ps1 -Parola "abc"   # parolayı sen seç
 .\scripts\sunucu.ps1 -Pencereler     # bitince 10 gösterim penceresini de aç
+.\scripts\sunucu.ps1 -TunelAdi b2b -DisAdres https://b2b.firmaniz.com   # sabit adres
 .\scripts\sunucu.ps1 -Port 3200      # başka port
 .\scripts\sunucu.ps1 -Durum          # ne çalışıyor
 .\scripts\sunucu.ps1 -Durdur         # kapat
@@ -95,6 +96,35 @@ dinliyor, tünel ona bakıyor, o uygulamaya. Parola her açılışta yeniden
 Müşteriye iki şey gönderiyorsun: adres ve `demo / <parola>`.
 
 **Sunum bitince `SUNUCU DURDUR.bat`.** Tünel kapanır, adres ölür.
+
+### Masaüstü uygulaması kapının arkasından girebiliyor mu
+
+Evet, ama parolayı **uygulamaya da yazmak gerekiyor**. Tarayıcı 401 görünce
+kullanıcıya kutu açıyor; Electron açmıyor. Kurulum ekranı sunucu parola
+istediğinde **kapı kullanıcı adı/parola** alanlarını kendiliğinden açıyor;
+oraya `demo` ve ekranda yazan parola giriliyor. Güncelleyici de aynı kimliği
+kullanıyor.
+
+⚑ **Hızlı tünel adresi her açılışta değişiyor.** Bir sunum için sorun değil,
+ama kurulu masaüstü uygulaması olan bir kullanıcı her seferinde adresi
+yeniden yazmak zorunda kalır. **Sabit adres** için adlandırılmış tünel
+gerekiyor (Cloudflare hesabı + kendi alan adınız):
+
+```powershell
+# bir kez:
+cloudflared tunnel login
+cloudflared tunnel create b2b
+cloudflared tunnel route dns b2b b2b.firmaniz.com
+#   ~/.cloudflared/config.yml → service: http://127.0.0.1:3010   (parola kapısı)
+#                                     ya da http://127.0.0.1:3000  (-Parolasiz)
+
+# her açılışta:
+.\scripts\sunucu.ps1 -TunelAdi b2b -DisAdres https://b2b.firmaniz.com
+```
+
+Alan adınız yoksa: sunumda hızlı tünel + tarayıcı yeterli; masaüstü
+uygulamasını **aynı wifi adresiyle** (`192.168.…`) kullanın — o adres
+değişmiyor.
 
 ---
 

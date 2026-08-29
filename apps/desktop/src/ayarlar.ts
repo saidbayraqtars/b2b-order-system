@@ -18,9 +18,25 @@ export interface Ayarlar {
   sunucu: string;
   /** Kapanışta güncellemeyi kendiliğinden kur. */
   otomatikGuncelle: boolean;
+  /**
+   * Sunucunun önünde bir parola kapısı varsa (sunum tüneli gibi) onun
+   * kimliği. Boşsa kapı yok demektir.
+   *
+   * Neden gerekiyor: tarayıcı 401 görünce kullanıcıya kutu açıyor, Electron
+   * açmıyor — istek sessizce düşüyor ve uygulama "bağlanılamadı" diyor.
+   * İlk denemede tam olarak bu oldu: kapının arkasındaki sunucuya uygulamadan
+   * **tek istek** ulaşmadı.
+   */
+  kullanici: string;
+  parola: string;
 }
 
-const VARSAYILAN: Ayarlar = { sunucu: "", otomatikGuncelle: true };
+const VARSAYILAN: Ayarlar = {
+  sunucu: "",
+  otomatikGuncelle: true,
+  kullanici: "",
+  parola: "",
+};
 
 function dosya(): string {
   return join(app.getPath("userData"), "ayarlar.json");
@@ -33,6 +49,8 @@ export function ayarlariOku(): Ayarlar {
     return {
       sunucu: normalizeAdres(typeof veri.sunucu === "string" ? veri.sunucu : ""),
       otomatikGuncelle: veri.otomatikGuncelle !== false,
+      kullanici: typeof veri.kullanici === "string" ? veri.kullanici : "",
+      parola: typeof veri.parola === "string" ? veri.parola : "",
     };
   } catch {
     // Dosya yok ya da bozuk: ikisinin de cevabı aynı — kurulum ekranı açılır.
@@ -75,4 +93,17 @@ export function normalizeAdres(ham: string): string {
   const yerel =
     /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(metin);
   return `${yerel ? "http" : "https"}://${metin}`;
+}
+
+/**
+ * Kapı kimliği varsa `Basic ...` başlığı, yoksa `null`.
+ *
+ * Tek yerde üretiliyor çünkü üç yer kullanıyor: adres denemesi, güncelleyici ve
+ * pencerenin kimlik doğrulama olayı. Üçünden biri unutulursa hata "çalışıyor
+ * ama güncellenmiyor" gibi geç fark edilen bir biçimde çıkıyor.
+ */
+export function temelYetki(ayar: Pick<Ayarlar, "kullanici" | "parola">): string | null {
+  if (!ayar.kullanici && !ayar.parola) return null;
+  const ham = `${ayar.kullanici}:${ayar.parola}`;
+  return `Basic ${Buffer.from(ham, "utf8").toString("base64")}`;
 }

@@ -32,6 +32,8 @@ param(
   [switch] $Parolasiz,
   [string] $Parola = "",
   [switch] $Pencereler,
+  [string] $TunelAdi = "",
+  [string] $DisAdres = "",
   [int]    $Port = 3000,
   [int]    $KapiPort = 3010
 )
@@ -282,14 +284,39 @@ if (-not $YerelSadece) {
 
     $tunelLog = Join-Path $VAR "tunel.log"
     if (Test-Path $tunelLog) { Remove-Item $tunelLog -Force }
-    $tunel = Start-Process -FilePath "cloudflared" `
-      -ArgumentList @("tunnel", "--url", "http://127.0.0.1:$hedefPort", "--no-autoupdate") `
-      -WindowStyle Minimized -PassThru `
-      -RedirectStandardOutput $tunelLog -RedirectStandardError "$tunelLog.err"
+
+    # İki tünel biçimi:
+    #
+    #  • **Hızlı tünel** (varsayılan) — hesap istemiyor, adres her açılışta
+    #    yeni. Sunum için yeterli; masaüstü uygulaması için değil, çünkü adres
+    #    değişince her kullanıcı sunucu adresini yeniden yazmak zorunda.
+    #  • **Adlandırılmış tünel** (`-TunelAdi`) — Cloudflare hesabı ve alan adı
+    #    istiyor ama adres **sabit**. Kurulu masaüstü uygulamaları olan bir
+    #    kurulumda doğru olan bu.
+    #
+    # Adlandırılmış tünelde hedef port `~/.cloudflared/config.yml` içinde
+    # yazılı; parola kapısı kullanılacaksa oradaki `service` satırı
+    # `http://127.0.0.1:$KapiPort` olmalı.
+    if ($TunelAdi) {
+      if (-not $DisAdres) {
+        Write-Error "-TunelAdi ile birlikte -DisAdres de verilmeli (örn. https://b2b.firmaniz.com)."
+      }
+      $tunel = Start-Process -FilePath "cloudflared" `
+        -ArgumentList @("tunnel", "run", $TunelAdi) `
+        -WindowStyle Minimized -PassThru `
+        -RedirectStandardOutput $tunelLog -RedirectStandardError "$tunelLog.err"
+      $publicUrl = $DisAdres.TrimEnd("/")
+    } else {
+      $tunel = Start-Process -FilePath "cloudflared" `
+        -ArgumentList @("tunnel", "--url", "http://127.0.0.1:$hedefPort", "--no-autoupdate") `
+        -WindowStyle Minimized -PassThru `
+        -RedirectStandardOutput $tunelLog -RedirectStandardError "$tunelLog.err"
+    }
     $tunelPid = $tunel.Id
 
     # Adres cloudflared'in gunlugune dusuyor; bekleyip okuyoruz.
-    for ($i = 0; $i -lt 40; $i++) {
+    # Adlandirilmis tunelde adres zaten biliniyor.
+    for ($i = 0; $i -lt 40 -and -not $publicUrl; $i++) {
       Start-Sleep -Seconds 2
       $icerik = ""
       if (Test-Path "$tunelLog.err") { $icerik = $icerik + (Get-Content "$tunelLog.err" -Raw -ErrorAction SilentlyContinue) }

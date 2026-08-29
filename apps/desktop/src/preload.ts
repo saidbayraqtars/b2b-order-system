@@ -9,9 +9,14 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("kabuk", {
   ayarlariOku: () => ipcRenderer.invoke("ayar:oku"),
-  dene: (sunucu: string) => ipcRenderer.invoke("ayar:dene", sunucu),
-  kaydet: (veri: { sunucu: string; otomatikGuncelle: boolean }) =>
-    ipcRenderer.invoke("ayar:kaydet", veri),
+  dene: (veri: { sunucu: string; kullanici?: string; parola?: string }) =>
+    ipcRenderer.invoke("ayar:dene", veri),
+  kaydet: (veri: {
+    sunucu: string;
+    otomatikGuncelle: boolean;
+    kullanici?: string;
+    parola?: string;
+  }) => ipcRenderer.invoke("ayar:kaydet", veri),
   yenidenDene: () => ipcRenderer.invoke("kabuk:yeniden-dene"),
   kurulumAc: () => ipcRenderer.invoke("kabuk:kurulum-ac"),
 });

@@ -43,6 +43,26 @@ Yerel adresler `http`, diğerleri `https` kabul edilir — şema yazmak gerekmez
 
 ---
 
+## Sunucunun önünde parola kapısı varsa
+
+Sunum kurulumunda dış adres bir Basic Auth kapısının arkasında
+(`docs/SUNUCU.md`). Tarayıcı 401 görünce kullanıcıya kutu açıyor;
+**Electron açmıyor** — dinleyici olmadan istek sessizce düşüyor ve uygulama
+"bağlanılamadı" diyor. İlk denemede kapının arkasındaki sunucuya uygulamadan
+tek istek ulaşmadı.
+
+Bu yüzden kurulum ekranı, sunucu 401 döndüğünde **kapı kullanıcı
+adı/parola** alanlarını açıyor. Kimlik `ayarlar.json`da duruyor ve üç yerde
+kullanılıyor: adres denemesi, pencerenin `login` olayı ve güncelleyicinin
+istek başlıkları. Üçüncüsü ayrı duruyor çünkü indirmeyi Electron'un ağ
+yığını değil, güncelleyicinin kendi isteği yapıyor.
+
+⚑ **Hızlı tünelin adresi her açılışta değişiyor**, yani kurulu uygulamanın
+adresi bayatlıyor. Kurulu masaüstü uygulaması olan yerde ya sabit bir adres
+(adlandırılmış tünel, `-TunelAdi`) ya da yerel ağ adresi kullanılmalı.
+
+---
+
 ## Geliştirme
 
 ```bash

@@ -9,7 +9,13 @@ import {
 } from "electron";
 import { autoUpdater } from "electron-updater";
 import { join } from "node:path";
-import { ayarlariOku, ayarlariYaz, normalizeAdres, type Ayarlar } from "./ayarlar";
+import {
+  ayarlariOku,
+  ayarlariYaz,
+  normalizeAdres,
+  temelYetki,
+  type Ayarlar,
+} from "./ayarlar";
 import { eldenDenetle, guncellemeyiKur } from "./guncelleme";
 
 // B2B masaüstü kabuğu.
@@ -30,7 +36,7 @@ import { eldenDenetle, guncellemeyiKur } from "./guncelleme";
 
 let anaPencere: BrowserWindow | null = null;
 let kurulumPenceresi: BrowserWindow | null = null;
-let ayarlar: Ayarlar = { sunucu: "", otomatikGuncelle: true };
+let ayarlar: Ayarlar = { sunucu: "", otomatikGuncelle: true, kullanici: "", parola: "" };
 
 const KURULUM_HTML = join(__dirname, "..", "arayuz", "kurulum.html");
 const HATA_HTML = join(__dirname, "..", "arayuz", "hata.html");
@@ -48,6 +54,24 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 }
+
+/**
+ * Sunucunun önündeki parola kapısını yanıtla.
+ *
+ * Tarayıcı 401 görünce kullanıcıya bir kutu açıyor; Electron açmıyor ve olayı
+ * dinleyen yoksa istek sessizce düşüyor. Kapının arkasındaki bir sunucuya
+ * uygulamadan **tek istek** ulaşmamıştı; bu dinleyici o boşluğu kapatıyor.
+ *
+ * Vekil (proxy) kimliği bu değil: onu yanıtlamak, kuruluşun ağ vekiline
+ * sunucu parolasını göndermek olurdu.
+ */
+app.on("login", (olay, _icerik, istek, kimlikBilgisi, geriCagir) => {
+  if (kimlikBilgisi.isProxy) return;
+  if (!ayarlar.kullanici && !ayarlar.parola) return;
+  if (ayarlar.sunucu && !istek.url.startsWith(ayarlar.sunucu)) return;
+  olay.preventDefault();
+  geriCagir(ayarlar.kullanici, ayarlar.parola);
+});
 
 function kurulumAc(): void {
   if (kurulumPenceresi) {
@@ -186,47 +210,82 @@ ipcMain.handle("ayar:oku", () => ayarlar);
  * (`/api/health`) burada tam da bunun için var: cevap veriyorsa adres doğru,
  * vermiyorsa sebebi kurulum ekranında yazıyor.
  */
-ipcMain.handle("ayar:dene", async (_o, ham: string) => {
-  const adres = normalizeAdres(ham);
-  if (!adres) return { ok: false, mesaj: "Adres boş." };
-  try {
-    const cevap = await fetch(`${adres}/api/health`, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(8000),
+ipcMain.handle(
+  "ayar:dene",
+  async (_o, gelen: { sunucu: string; kullanici?: string; parola?: string }) => {
+    const adres = normalizeAdres(gelen.sunucu);
+    if (!adres) return { ok: false, mesaj: "Adres boş." };
+    const yetki = temelYetki({
+      kullanici: gelen.kullanici ?? "",
+      parola: gelen.parola ?? "",
     });
-    if (cevap.status === 401) {
-      return { ok: false, mesaj: "Adres parola soruyor; tarayıcıdan bir kez girin." };
+    try {
+      const cevap = await fetch(`${adres}/api/health`, {
+        redirect: "follow",
+        headers: yetki ? { authorization: yetki } : undefined,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (cevap.status === 401) {
+        // Kapı var: ekran bunu görünce kullanıcı adı/parola alanlarını açıyor.
+        return {
+          ok: false,
+          parolaGerekli: true,
+          mesaj: yetki
+            ? "Kullanıcı adı ya da parola yanlış."
+            : "Bu adres parola istiyor.",
+        };
+      }
+      if (!cevap.ok && cevap.status !== 503) {
+        return { ok: false, mesaj: `Sunucu ${cevap.status} döndü.` };
+      }
+      const veri = (await cevap.json()) as { status?: string };
+      if (veri.status === "ok") return { ok: true, adres, mesaj: "Bağlantı kuruldu." };
+      // 503 + "error": sunucu ayakta ama kendini sağlıksız buluyor. Adres
+      // doğru; kullanıcıyı geri çevirmek yerine uyarıp geçiriyoruz.
+      return {
+        ok: true,
+        adres,
+        mesaj: "Sunucu yanıt veriyor ama sağlık kontrolü uyarı veriyor.",
+      };
+    } catch (hata) {
+      return {
+        ok: false,
+        mesaj: hata instanceof Error ? `Ulaşılamadı: ${hata.message}` : "Ulaşılamadı.",
+      };
     }
-    if (!cevap.ok && cevap.status !== 503) {
-      return { ok: false, mesaj: `Sunucu ${cevap.status} döndü.` };
-    }
-    const veri = (await cevap.json()) as { status?: string };
-    if (veri.status === "ok") return { ok: true, adres, mesaj: "Bağlantı kuruldu." };
-    // 503 + "error": sunucu ayakta ama kendini sağlıksız buluyor. Adres
-    // doğru; kullanıcıyı geri çevirmek yerine uyarıp geçiriyoruz.
-    return { ok: true, adres, mesaj: "Sunucu yanıt veriyor ama sağlık kontrolü uyarı veriyor." };
-  } catch (hata) {
-    return {
-      ok: false,
-      mesaj: hata instanceof Error ? `Ulaşılamadı: ${hata.message}` : "Ulaşılamadı.",
+  },
+);
+
+ipcMain.handle(
+  "ayar:kaydet",
+  (
+    _o,
+    gelen: {
+      sunucu: string;
+      otomatikGuncelle: boolean;
+      kullanici?: string;
+      parola?: string;
+    },
+  ) => {
+    const adres = normalizeAdres(gelen.sunucu);
+    if (!adres) return { ok: false };
+
+    ayarlar = {
+      sunucu: adres,
+      otomatikGuncelle: gelen.otomatikGuncelle !== false,
+      kullanici: gelen.kullanici ?? "",
+      parola: gelen.parola ?? "",
     };
-  }
-});
+    ayarlariYaz(ayarlar);
+    guncellemeyiKur(autoUpdater, ayarlar, () => anaPencere);
 
-ipcMain.handle("ayar:kaydet", (_o, gelen: { sunucu: string; otomatikGuncelle: boolean }) => {
-  const adres = normalizeAdres(gelen.sunucu);
-  if (!adres) return { ok: false };
+    if (anaPencere) void anaPencere.loadURL(ayarlar.sunucu);
+    else anaPencereAc();
 
-  ayarlar = { sunucu: adres, otomatikGuncelle: gelen.otomatikGuncelle !== false };
-  ayarlariYaz(ayarlar);
-  guncellemeyiKur(autoUpdater, ayarlar.sunucu, ayarlar.otomatikGuncelle, () => anaPencere);
-
-  if (anaPencere) void anaPencere.loadURL(ayarlar.sunucu);
-  else anaPencereAc();
-
-  kurulumPenceresi?.close();
-  return { ok: true };
-});
+    kurulumPenceresi?.close();
+    return { ok: true };
+  },
+);
 
 ipcMain.handle("kabuk:yeniden-dene", () => {
   if (anaPencere && ayarlar.sunucu) void anaPencere.loadURL(ayarlar.sunucu);
@@ -246,7 +305,7 @@ void app.whenReady().then(() => {
   }
 
   anaPencereAc();
-  guncellemeyiKur(autoUpdater, ayarlar.sunucu, ayarlar.otomatikGuncelle, () => anaPencere);
+  guncellemeyiKur(autoUpdater, ayarlar, () => anaPencere);
 
   // Açılışta hemen değil: ilk saniyeler pencerenin çizilmesine ait. Sonra
   // altı saatte bir — uygulamayı günlerce açık bırakan kullanıcı için.

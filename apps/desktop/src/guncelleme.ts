@@ -1,5 +1,6 @@
 import { app, dialog, BrowserWindow } from "electron";
 import type { AppUpdater } from "electron-updater";
+import { temelYetki, type Ayarlar } from "./ayarlar";
 
 // Kabuğun kendi güncellemesi.
 //
@@ -26,14 +27,20 @@ let kurulacak = false;
 
 export function guncellemeyiKur(
   updater: AppUpdater,
-  sunucu: string,
-  otomatik: boolean,
+  ayarlar: Ayarlar,
   pencere: () => BrowserWindow | null,
 ): void {
   if (!app.isPackaged) return; // Geliştirmede güncelleme yok: paket imzası yok.
-  if (!sunucu) return;
+  if (!ayarlar.sunucu) return;
 
-  updater.setFeedURL({ provider: "generic", url: akisAdresi(sunucu) });
+  const otomatik = ayarlar.otomatikGuncelle;
+  updater.setFeedURL({ provider: "generic", url: akisAdresi(ayarlar.sunucu) });
+
+  // Sunucunun önünde parola kapısı varsa güncelleyici de ondan geçmek zorunda.
+  // Pencerenin `login` olayı burayı kapsamıyor: indirmeyi Electron'un ağ yığını
+  // değil, güncelleyicinin kendi isteği yapıyor.
+  const yetki = temelYetki(ayarlar);
+  if (yetki) updater.requestHeaders = { authorization: yetki };
 
   // Fark (delta) indirmesi kapalı: sunucu dosyaları düz servis ediyor ve
   // aralık (Range) isteklerini desteklemeyebilir. Kapatılmazsa güncelleyici

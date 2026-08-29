@@ -3330,6 +3330,24 @@ açılmaz.
 - **Çevrimdışı çalışmıyor.** Sunucu kapalıysa "bağlanılamadı" ekranı çıkıyor.
   Kabuğun içinde kopya olmadığı için gösterecek başka bir şey de yok —
   mimarinin bedeli, bilerek ödendi.
+### Parola kapısı — sonradan çıkan eksik
+
+Sunum kurulumunun dış adresi Basic Auth kapısının arkasında. Tarayıcı 401
+görünce kutu açıyor, **Electron açmıyor**: `app.on("login")` dinleyicisi
+olmadan istek sessizce düşüyor. Ölçüldü — kapının arkasındaki sunucuya
+uygulamadan **tek istek ulaşmadı**; kabuk "bağlanılamadı" ekranında kaldı.
+
+Kurulum ekranı artık 401 görünce kapı kullanıcı adı/parola alanlarını açıyor
+ve kimlik üç yerde birden kullanılıyor: adres denemesi (`fetch` başlığı),
+pencerenin `login` olayı, güncelleyicinin `requestHeaders`ı. Üçüncüsü ayrı
+duruyor çünkü indirmeyi Electron'un ağ yığını değil güncelleyicinin kendi
+isteği yapıyor. Vekil (proxy) kimliği yanıtlanmıyor: kuruluşun ağ vekiline
+sunucu parolasını göndermek olurdu.
+
+Kalan sınır: hızlı tünelin adresi her açılışta değişiyor, yani kurulu bir
+uygulamanın adresi bayatlıyor. Sabit adres için adlandırılmış tünel
+(`sunucu.ps1 -TunelAdi`), o da Cloudflare hesabı ve alan adı istiyor.
+
 - **Taşınabilir sürüm güncelleme akışına girmiyor** (`yayimla` onu
   kopyalamıyor): güncelleyici onu kurulum sanardı.
 
