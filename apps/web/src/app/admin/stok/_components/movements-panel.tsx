@@ -15,6 +15,7 @@ import {
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
+import { Disclosure } from "@/components/disclosure";
 import {
   Button,
   ErrorLine,
@@ -142,29 +143,41 @@ export function MovementsPanel() {
         </div>
       }
     >
+      {/* Şeridin tamamı da katlanıyor: `Chips` üç formu bire indirmişti ama
+          o bir form da defterin üstünde sürekli duruyordu. Defteri okumak
+          buraya bakmanın kaç katı yapılıyorsa, varsayılan o olmalı. */}
       <div className="border-b border-line bg-sunken p-3">
-        <Chips
-          value={active}
-          onChange={setForm}
-          items={[
-            { key: "manual" as const, label: "Elle giriş / çıkış" },
-            { key: "count" as const, label: "Sayım" },
-            ...(canTransfer
-              ? [{ key: "transfer" as const, label: "Depolar arası aktarım" }]
-              : []),
-          ]}
-        />
-        <div className="mt-3">
-          {active === "manual" && (
-            <ManualEntryForm warehouses={openWarehouses} onDone={refresh} />
-          )}
-          {active === "count" && (
-            <CountForm warehouses={openWarehouses} onDone={refresh} />
-          )}
-          {active === "transfer" && (
-            <TransferForm warehouses={openWarehouses} onDone={refresh} />
-          )}
-        </div>
+        <Disclosure label="+ Hareket kaydet" storageKey="stok:hareket-formu">
+          <div className="pt-2">
+            <Chips
+              value={active}
+              onChange={setForm}
+              items={[
+                { key: "manual" as const, label: "Elle giriş / çıkış" },
+                { key: "count" as const, label: "Sayım" },
+                ...(canTransfer
+                  ? [
+                      {
+                        key: "transfer" as const,
+                        label: "Depolar arası aktarım",
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            <div className="mt-3">
+              {active === "manual" && (
+                <ManualEntryForm warehouses={openWarehouses} onDone={refresh} />
+              )}
+              {active === "count" && (
+                <CountForm warehouses={openWarehouses} onDone={refresh} />
+              )}
+              {active === "transfer" && (
+                <TransferForm warehouses={openWarehouses} onDone={refresh} />
+              )}
+            </div>
+          </div>
+        </Disclosure>
       </div>
 
       {movements.isLoading && (
@@ -177,7 +190,7 @@ export function MovementsPanel() {
       </div>
 
       {movements.data && (
-        <Table>
+        <Table dense>
           <THead>
             <tr>
               <Th align="right">Hareket</Th>

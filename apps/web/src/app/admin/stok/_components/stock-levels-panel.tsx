@@ -77,7 +77,14 @@ export function StockLevelsPanel() {
 
   const page = useVisibleSlice(levels.data?.levels ?? [], RENDER_STEP);
 
-  const columns = warehouseId ? 7 : 6;
+  // Boş sütun çizilmiyor. Kritik seviye ve raf kodu isteğe bağlı alanlar;
+  // hiçbir ürüne girilmemişse tablo iki sütun boyunca "—" basıyordu — bilgi
+  // değil, göz yoran boşluk.
+  const rows = levels.data?.levels ?? [];
+  const hasCritical = rows.some((r) => r.minStock !== null);
+  const hasShelf = rows.some((r) => r.shelfCode !== null);
+  const columns =
+    4 + (warehouseId ? 1 : 0) + (hasCritical ? 1 : 0) + (hasShelf ? 1 : 0);
 
   return (
     <Panel
@@ -136,15 +143,15 @@ export function StockLevelsPanel() {
       </div>
 
       {levels.data && (
-        <Table>
+        <Table dense>
           <THead>
             <tr>
               <Th>Ürün</Th>
               <Th>SKU</Th>
               <Th align="right">Eldeki</Th>
               {warehouseId && <Th align="right">Depoda</Th>}
-              <Th align="right">Kritik</Th>
-              <Th>Raf</Th>
+              {hasCritical && <Th align="right">Kritik</Th>}
+              {hasShelf && <Th>Raf</Th>}
               <Th />
             </tr>
           </THead>
@@ -181,13 +188,15 @@ export function StockLevelsPanel() {
                           {row.warehouseOnHand ?? 0}
                         </Td>
                       )}
-                      <Td align="right" numeric muted>
-                        {row.minStock ?? "—"}
-                      </Td>
-                      <Td muted>{row.shelfCode ?? "—"}</Td>
+                      {hasCritical && (
+                        <Td align="right" numeric muted>
+                          {row.minStock ?? "—"}
+                        </Td>
+                      )}
+                      {hasShelf && <Td muted>{row.shelfCode ?? "—"}</Td>}
                       <Td align="right">
                         <Button
-                          size="sm"
+                          size="xs"
                           variant="ghost"
                           onClick={() =>
                             setOpenVariantId(open ? null : row.variantId)

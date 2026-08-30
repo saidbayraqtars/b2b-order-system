@@ -174,7 +174,7 @@ export function LotsPanel() {
         </div>
 
         {query.data && (
-          <Table>
+          <Table dense>
             <THead>
               <tr>
                 <Th>Ürün</Th>
@@ -217,7 +217,7 @@ export function LotsPanel() {
                       <Td align="right">
                         <div className="flex justify-end gap-1">
                           <Button
-                            size="sm"
+                            size="xs"
                             variant="ghost"
                             onClick={() => block.mutate(lot)}
                             disabled={block.isPending}
@@ -230,7 +230,7 @@ export function LotsPanel() {
                               taşıyan şey zaten pencere: gerekçe zorunlu, tüm
                               parti düşülüyorsa ayrıca onay isteniyor. */}
                           <Button
-                            size="sm"
+                            size="xs"
                             variant="ghost"
                             onClick={() => setWriteOff(lot)}
                           >
