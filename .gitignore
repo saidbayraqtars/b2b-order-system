@@ -67,3 +67,8 @@ coverage/
 
 # Yerel veritabanı yedekleri — asla depoya girmez (müşteri verisi taşır).
 /yedek/
+
+# Claude Code hafızasının depo içi kopyası (bkz. docs/HAFIZA.md). Diskte
+# dursun ama herkese açık depoya gitmesin: imza anahtarı parolası ve gösterim
+# hesabı şifreleri geçiyor.
+docs/hafiza/

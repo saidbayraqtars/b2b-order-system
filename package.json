@@ -19,6 +19,8 @@
     "db:purge-test-residue": "pnpm --filter @repo/database db:purge-test-residue",
     "db:studio": "pnpm --filter @repo/database db:studio",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "hafiza": "node scripts/hafiza-esitle.mjs",
+    "hafiza:geri": "node scripts/hafiza-esitle.mjs --geri",
     "shots": "node scripts/screenshots.mjs",
     "e2e": "node scripts/e2e.mjs",
     "test": "turbo run test"
