@@ -2,7 +2,8 @@
 
 Tarih: 2026-08-30 · Kapsam: `apps/web` (70 rota, 203 `.tsx`) · Envanter + ilerleme.
 
-> **Durum — 2026-08-30.** Faz 1 ✅ · Faz 2 ✅ · Faz 3–6 bekliyor.
+> **Durum — 2026-08-30.** Faz 1 ✅ · Faz 2 ✅ · Faz 3 ▶ sürüyor (1/9: kasa) ·
+> Faz 4–6 bekliyor.
 > Bu rapor iş ilerledikçe güncelleniyor; her fazın altında ne yapıldığı yazılı.
 > Doğrulama: `apps/web` typecheck temiz, 383 test geçiyor.
 
@@ -202,7 +203,7 @@ yarısının seyrek olması imkânsız hâle geliyor.
 
 | Ekran | Şimdi | Ne yapılacak | Tahmin |
 | --- | --- | --- | --- |
-| **Kasa & banka** | 4538px | İlk dilim 50→15 (−1660px) · "Hesaplar" kapalı, künyede hesap sayısı+bakiye (−470) · "Kart tahsilatları" boşken kapalı (−200) · elle giriş + aktarım formları `Disclosure` (−200) · Note kapalı (−90) | **~1900px** |
+| **Kasa & banka** ✅ | 4538px | İlk dilim 50→20 · "Hesaplar" kapalı, künyede hesap sayısı+bakiye · "Kart tahsilatları" kapalı, künyede kayıt+bekleyen sayısı · elle giriş + aktarım tek `Disclosure` · hesap açma şeridi `Disclosure` · Note kapalı | **~1900px** (ölçüm Faz 3 sonunda) |
 | **Stok — hareketler** | 4285px | İlk dilim 50→15 · üç form zaten `Chips`li, şeridi de `Disclosure`a al · Note kapalı | **~1800px** |
 | **Stok — durum** | 3597px | İlk dilim 50→20 · yoğun kip (satır 57→40px) · `KRİTİK`/`RAF` sütunları tamamı "—" ise gizle | **~1600px** |
 | **Stok — partiler** | 3935px | Aynısı | **~1700px** |
@@ -281,7 +282,7 @@ REDESIGN.md'ye eklenecek beş satır. Amaç: aynı yoğunluğun geri gelmemesi.
 | --- | --- | --- | --- |
 | 1 | `Panel.collapsible` + `Disclosure` + `Note.collapsible` + `Table dense` + `Button xs` | Hiçbir ekran değişmez, alet hazır olur | ✅ |
 | 2 | `useVisibleSlice` varsayılanı 20; uzun tabloların ilk dilimi 20 | En uzun 9 ekran ~%50 kısalır | ✅ |
-| 3 | A listesi ekran ekran (`defaultOpen`, `summary`) | 4538px → ~1900px | ⏳ sırada |
+| 3 | A listesi ekran ekran (`defaultOpen`, `summary`) | 4538px → ~1900px | ▶ 1/9 |
 | 4 | Ağaç bileşeni + kategori araması (yönetim + vitrin) | Kategoriler ve vitrin | ⏳ |
 | 5 | B ve C listeleri | Kalan ~20 ekran | ⏳ |
 | 6 | `pnpm shots` + boy uyarısı, REDESIGN.md kural bölümü | Geri gelmemesi | ⏳ |
@@ -305,6 +306,24 @@ REDESIGN.md'ye eklenecek beş satır. Amaç: aynı yoğunluğun geri gelmemesi.
 - **`Table`**: `dense`. **`Button`/`LinkButton`**: `xs` (h-6).
 - Erişilebilirlik üçlüsü baştan uygulandı: `<button aria-expanded>`, kapalı
   içerik DOM'dan çıkıyor, ok `motion-reduce:transition-none` taşıyor.
+
+### Faz 3 — ekran ekran
+
+**Kasa & banka** ✅ — dört panelden ikisi kapalı başlıyor, iki form katlandı:
+
+- `accounts-panel.tsx`: panel `collapsible defaultOpen={false}`, künye
+  "N hesap · ₺toplam". Hesap açma şeridi `Disclosure` ("+ Yeni hesap").
+  Bakiye ağda **dize** geliyor (ondalık): toplarken `Number()` şart, yoksa
+  dize birleşmesi oluyor.
+- `card-payments-panel.tsx`: kapalı başlıyor, künye "N kayıt · M bekliyor".
+  Durum süzgeci başlıktan gövdeye taşındı — kapalı bir panelin başlığında
+  duran süzgeç, neyi süzdüğü görünmediği için yanıltıcı.
+- `movements-panel.tsx`: elle giriş + aktarım formları tek bir `Disclosure`
+  altında ("+ Elle kayıt / hesaplar arası aktarım").
+- `page.tsx`: `Note collapsible defaultOpen={false}`.
+
+Ölçüm (`pnpm shots`) veritabanı + geliştirme sunucusu istiyor; Faz 3'ün
+sonunda A listesinin tamamı için tek seferde alınacak.
 
 ### Faz 2 — ne yapıldı
 

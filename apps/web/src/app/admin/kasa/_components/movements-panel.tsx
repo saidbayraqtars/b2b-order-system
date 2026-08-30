@@ -33,6 +33,7 @@ import {
   Th,
   THead,
 } from "@/components/ui";
+import { Disclosure } from "@/components/disclosure";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
 
 // The till ledger itself: what moved, filters over it, and the two entries a
@@ -126,9 +127,19 @@ export function MovementsPanel() {
         </div>
       }
     >
-      <div className="grid gap-4 border-b border-line bg-sunken p-4 md:grid-cols-2">
-        <ManualEntryForm accounts={openAccounts} onDone={refresh} />
-        <TransferForm accounts={openAccounts} onDone={refresh} />
+      {/* İki form kapalı başlıyor. İkisi birden açıkken defterin üstünde on
+          kontrollük bir duvar oluşuyordu; oysa kasa ekranına bakan kişi
+          çoğu zaman yalnızca hareketleri okuyor, kayıt girmiyor. */}
+      <div className="border-b border-line bg-sunken px-4 py-2.5">
+        <Disclosure
+          label="+ Elle kayıt / hesaplar arası aktarım"
+          storageKey="kasa:elle-kayit"
+        >
+          <div className="grid gap-4 pt-2 md:grid-cols-2">
+            <ManualEntryForm accounts={openAccounts} onDone={refresh} />
+            <TransferForm accounts={openAccounts} onDone={refresh} />
+          </div>
+        </Disclosure>
       </div>
 
       {movements.isLoading && (

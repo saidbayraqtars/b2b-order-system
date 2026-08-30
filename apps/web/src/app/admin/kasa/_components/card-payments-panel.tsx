@@ -73,12 +73,30 @@ export function CardPaymentsPanel() {
   };
 
   const active = query.data?.providers.find((p) => p.active);
+  const intents = query.data?.intents ?? [];
+
+  // Kapalı panelin künyesi. Bu ekranda gerçekten beklenen tek şey "onayımı
+  // bekleyen kart tahsilatı var mı" — sayı onu kapalıyken de söylüyor.
+  const pending = intents.filter(
+    (i) => i.status === "PENDING" || i.status === "AUTHORIZED",
+  ).length;
+  const summary = query.data
+    ? intents.length === 0
+      ? "kayıt yok"
+      : `${intents.length} kayıt${pending > 0 ? ` · ${pending} bekliyor` : ""}`
+    : undefined;
 
   return (
     <Panel
       title="Kart tahsilatları"
       bodyClassName="p-0"
-      action={
+      collapsible
+      // Kapalı başlıyor: sanal POS kullanılmayan kurulumda bu panel hep boş ve
+      // boşken bile 265 piksel tutuyordu. Bekleyen tahsilat sayısı künyede.
+      defaultOpen={false}
+      summary={summary}
+    >
+      <div className="flex justify-end border-b border-line px-4 py-2.5">
         <label>
           <Label>Durum</Label>
           <Select
@@ -96,8 +114,8 @@ export function CardPaymentsPanel() {
             ))}
           </Select>
         </label>
-      }
-    >
+      </div>
+
       {query.data && (
         <p className="border-b border-line bg-sunken px-4 py-2.5 text-xs text-ink-faint">
           Sağlayıcı:{" "}
@@ -132,10 +150,10 @@ export function CardPaymentsPanel() {
             </tr>
           </THead>
           <TBody>
-            {query.data.intents.map((intent) => (
+            {intents.map((intent) => (
               <IntentRow key={intent.id} intent={intent} onChanged={refresh} />
             ))}
-            {query.data.intents.length === 0 && (
+            {intents.length === 0 && (
               <TableEmpty colSpan={6} label="Bu durumda kart tahsilatı yok." />
             )}
           </TBody>

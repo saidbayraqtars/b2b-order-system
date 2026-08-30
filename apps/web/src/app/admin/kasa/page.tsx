@@ -22,7 +22,8 @@ export default async function AdminKasaPage() {
         <AccountsPanel />
         <MovementsPanel />
       </div>
-      <Note>
+      {/* Kural metni katlanır: ilk okumada gerekli, ellinci açılışta gürültü. */}
+      <Note collapsible defaultOpen={false} storageKey="kasa:not">
         Bu defter <strong>bizim paramızı</strong> takip eder; müşterinin borcu
         cari ekstrede durur. Nakit ve havale sipariş onaylandığında bedeli
         buraya girer, çünkü cariye hiç yazılmaz. <strong>Kart</strong>{" "}

@@ -20,6 +20,7 @@ import {
   TextInput,
 } from "@/components/form";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
+import { Disclosure } from "@/components/disclosure";
 
 // Kasa / banka hesapları and the mapping that decides where a peşin order's
 // money lands.
@@ -77,81 +78,107 @@ export function AccountsPanel() {
     },
   });
 
+  const accounts = query.data?.accounts ?? [];
+  // Kapalı panelin künyesi. Hesap tanımları ayda bir açılıyor ama bakiye her
+  // gün merak ediliyor — kapalıyken de görünmesi gereken tek şey bu.
+  const summary =
+    accounts.length > 0
+      ? `${accounts.length} hesap · ${formatTRY(
+          // Bakiye ondalık olarak taşınıyor, yani ağda dize. Toplamadan önce
+          // sayıya çevrilmezse "0" + "1250" birleşmesi oluyor.
+          accounts.reduce((sum, a) => sum + Number(a.currentBalance), 0),
+        )}`
+      : undefined;
+
   return (
-    <Panel title="Hesaplar" bodyClassName="p-0">
+    <Panel
+      title="Hesaplar"
+      bodyClassName="p-0"
+      collapsible
+      defaultOpen={false}
+      summary={summary}
+    >
       {/* Hesap açma şeridi gömük zeminde: tablo başlığıyla aynı yüzey,
-          altındaki listeden bir çizgiyle ayrılıyor. */}
+          altındaki listeden bir çizgiyle ayrılıyor. Kapalı başlıyor: kullanıcı
+          bu forma ayda birkaç kez dokunuyor, her açılışta görüyordu. */}
       <div className="border-b border-line bg-sunken px-4 py-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <label>
-            <Label>Hesap adı</Label>
-            <TextInput
-              value={draft.name}
-              placeholder="Merkez Kasa, Ziraat TL…"
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              className="w-44"
-            />
-          </label>
-          <label>
-            <Label>Tür</Label>
-            <Select
-              value={draft.kind}
-              onChange={(e) =>
-                setDraft({ ...draft, kind: e.target.value as CashAccountKind })
-              }
-              className="w-40"
+        <Disclosure label="+ Yeni hesap" storageKey="kasa:hesap-ekle">
+          <div className="flex flex-wrap items-end gap-3">
+            <label>
+              <Label>Hesap adı</Label>
+              <TextInput
+                value={draft.name}
+                placeholder="Merkez Kasa, Ziraat TL…"
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                className="w-44"
+              />
+            </label>
+            <label>
+              <Label>Tür</Label>
+              <Select
+                value={draft.kind}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    kind: e.target.value as CashAccountKind,
+                  })
+                }
+                className="w-40"
+              >
+                {CashAccountKindEnum.options.map((k) => (
+                  <option key={k} value={k}>
+                    {CASH_ACCOUNT_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {draft.kind !== "CASH" && (
+              <>
+                <label>
+                  <Label>Banka</Label>
+                  <TextInput
+                    value={draft.bankName}
+                    onChange={(e) =>
+                      setDraft({ ...draft, bankName: e.target.value })
+                    }
+                    className="w-36"
+                  />
+                </label>
+                <label>
+                  <Label>IBAN</Label>
+                  <TextInput
+                    value={draft.iban}
+                    onChange={(e) =>
+                      setDraft({ ...draft, iban: e.target.value })
+                    }
+                    className="w-56"
+                  />
+                </label>
+              </>
+            )}
+            <label>
+              <Label hint="sistem gelmeden önceki bakiye">Devir</Label>
+              <TextInput
+                type="number"
+                min={0}
+                step="0.01"
+                value={draft.openingBalance}
+                placeholder="0"
+                onChange={(e) =>
+                  setDraft({ ...draft, openingBalance: e.target.value })
+                }
+                className="w-32"
+              />
+            </label>
+            <Button
+              disabled={create.isPending || draft.name.trim().length === 0}
+              onClick={() => create.mutate()}
             >
-              {CashAccountKindEnum.options.map((k) => (
-                <option key={k} value={k}>
-                  {CASH_ACCOUNT_KIND_LABELS[k]}
-                </option>
-              ))}
-            </Select>
-          </label>
-          {draft.kind !== "CASH" && (
-            <>
-              <label>
-                <Label>Banka</Label>
-                <TextInput
-                  value={draft.bankName}
-                  onChange={(e) =>
-                    setDraft({ ...draft, bankName: e.target.value })
-                  }
-                  className="w-36"
-                />
-              </label>
-              <label>
-                <Label>IBAN</Label>
-                <TextInput
-                  value={draft.iban}
-                  onChange={(e) => setDraft({ ...draft, iban: e.target.value })}
-                  className="w-56"
-                />
-              </label>
-            </>
-          )}
-          <label>
-            <Label hint="sistem gelmeden önceki bakiye">Devir</Label>
-            <TextInput
-              type="number"
-              min={0}
-              step="0.01"
-              value={draft.openingBalance}
-              placeholder="0"
-              onChange={(e) =>
-                setDraft({ ...draft, openingBalance: e.target.value })
-              }
-              className="w-32"
-            />
-          </label>
-          <Button
-            disabled={create.isPending || draft.name.trim().length === 0}
-            onClick={() => create.mutate()}
-          >
-            Hesap aç
-          </Button>
-        </div>
-        <ErrorLine error={create.error} />
+              Hesap aç
+            </Button>
+          </div>
+          <ErrorLine error={create.error} />
+        </Disclosure>
       </div>
 
       <div className="p-4">
@@ -160,11 +187,11 @@ export function AccountsPanel() {
 
         {query.data && (
           <>
-            {query.data.accounts.length === 0 ? (
+            {accounts.length === 0 ? (
               <EmptyState label="Hiç hesap yok — peşin siparişlerin parası hiçbir yere yazılamaz." />
             ) : (
               <ul className="space-y-2">
-                {query.data.accounts.map((a) => (
+                {accounts.map((a) => (
                   <AccountRow key={a.id} account={a} onChanged={invalidate} />
                 ))}
               </ul>
@@ -172,7 +199,7 @@ export function AccountsPanel() {
 
             <BindingsEditor
               bindings={query.data.bindings}
-              accounts={query.data.accounts.filter((a) => a.isActive)}
+              accounts={accounts.filter((a) => a.isActive)}
               onChanged={invalidate}
             />
           </>
