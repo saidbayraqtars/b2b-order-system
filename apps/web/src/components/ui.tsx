@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CollapsibleNote } from "@/components/disclosure";
 
 // Paylaşılan yüzeyler. Kural basit: yüzeyler gölgeyle değil 1px çizgiyle
 // ayrılır, renk yalnızca durum bildirir, ölçüler tailwind.config'teki ölçekten
@@ -245,25 +246,46 @@ export function PageHeader({
 export function Note({
   children,
   className,
+  /**
+   * Katlanır dipnot. İçerik ilk okumada gerekli, ellinci açılışta gürültü —
+   * o yüzden kısaltmıyoruz, katlıyoruz. Açıklık durumu tarayıcıda saklanıyor.
+   */
+  collapsible = false,
+  title = "Bu ekran nasıl çalışır",
+  defaultOpen = true,
+  storageKey,
 }: {
   children: ReactNode;
   className?: string;
+  collapsible?: boolean;
+  title?: string;
+  defaultOpen?: boolean;
+  storageKey?: string;
 }) {
-  return (
-    <aside
-      className={cn(
-        "mt-8 border-l-2 border-line-strong pl-4 text-body-sm leading-relaxed text-ink-muted",
-        "[&_strong]:font-semibold [&_strong]:text-ink",
-        // Dipnotların yarısı bir dosya adı ya da bir komut söylüyor. Kutu iki
-        // ekranda elle yazılmıştı, gerisinde çıplak duruyordu — aynı cümlenin
-        // iki görüntüsü.
-        "[&_code]:rounded [&_code]:bg-sunken [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:text-ink",
-        className,
-      )}
-    >
-      {children}
-    </aside>
+  const shell = cn(
+    "mt-8 border-l-2 border-line-strong pl-4 text-body-sm leading-relaxed text-ink-muted",
+    "[&_strong]:font-semibold [&_strong]:text-ink",
+    // Dipnotların yarısı bir dosya adı ya da bir komut söylüyor. Kutu iki
+    // ekranda elle yazılmıştı, gerisinde çıplak duruyordu — aynı cümlenin
+    // iki görüntüsü.
+    "[&_code]:rounded [&_code]:bg-sunken [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:text-ink",
+    className,
   );
+
+  if (collapsible) {
+    return (
+      <CollapsibleNote
+        title={title}
+        defaultOpen={defaultOpen}
+        storageKey={storageKey}
+        className={shell}
+      >
+        {children}
+      </CollapsibleNote>
+    );
+  }
+
+  return <aside className={shell}>{children}</aside>;
 }
 
 /** Tam ekran değil, panel-içi bekleme durumu — "Yükleniyor…" düz metninin yerine. */
@@ -451,10 +473,18 @@ export function Table({
   children,
   className,
   stickyHead = false,
+  /**
+   * Yoğun kip: satır 56px'ten 40px'e iniyor. Kaydırma azalmıyor, *aynı ekranda
+   * daha çok satır* görünüyor — uzun yönetim listelerinde istenen bu.
+   * Dolgu hücrenin kendisinde değil tablodan veriliyor: elli `Td` çağrısını
+   * tek tek gezmek yerine tablo başına tek bayrak.
+   */
+  dense = false,
 }: {
   children: ReactNode;
   className?: string;
   stickyHead?: boolean;
+  dense?: boolean;
 }) {
   return (
     <div
@@ -466,6 +496,7 @@ export function Table({
       <table
         className={cn(
           "w-full text-left text-body-sm",
+          dense && "[&_td]:py-1.5 [&_th]:py-2",
           stickyHead && "sm:[&_thead]:sticky sm:[&_thead]:top-16 sm:[&_thead]:z-10",
           className,
         )}

@@ -73,7 +73,7 @@ export function MovementsPanel() {
   // Defter uzun ve okunacak yeri baştır; ekran elli satırda kesiliyor. Sunucu
   // sınırı ayrı bir şey (bkz. /api/admin/cash-movements) — buradaki kesme
   // yalnızca çizim ve sayaç toplamı söylüyor.
-  const page = useVisibleSlice(movements.data?.movements ?? [], 50);
+  const page = useVisibleSlice(movements.data?.movements ?? [], 20);
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["cash-movements"] });

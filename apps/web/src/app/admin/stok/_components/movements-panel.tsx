@@ -14,6 +14,7 @@ import {
   type StockMovementSource,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import {
   Button,
   ErrorLine,
@@ -58,6 +59,9 @@ type FormKey = "manual" | "count" | "transfer";
  */
 const PAGE_SIZE = 50;
 
+/** İnen elli hareketin ilk dilimi — gerisi "daha fazla göster"in arkasında. */
+const RENDER_STEP = 20;
+
 export function MovementsPanel() {
   const qc = useQueryClient();
   const [source, setSource] = useState<StockMovementSource | "">("");
@@ -81,6 +85,8 @@ export function MovementsPanel() {
       );
     },
   });
+
+  const page = useVisibleSlice(movements.data?.movements ?? [], RENDER_STEP);
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["stock-movements"] });
@@ -187,7 +193,7 @@ export function MovementsPanel() {
             {movements.data.movements.length === 0 ? (
               <TableEmpty colSpan={7} label="Bu filtrede hareket yok." />
             ) : (
-              movements.data.movements.map((m) => (
+              page.visible.map((m) => (
                 <MovementRow key={m.id} movement={m} onChanged={refresh} />
               ))
             )}
@@ -195,11 +201,17 @@ export function MovementsPanel() {
         </Table>
       )}
 
-      {movements.data && movements.data.movements.length >= PAGE_SIZE && (
-        <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
-          Son {PAGE_SIZE} hareket gösteriliyor — daha eskisi için ürün ve kaynak
-          süzgeçlerini kullanın.
-        </p>
+      {page.total > 0 && (
+        <div className="border-t border-line px-4 pb-3">
+          <ShowMore
+            visible={page.visible.length}
+            total={page.total}
+            hidden={page.hidden}
+            onMore={page.showMore}
+            noun="hareket"
+            serverCapped={page.total >= PAGE_SIZE}
+          />
+        </div>
       )}
     </Panel>
   );

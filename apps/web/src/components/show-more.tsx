@@ -24,7 +24,11 @@ import { Button } from "@/components/form";
  */
 export function useVisibleSlice<T>(
   rows: readonly T[],
-  step = 50,
+  // Elli değil yirmi. Elli satır tek başına 2200–2800 piksel; ölçtüğümüz en
+  // uzun dokuz ekranın yarısı tek bir tablodan ibaretti
+  // (`docs/design/YOGUNLUK-RAPORU.md`). Yirmi satır bir ekranı dolduruyor,
+  // gerisi "daha fazla göster"in arkasında.
+  step = 20,
 ): {
   visible: T[];
   total: number;

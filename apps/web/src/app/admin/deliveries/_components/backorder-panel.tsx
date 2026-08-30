@@ -35,7 +35,7 @@ export function BackorderPanel() {
   });
 
   const report = query.data?.report;
-  const lines = useVisibleSlice(report?.lines ?? [], 50);
+  const lines = useVisibleSlice(report?.lines ?? [], 20);
 
   if (query.isLoading) {
     return (

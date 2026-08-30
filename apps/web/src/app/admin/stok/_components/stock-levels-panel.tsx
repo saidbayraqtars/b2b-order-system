@@ -9,6 +9,7 @@ import type {
 } from "@repo/services";
 import { STOCK_MOVEMENT_SOURCE_LABELS } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import {
   Button,
   ErrorLine,
@@ -44,6 +45,13 @@ import {
  */
 const PAGE_SIZE = 50;
 
+/**
+ * Sunucudan elli satır iniyor ama ekrana yirmisi çiziliyor: kesme **çizimde**,
+ * istekte. Limiti yirmiye indirmek "en kritik yirmi ürün" demek olurdu ve
+ * kullanıcının gerisini görmesinin tek yolu süzgeç kalırdı.
+ */
+const RENDER_STEP = 20;
+
 export function StockLevelsPanel() {
   const [search, setSearch] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
@@ -66,6 +74,8 @@ export function StockLevelsPanel() {
       return apiGet<{ levels: StockLevelRow[] }>(`/api/admin/stock?${params}`);
     },
   });
+
+  const page = useVisibleSlice(levels.data?.levels ?? [], RENDER_STEP);
 
   const columns = warehouseId ? 7 : 6;
 
@@ -149,7 +159,7 @@ export function StockLevelsPanel() {
                 }
               />
             ) : (
-              levels.data.levels.map((row) => {
+              page.visible.map((row) => {
                 const critical =
                   row.minStock !== null && row.stock <= row.minStock;
                 const open = openVariantId === row.variantId;
@@ -202,11 +212,17 @@ export function StockLevelsPanel() {
         </Table>
       )}
 
-      {levels.data && levels.data.levels.length >= PAGE_SIZE && (
-        <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
-          İlk {PAGE_SIZE} satır gösteriliyor — aradığınız ürünü yukarıdaki arama
-          kutusuyla daraltın.
-        </p>
+      {levels.data && (
+        <div className="border-t border-line px-4 pb-3">
+          <ShowMore
+            visible={page.visible.length}
+            total={page.total}
+            hidden={page.hidden}
+            onMore={page.showMore}
+            noun="ürün"
+            serverCapped={page.total >= PAGE_SIZE}
+          />
+        </div>
       )}
     </Panel>
   );

@@ -72,7 +72,7 @@ export function ProductsTable() {
   // katalogda "200 ürün" yazan bir ekran, kataloğun tamamını gösterdiğini ima
   // eder.
   const rows = sort.rows;
-  const page = useVisibleSlice(rows, 50);
+  const page = useVisibleSlice(rows, 20);
 
   return (
     <div className="space-y-4">

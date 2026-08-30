@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import type {
   ReactNode,
   SelectHTMLAttributes,
@@ -8,6 +9,7 @@ import type {
 } from "react";
 import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DisclosureChevron, useOpenState } from "@/components/disclosure";
 
 // Ekranların paylaştığı form/panel bileşenleri. Plan büyük bir bileşen
 // kütüphanesi değil — düz Tailwind, ama tek noktadan: köşe yarıçapı, kenar
@@ -215,6 +217,11 @@ const BUTTON_VARIANT = {
 } as const;
 
 const BUTTON_SIZE = {
+  // Satır içi eylem düğmesi. `sm` (h-8) satırı 44px'ten 56px'e çıkarıyor; elli
+  // satırlık bir tabloda bu tek başına 600 piksel. `xs` yoğun kipteki tablolar
+  // için — dokunma hedefi küçülüyor, o yüzden yalnızca fare/klavye ağırlıklı
+  // yönetim tablolarında.
+  xs: "h-6 gap-1 px-2 text-xs",
   sm: "h-8 gap-1.5 px-3 text-xs",
   md: "h-10 gap-2 px-4 text-body-sm",
 } as const;
@@ -291,6 +298,16 @@ export function Panel({
   className,
   /** Gövde dolgusunu kaldırmak için ("p-0") — kenardan kenara liste/tablo. */
   bodyClassName,
+  collapsible = false,
+  /** Katlanır panelin ilk hâli. Varsayılan açık: 129 çağrı yerinin hiçbiri değişmesin. */
+  defaultOpen = true,
+  /**
+   * Kapalıyken başlığın yanındaki tek satır künye ("2 hesap · ₺3.267.046").
+   * İçinde ne olduğunu söylemeyen kapalı bir başlık, kaydırmaktan kötüdür.
+   */
+  summary,
+  /** Hatırlama anahtarı. Verilmezse rota + başlıktan türetiliyor. */
+  storageKey,
 }: {
   title: string;
   /** Başlığın solunda küçük bir ikon — panelin ne olduğunu bir bakışta söyler. */
@@ -299,7 +316,25 @@ export function Panel({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  summary?: ReactNode;
+  storageKey?: string;
 }) {
+  const pathname = usePathname();
+  const { open, toggle } = useOpenState(
+    collapsible ? (storageKey ?? `panel:${pathname}:${title}`) : undefined,
+    defaultOpen,
+  );
+  const shown = collapsible ? open : true;
+
+  const heading = (
+    <h2 className="flex min-w-0 items-center gap-2 text-headline-sm text-ink">
+      {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
+      <span className="truncate">{title}</span>
+    </h2>
+  );
+
   return (
     <section
       className={cn(
@@ -311,14 +346,38 @@ export function Panel({
         className,
       )}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 className="flex min-w-0 items-center gap-2 text-headline-sm text-ink">
-          {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
-          <span className="truncate">{title}</span>
-        </h2>
+      <header
+        className={cn(
+          "flex items-center justify-between gap-3 px-4 py-3",
+          // Kapalı panelde alt çizgi yok: çizgi bir gövdeyi ayırmak için var,
+          // gövde yokken sayfada boş bir çizgi kalıyordu.
+          shown && "border-b border-line",
+        )}
+      >
+        {collapsible ? (
+          // `action` düğmenin *dışında*: iç içe iki tıklanabilir eleman hem
+          // klavyede hem ekran okuyucuda bozuk.
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={open}
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2 rounded text-left",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink-muted",
+            )}
+          >
+            <DisclosureChevron open={open} />
+            {heading}
+            {!open && summary != null && (
+              <span className="truncate text-body-sm text-ink-faint">{summary}</span>
+            )}
+          </button>
+        ) : (
+          heading
+        )}
         {action}
       </header>
-      <div className={cn("p-4", bodyClassName)}>{children}</div>
+      {shown && <div className={cn("p-4", bodyClassName)}>{children}</div>}
     </section>
   );
 }

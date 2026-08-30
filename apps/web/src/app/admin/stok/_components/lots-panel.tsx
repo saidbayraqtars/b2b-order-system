@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LotExpirySummary, StockLotRow } from "@repo/services";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import {
   Button,
   Checkbox,
@@ -61,8 +62,11 @@ const STATE_BADGE: Record<
   UNKNOWN: { tone: "neutral", label: "Tarihsiz" },
 };
 
-/** Bir ekranda okunabilecek satır sayısı — gerisi süzgeçle bulunur. */
+/** Sunucudan inen satır sayısı — gerisi süzgeçle bulunur. */
 const PAGE_SIZE = 50;
+
+/** İnenin ilk dilimi. Kesme çizimde: sıralama ve sayma elli satırın tamamında. */
+const RENDER_STEP = 20;
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -97,6 +101,7 @@ export function LotsPanel() {
   });
 
   const rows = query.data?.lots ?? [];
+  const page = useVisibleSlice(rows, RENDER_STEP);
   const summary = query.data?.summary;
 
   return (
@@ -185,7 +190,7 @@ export function LotsPanel() {
               {rows.length === 0 ? (
                 <TableEmpty colSpan={7} label="Parti kaydı yok." />
               ) : (
-                rows.map((lot) => {
+                page.visible.map((lot) => {
                   const badge = STATE_BADGE[lot.state];
                   return (
                     <tr key={lot.id}>
@@ -241,11 +246,17 @@ export function LotsPanel() {
           </Table>
         )}
 
-        {rows.length >= PAGE_SIZE && (
-          <p className="border-t border-line px-4 py-2.5 text-xs text-ink-faint">
-            SKT&apos;si en yakın {PAGE_SIZE} parti gösteriliyor — gerisi için
-            süzgeci ya da aramayı kullanın.
-          </p>
+        {rows.length > 0 && (
+          <div className="border-t border-line px-4 pb-3">
+            <ShowMore
+              visible={page.visible.length}
+              total={page.total}
+              hidden={page.hidden}
+              onMore={page.showMore}
+              noun="parti"
+              serverCapped={rows.length >= PAGE_SIZE}
+            />
+          </div>
         )}
       </Panel>
 
