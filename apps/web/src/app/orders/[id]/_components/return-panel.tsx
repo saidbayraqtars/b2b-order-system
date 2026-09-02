@@ -86,7 +86,17 @@ export function ReturnPanel({ orderId }: { orderId: string }) {
     .filter((item) => item.quantity > 0);
 
   return (
-    <Panel title="İade">
+    <Panel
+      title="İade"
+      collapsible
+      defaultOpen={false}
+      storageKey="order:return"
+      summary={
+        (existing.data?.returns.length ?? 0) > 0
+          ? `${existing.data!.returns.length} kayıt`
+          : "kayıt yok"
+      }
+    >
       {existing.isLoading ? (
         <LoadingState />
       ) : (existing.data?.returns.length ?? 0) > 0 ? (

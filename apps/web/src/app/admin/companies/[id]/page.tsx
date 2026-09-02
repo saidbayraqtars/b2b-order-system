@@ -84,7 +84,9 @@ export default async function AdminCompanyPage({
         <StatTile
           label="Hacim iskontosu"
           value={volumeHint}
-          hint={[volumeWhy, volumeNext].filter(Boolean).join(" · ") || undefined}
+          hint={
+            [volumeWhy, volumeNext].filter(Boolean).join(" · ") || undefined
+          }
         />
       </div>
 
@@ -113,6 +115,7 @@ export default async function AdminCompanyPage({
       <CompanyAddresses companyId={company.id} addresses={company.addresses} />
 
       <UserManager
+        collapsible
         currentUserId={user.id}
         fixedCompanyId={company.id}
         allowedRoles={["COMPANY_ADMIN", "COMPANY_STAFF"]}

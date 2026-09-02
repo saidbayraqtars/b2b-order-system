@@ -12,7 +12,7 @@ export default async function AdminPaymentTermsPage() {
         subtitle="Siparişin kaç gün sonra ödeneceğini söyleyen tanımlar"
       />
       <TermsManager />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Tanım burada yapılır, <strong>kime sunulacağı</strong> firma sayfasında
         seçilir. Sipariş vadeyi gün olarak kopyalar: bir tanımı sonradan
         değiştirmek geçmiş siparişlerin vadesini bozmaz.

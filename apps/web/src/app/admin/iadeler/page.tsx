@@ -14,7 +14,7 @@ export default async function ReturnsPage() {
         subtitle="Talepleri karara bağla, geleni teslim al"
       />
       <ReturnBoard />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Talep karara bağlanır, stok ve cari yalnızca{" "}
         <strong>teslim alırken</strong> oynar: kabul edilmiş ama gelmemiş mal ne
         depoda vardır ne de alacak doğurur. Yazılan şey gelen maldır — üç koli

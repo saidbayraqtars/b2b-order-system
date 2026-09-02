@@ -2,11 +2,15 @@
 
 Tarih: 2026-08-30 · Kapsam: `apps/web` (70 rota, 203 `.tsx`) · Envanter + ilerleme.
 
-> **Durum — 2026-08-30.** Faz 1 ✅ · Faz 2 ✅ · Faz 3 ▶ sürüyor (4/9: kasa +
-> stok üç panel) · Faz 4–6 bekliyor.
-> **Sıradaki:** ürünler, kategoriler, portal vitrin, pano kârlılık, pano ürün.
-> Bu rapor iş ilerledikçe güncelleniyor; her fazın altında ne yapıldığı yazılı.
-> Doğrulama: `apps/web` typecheck temiz, 383 test geçiyor.
+> **Durum — 2026-09-02.** Faz 1–6 ✅ · yoğunluk işi tamamlandı.
+> **Ölçüldü:** 3000px üstü ekran **10 → 1**, 2500px üstü **1** (o da portal
+> vitrin ve orada uzunluk doğru). Kasa 4538→2126, ürünler 2921→1167,
+> hesabım 2025→960. Tam tablo §1.1'de.
+> **Son kapanış:** dört ekleme şeridi katlandı; bekleyen 45 `<Note>` kapalı
+> başlıyor. Devir ve doğrulama kaydı `docs/design/YOGUNLUK-KALAN.md`de.
+> Doğrulama: typecheck + lint temiz, 20 test dosyası / 396 test geçiyor,
+> `pnpm build` başarılı, 92 ekran görüntüsü tazelendi ve
+> `node scripts/screenshots.mjs --check` **89 ekranın hepsini aynı** buluyor.
 
 Bu rapor bir gözlemi ölçüye çeviriyor: "çoğu ekranda aşırı yoğun yazı var,
 kapanır açılır menü lazım". Aşağıda önce **ne kadar** yoğun olduğu sayıyla,
@@ -56,6 +60,51 @@ olduğu için his "her yer yoğun" oluyor.
 | 3005 | Portal vitrin | `portal/_components/portal-client.tsx` |
 | 2998 | Pano — ürün | `admin/analitik/_components/product-section.tsx` |
 | 2921 | Ürünler | `admin/products/_components/products-table.tsx` |
+
+### 1.1 Ölçüm — iş bittikten sonra (2026-09-02)
+
+`SHOT_BASE_URL=http://localhost:3100 node scripts/screenshots.mjs --check`
+çıktısından; aynı veri, aynı görüntü alanı.
+
+| Ekran | Önce | Sonra | Kısalma |
+| --- | --- | --- | --- |
+| Kasa & banka | 4538 | **2126** | %53 |
+| Stok — hareketler | 4285 | **2061** | %52 |
+| Güvenlik (süzgeçli) | 3942 | **1872** | %53 |
+| Stok — partiler | 3935 | **1881** | %52 |
+| Bakım işleri | 3747 | **1412** | %62 |
+| Stok — durum | 3597 | **1503** | %58 |
+| Güvenlik kaydı | 3450 | **1380** | %60 |
+| Kategoriler | 3420 | **1761** | %49 |
+| Pano — kârlılık | 3165 | **1817** | %43 |
+| Portal vitrin | 3005 | 3005 | — (aşağıya bak) |
+| Pano — ürün | 2998 | **1411** | %53 |
+| Ürünler | 2921 | **1167** | %60 |
+| Rep — ziyaret | 2621 | **1445** | %45 |
+| Kurulum | 2100 | **1209** | %42 |
+| Firma detayı | 2050 | **1267** | %38 |
+| Hesabım | 2025 | **960** | %53 |
+| Sipariş detayı | 1746 | **1332** | %24 |
+| Rapor detayı | 1984 | **1674** | %16 |
+| Rep — pano | 1634 | **1366** | %16 |
+| Hareket akışı | 2589 | **1359** | %47 |
+
+**3000px üstü ekran: 10 → 1. 2500px üstü: 1** — o da portal vitrin, ve orada
+uzunluğun sebebi ürün ızgarası, yani sayfanın konusu (§5).
+
+İki düzeltme, ikisi de raporun ilk hâlinin yanıldığı yer:
+
+- **Portal vitrin kısalmadı ve kısalmamalı.** Tahmin ~2400px'ti, gerekçe
+  "kenar çubuğu ağacı kapanır" idi. Ölçünce görüldü ki sayfanın boyunu kenar
+  çubuğu değil **ürün ızgarası** belirliyor: çubuk zaten `max-h-[28rem]` ile
+  sınırlıydı, yani 448 pikselde duruyordu. Izgara sayfanın konusu (§5) ve
+  `useVisibleSlice(…, 24)` ile zaten sınırlı. Ağaç yine de kapandı — kazanç
+  pikselde değil, elli bir satırlık bir kaydırma kutusunda aranan kategoriyi
+  bulmakta.
+- **`admin/activity` (hareket akışı, 2589px) listede hiç yoktu.** İlk envanter
+  onu görmemişti; yeni boy uyarısı ilk koşuda buldu ve aynı oturumda kapandı
+  (`useVisibleSlice(entries, 20)` + `ShowMore`): **2589 → 1359.** Faz 6'nın
+  değerinin kanıtı bu satır — kural vardı, ölçü yoktu, ekran gözden kaçmıştı.
 
 ---
 
@@ -168,13 +217,14 @@ tablo altı açıklama, süzgeç şeridi.
 `badge`: kapalıyken kaç süzgeç etkin. Kapalı bir süzgeç şeridi, gizli
 süzgeçle liste kesildiğinde kullanıcıyı yanıltır — sayı bunu önler.
 
-### P3 · `Note` → varsayılan kapalı — ⏳ alet hazır, henüz hiçbir ekranda açık değil
+### P3 · `Note` → varsayılan kapalı — ✅ 48/48 çağrı yeri
 
-`Note`a `collapsible` (varsayılan `true` olmalı, yani 48 yer birden kapanır)
-ve başlık: **"Bu ekran nasıl çalışır"**. İlk ziyarette açık, sonra kullanıcının
-bıraktığı gibi (localStorage).
+48 notun tamamı `collapsible defaultOpen={false}` taşıyor; içerik silinmeden
+başlık **"Bu ekran nasıl çalışır"** altında kapalı başlıyor. Saklama anahtarı
+verilen özel notlar kullanıcının bıraktığı açıklık durumunu `localStorage`da
+hatırlıyor.
 
-### P4 · Ağaç düğümü kapanır — ⏳ Faz 4
+### P4 · Ağaç düğümü kapanır — ✅ yapıldı
 
 `categories-manager.tsx`teki `walk()` düz dizi yerine iç içe düğüm döndürsün;
 kök satırlar varsayılan kapalı, alt sayısı künyede (`3 alt`). Aynı bileşen
@@ -208,24 +258,24 @@ yarısının seyrek olması imkânsız hâle geliyor.
 | **Stok — hareketler** ✅ | 4285px | İlk dilim 20 (`ShowMore`) · `Chips` şeridi `Disclosure`a girdi · yoğun kip | **~1800px** |
 | **Stok — durum** ✅ | 3597px | İlk dilim 20 (`ShowMore`) · yoğun kip + `xs` düğme · `KRİTİK`/`RAF` sütunları boşsa hiç çizilmiyor | **~1600px** |
 | **Stok — partiler** ✅ | 3935px | İlk dilim 20 (`ShowMore`) · yoğun kip · satır düğmeleri `xs` | **~1700px** |
-| **Ürünler** | 2921px | İlk dilim 50→20 · süzgeç şeridi `Disclosure` | **~1500px** |
-| **Kategoriler** | 3420px | Ağaç kapanır (51→34 satır) · arama kutusu · satır içi `<select>` yerine "taşı" eylemi (51 açılır kutu → 0) · ekleme şeridi `Disclosure` | **~1400px** |
-| **Portal vitrin** | 3005px | Kenar çubuğu ağacı kapanır · ürün ızgarası **dokunulmuyor** (sayfanın konusu o) | **~2400px** |
-| **Pano — kârlılık** | 3165px | Üç kırılım tablosu (firma/kategori/plasiyer) alt-sekme ya da akordiyon; ilkinde "Firma bazında" açık | **~1700px** |
-| **Pano — ürün** | 2998px | Aynısı | **~1700px** |
+| **Ürünler** ✅ | 2921px | İlk dilim 50→20 · süzgeç şeridi `Disclosure` | **~1500px** |
+| **Kategoriler** ✅ | 3420px | Ağaç kapanır (51→34 satır) · arama kutusu · satır içi `<select>` yerine "taşı" eylemi (51 açılır kutu → 0) · ekleme şeridi `Disclosure` | **~1400px** |
+| **Portal vitrin** ✅ | 3005px | Kenar çubuğu ağacı kapanır · ürün ızgarası **dokunulmuyor** (sayfanın konusu o) | **~2400px** |
+| **Pano — kârlılık** ✅ | 3165px | Üç kırılım tablosu (firma/kategori/plasiyer) alt-sekme ya da akordiyon; ilkinde "Firma bazında" açık | **~1700px** |
+| **Pano — ürün** ✅ | 2998px | Aynısı | **~1700px** |
 
 ### B — sonra
 
 | Ekran | Şimdi | Ne yapılacak |
 | --- | --- | --- |
-| **Bakım işleri** | 3747px | "Son çalıştırmalar" (50 satır, %90'ı `OK`) varsayılan kapalı; künye "son 50 · 3 hata". 6 iş kartı zaten iyi. |
-| **Güvenlik / denetim** | 3942 / 3450px | İlk dilim 50→20 · süzgeç şeridi `Disclosure` (4 kontrol) |
-| **Firma detayı** | 2050px | 5 blok var: künye + form + adresler + kullanıcılar + iskonto. **Form** açık; "Ödemede sunulacaklar" ve "Hacim iskontosu" `fieldset`leri (`company-form.tsx:279,344` — ikisi de uzun açıklama paragrafı taşıyor) kapalı. Adresler/kullanıcılar/iskonto kapalı, künyede sayı. |
-| **Hesabım** | 2025px | 5 panel + hareket listesi. **Yalnızca "Profil" açık**; İki adımlı doğrulama, Güvenlik durumu, Şifre değiştir, Son hareketlerim kapalı. Bu ekranda kullanıcı ayda bir kez tek bir iş yapıyor. |
-| **Kurulum** | 2100px | 12 adım, hepsi iki satır açıklamalı. **Tamamlanan adım tek satıra insin** (yeşil tik + ad + sayı), yalnızca eksik adım açık kalsın. 10/10'da ekran 12 satır olur. |
-| **Rep — ziyaret** | 2621px | "Son ziyaretlerim" (15 satır ≈ 900px) kapalı · "Yeni ziyaret" boş paneli tek satıra insin |
-| **Sipariş detayı** | 1746px | Kalem tablosu + özet **dokunulmuyor**. "Durum geçmişi", "İade", "ERP" panelleri kapalı; durum geçmişi künyesinde son durum. |
-| **Rapor tasarımcısı** | — | 7 panel (`report-builder.tsx:359,428,459,588,614,774,865`). "Hesaplanmış sütunlar", "Filtreler", "Sıralama/limit/grafik" kapalı başlasın; "Alanlar" ve "Sütunlar" açık. |
+| **Bakım işleri** ✅ | 3747px | "Son çalıştırmalar" (50 satır, %90'ı `OK`) varsayılan kapalı; künye "son 50 · 3 hata". 6 iş kartı zaten iyi. |
+| **Güvenlik / denetim** ✅ | 3942 / 3450px | İlk dilim 50→20 · süzgeç şeridi `Disclosure` (4 kontrol) |
+| **Firma detayı** ✅ | 2050px | 5 blok var: künye + form + adresler + kullanıcılar + iskonto. **Form** açık; "Ödemede sunulacaklar" ve "Hacim iskontosu" `fieldset`leri (`company-form.tsx:279,344` — ikisi de uzun açıklama paragrafı taşıyor) kapalı. Adresler/kullanıcılar/iskonto kapalı, künyede sayı. |
+| **Hesabım** ✅ | 2025px | 5 panel + hareket listesi. **Yalnızca "Profil" açık**; İki adımlı doğrulama, Güvenlik durumu, Şifre değiştir, Son hareketlerim kapalı. Bu ekranda kullanıcı ayda bir kez tek bir iş yapıyor. |
+| **Kurulum** ✅ | 2100px | 12 adım, hepsi iki satır açıklamalı. **Tamamlanan adım tek satıra insin** (yeşil tik + ad + sayı), yalnızca eksik adım açık kalsın. 10/10'da ekran 12 satır olur. |
+| **Rep — ziyaret** ✅ | 2621px | "Son ziyaretlerim" (15 satır ≈ 900px) kapalı · "Yeni ziyaret" boş paneli tek satıra insin |
+| **Sipariş detayı** ✅ | 1746px | Kalem tablosu + özet **dokunulmuyor**. "Durum geçmişi", "İade", "ERP" panelleri kapalı; durum geçmişi künyesinde son durum. |
+| **Rapor tasarımcısı** ✅ | — | 7 panel (`report-builder.tsx:359,428,459,588,614,774,865`). "Hesaplanmış sütunlar", "Filtreler", "Sıralama/limit/grafik" kapalı başlasın; "Alanlar" ve "Sütunlar" açık. |
 
 ### C — küçük ama ucuz
 
@@ -283,10 +333,10 @@ REDESIGN.md'ye eklenecek beş satır. Amaç: aynı yoğunluğun geri gelmemesi.
 | --- | --- | --- | --- |
 | 1 | `Panel.collapsible` + `Disclosure` + `Note.collapsible` + `Table dense` + `Button xs` | Hiçbir ekran değişmez, alet hazır olur | ✅ |
 | 2 | `useVisibleSlice` varsayılanı 20; uzun tabloların ilk dilimi 20 | En uzun 9 ekran ~%50 kısalır | ✅ |
-| 3 | A listesi ekran ekran (`defaultOpen`, `summary`) | 4538px → ~1900px | ▶ 4/9 |
-| 4 | Ağaç bileşeni + kategori araması (yönetim + vitrin) | Kategoriler ve vitrin | ⏳ |
-| 5 | B ve C listeleri | Kalan ~20 ekran | ⏳ |
-| 6 | `pnpm shots` + boy uyarısı, REDESIGN.md kural bölümü | Geri gelmemesi | ⏳ |
+| 3 | A listesi ekran ekran (`defaultOpen`, `summary`) | 4538px → ~1900px | ✅ |
+| 4 | Ağaç bileşeni + kategori araması (yönetim + vitrin) | Kategoriler ve vitrin | ✅ |
+| 5 | B ve C listeleri | Kalan ~20 ekran | ✅ |
+| 6 | `pnpm shots` + boy uyarısı, REDESIGN.md kural bölümü | Geri gelmemesi | ✅ |
 
 ### Faz 1 — ne yapıldı
 
@@ -336,6 +386,118 @@ REDESIGN.md'ye eklenecek beş satır. Amaç: aynı yoğunluğun geri gelmemesi.
 
 Ölçüm (`pnpm shots`) veritabanı + geliştirme sunucusu istiyor; Faz 3'ün
 sonunda A listesinin tamamı için tek seferde alınacak.
+
+### Faz 3 — kalan beş ekran
+
+- **Ürünler**: tablo yoğun kipte. Süzgeç şeridi **bilerek katlanmadı** — üç
+  kontrol `Disclosure` eşiğinde ama iki bin altı yüz ürünlük bir katalogda arama
+  kutusu ekranın *aleti*, dipnotu değil. Kırk piksel kazanıp her ziyarete bir
+  tık eklemek kötü takas.
+- **Pano — kârlılık**: üç kırılımdan yalnızca "Firma bazında" açık; diğer ikisi
+  künyede satır sayısı + tepedeki marjla kapalı. "Aylık kârlılık" da kapalı —
+  köprü ile aynı soruyu zaman ekseninde soruyor. Marj köprüsünün notu katlandı.
+- **Pano — ürün**: ABC tablosu açık kaldı (ekranın konusu o), yoğun kipe geçti
+  ve ilk dilimi `useVisibleSlice(…, 15)` ile onbeşe indi — Pareto'nun A sınıfı
+  zaten o aralıkta. "Ölü stok" kapalı, künyede "N varyant · ₺X".
+
+### Faz 4 — ağaç bileşeni
+
+**Yeni dosya `src/components/category-tree.tsx`.** Paylaşılan şey **çizim
+değil, karar**: hangi düğüm görünür, hangisi açık, arama neyi eliyor. İki
+ekranın görüntüsü farklı (biri `<tr>`, biri `<li>`) ama bu üç sorunun cevabı
+aynı olmak zorunda.
+
+- `nestByParent()` düz `parentId` listesini iç içe düğüme çeviriyor; üstü
+  listede olmayan satır **düşürülmüyor, köke ekleniyor** (yoksa düzenlenemez
+  bir kategori kalırdı).
+- `useCategoryTree()` arama + açıklık durumunu tutuyor, çıktısı düz satır
+  listesi. Açıklık `localStorage`da (`b2b.tree.<anahtar>`), ilk çizimden sonra
+  uygulanıyor — hidrasyon kuralı `disclosure.tsx`teki ile aynı.
+- **Aramanın ağaçtaki karşılığı özel.** Eşleşen düğümün *ataları* görünür
+  kalıyor, yoksa sonuç bağlamsız bir isim listesi olurdu ("Kutu" — neyin
+  altındaki kutu?). Eşleşen düğümün *altındaki* her şey de görünür kalıyor,
+  yoksa arama ağacı düzleştirirdi. Arama sürerken kayıtlı açıklık yok sayılıyor:
+  kapalı bir dalın içindeki eşleşmeyi saklamak aramanın kendisini bozar.
+- Türkçe katlama (`toLocaleLowerCase("tr")`): "İstanbul" araması "istanbul"
+  yazınca da bulmalı.
+
+**Kategoriler ekranı**: ağaç kapanır, arama kutusu + "tümünü aç/kapat", tablo
+yoğun kipte, ekleme şeridi `Disclosure`. **Satır içi `<select>` sütunu tamamen
+kalktı** — elli bir açılır kutu yerine satırda "Taşı" düğmesi ve tek bir pencere.
+Pencere kendi alt ağacını seçeneklerden eliyor: bir dalı kendi çocuğunun altına
+taşımak ağacı döngüye sokar. Sunucu bunu zaten reddediyor ama reddedilecek bir
+seçenek sunmanın anlamı yok.
+
+**Vitrin kenar çubuğu**: aynı kanca, arama kutusu, kapalı dalın yanında alt
+sayısı. Ok satırın **dışında** ayrı bir düğme — iç içe iki tıklanabilir eleman
+hem klavyede hem ekran okuyucuda bozuk, ve ayrılmasının ikinci faydası davranış:
+"Ambalaj"ı açmakla "Ambalaj"a süzmek iki ayrı istek.
+
+### Faz 5 — B listesi
+
+- **Bakım işleri**: "Son çalıştırmalar" kapalı, künye `son 50 · 3 hata`; ilk
+  dilim 20, tablo yoğun. `useVisibleSlice` erken dönüşlerin **üstüne** taşındı —
+  koşullu çağrılamaz.
+- **Güvenlik / denetim**: beş kontrollük süzgeç şeridi `Disclosure`, künyede
+  etkin süzgeç sayısı. Süzgeçli bir adresle gelindiğinde **açık başlıyor**,
+  yoksa kullanıcı listenin neden kesildiğini göremezdi. Sunucu limiti 50 kaldı,
+  çizim 20'ye indi (Faz 2'nin dersi).
+- **Firma detayı**: iki `fieldset` katlandı (yeni `CollapsibleFieldset` —
+  `<fieldset>`/`<legend>` korunuyor, düğme `<legend>`in içinde; onay kutusu
+  kümelerinde bu ikili ekran okuyucuya "bu dört kutu tek soruya ait" diyen tek
+  şey). Adresler, hesaplar ve iskontolar kapalı, künyede sayı. `UserManager`a
+  `collapsible` bayrağı eklendi — kendi sayfasında ekranın tamamı, firma
+  detayında beş bloktan biri.
+- **Hesabım**: yalnızca "Profil" açık. Bildirimler, güvenlik durumu, şifre
+  değiştir, son hareketler kapalı. İki adımlı doğrulama **zorunluysa açık**
+  kalıyor: uyarının kapalı bir başlığın arkasında durması, kullanıcının diğer
+  ekranlara neden giremediğini saklardı.
+- **Kurulum**: tamamlanmış adım tek satıra indi (tik + ad + sayı + kısa yol).
+  Sorunlu adım istisna — orada tam metin hâlâ gerekli. Sektör paketi paneli
+  kurulum bittiyse kapalı: bir başlangıç aleti, kalıcı bir ayar değil.
+- **Rep — ziyaret**: firma seçilmemişken "Yeni ziyaret" panelinin tamamı tek bir
+  cümle taşıyordu; artık düz bir satır. Ziyaret geçmişi kapalı.
+- **Sipariş detayı**: kalem tablosu ve özet **dokunulmadı**. Durum geçmişi, iade
+  ve ERP kapalı; geçmişin künyesi son adımın tarihini taşıyor.
+- **Rapor tasarımcısı**: "Alanlar" ve "Sütunlar" açık; hesaplanmış sütunlar,
+  filtreler ve sıralama/limit/grafik kapalı. İlk ikisi doluysa açık başlıyor —
+  kayıtlı bir raporu açan kişi neyin ayarlı olduğunu görmeli.
+
+### Faz 5 — C listesi
+
+- **Yeni kayıt şeritleri**: müşteri grubu, vade, belge serisi ve hacim basamağı
+  formları `Disclosure` içine alındı. Dört ayrı `storageKey` kullanılıyor;
+  oluşturma hatası kapalı şeridin dışında sahipsiz kalmıyor.
+- **Açıklama notları**: daha önce katlanan 3 çağrıya kalan 45 çağrı da eklendi;
+  toplam 48/48 `Note` içeriği korunarak kapalı başlıyor. Sunucu sayfalarında ek
+  sarmalayıcı gerekmedi; mevcut `Note` → `CollapsibleNote` istemci sınırı üretim
+  derlemesinden geçti.
+
+### Faz 6 — geri gelmemesi
+
+- `scripts/screenshots.mjs`e `TALL_LIMIT = 2500` ve koşu sonunda uzundan kısaya
+  sıralı bir döküm. **Süreç durdurulmuyor**: bazı ekranların uzun olması doğru
+  (kalem tablosu, ürün ızgarası). Uyarı bir kural değil bir ölçü — elle bakmak
+  üç adımda üç kez unutuldu.
+- `docs/design/REDESIGN.md`ye "Yoğunluk kuralları" bölümü: beş kural, "nereye
+  koymayın" listesi ve erişilebilirlik üçlüsü.
+- **Aynı ekrandaki iki not aynı başlığı alamaz.** 48 notun tamamı katlandığında
+  ERP ekranında iki, pano müşteri sekmesinde **dört** not birden "Bu ekran nasıl
+  çalışır" diyordu; kapalıyken hangisinin ne anlattığı okunmuyordu — §6'nın
+  dördüncü kuralının ("kapalı bölüm künyesini taşır") tam ihlali. Beşine ayrı
+  başlık verildi: "Segmentler nasıl hesaplanıyor", "Kohort matrisi nasıl
+  okunur", "Sessizleşen nasıl belirleniyor", "Panonun kaynağı ve kıyas kuralı",
+  "Köprü nasıl çalışır", "Bu iki komut ne yapar".
+- **`DIFF_TOLERANCE` ölçülerek yeniden seçildi: 0,001 → 0,0025.** Beş ekran
+  köşesinde zaman damgası taşıyor ve o tek satır iki koşu arasında %0,11–0,14
+  oynatıyor; bu işteki gerçek düzen değişiklikleri ise %0,63–11,9 aralığında
+  ölçüldü. Yeni eşik ikisinin arasında.
+- **`--check` muafiyeti iki ekran büyüdü.** Denetim kaydı ve hareket akışı saat
+  basıyor, üstelik denetim kaydı *çekim betiğinin kendi girişlerini* satır
+  olarak yazıyor: iki ardışık koşu bile eşit çıkmıyor (%3,8 ve %1,3 ölçüldü).
+  İkisi de `CHECK_EXEMPT`e girdi — "her zaman kırmızı" ile "hiç bakılmıyor"
+  arasında fark yok, ve o iki dosya kalan seksen dokuzun kırmızısını
+  görünmez kılıyordu.
 
 ### Faz 2 — ne yapıldı
 

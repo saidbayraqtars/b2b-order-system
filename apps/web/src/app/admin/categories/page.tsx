@@ -31,7 +31,7 @@ export default async function AdminCategoriesPage() {
         }
       />
       <CategoriesManager canManage={canManage} />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Ürün kategorisiz açılmaz, o yüzden ağaç kurulumun ikinci adımıdır. Adı
         değiştirmek yolu (<code>/slug</code>) değiştirmez: eski adresle
         kaydedilmiş bir bağlantı çalışmaya devam eder. Ürünü ya da alt

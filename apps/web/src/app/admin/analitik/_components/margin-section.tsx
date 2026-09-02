@@ -5,15 +5,7 @@ import Link from "next/link";
 import type { MarginRow, MarginSnapshot } from "@repo/services";
 import { formatTRY } from "@/lib/format";
 import { Panel } from "@/components/form";
-import {
-  Note,
-  Table,
-  TableEmpty,
-  TBody,
-  Td,
-  Th,
-  THead,
-} from "@/components/ui";
+import { Note, Table, TableEmpty, TBody, Td, Th, THead } from "@/components/ui";
 import { BarChart, Waterfall } from "@/components/charts";
 import { Insufficient, NoValue, SourceTile } from "./shared";
 
@@ -27,7 +19,8 @@ import { Insufficient, NoValue, SourceTile } from "./shared";
 
 export function MarginSection({ data }: { data: MarginSnapshot }) {
   const b = data.bridge;
-  const window = data.windowDays === 365 ? "son 12 ay" : `son ${data.windowDays} gün`;
+  const window =
+    data.windowDays === 365 ? "son 12 ay" : `son ${data.windowDays} gün`;
 
   const trend = data.trend.filter((t) => t.marginPct !== null);
   const trendHidden = data.trend.length - trend.length;
@@ -59,9 +52,7 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
           label="Brüt kâr"
           // Kapsam yetmiyorsa tutar da yazılmıyor, yüzde gibi: maliyeti boş
           // satırın kârı kendi cirosu kadar görünüyor ve toplam o kadar şişiyor.
-          value={
-            b.grossMarginPct.ok ? formatTRY(b.grossProfit) : <NoValue />
-          }
+          value={b.grossMarginPct.ok ? formatTRY(b.grossProfit) : <NoValue />}
           hint={
             b.grossMarginPct.ok
               ? `net ciro ${formatTRY(b.netRevenue)} − maliyet ${formatTRY(b.cost)}`
@@ -125,7 +116,7 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
           end={{ label: "Brüt kâr", value: b.grossProfit }}
           format={formatTRY}
         />
-        <Note className="mt-6">
+        <Note className="mt-6" collapsible defaultOpen={false}>
           Üç iskonto kalemi ayrı duruyor çünkü{" "}
           <strong>üçünün sahibi ayrı</strong>: firma iskontosu bir anlaşma,
           hacim iskontosu bir kural, kampanya bir karar. Hangisinin pahalı
@@ -136,7 +127,12 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
         </Note>
       </Panel>
 
-      <Panel title="Aylık kârlılık">
+      <Panel
+        title="Aylık kârlılık"
+        collapsible
+        defaultOpen={false}
+        summary={trend.length === 0 ? "veri yok" : `${trend.length} ay`}
+      >
         {trend.length === 0 ? (
           <Insufficient
             of={{
@@ -197,9 +193,8 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
             </div>
             {trendHidden > 0 && (
               <p className="mt-2 text-xs text-ink-faint">
-                {trendHidden} ay listede yok: o aylarda cironun yeterli
-                kısmında alış fiyatı yoktu ve maliyetsiz satır marjı yukarı
-                şişirir.
+                {trendHidden} ay listede yok: o aylarda cironun yeterli kısmında
+                alış fiyatı yoktu ve maliyetsiz satır marjı yukarı şişirir.
               </p>
             )}
           </>
@@ -212,6 +207,7 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
         unitLabel="firma"
         ranking={data.byCompany}
         href={(key) => `/admin/companies/${key}`}
+        defaultOpen
       />
 
       <Ranking
@@ -219,6 +215,7 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
         head="Kategori"
         unitLabel="kategori"
         ranking={data.byCategory}
+        defaultOpen={false}
       />
 
       <Ranking
@@ -226,6 +223,7 @@ export function MarginSection({ data }: { data: MarginSnapshot }) {
         head="Plasiyer"
         unitLabel="plasiyer"
         ranking={data.byRep}
+        defaultOpen={false}
         note={
           <>
             Yalnızca <strong>plasiyerin girdiği</strong> siparişler: bayinin
@@ -253,6 +251,7 @@ function Ranking({
   href,
   unitLabel,
   note,
+  defaultOpen,
 }: {
   title: string;
   head: string;
@@ -260,10 +259,29 @@ function Ranking({
   href?: (key: string) => string;
   unitLabel: string;
   note?: ReactNode;
+  /** Üç kırılımdan yalnızca ilki açık başlıyor. */
+  defaultOpen: boolean;
 }) {
+  // Kapalı panelin künyesi: kaç satır ve tepedeki marj. Sıralama zaten marja
+  // göre olduğu için ilk satır "en iyisi" demek — kapalı başlığın söylemesi
+  // gereken tek sayı bu.
+  const top = ranking.rows[0];
+  const summary =
+    ranking.rows.length === 0
+      ? `${unitLabel} yok`
+      : `${ranking.rows.length} ${unitLabel} · en yüksek ${
+          top?.marginPct == null ? "—" : `%${top.marginPct.toFixed(1)}`
+        }`;
+
   return (
-    <Panel title={title} bodyClassName="p-0 pb-1">
-      <Table stickyHead>
+    <Panel
+      title={title}
+      bodyClassName="p-0 pb-1"
+      collapsible
+      defaultOpen={defaultOpen}
+      summary={summary}
+    >
+      <Table stickyHead dense>
         <THead>
           <tr>
             <Th>{head}</Th>
@@ -333,8 +351,7 @@ function Ranking({
           {ranking.excluded > 0 && (
             <p>
               {ranking.excluded} {unitLabel} sıralamaya girmedi: üçten az
-              siparişte marj, kârlılığı değil o siparişin kampanyasını
-              ölçer.
+              siparişte marj, kârlılığı değil o siparişin kampanyasını ölçer.
             </p>
           )}
           {note && <p>{note}</p>}

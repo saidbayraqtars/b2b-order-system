@@ -169,7 +169,7 @@ export function CashSection({ data }: { data: CashSnapshot }) {
             )}
           </TBody>
         </Table>
-        <Note className="mx-4">
+        <Note collapsible defaultOpen={false} className="mx-4">
           <strong>Bu sayı yaklaşık.</strong> Borç satırı ile onu kapatan
           tahsilat kuruşuna kadar eşlenmiyor — o işi ekstredeki FIFO mahsup
           yapıyor; burada her borcun vadesine en yakın tahsilata bakılıyor.

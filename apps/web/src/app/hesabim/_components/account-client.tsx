@@ -194,7 +194,18 @@ function NotificationPanel({
   }
 
   return (
-    <Panel title="Bildirimler">
+    // Bu ekranda kullanıcı ayda bir kez tek bir iş yapıyor: yalnızca "Profil"
+    // açık, gerisi künyesiyle kapalı duruyor.
+    <Panel
+      title="Bildirimler"
+      collapsible
+      defaultOpen={false}
+      summary={
+        muted.length === 0
+          ? "hepsi açık"
+          : `${NotificationEventEnum.options.length - muted.length}/${NotificationEventEnum.options.length} açık`
+      }
+    >
       <div className="flex flex-col gap-3">
         {NotificationEventEnum.options.map((event) => (
           <Checkbox
@@ -214,7 +225,9 @@ function NotificationPanel({
           Kaydet
         </Button>
         {saved && (
-          <span className="text-body-sm text-positive">Tercihler kaydedildi</span>
+          <span className="text-body-sm text-positive">
+            Tercihler kaydedildi
+          </span>
         )}
       </div>
 
@@ -229,7 +242,12 @@ function NotificationPanel({
 
 function SecurityPanel({ account }: { account: Account }) {
   return (
-    <Panel title="Güvenlik durumu">
+    <Panel
+      title="Güvenlik durumu"
+      collapsible
+      defaultOpen={false}
+      summary={`son giriş ${formatDateTime(account.lastLoginAt)}`}
+    >
       {/* `DefRow`: bu panel künye satırını kendi yazıyordu ve ölçüleri ortak
           bileşenden yarım punto farklıydı. */}
       <dl className="grid gap-x-6 sm:grid-cols-2 sm:[&>div:nth-last-child(-n+2)]:border-b-0">
@@ -339,9 +357,8 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
     return (
       <Panel title="Yedek kodlarınız">
         <p className="text-body-sm text-ink">
-          Bu kodları{" "}
-          <strong className="font-semibold">şimdi</strong> kaydedin — bir daha
-          gösterilmeyecek. Her biri bir kez kullanılır ve telefonunuza
+          Bu kodları <strong className="font-semibold">şimdi</strong> kaydedin —
+          bir daha gösterilmeyecek. Her biri bir kez kullanılır ve telefonunuza
           erişemediğinizde doğrulama kodunun yerine geçer.
         </p>
         <ul className="my-3 grid grid-cols-2 gap-2 font-mono text-body-sm sm:grid-cols-3">
@@ -436,11 +453,7 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
           />
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <Button
-            onClick={confirm}
-            loading={busy}
-            disabled={!code.trim()}
-          >
+          <Button onClick={confirm} loading={busy} disabled={!code.trim()}>
             Doğrula ve aç
           </Button>
           <Button
@@ -509,7 +522,7 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
           )}
         </div>
         {status.required && (
-          <Note className="mt-4">
+          <Note collapsible defaultOpen={false} className="mt-4">
             {status.requirementReason} iki adımlı doğrulama zorunlu;
             kapatılamaz. Telefonunuzu değiştirecekseniz yöneticinize sıfırlatın.
           </Note>
@@ -521,7 +534,14 @@ function TwoFactorPanel({ initial }: { initial: TwoFactorStatus }) {
 
   // ── kapalı
   return (
-    <Panel title="İki adımlı doğrulama">
+    // Zorunluysa açık kalıyor: uyarı satırının kapalı bir başlığın arkasında
+    // durması, kullanıcının diğer ekranlara neden giremediğini saklardı.
+    <Panel
+      title="İki adımlı doğrulama"
+      collapsible={!status.required}
+      defaultOpen={false}
+      summary="kapalı"
+    >
       {status.required ? (
         <WarnLine>
           <span>
@@ -598,7 +618,12 @@ function PasswordPanel() {
   }
 
   return (
-    <Panel title="Şifre değiştir">
+    <Panel
+      title="Şifre değiştir"
+      collapsible
+      defaultOpen={false}
+      summary="tüm oturumları kapatır"
+    >
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <Label htmlFor="password-current">Mevcut şifre</Label>
@@ -653,8 +678,14 @@ function PasswordPanel() {
  */
 function ActivityPanel({ entries }: { entries: AuditEntry[] }) {
   return (
-    <Panel title="Son hareketlerim" bodyClassName="p-0 pb-1">
-      <Table>
+    <Panel
+      title="Son hareketlerim"
+      bodyClassName="p-0 pb-1"
+      collapsible
+      defaultOpen={false}
+      summary={entries.length === 0 ? "kayıt yok" : `${entries.length} kayıt`}
+    >
+      <Table dense>
         <THead>
           <tr>
             <Th>İşlem</Th>

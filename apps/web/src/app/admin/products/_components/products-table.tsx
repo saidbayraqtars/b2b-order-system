@@ -136,7 +136,11 @@ export function ProductsTable() {
 
       {rows.length > 0 && (
         <div className="overflow-clip rounded-lg border border-line bg-panel">
-          <Table stickyHead>
+          {/* Süzgeç şeridi bilerek katlanmadı. Üç kontrol `Disclosure` eşiğinde
+              ama iki bin altı yüz ürünlük bir katalogda arama kutusu ekranın
+              *aleti*, dipnotu değil — kapatmak kırk piksel kazanıp her ziyarete
+              bir tık ekliyordu. Kısalma satır yüksekliğinden geliyor. */}
+          <Table stickyHead dense>
             <THead>
               <tr>
                 <SortableTh sort={sort} sortKey="name">

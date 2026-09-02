@@ -86,7 +86,12 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
 
   return (
     <div className="space-y-4">
-      <Panel title="Yeni iskonto">
+      <Panel
+        title="Yeni iskonto"
+        collapsible
+        defaultOpen={false}
+        summary="ürün ya da kategoriye özel oran"
+      >
         <div className="flex flex-wrap items-end gap-2">
           <div>
             <Label>Hedef</Label>
@@ -158,7 +163,12 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
         <ErrorLine error={create.error} />
       </Panel>
 
-      <Panel title={`Tanımlı iskontolar (${rows.length})`}>
+      <Panel
+        title="Tanımlı iskontolar"
+        collapsible
+        defaultOpen={false}
+        summary={rows.length === 0 ? "yok" : `${rows.length} tanım`}
+      >
         {discounts.isLoading && <LoadingState />}
         {rows.length === 0 && discounts.isSuccess && (
           <p className="text-body-sm text-ink-faint">
@@ -168,7 +178,10 @@ export function CompanyDiscounts({ companyId }: { companyId: string }) {
 
         <ul className="divide-y divide-line">
           {rows.map((d) => (
-            <li key={d.id} className="flex items-center gap-3 py-2 text-body-sm">
+            <li
+              key={d.id}
+              className="flex items-center gap-3 py-2 text-body-sm"
+            >
               <Badge>{d.productId ? "Ürün" : "Kategori"}</Badge>
               <span className="font-medium text-ink">
                 {d.productName ?? d.categoryName ?? "—"}

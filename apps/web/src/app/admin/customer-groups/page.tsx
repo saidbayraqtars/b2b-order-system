@@ -12,7 +12,7 @@ export default async function AdminCustomerGroupsPage() {
         subtitle="Fiyat seviyesi: bayi, zincir, toptancı"
       />
       <GroupsManager />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Grup, firmaya özel liste fiyatı tanımlamak için kullanılır: fiyat
         kademeleri ürün sayfasında grup seçilerek girilir. Grubu olmayan firma
         liste fiyatını görür. Firması ya da fiyat kademesi olan grup silinemez —

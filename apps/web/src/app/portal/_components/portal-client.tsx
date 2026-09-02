@@ -15,6 +15,11 @@ import { Button, Checkbox, ErrorLine, Select } from "@/components/form";
 import { EmptyState, LoadingState, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
+import {
+  TreeToggle,
+  useCategoryTree,
+  type TreeInput,
+} from "@/components/category-tree";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
 
@@ -34,15 +39,32 @@ interface Props {
   blocks: readonly PageBlock[];
 }
 
-/** Flatten the category tree to a single ordered list for the sidebar. */
-function flatten(
+/**
+ * Sunucudan gelen ağacı ortak ağaç bileşeninin girdisine çevirir.
+ *
+ * Şekil zaten iç içe; dönüşüm yalnızca `data` alanını dolduruyor. Eskiden
+ * burada bir `flatten()` vardı ve kenar çubuğu elli bir düğümü birden
+ * basıyordu — kapanır ağaç o listenin yerini aldı.
+ */
+function toTreeInput(nodes: CategoryNode[]): TreeInput<CategoryNode>[] {
+  return nodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    children: toTreeInput(n.children),
+    data: n,
+  }));
+}
+
+/** Kart künyesindeki kategori adı için düz kimlik→ad eşlemesi. */
+function collectNames(
   nodes: CategoryNode[],
-  depth = 0,
-): Array<{ id: string; name: string; depth: number }> {
-  return nodes.flatMap((n) => [
-    { id: n.id, name: n.name, depth },
-    ...flatten(n.children, depth + 1),
-  ]);
+  into: Map<string, string>,
+): Map<string, string> {
+  for (const n of nodes) {
+    into.set(n.id, n.name);
+    collectNames(n.children, into);
+  }
+  return into;
 }
 
 const SORTS = {
@@ -220,17 +242,23 @@ export function PortalClient({
     return () => clearTimeout(timer);
   }, [scanNotice]);
 
-  const categories = useMemo(
-    () => flatten(categoriesQuery.data?.categories ?? []),
+  const categoryRoots = useMemo(
+    () => toTreeInput(categoriesQuery.data?.categories ?? []),
     [categoriesQuery.data],
   );
+  const categoryTree = useCategoryTree({
+    roots: categoryRoots,
+    storageKey: "portal-categories",
+  });
 
   // Kartın görsel üstündeki künyesi kategorinin adı. Ürün yalnızca kimliği
   // taşıdığı için ad burada çözülüyor — katalog isteğine ikinci bir alan
-  // eklemek, aynı adı her satırda tekrar indirmek olurdu.
+  // eklemek, aynı adı her satırda tekrar indirmek olurdu. Ağacın *görünen*
+  // satırlarından değil tamamından toplanıyor: kapalı bir dalın altındaki
+  // ürünün kartı da adını göstermeli.
   const categoryNames = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name])),
-    [categories],
+    () => collectNames(categoriesQuery.data?.categories ?? [], new Map()),
+    [categoriesQuery.data],
   );
 
   // Sıralama ve stok filtresi istemcide: katalog zaten tek istekte geliyor,
@@ -354,6 +382,18 @@ export function PortalClient({
               <p className="tech-label border-b border-line bg-sunken px-3 py-2">
                 Kategoriler
               </p>
+              {/* Arama kutusu: elli bir düğümlük bir ağaçta kaydırmanın
+                  alternatifi dalları tek tek açmak değil, aramak. */}
+              <div className="border-b border-line px-2 py-2">
+                <input
+                  type="search"
+                  value={categoryTree.search}
+                  onChange={(e) => categoryTree.setSearch(e.target.value)}
+                  placeholder="Kategori ara"
+                  aria-label="Kategori ara"
+                  className="h-7 w-full rounded border border-line bg-sunken px-2 text-xs text-ink outline-none transition-colors placeholder:text-ink-faint hover:border-line-strong focus:border-ink-muted"
+                />
+              </div>
               <ul className="max-h-[28rem] overflow-y-auto py-1">
                 <CategoryItem
                   active={categoryId === null}
@@ -362,16 +402,32 @@ export function PortalClient({
                 >
                   Tümü
                 </CategoryItem>
-                {categories.map((c) => (
+                {categoryTree.rows.map((row) => (
                   <CategoryItem
-                    key={c.id}
-                    active={categoryId === c.id}
-                    depth={c.depth}
-                    onClick={() => setCategoryId(c.id)}
+                    key={row.id}
+                    active={categoryId === row.id}
+                    depth={row.depth}
+                    onClick={() => setCategoryId(row.id)}
+                    toggle={
+                      <TreeToggle
+                        open={row.open}
+                        hasChildren={row.hasChildren}
+                        label={row.name}
+                        onClick={() => categoryTree.toggle(row.id)}
+                      />
+                    }
+                    count={
+                      row.hasChildren && !row.open ? row.descendants : null
+                    }
                   >
-                    {c.name}
+                    {row.name}
                   </CategoryItem>
                 ))}
+                {categoryTree.matches === 0 && (
+                  <li className="px-3 py-2 text-xs text-ink-faint">
+                    Eşleşen kategori yok.
+                  </li>
+                )}
               </ul>
             </aside>
           )}
@@ -498,32 +554,55 @@ function CatalogSearch({
   );
 }
 
+/**
+ * Kenar çubuğunun tek satırı.
+ *
+ * Ok, satırın **dışında** ayrı bir düğme: iç içe iki tıklanabilir eleman hem
+ * klavyede hem ekran okuyucuda bozuk. Ayrılmasının ikinci faydası da davranış
+ * — "Ambalaj"ı açmakla "Ambalaj"a süzmek iki ayrı istek ve kullanıcı çoğu
+ * zaman yalnızca birini istiyor.
+ */
 function CategoryItem({
   active,
   depth,
   onClick,
   children,
+  toggle,
+  count = null,
 }: {
   active: boolean;
   depth: number;
   onClick: () => void;
   children: React.ReactNode;
+  toggle?: React.ReactNode;
+  count?: number | null;
 }) {
   return (
-    <li>
+    <li
+      className={cn(
+        "flex items-center border-l-2 transition-colors",
+        active
+          ? "border-accent bg-subtle"
+          : "border-transparent hover:bg-subtle",
+      )}
+      style={{ paddingLeft: `${8 + depth * 10}px` }}
+    >
+      {toggle ?? <span aria-hidden className="inline-block w-5 shrink-0" />}
       <button
         type="button"
         onClick={onClick}
-        style={{ paddingLeft: `${12 + depth * 10}px` }}
         className={cn(
-          "block w-full truncate border-l-2 py-1.5 pr-3 text-left text-xs transition-colors",
-          active
-            ? "border-accent bg-subtle font-semibold text-ink"
-            : "border-transparent text-ink-muted hover:bg-subtle hover:text-ink",
+          "min-w-0 flex-1 truncate py-1.5 pr-2 text-left text-xs transition-colors",
+          active ? "font-semibold text-ink" : "text-ink-muted hover:text-ink",
         )}
       >
         {children}
       </button>
+      {count != null && (
+        <span className="shrink-0 pr-2 text-[10px] tabular-nums text-ink-faint">
+          {count}
+        </span>
+      )}
     </li>
   );
 }

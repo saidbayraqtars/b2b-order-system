@@ -85,6 +85,7 @@ export function UserManager({
   companies,
   currentUserId,
   grantablePermissions,
+  collapsible = false,
 }: {
   /** Pin every read and write to one company (company detail page / portal). */
   fixedCompanyId?: string;
@@ -98,6 +99,12 @@ export function UserManager({
    * kuralı yeniden uygular (assertMayGrant), bu yalnızca formu dürüst tutar.
    */
   grantablePermissions: readonly Permission[];
+  /**
+   * Firma detayında bu panel beş bloktan biri ve ekranın konusu değil; kendi
+   * sayfasında (`/admin/users`, `/portal/users`) ekranın tamamı. Katlanma
+   * kararı bu yüzden çağıranın.
+   */
+  collapsible?: boolean;
 }) {
   const qc = useQueryClient();
   const filters = useUrlState(FILTER_DEFAULTS);
@@ -161,6 +168,10 @@ export function UserManager({
     <Panel
       title="Hesaplar"
       bodyClassName="p-0"
+      collapsible={collapsible}
+      defaultOpen={false}
+      storageKey="user-manager:embedded"
+      summary={all.length === 0 ? "yok" : `${all.length} hesap`}
       action={
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
           {creating ? "Vazgeç" : "Yeni kullanıcı"}
@@ -228,7 +239,9 @@ export function UserManager({
           />
           <Checkbox
             checked={includeInactive}
-            onChange={(e) => filters.set({ pasif: e.target.checked ? "" : "0" })}
+            onChange={(e) =>
+              filters.set({ pasif: e.target.checked ? "" : "0" })
+            }
             label="Pasifleri de göster"
           />
         </div>

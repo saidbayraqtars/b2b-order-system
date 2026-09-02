@@ -12,7 +12,7 @@ export default async function AdminDocumentsPage() {
         subtitle="İrsaliye ve fatura numaraları hangi seriden veriliyor"
       />
       <SeriesManager />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Numara, belgeyi oluşturan işlemin içinde{" "}
         <strong>tek bir artırma</strong> ile alınır — aynı anda iki sevkiyat
         yapılsa da aynı numarayı alamazlar. İptal edilen belge numarasını geri

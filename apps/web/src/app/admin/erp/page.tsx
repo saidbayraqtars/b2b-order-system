@@ -18,7 +18,7 @@ export default async function AdminErpPage() {
         <AgentsPanel />
         <CommandPanel />
       </div>
-      <Note>
+      <Note collapsible defaultOpen={false} title="Köprü nasıl çalışır">
         Bu sistem müşterinin ERP&apos;sine <strong>uzanmaz</strong>.
         ERP&apos;nin bulunduğu makinede küçük bir <strong>ajan</strong> çalışır,
         ERP&apos;yi okur ve veriyi buraya gönderir; ERP şemasını bilen taraf

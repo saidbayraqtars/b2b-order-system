@@ -23,7 +23,7 @@ export default async function ChequesPage() {
         subtitle="Vade takibi, tahsile verme, karşılıksız ve ciro"
       />
       <ChequeBoard accounts={accounts} />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Çek kasaya <strong>tahsil edilince</strong> girer, alındığında değil:
         elimizdeki kâğıt henüz harcanabilir para değil. Karşılıksız ve müşteriye
         iade, kapattığı borcu <strong>cariye geri yazar</strong> — tahsilat

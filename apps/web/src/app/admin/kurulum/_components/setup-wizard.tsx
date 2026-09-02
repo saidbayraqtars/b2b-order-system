@@ -191,7 +191,7 @@ export function SetupWizard({
         </div>
       </Card>
 
-      <PackPanel packs={packs} />
+      <PackPanel packs={packs} defaultOpen={!status.ready} />
 
       <ol className="space-y-3">
         {steps.map((step, i) => (
@@ -228,6 +228,35 @@ function StepRow({
   problem?: string;
   isNext: boolean;
 }) {
+  // Tamamlanmış adım tek satıra iniyor: "ne yapılacak" ve "neden gerekli"
+  // metinleri yapılmamış bir iş için yazıldı; yapılmış olanın altında iki satır
+  // daha durmasının tek etkisi, kalan işi ekranın dışına itmek. Sorunlu adım
+  // istisna — orada tam metin hâlâ gerekli.
+  const compact = done && !problem;
+
+  if (compact) {
+    return (
+      <li className="flex items-center gap-3 rounded-lg border border-line bg-panel px-4 py-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-positive/10 text-positive">
+          <Check className="h-3.5 w-3.5" />
+        </span>
+        <h3 className="min-w-0 truncate text-body-sm font-medium text-ink">
+          {copy.title}
+        </h3>
+        <span className="shrink-0 text-xs tabular-nums text-ink-faint">
+          {count} {copy.unit}
+        </span>
+        {optional && <Badge tone="neutral">İsteğe bağlı</Badge>}
+        <Link
+          href={copy.href}
+          className="ml-auto shrink-0 text-xs text-ink-muted transition-colors hover:text-ink"
+        >
+          {copy.cta}
+        </Link>
+      </li>
+    );
+  }
+
   return (
     // Sıradaki adım renkle değil kenarla ve bir künyeyle işaretleniyor: mavi bir
     // çerçeve tasarım dilinde hiçbir şey söylemiyor, "sıradaki" ise bir durum
@@ -286,7 +315,14 @@ interface PackResult {
   skipped: Record<string, number>;
 }
 
-function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
+function PackPanel({
+  packs,
+  defaultOpen,
+}: {
+  packs: readonly SetupPack[];
+  /** Kurulum bittiyse kapalı: paket bir başlangıç aleti, kalıcı bir ayar değil. */
+  defaultOpen: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<PackResult | null>(null);
@@ -319,7 +355,13 @@ function PackPanel({ packs }: { packs: readonly SetupPack[] }) {
   }
 
   return (
-    <Panel title="Hazır sektör paketi" icon={<Package className="h-4 w-4" />}>
+    <Panel
+      title="Hazır sektör paketi"
+      icon={<Package className="h-4 w-4" />}
+      collapsible
+      defaultOpen={defaultOpen}
+      summary={`${packs.length} paket`}
+    >
       <p className="text-body-sm text-ink-muted">
         Grup, kategori ağacı, vade, depo, kasa ve hacim merdivenini tek seferde
         kurar.{" "}

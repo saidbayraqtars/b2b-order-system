@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CustomerGroupRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { Disclosure } from "@/components/disclosure";
 import { EmptyState, LoadingState } from "@/components/ui";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 
@@ -42,36 +43,40 @@ export function GroupsManager() {
     <Panel title={`Gruplar (${rows.length})`} bodyClassName="p-0">
       {/* Ekleme şeridi gömük zeminde, listenin üstünde — belge serileri ve vade
           ekranlarıyla aynı yer. */}
-      <div className="flex flex-wrap items-end gap-3 border-b border-line bg-sunken p-4">
-        <div>
-          <Label htmlFor="new-group">Grup adı</Label>
-          <TextInput
-            id="new-group"
-            value={name}
-            placeholder="Bayi, Toptancı…"
-            onChange={(e) => setName(e.target.value)}
-            className="w-48"
-          />
-        </div>
-        <div>
-          <Label htmlFor="new-group-desc">Açıklama</Label>
-          <TextInput
-            id="new-group-desc"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-72"
-          />
-        </div>
-        <Button
-          loading={create.isPending}
-          disabled={!name.trim()}
-          onClick={() => create.mutate()}
-        >
-          Ekle
-        </Button>
-        <div className="w-full">
-          <ErrorLine error={create.error} />
-        </div>
+      <div className="border-b border-line bg-sunken px-4 py-3">
+        <Disclosure label="+ Yeni grup" storageKey="customer-groups:new">
+          <div className="flex flex-wrap items-end gap-2 pb-1">
+            <div>
+              <Label htmlFor="new-group">Grup adı</Label>
+              <TextInput
+                id="new-group"
+                value={name}
+                placeholder="Bayi, Toptancı…"
+                onChange={(e) => setName(e.target.value)}
+                className="w-48"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-group-desc">Açıklama</Label>
+              <TextInput
+                id="new-group-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-72"
+              />
+            </div>
+            <Button
+              loading={create.isPending}
+              disabled={!name.trim()}
+              onClick={() => create.mutate()}
+            >
+              Ekle
+            </Button>
+            <div className="w-full">
+              <ErrorLine error={create.error} />
+            </div>
+          </div>
+        </Disclosure>
       </div>
 
       <div className="p-4">

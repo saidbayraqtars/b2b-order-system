@@ -14,7 +14,7 @@ export default async function LabelsAdminPage() {
         subtitle="Kargo etiketi ve 80 mm fişler — satır satır düzenlenir, aynı düzen kâğıda basılır"
       />
       <LabelDesigner />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Tasarım bir <strong>satır listesi</strong>, tuval değil: termal yazıcı
         satır satır basıyor ve mutlak konum her cihazda başka yere düşüyor.{" "}
         <code className="tech-num">{"{{alan}}"}</code> işaretleri basım anında

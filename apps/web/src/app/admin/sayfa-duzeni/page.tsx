@@ -12,7 +12,7 @@ export default async function PageLayoutAdminPage() {
         subtitle="Vitrinde hangi blok, hangi sırada çizilsin"
       />
       <LayoutEditor pageKey="PORTAL_HOME" />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Düzen <strong>veri</strong>: blok listesi ve sırası kayıtta duruyor,
         kodda değil. Blok tiplerinin tek sahibi sunucudaki kayıt defteri —
         buradan gönderilen tanınmayan bir tip reddedilir, kayıtta kalmış ama

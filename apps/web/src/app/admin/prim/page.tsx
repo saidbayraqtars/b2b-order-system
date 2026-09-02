@@ -14,7 +14,7 @@ export default async function AdminCommissionPage() {
         subtitle="Prim planları ve dönem hakedişi"
       />
       <CommissionBoard />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Prim <strong>iki tabandan</strong> hesaplanır ve ikisi ayrı plan olarak
         tanımlanır: <strong>ciro</strong> (net mal bedeli, KDV ve navlun hariç —
         hacim iskontosuyla aynı tanım) ve <strong>tahsilat</strong> (defterin

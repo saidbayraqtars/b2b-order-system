@@ -57,6 +57,10 @@ export function ErpPanel({ orderId }: Props) {
   return (
     <Panel
       title="ERP'ye aktarım"
+      collapsible
+      defaultOpen={false}
+      storageKey="order:erp"
+      summary={s.documentNo ? `belge ${s.documentNo}` : "aktarılmadı"}
       action={
         s.documentNo ? (
           <Badge tone="success">Aktarıldı</Badge>
@@ -94,9 +98,7 @@ export function ErpPanel({ orderId }: Props) {
           </p>
 
           {s.reason ? (
-            <p className="text-body-sm text-caution">
-              {s.reason}
-            </p>
+            <p className="text-body-sm text-caution">{s.reason}</p>
           ) : (
             <Button
               onClick={() => push.mutate()}

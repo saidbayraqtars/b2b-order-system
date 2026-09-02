@@ -14,7 +14,7 @@ export default async function AdminReconciliationPage() {
         subtitle="Dönem sonu mektubu ve müşterinin cevabı"
       />
       <ReconciliationBoard />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Mektuptaki bakiye bir <strong>anlık görüntü</strong>: dönem sonunda
         defterden hesaplanıp satıra donuyor. Bugünkü bakiye ondan farklı
         olabilir ve bu doğaldır — defter işlemeye devam ediyor. İkisi yan yana

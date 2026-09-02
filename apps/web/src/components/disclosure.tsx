@@ -50,7 +50,10 @@ export function useOpenState(
       const next = !prev;
       if (storageKey) {
         try {
-          window.localStorage.setItem(STORE_PREFIX + storageKey, next ? "1" : "0");
+          window.localStorage.setItem(
+            STORE_PREFIX + storageKey,
+            next ? "1" : "0",
+          );
         } catch {
           // Yazamıyorsak da açılıp kapanmaya devam etsin.
         }
@@ -169,5 +172,66 @@ export function CollapsibleNote({
       </button>
       {open && <div className="mt-2">{children}</div>}
     </aside>
+  );
+}
+
+/**
+ * Form içindeki katlanır alan kümesi.
+ *
+ * `Disclosure`dan farkı `<fieldset>`/`<legend>` olarak kalması: onay kutusu
+ * kümelerinde bu ikili ekran okuyucuya "bu dört kutu tek soruya ait" diyen tek
+ * şey ve düz bir `<div>`e çevirmek onu siler. Düğme `<legend>`in **içinde** —
+ * geçerli HTML ve başlık hâlâ kümenin adı.
+ */
+export function CollapsibleFieldset({
+  legend,
+  summary,
+  storageKey,
+  defaultOpen = false,
+  className,
+  children,
+}: {
+  legend: string;
+  /** Kapalıyken başlığın yanındaki tek satır künye. */
+  summary?: ReactNode;
+  storageKey?: string;
+  defaultOpen?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { open, toggle } = useOpenState(storageKey, defaultOpen);
+
+  return (
+    <fieldset
+      className={cn(
+        "rounded border border-line",
+        // Kapalıyken üst dolgu yok: `<legend>` çizginin üstünde durduğu için
+        // `p-3` boş bir kutuyu on iki piksel daha uzatıyordu.
+        open ? "p-3" : "px-3 pb-2 pt-1",
+        className,
+      )}
+    >
+      <legend className="px-1">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className={cn(
+            "tech-label flex items-center gap-1.5 rounded",
+            "transition-colors hover:text-ink",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink-muted",
+          )}
+        >
+          <DisclosureChevron open={open} />
+          {legend}
+          {!open && summary != null && (
+            <span className="font-normal normal-case tracking-normal text-ink-faint">
+              {summary}
+            </span>
+          )}
+        </button>
+      </legend>
+      {open && children}
+    </fieldset>
   );
 }

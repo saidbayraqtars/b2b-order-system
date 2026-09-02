@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaymentTermRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { Disclosure } from "@/components/disclosure";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
 
@@ -42,35 +43,39 @@ export function TermsManager() {
       {/* Ekleme şeridi gömük zeminde: tablo başlığıyla aynı yüzey, altındaki
           listeden bir çizgiyle ayrılıyor. */}
       <div className="border-b border-line bg-sunken px-4 py-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <label>
-            <Label>Vade adı</Label>
-            <TextInput
-              value={name}
-              placeholder="30 gün, Peşin…"
-              onChange={(e) => setName(e.target.value)}
-              className="w-48"
-            />
-          </label>
-          <label>
-            <Label hint="0 = peşin">Gün</Label>
-            <TextInput
-              type="number"
-              min={0}
-              max={365}
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              className="w-24"
-            />
-          </label>
-          <Button
-            disabled={create.isPending || !name.trim() || !daysValid}
-            onClick={() => create.mutate()}
-          >
-            Ekle
-          </Button>
-        </div>
-        <ErrorLine error={create.error} />
+        <Disclosure label="+ Yeni vade" storageKey="payment-terms:new">
+          <div className="flex flex-wrap items-end gap-2 pb-1">
+            <label>
+              <Label>Vade adı</Label>
+              <TextInput
+                value={name}
+                placeholder="30 gün, Peşin…"
+                onChange={(e) => setName(e.target.value)}
+                className="w-48"
+              />
+            </label>
+            <label>
+              <Label hint="0 = peşin">Gün</Label>
+              <TextInput
+                type="number"
+                min={0}
+                max={365}
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                className="w-24"
+              />
+            </label>
+            <Button
+              disabled={create.isPending || !name.trim() || !daysValid}
+              onClick={() => create.mutate()}
+            >
+              Ekle
+            </Button>
+            <div className="w-full">
+              <ErrorLine error={create.error} />
+            </div>
+          </div>
+        </Disclosure>
       </div>
 
       <div className="p-4">

@@ -120,6 +120,42 @@ dipnot, sayfalama düğmesi ya da panel hiç görünmüyor. Ekran görüntüsü 
 vermez — sadece kırpar. Bir PNG 3000 pikselden uzunsa o ekranda sınırlanmamış
 bir liste var demektir.
 
+**Artık elle bakmak gerekmiyor:** `pnpm shots` koşunun sonunda 2500 pikselden
+uzun her ekranı boyuyla birlikte listeliyor
+(`scripts/screenshots.mjs` · `TALL_LIMIT`). Süreç durdurulmuyor — bazı
+ekranların uzun olması doğru (sipariş kalem tablosu, ürün ızgarası). Ölçü
+görünür olsun diye var: kural üç adımda üç kez unutuldu.
+
+## Yoğunluk kuralları
+
+`docs/design/YOGUNLUK-RAPORU.md` yirmi üç ekranın iki ekran boyundan uzun
+olduğunu ölçtü ve kapanır bölümlerle kısalttı. Aynı yoğunluğun geri gelmemesi
+için beş kural:
+
+1. **Ölçü otomatik.** `pnpm shots` 2500 pikseli aşan ekranı yazdırıyor. Yeni
+   bir ekran o listeye girdiyse, girmesi *bilerek* olmalı.
+2. **İlk dilim 15–20 satır.** `useVisibleSlice` varsayılanı 20
+   (`show-more.tsx`). Elli satır tek başına 2200–2800 piksel. Kesme **çizimde**
+   olmalı, istekte değil: sunucudan ilk sayfayı isteyip "en ucuz önce" diye
+   sıralamak, sayfanın en ucuzunu kataloğun en ucuzu diye göstermek olur.
+3. **Bir ekranda en fazla iki panel açık başlar.** Üçüncü ve sonrası
+   `collapsible defaultOpen={false}` + `summary`.
+4. **Kapalı bölüm künyesini taşır.** İçinde ne olduğunu söylemeyen kapalı bir
+   başlık, kaydırmaktan kötüdür: "2 hesap · ₺3.267.046", "son 50 · 3 hata".
+5. **Açıklama metni katlanır, silinmez.** `Note collapsible` var; notların
+   içeriği projenin en iyi yanlarından biri, kısaltmak değil katlamak lazım.
+
+**Nereye koymayın:** sayfanın *konusu* olan tabloya (sipariş kalemleri, ürün
+ızgarası, ABC listesi), dört kutuluk `StatTile` satırına, 1–2 kontrollük süzgeç
+şeridine ve kenar çubuğu gezinme gruplarına. Akordiyon yanlış yere konunca "bir
+tık daha" vergisine dönüşüyor ve yoğunluktan kötü oluyor. `Disclosure` eşiği
+**3+ kontrol**.
+
+**Erişilebilirlik üçlüsü** (`disclosure.tsx` hepsini uyguluyor): başlık gerçek
+bir `<button aria-expanded>` olmalı; kapalı içerik DOM'dan **çıkmalı**
+(`{open && …}`), `hidden` ile saklanmamalı — saklanan içerik hâlâ sekme
+sırasında; `prefers-reduced-motion` açıkken açılma animasyonu olmamalı.
+
 ## İlerleme
 
 ### ✔ Adım 1 — Temel katman ve kabuk (bitti)

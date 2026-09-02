@@ -42,6 +42,17 @@ const VIEWPORT = { width: 1440, height: 960, deviceScaleFactor: 1 };
 /** Bundan uzun sayfa kırpılıyor — 6000 pikselden sonrası zaten okunmuyor. */
 const MAX_HEIGHT = 6000;
 
+/**
+ * Bundan uzun sayfa koşunun sonunda uyarı veriyor.
+ *
+ * Görüntü alanı 960 piksel, üst şerit 64: kullanıcı bir bakışta ~890 piksel
+ * görüyor. 2500 piksel neredeyse üç ekran — `docs/design/REDESIGN.md`in
+ * "sınırlanmamış liste" eşiği. Uyarı hata değil: bazı ekranların uzun olması
+ * doğru (kalem tablosu, ürün ızgarası). Ama elle bakmak üç adımda üç kez
+ * unutuldu; ölçüyü yazdırmak unutmayı imkânsız kılıyor.
+ */
+const TALL_LIMIT = 2500;
+
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
   "C:/Program Files/Google/Chrome/Application/chrome.exe",
@@ -203,6 +214,7 @@ async function fitViewport(page) {
   });
   // Yeni yüksekliğe göre yeniden yerleşim (sticky başlık, sonsuz liste) bitsin.
   await new Promise((r) => setTimeout(r, 250));
+  return height;
 }
 
 /**
@@ -212,11 +224,34 @@ async function fitViewport(page) {
  * ışık. İki çekim arasında birebir aynı kareyi yakalamak tesadüf olurdu ve o
  * dosya her koşuda kırmızı yanardı — "her zaman kırmızı" ile "hiç bakılmıyor"
  * arasında fark yok.
+ *
+ * Denetim kaydı ve hareket akışı aynı sebeple muaf, ama başka bir mekanizmayla:
+ * ikisi de **saat** basıyor ve denetim kaydı üstelik *bu betiğin kendi
+ * girişlerini* satır olarak yazıyor. Yani çekim, kıyaslayacağı veriyi
+ * değiştiriyor; iki ardışık koşu bile eşit çıkmıyor (ölçüldü: %1,3 ve %3,8).
+ * Tasarım değişikliği bu ekranlarda göze bakılarak yakalanır, piksel
+ * kıyasıyla değil.
  */
-const CHECK_EXEMPT = new Set(["giris"]);
+const CHECK_EXEMPT = new Set([
+  "giris",
+  "admin-guvenlik-kaydi",
+  "admin-hareket-akisi",
+]);
 
-/** Bu oranın altındaki fark gürültü sayılıyor — yüzde birin onda biri. */
-const DIFF_TOLERANCE = 0.001;
+/**
+ * Bu oranın altındaki fark gürültü sayılıyor.
+ *
+ * Eşik ölçülerek seçildi, tahminle değil. Beş ekran köşesinde bir zaman damgası
+ * taşıyor ("Gecelik özet · … itibarıyla", yazdırma tarihi, son giriş) ve o tek
+ * satır iki koşu arasında **%0,11–0,14** oynatıyor. Gerçek düzen
+ * değişiklikleri ise bu işte %0,63 ile %11,9 arasında ölçüldü. %0,25 ikisinin
+ * arasında güvenli bir yer: saat kaymasını yutuyor, en küçük gerçek
+ * değişikliği bile yakalıyor.
+ *
+ * Yüzde binde birde bırakılsaydı o beş ekran her koşuda kırmızı yanardı — ve
+ * "her zaman kırmızı" ile "hiç bakılmıyor" arasında fark yok.
+ */
+const DIFF_TOLERANCE = 0.0025;
 
 /**
  * İki görüntünün farklı piksel oranı.
@@ -280,6 +315,8 @@ async function main() {
   const skipped = [];
   /** `--check` kipinde git'tekinden ayrılan dosyalar. */
   const drifted = [];
+  /** Eşiği aşan ekranlar — koşunun sonunda tek blok hâlinde yazdırılıyor. */
+  const tall = [];
   try {
     for (const theme of themes) {
       // Oturum hesap başına bir kez açılıyor; her ekran için yeniden giriş
@@ -325,7 +362,14 @@ async function main() {
           await page.goto(`${BASE_URL}${path}`, { waitUntil: "networkidle2" });
           await assertStyled(page, path);
           await settle(page);
-          await fitViewport(page);
+          const pageHeight = await fitViewport(page);
+          if (pageHeight > TALL_LIMIT) {
+            tall.push({
+              slug: screen.slug,
+              step: screen.step,
+              height: pageHeight,
+            });
+          }
 
           const dir = join(OUT_DIR, `adim-${screen.step}`);
           const name =
@@ -372,8 +416,11 @@ async function main() {
     await db.$disconnect();
   }
 
+  reportTall(tall);
+
   if (args.check) {
-    const verdict = drifted.length === 0 ? "hepsi aynı" : `${drifted.length} tanesi farklı`;
+    const verdict =
+      drifted.length === 0 ? "hepsi aynı" : `${drifted.length} tanesi farklı`;
     console.log(`\n${taken} ekran kıyaslandı, ${verdict}.`);
     if (skipped.length > 0) console.log(`Atlanan: ${skipped.join(", ")}`);
     if (drifted.length > 0) {
@@ -390,6 +437,32 @@ async function main() {
   if (skipped.length > 0) {
     console.log(`Atlanan: ${skipped.join(", ")}`);
   }
+}
+
+/**
+ * Eşiği aşan ekranların dökümü.
+ *
+ * Sıralama uzundan kısaya: listeye bakan kişi baştan başlayıp aşağı inerken
+ * kazancı azalan bir sırada ilerlemiş oluyor. Süreç durdurulmuyor — bu bir
+ * ölçü, bir kural değil.
+ */
+function reportTall(tall) {
+  if (tall.length === 0) return;
+  const sorted = [...tall].sort((a, b) => b.height - a.height);
+  console.log(
+    `
+${sorted.length} ekran ${TALL_LIMIT}px eşiğinin üstünde (~${Math.round(
+      TALL_LIMIT / 890,
+    )} ekran kaydırma):`,
+  );
+  for (const t of sorted) {
+    console.log(
+      `  ${String(t.height).padStart(5)}px  adim-${t.step}/${t.slug}`,
+    );
+  }
+  console.log(
+    "Kapanır bölüm için: docs/design/YOGUNLUK-RAPORU.md · §3 (aletler) ve §5 (nereye koymayın).",
+  );
 }
 
 main().catch((err) => {

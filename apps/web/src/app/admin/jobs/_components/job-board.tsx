@@ -17,6 +17,7 @@ import {
   THead,
 } from "@/components/ui";
 import { Button, Checkbox, ErrorLine, Panel, Select } from "@/components/form";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import { cn } from "@/lib/utils";
 
 // Bakım işleri paneli.
@@ -108,10 +109,17 @@ export function JobBoard() {
     onError: (e) => setError((e as Error).message),
   });
 
+  // Kanca erken dönüşlerden **önce**: `useVisibleSlice` koşullu çağrılamaz.
+  const runsPage = useVisibleSlice(data.data?.runs ?? [], 20);
+
   if (data.isLoading) return <LoadingState />;
   if (data.isError) return <ErrorLine error={data.error} />;
 
   const { jobs, runs } = data.data!;
+  // Defter kapalı başlıyor ve künyesi tek şeyi söylüyor: hata var mı. Elli
+  // satırın kırk yedisi `OK` ve onları okumak için gelen kimse yok — ekranın
+  // konusu üstteki altı iş kartı.
+  const failed = runs.filter((r) => r.status === "ERROR").length;
 
   return (
     <div className="space-y-6">
@@ -202,11 +210,21 @@ export function JobBoard() {
         ))}
       </div>
 
-      <Panel title="Son çalıştırmalar" bodyClassName="p-0">
+      <Panel
+        title="Son çalıştırmalar"
+        bodyClassName="p-0"
+        collapsible
+        defaultOpen={false}
+        summary={
+          runs.length === 0
+            ? "kayıt yok"
+            : `son ${runs.length}${failed > 0 ? ` · ${failed} hata` : " · hata yok"}`
+        }
+      >
         {runs.length === 0 ? (
           <EmptyState label="Henüz hiçbir iş çalışmadı." />
         ) : (
-          <Table>
+          <Table dense>
             <THead>
               <tr>
                 <Th>Başlangıç</Th>
@@ -217,7 +235,7 @@ export function JobBoard() {
               </tr>
             </THead>
             <TBody>
-              {runs.map((r) => (
+              {runsPage.visible.map((r) => (
                 <tr key={r.id}>
                   <Td className="whitespace-nowrap" numeric>
                     {trTime(r.startedAt)}
@@ -247,9 +265,16 @@ export function JobBoard() {
         {/* Kaç satır gösterildiğini yazmak, listenin dibine inip "hepsi bu mu"
             diye düşünmekten iyi. Sunucu 50'de kesiyor. */}
         {runs.length > 0 && (
-          <p className="px-4 py-3 text-xs text-ink-faint">
-            Son {runs.length} çalıştırma gösteriliyor.
-          </p>
+          <div className="px-4 pb-3">
+            <ShowMore
+              visible={runsPage.visible.length}
+              total={runsPage.total}
+              hidden={runsPage.hidden}
+              onMore={runsPage.showMore}
+              noun="çalıştırma"
+              serverCapped={runs.length >= 50}
+            />
+          </div>
         )}
       </Panel>
     </div>

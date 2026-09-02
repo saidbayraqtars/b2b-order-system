@@ -27,6 +27,7 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import { CollapsibleFieldset } from "@/components/disclosure";
 
 // Company create / edit. The same form serves both; `company` decides which.
 
@@ -232,9 +233,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           />
         </label>
         <label>
-          <Label hint="boş = genel kural, 0 = muaf">
-            Asgari sipariş (₺)
-          </Label>
+          <Label hint="boş = genel kural, 0 = muaf">Asgari sipariş (₺)</Label>
           <TextInput
             type="number"
             min={0}
@@ -278,11 +277,22 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         </label>
       </div>
 
-      <fieldset className="mt-5 rounded border border-line p-3">
-        <legend className="tech-label px-1">
-          Ödemede sunulacaklar
-        </legend>
-
+      {/* İki alan kümesi de kapalı başlıyor: firma ekranında günlük iş
+          yukarıdaki künye ve iletişim alanları, bunlar ayda bir dokunulan
+          sözleşme ayarları. İkisi de uzun açıklama paragrafı taşıyor —
+          metin kısaltılmıyor, katlanıyor. */}
+      <CollapsibleFieldset
+        className="mt-5"
+        legend="Ödemede sunulacaklar"
+        storageKey="company-form:payment"
+        summary={
+          v.allowedPaymentMethods.length === 0 && v.paymentTermIds.length === 0
+            ? "kısıtlama yok"
+            : `${v.allowedPaymentMethods.length || "tüm"} yöntem · ${
+                v.paymentTermIds.length || "varsayılan"
+              } vade`
+        }
+      >
         <p className="mb-2 text-xs text-ink-faint">
           Ödeme yöntemi — <strong>hiçbiri seçilmezse hepsi sunulur.</strong>{" "}
           Kısıtlamak istemiyorsanız boş bırakın.
@@ -327,12 +337,14 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             </span>
           )}
         </div>
-      </fieldset>
+      </CollapsibleFieldset>
 
-      <fieldset className="mt-5 rounded border border-line p-3">
-        <legend className="tech-label px-1">
-          Hacim iskontosu
-        </legend>
+      <CollapsibleFieldset
+        className="mt-5"
+        legend="Hacim iskontosu"
+        storageKey="company-form:volume"
+        summary={VOLUME_DISCOUNT_MODE_LABELS[v.volumeDiscountMode]}
+      >
         <p className="mb-3 text-xs text-ink-faint">
           Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı
           kendiliğinden alır. Elle atadığınızda ciroya hiç bakılmaz —
@@ -379,7 +391,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             </label>
           )}
         </div>
-      </fieldset>
+      </CollapsibleFieldset>
 
       <div className="mt-3 flex flex-wrap gap-5">
         <Checkbox

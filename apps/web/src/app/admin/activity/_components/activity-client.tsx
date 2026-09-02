@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { Button, ErrorLine, Label, Select } from "@/components/form";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<ActivityKind, string> = {
@@ -73,6 +74,10 @@ export function ActivityClient() {
   const entries = (activity.data?.entries ?? []).filter(
     (e) => !kind || e.kind === kind,
   );
+  // Sunucu 50 gönderiyor, ekran 20 çiziyor. Boy uyarısı (`pnpm shots`,
+  // `TALL_LIMIT`) bu ekranı 2589 pikselde buldu — yoğunluk envanterinin
+  // kaçırdığı tek ekran oydu.
+  const page = useVisibleSlice(entries, 20);
 
   return (
     <div className="flex flex-col gap-4">
@@ -127,51 +132,60 @@ export function ActivityClient() {
           }
         />
       ) : (
-        <ol className="divide-y divide-line rounded-lg border border-line bg-panel">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-body-sm text-ink"
-            >
-              <span className="w-28 shrink-0 tabular-nums text-ink-faint">
-                {when(e.at)}
-              </span>
-              <Badge tone={KIND_TONE[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-              <span className="min-w-0 flex-1">
-                {e.href ? (
-                  <Link href={e.href} className="underline">
-                    {e.summary}
-                  </Link>
-                ) : (
-                  e.summary
-                )}
-                {e.companyName && (
-                  <span className="text-ink-muted"> · {e.companyName}</span>
-                )}
-                {e.actorName && (
-                  <span className="text-ink-faint"> · {e.actorName}</span>
-                )}
-              </span>
-              {/* Eksi bakiye hareketi = tahsilat, borcu azaltan tek şey. */}
-              {e.amount && (
-                <span
-                  className={cn(
-                    "shrink-0 font-medium tabular-nums",
-                    e.amount.startsWith("-") && "text-positive",
-                  )}
-                >
-                  {formatTRY(e.amount)}
+        <>
+          <ol className="divide-y divide-line rounded-lg border border-line bg-panel">
+            {page.visible.map((e) => (
+              <li
+                key={e.id}
+                className="flex flex-wrap items-baseline gap-2 px-3 py-2 text-body-sm text-ink"
+              >
+                <span className="w-28 shrink-0 tabular-nums text-ink-faint">
+                  {when(e.at)}
                 </span>
-              )}
-            </li>
-          ))}
-        </ol>
+                <Badge tone={KIND_TONE[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
+                <span className="min-w-0 flex-1">
+                  {e.href ? (
+                    <Link href={e.href} className="underline">
+                      {e.summary}
+                    </Link>
+                  ) : (
+                    e.summary
+                  )}
+                  {e.companyName && (
+                    <span className="text-ink-muted"> · {e.companyName}</span>
+                  )}
+                  {e.actorName && (
+                    <span className="text-ink-faint"> · {e.actorName}</span>
+                  )}
+                </span>
+                {/* Eksi bakiye hareketi = tahsilat, borcu azaltan tek şey. */}
+                {e.amount && (
+                  <span
+                    className={cn(
+                      "shrink-0 font-medium tabular-nums",
+                      e.amount.startsWith("-") && "text-positive",
+                    )}
+                  >
+                    {formatTRY(e.amount)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+          <ShowMore
+            visible={page.visible.length}
+            total={page.total}
+            hidden={page.hidden}
+            onMore={page.showMore}
+            noun="hareket"
+            serverCapped={entries.length >= LIMIT}
+          />
+        </>
       )}
 
       {entries.length > 0 && (
         <p className="text-xs text-ink-faint">
-          Son {entries.length} hareket gösteriliyor. Daha eskisi için firma ya
-          da tür süzgecini daraltın.
+          Daha eskisi için firma ya da tür süzgecini daraltın.
         </p>
       )}
     </div>

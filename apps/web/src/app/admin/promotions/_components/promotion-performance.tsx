@@ -255,7 +255,7 @@ export function PromotionPerformance() {
         )}
       </Panel>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         <strong>&ldquo;Kampanyanın getirdiği ciro&rdquo; diye bir kolon yok</strong>
         , çünkü öyle bir sayı ölçülmedi. &ldquo;Sipariş cirosu&rdquo;, kampanyanın
         uygulandığı siparişlerin toplamı; o siparişlerin çoğu kampanya olmasaydı

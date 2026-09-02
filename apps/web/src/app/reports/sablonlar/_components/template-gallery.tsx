@@ -137,7 +137,7 @@ export function TemplateGallery() {
         </div>
       )}
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Kurulan rapor <strong>sizin</strong> raporunuz olur: şablonla bağı
         kalmaz, sütununu, süzgecini ve grafiğini değiştirebilirsiniz. Satır
         kapsamı da sizin — plasiyerin kurduğu bir bakiye raporu kendi

@@ -211,7 +211,7 @@ export default async function VersionPage() {
         </Panel>
       )}
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Bu ekranda <strong>düğme yok</strong> ve olmaması bir karar:
         güncellemeyi host&apos;taki ajan çalıştırır, web bir kapsayıcının içinde
         ve orada ne

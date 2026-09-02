@@ -14,7 +14,7 @@ export default async function JobsPage() {
         subtitle="Arka planda kendiliğinden çalışan temizlik işleri — ne zaman çalıştı, ne oldu"
       />
       <JobBoard />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Bu işler <strong>kendiliğinden</strong> çalışır ve sessizce çalışmayı
         bırakabilirler — ekranın tek amacı görünürlük. Bir işi kapatmak onu
         siler değil erteler: sıradaki çalışma zamanı hesaplanmaz, kayıtları

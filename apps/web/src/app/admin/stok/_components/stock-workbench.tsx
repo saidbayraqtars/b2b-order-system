@@ -116,7 +116,7 @@ export function StockWorkbench() {
         {tab === "levels" && (
           <>
             <StockLevelsPanel />
-            <Note>
+            <Note collapsible defaultOpen={false}>
               Eldeki adet <strong>bu defterin bakiyesi</strong>: her hareket onu
               farkı kadar oynatır, kimse üstüne yazmaz. Sipariş girildiği anda
               malı düşer — sevkte değil — yoksa aynı son kutu iki müşteriye
@@ -131,7 +131,7 @@ export function StockWorkbench() {
           <>
             <StockSourceBreakdown query={summary} />
             <MovementsPanel />
-            <Note>
+            <Note collapsible defaultOpen={false}>
               <strong>ERP senkronu ezmez</strong>, farkı kadar hareket yazar —
               &ldquo;gece stok neden düştü&rdquo; sorusunun cevabı bu yüzden
               defterde durur. Kayıtlar silinmez: yanlış bir kayıt, kendisine

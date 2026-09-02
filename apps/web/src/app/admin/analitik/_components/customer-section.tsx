@@ -73,7 +73,13 @@ export function CustomerSection({
         <SourceTile
           label="HHI"
           value={Math.round(conc.hhi)}
-          tone={conc.hhi > 2500 ? "critical" : conc.hhi > 1500 ? "caution" : "neutral"}
+          tone={
+            conc.hhi > 2500
+              ? "critical"
+              : conc.hhi > 1500
+                ? "caution"
+                : "neutral"
+          }
           hint={
             conc.hhi > 2500
               ? "yoğunlaşmış — tek müşteri kaybı acıtır"
@@ -100,27 +106,37 @@ export function CustomerSection({
         >
           {data.rfm.ok ? (
             <PieChart
-              slices={Object.entries(data.segmentCounts).map(([key, count]) => ({
-                label: RFM_SEGMENT_LABELS[key as RfmSegment] ?? key,
-                value: count,
-              }))}
+              slices={Object.entries(data.segmentCounts).map(
+                ([key, count]) => ({
+                  label: RFM_SEGMENT_LABELS[key as RfmSegment] ?? key,
+                  value: count,
+                }),
+              )}
               format={(v) => `${v} firma`}
             />
           ) : (
             <Insufficient of={data.rfm} />
           )}
-          <Note className="mt-6">
+          <Note
+            collapsible
+            defaultOpen={false}
+            title="Segmentler nasıl hesaplanıyor"
+            className="mt-6"
+          >
             Sabit eşik yok: her boyut kurulumun kendi dağılımının çeyrekliğine
             göre puanlanıyor. &ldquo;90 günden eskiyse riskli&rdquo; gibi bir
             eşik, haftalık alan bayi ile mevsimlik alan bayiyi aynı kefeye
             koyardı. <strong>Pencere segmenti değiştirir</strong>: bir yıllık
-            pencerede &ldquo;sadık&rdquo; görünen firma, 90 günlük pencerede
-            hiç alışveriş yapmadıysa listeye bile girmez — soru
-            &ldquo;kim iyi müşteri&rdquo; değil, &ldquo;hangi dönemde&rdquo;.
+            pencerede &ldquo;sadık&rdquo; görünen firma, 90 günlük pencerede hiç
+            alışveriş yapmadıysa listeye bile girmez — soru &ldquo;kim iyi
+            müşteri&rdquo; değil, &ldquo;hangi dönemde&rdquo;.
           </Note>
         </Panel>
 
-        <Panel title="Konsantrasyon — en büyük müşteriler" bodyClassName="p-0 pb-1">
+        <Panel
+          title="Konsantrasyon — en büyük müşteriler"
+          bodyClassName="p-0 pb-1"
+        >
           <Table>
             <THead>
               <tr>
@@ -180,9 +196,15 @@ export function CustomerSection({
               <thead className="border-y border-line bg-sunken text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                 <tr>
                   <th className="whitespace-nowrap px-3 py-2">İlk ay</th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right">Firma</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right">
+                    Firma
+                  </th>
                   {Array.from(
-                    { length: Math.max(...data.cohorts.map((c) => c.retention.length)) },
+                    {
+                      length: Math.max(
+                        ...data.cohorts.map((c) => c.retention.length),
+                      ),
+                    },
                     (_, i) => (
                       <th key={i} className="px-2 py-2 text-center">
                         +{i}
@@ -213,7 +235,12 @@ export function CustomerSection({
             </table>
           </div>
         )}
-        <Note className="mt-6">
+        <Note
+          collapsible
+          defaultOpen={false}
+          title="Kohort matrisi nasıl okunur"
+          className="mt-6"
+        >
           Satır: ilk siparişini o ayda veren firmalar. Sütun: o aydan kaç ay
           sonra. Hücre: o kohortun yüzde kaçı hâlâ alıyor. İlk sütun her zaman
           %100 — tanım gereği. Pencere yalnızca <strong>kaç kohort</strong>{" "}
@@ -222,7 +249,10 @@ export function CustomerSection({
         </Note>
       </Panel>
 
-      <Panel title={`Sessizleşen müşteriler (${data.quiet.length})`} bodyClassName="p-0 pb-1">
+      <Panel
+        title={`Sessizleşen müşteriler (${data.quiet.length})`}
+        bodyClassName="p-0 pb-1"
+      >
         <Table>
           <THead>
             <tr>
@@ -264,7 +294,12 @@ export function CustomerSection({
             )}
           </TBody>
         </Table>
-        <Note className="mx-4">
+        <Note
+          collapsible
+          defaultOpen={false}
+          title="Sessizleşen nasıl belirleniyor"
+          className="mx-4"
+        >
           Eşik <strong>sabit 90 gün değil</strong>: her firmanın kendi normal
           sipariş periyodunun iki katı. Haftada bir alan bayi için 30 gün zaten
           alarmdır, mevsimlik alan için değildir — sabit eşik ikisini de yanlış

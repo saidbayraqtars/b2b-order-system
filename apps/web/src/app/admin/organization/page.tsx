@@ -46,7 +46,7 @@ export default async function AdminOrganizationPage() {
 
       {tenant && <TenantView tenant={tenant} />}
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Kaynak <strong>dosyadır</strong>, veritabanı değil:{" "}
         <code className="rounded bg-sunken px-1 py-0.5 font-mono text-xs">
           {dir ? `${dir}\\tenant.json` : "TENANT_DIR tanımsız"}

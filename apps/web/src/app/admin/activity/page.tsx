@@ -14,7 +14,7 @@ export default async function ActivityPage() {
         subtitle="Sipariş geçmişi, cari hareketler ve sistem kayıtları tek akışta"
       />
       <ActivityClient />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Buradan bir şey değişmez — üç kaynağın da kendi kaydı esastır ve bu
         ekran onları yalnızca zaman sırasına dizer. Bir satırın ayrıntısı için
         kaynağına gidin: sipariş numarası siparişe, cari hareketi ekstreye,

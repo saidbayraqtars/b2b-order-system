@@ -43,9 +43,11 @@ import { Stale } from "./shared";
 
 export type Section = AnalyticsSection;
 
-const TABS: ReadonlyArray<{ key: Section; label: string }> = ANALYTICS_SECTIONS.map(
-  (key) => ({ key, label: ANALYTICS_SECTION_LABELS[key] }),
-);
+const TABS: ReadonlyArray<{ key: Section; label: string }> =
+  ANALYTICS_SECTIONS.map((key) => ({
+    key,
+    label: ANALYTICS_SECTION_LABELS[key],
+  }));
 
 function sectionFrom(raw: string | null): Section {
   return TABS.some((t) => t.key === raw) ? (raw as Section) : "durum";
@@ -76,7 +78,9 @@ export function AnalyticsBoard() {
   const query = useQuery({
     queryKey: ["analytics", section, windowQuery],
     queryFn: () =>
-      apiGet<Envelope<unknown>>(`/api/analytics?bolum=${section}${windowQuery}`),
+      apiGet<Envelope<unknown>>(
+        `/api/analytics?bolum=${section}${windowQuery}`,
+      ),
   });
 
   /** Süzgeç adresi değiştiriyor; sekme de aynı yoldan geçiyor. */
@@ -116,7 +120,14 @@ export function AnalyticsBoard() {
         </>
       )}
 
-      <Note>
+      {/* Başlık bilerek ayrı: müşteri sekmesinde bu notun altında üç not daha
+          var ve dördü de "Bu ekran nasıl çalışır" deseydi kapalı hâlleri
+          birbirinden ayırt edilemezdi. */}
+      <Note
+        collapsible
+        defaultOpen={false}
+        title="Panonun kaynağı ve kıyas kuralı"
+      >
         Bu ekran <strong>küratörlü</strong>: hangi göstergenin gösterileceği
         kodda yazılı. Kendi sütunlarınızı seçmek için{" "}
         <a href="/reports/new" className="underline underline-offset-4">

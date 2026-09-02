@@ -30,7 +30,7 @@ export default async function AdminUsersPage() {
         companies={companies}
         grantablePermissions={user.permissions}
       />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Kendinizde olmayan bir yetkiyi veremezsiniz — liste zaten kendi
         kümenizle sınırlı ve sunucu aynı kuralı yeniden uygular. Kendi
         hesabınızı pasife alamaz, silemez ve kullanıcı yönetimi yetkisini kendi

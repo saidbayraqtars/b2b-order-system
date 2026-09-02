@@ -478,7 +478,7 @@ function ReceivablesTab() {
         </p>
       </Panel>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Tahsilatlar en eski borçtan başlayarak (FIFO) mahsup edilir; vade,
         borcun oluştuğu tarihe firmanın vade günü eklenerek bulunur. Kırmızı
         yalnızca <strong>90+</strong> sütununda: elli satırlık bir tabloda her

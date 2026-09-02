@@ -12,7 +12,7 @@ export default async function AdminVolumeTiersPage() {
         subtitle="Cirosu büyüyen firmanın kendiliğinden hak ettiği oran"
       />
       <TiersManager />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Bu merdiven <strong>herkese aynı</strong> tekliftir: her firma, kendi
         cirosuyla hak ettiği en yüksek oranı otomatik alır. Tek bir cariye özel
         oran vermek isterseniz basamak değil, firma sayfasındaki{" "}

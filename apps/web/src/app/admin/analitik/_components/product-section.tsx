@@ -14,12 +14,16 @@ import {
   Th,
   THead,
 } from "@/components/ui";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import { NoValue, SourceTile } from "./shared";
 
 // D. Ürün ve stok: ABC, devir hızı, ölü stok, ciro × marj.
 
 export function ProductSection({ data }: { data: ProductSnapshot }) {
   const deadValue = data.deadStock.reduce((a, d) => a + d.costValue, 0);
+  // ABC listesi sunucudan tam geliyor; kesme çizimde. Onbeş satır Pareto'nun
+  // A sınıfını zaten kapsıyor, gerisi "daha fazla"nın arkasında.
+  const abc = useVisibleSlice(data.abc, 15);
 
   return (
     <div className="space-y-5">
@@ -67,8 +71,10 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
         />
       </section>
 
+      {/* ABC açık kalıyor: ekranın konusu bu tablo. Kısalma satır sayısından
+          ve yoğun kipten geliyor — otuz satır 1300 pikseldi. */}
       <Panel title="ABC analizi ve marj" bodyClassName="p-0 pb-1">
-        <Table stickyHead>
+        <Table stickyHead dense>
           <THead>
             <tr>
               <Th>Ürün</Th>
@@ -80,7 +86,7 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
             </tr>
           </THead>
           <TBody>
-            {data.abc.slice(0, 30).map((p) => (
+            {abc.visible.map((p) => (
               <tr key={p.productId}>
                 <Td>
                   <Link
@@ -93,7 +99,11 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
                 <Td>
                   <Badge
                     tone={
-                      p.abc === "A" ? "brand" : p.abc === "B" ? "info" : "neutral"
+                      p.abc === "A"
+                        ? "brand"
+                        : p.abc === "B"
+                          ? "info"
+                          : "neutral"
                     }
                   >
                     {p.abc}
@@ -128,7 +138,16 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
             )}
           </TBody>
         </Table>
-        <Note className="mx-4">
+        <div className="px-4">
+          <ShowMore
+            visible={abc.visible.length}
+            total={abc.total}
+            hidden={abc.hidden}
+            onMore={abc.showMore}
+            noun="ürün"
+          />
+        </div>
+        <Note className="mx-4" collapsible defaultOpen={false}>
           <strong>Fiyat kararının doğduğu yer burası.</strong> A sınıfı ama
           marjı düşük satırlar — çok satan ve az kazandıran ürünler — kırmızıyla
           işaretli. Sınıflar ciro Pareto&apos;suna göre: %80&apos;e kadar A,
@@ -137,8 +156,20 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
         </Note>
       </Panel>
 
-      <Panel title="Ölü stok" bodyClassName="p-0 pb-1">
-        <Table>
+      {/* Ölü stok kapalı: bir kez bakılıp aksiyon alınan liste, her açılışta
+          okunan değil. Künye kaç varyant ve ne kadar para olduğunu söylüyor. */}
+      <Panel
+        title="Ölü stok"
+        bodyClassName="p-0 pb-1"
+        collapsible
+        defaultOpen={false}
+        summary={
+          data.deadStock.length === 0
+            ? "yok"
+            : `${data.deadStock.length} varyant · ${formatTRY(deadValue)}`
+        }
+      >
+        <Table dense>
           <THead>
             <tr>
               <Th>Ürün</Th>

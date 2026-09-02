@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { VolumeTierRow } from "@repo/services";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import { formatTRY } from "@/lib/format";
+import { Disclosure } from "@/components/disclosure";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
 
@@ -78,16 +79,20 @@ export function TiersManager() {
       {/* Ekleme şeridi gömük zeminde: tablo başlığıyla aynı yüzey, altındaki
           listeden bir çizgiyle ayrılıyor. */}
       <div className="border-b border-line bg-sunken px-4 py-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <DraftFields draft={draft} onChange={setDraft} />
-          <Button
-            disabled={create.isPending || !isComplete(draft)}
-            onClick={() => create.mutate()}
-          >
-            Ekle
-          </Button>
-        </div>
-        <ErrorLine error={create.error} />
+        <Disclosure label="+ Yeni basamak" storageKey="volume-tiers:new">
+          <div className="flex flex-wrap items-end gap-2 pb-1">
+            <DraftFields draft={draft} onChange={setDraft} />
+            <Button
+              disabled={create.isPending || !isComplete(draft)}
+              onClick={() => create.mutate()}
+            >
+              Ekle
+            </Button>
+            <div className="w-full">
+              <ErrorLine error={create.error} />
+            </div>
+          </div>
+        </Disclosure>
       </div>
 
       <div className="p-4">

@@ -322,7 +322,20 @@ export function OrderDetailView({
         </Panel>
       )}
 
-      <Panel title="Durum geçmişi">
+      {/* Kalem tablosu ve özet dokunulmuyor — sayfanın konusu onlar. Geçmiş,
+          iade ve ERP ise "ne oldu" panelleri: bir kez bakılır. Künye son
+          durumu taşıyor, yani kapalı başlık hâlâ bir cevap veriyor. */}
+      <Panel
+        title="Durum geçmişi"
+        collapsible
+        defaultOpen={false}
+        storageKey="order:history"
+        summary={
+          o.history.length === 0
+            ? "kayıt yok"
+            : `${o.history.length} adım · son ${dateTime(o.history[o.history.length - 1]!.createdAt)}`
+        }
+      >
         <ol className="space-y-2 border-l border-line pl-4">
           {o.history.map((h) => (
             <li key={h.id} className="text-body-sm">
@@ -356,9 +369,7 @@ function Row({
       <span className="text-ink-muted">{label}</span>
       <span
         className={
-          strong
-            ? "font-bold tabular-nums text-ink"
-            : "tabular-nums text-ink"
+          strong ? "font-bold tabular-nums text-ink" : "tabular-nums text-ink"
         }
       >
         {value}

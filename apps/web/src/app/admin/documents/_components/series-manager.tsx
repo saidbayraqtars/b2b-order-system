@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DocumentSeriesRow } from "@repo/services";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { Disclosure } from "@/components/disclosure";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
 import {
   Button,
@@ -63,77 +64,83 @@ export function SeriesManager() {
   return (
     <Panel title="Seriler" bodyClassName="p-0">
       {/* Ekleme şeridi gömük zeminde — tablo başlığıyla aynı yüzey. */}
-      <div className="flex flex-wrap items-end gap-3 border-b border-line bg-sunken p-3">
-        <div>
-          <Label htmlFor="ser-type">Belge türü</Label>
-          <Select
-            id="ser-type"
-            className="w-40"
-            value={type}
-            onChange={(e) => setType(e.target.value as DocumentType)}
-          >
-            <option value="WAYBILL">{DOCUMENT_TYPE_LABELS.WAYBILL}</option>
-            <option value="INVOICE">{DOCUMENT_TYPE_LABELS.INVOICE}</option>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="ser-prefix" hint="IRS, FTR…">
-            Ön ek
-          </Label>
-          <TextInput
-            id="ser-prefix"
-            className="w-28"
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-          />
-        </div>
-        <div>
-          <Label htmlFor="ser-pad" hint="basamak">
-            Genişlik
-          </Label>
-          <TextInput
-            id="ser-pad"
-            type="number"
-            min={1}
-            max={12}
-            className="w-24"
-            value={padding}
-            onChange={(e) => setPadding(e.target.value)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="ser-start" hint="devam edilecek son numara">
-            Sayaç
-          </Label>
-          <TextInput
-            id="ser-start"
-            type="number"
-            min={0}
-            className="w-28"
-            value={startFrom}
-            onChange={(e) => setStartFrom(e.target.value)}
-          />
-        </div>
-        {/* Kutu, yanındaki girdilerin etiketi kadar aşağıda dursun diye
-            sarmalanıyor: `Checkbox`un className'i kutunun kendisine gidiyor. */}
-        <div className="pb-2.5">
-          <Checkbox
-            checked={externalOnly}
-            onChange={(e) => setExternalOnly(e.target.checked)}
-            label="Numarayı ERP veriyor"
-          />
-        </div>
-        <Button
-          disabled={!prefix.trim()}
-          loading={create.isPending}
-          onClick={() => create.mutate()}
-        >
-          Ekle
-        </Button>
+      <div className="border-b border-line bg-sunken px-4 py-3">
+        <Disclosure label="+ Yeni seri" storageKey="documents-series:new">
+          <div className="flex flex-wrap items-end gap-2 pb-1">
+            <div>
+              <Label htmlFor="ser-type">Belge türü</Label>
+              <Select
+                id="ser-type"
+                className="w-40"
+                value={type}
+                onChange={(e) => setType(e.target.value as DocumentType)}
+              >
+                <option value="WAYBILL">{DOCUMENT_TYPE_LABELS.WAYBILL}</option>
+                <option value="INVOICE">{DOCUMENT_TYPE_LABELS.INVOICE}</option>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="ser-prefix" hint="IRS, FTR…">
+                Ön ek
+              </Label>
+              <TextInput
+                id="ser-prefix"
+                className="w-28"
+                value={prefix}
+                onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ser-pad" hint="basamak">
+                Genişlik
+              </Label>
+              <TextInput
+                id="ser-pad"
+                type="number"
+                min={1}
+                max={12}
+                className="w-24"
+                value={padding}
+                onChange={(e) => setPadding(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ser-start" hint="devam edilecek son numara">
+                Sayaç
+              </Label>
+              <TextInput
+                id="ser-start"
+                type="number"
+                min={0}
+                className="w-28"
+                value={startFrom}
+                onChange={(e) => setStartFrom(e.target.value)}
+              />
+            </div>
+            {/* Kutu, yanındaki girdilerin etiketi kadar aşağıda dursun diye
+                sarmalanıyor: `Checkbox`un className'i kutunun kendisine gidiyor. */}
+            <div className="pb-2.5">
+              <Checkbox
+                checked={externalOnly}
+                onChange={(e) => setExternalOnly(e.target.checked)}
+                label="Numarayı ERP veriyor"
+              />
+            </div>
+            <Button
+              disabled={!prefix.trim()}
+              loading={create.isPending}
+              onClick={() => create.mutate()}
+            >
+              Ekle
+            </Button>
+            <div className="w-full">
+              <ErrorLine error={create.error} />
+            </div>
+          </div>
+        </Disclosure>
       </div>
 
       <div className="p-4">
-        <ErrorLine error={create.error} />
         <ErrorLine error={query.error} />
 
         {query.isLoading && <LoadingState />}

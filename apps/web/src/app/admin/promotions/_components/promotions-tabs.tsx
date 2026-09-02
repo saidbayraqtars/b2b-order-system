@@ -50,7 +50,7 @@ export function PromotionsTabs() {
       ) : tab === "simulasyon" ? (
         <>
           <PromotionSimulator />
-          <Note>
+          <Note collapsible defaultOpen={false}>
             Simülasyon kampanyayı <strong>geçmiş siparişlerde kuru kuruya</strong>{" "}
             çalıştırır: hiçbir şey yazılmaz, sipariş tutarları değişmez.
             Kotalar zaman sırasında tükenir — kullanım limiti olan bir kampanya
@@ -67,7 +67,7 @@ export function PromotionsTabs() {
       ) : (
         <>
           <PromotionsManager />
-          <Note>
+          <Note collapsible defaultOpen={false}>
             Kampanya kod değil veri: koşullar ve aksiyonlar sunucudaki kural
             kayıt defterinden seçilir. İndirim, grup fiyatı ve firma
             iskontosunun üzerine uygulanır; KDV kampanya sonrası net tutardan

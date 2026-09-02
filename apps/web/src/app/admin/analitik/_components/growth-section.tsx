@@ -109,7 +109,7 @@ export function GrowthSection({ data }: { data: GrowthSnapshot }) {
           end={{ label: bridge.currentLabel, value: bridge.currentTotal }}
           format={formatTRY}
         />
-        <Note className="mt-6">
+        <Note collapsible defaultOpen={false} className="mt-6">
           <strong>Panonun en öğretici tek grafiği.</strong> Toplam ciro çizgisi
           &ldquo;büyüdük&rdquo; der; bu, <em>neden</em> büyüdüğünü söyler. Aynı
           artış yeni müşteriden geldiyse satışın işi, mevcut müşterinin daha çok

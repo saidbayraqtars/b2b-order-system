@@ -41,7 +41,7 @@ export function DeliveryTabs() {
       {tab === "bekleyen" ? (
         <>
           <BackorderPanel />
-          <Note>
+          <Note collapsible defaultOpen={false}>
             Bekleyen bakiye <strong>türetilmiş</strong> bir sayıdır: sipariş
             edilen adet eksi sevk edilen adet. Ayrı bir kolonda tutulsaydı iki
             sayı birbirinden ayrışabilir ve hangisinin doğru olduğu belirsiz
@@ -57,7 +57,7 @@ export function DeliveryTabs() {
       ) : (
         <>
           <DeliveryBoard canDispatch />
-          <Note>
+          <Note collapsible defaultOpen={false}>
             Listeye giren şey <strong>sevkiyat</strong>, sipariş değil: irsaliyesi
             kesilmemiş bir sipariş burada görünmez. Kurye ataması teslimden önce
             serbestçe değişir — seçimi boşaltmak sevkiyatı atanmamışa döndürür —

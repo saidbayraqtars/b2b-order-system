@@ -12,7 +12,7 @@ export default async function AdminOrderPolicyPage() {
         subtitle="Asgari sipariş büyüklüğü ve sevkiyat kesim saati"
       />
       <OrderPolicyForm />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Asgari <strong>alıcıyı</strong> bağlar: plasiyer ve yönetici eşiğin
         altında sipariş geçebilir, çünkü pazarlık onların işi. Tek bir cariyi
         muaf tutmak ya da ona ayrı bir eşik koymak için firma sayfasındaki{" "}

@@ -105,7 +105,7 @@ export function PaceSection({ data }: { data: Pace }) {
           )}
         </div>
 
-        <Note className="mt-6">
+        <Note collapsible defaultOpen={false} className="mt-6">
           Tempo <strong>iş gününe</strong> göre ölçülüyor, takvim gününe göre
           değil: ayın 15&apos;i pazara denk geldiğinde &ldquo;ayın yarısı
           geçti&rdquo; demek toptancıda yanlış olur, çünkü satış hafta içi

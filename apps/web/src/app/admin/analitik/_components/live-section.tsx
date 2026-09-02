@@ -104,7 +104,7 @@ export function LiveSection({ data }: { data: LiveStatus }) {
         />
       </section>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         <strong>Marj neden boş olabilir?</strong> Alış fiyatı girilmemiş bir
         ürün sıfır maliyetli sayılır ve marjı yukarı şişirir. Bu yüzden marj
         yalnızca cironun en az <strong>%60</strong>&apos;ı maliyeti girilmiş

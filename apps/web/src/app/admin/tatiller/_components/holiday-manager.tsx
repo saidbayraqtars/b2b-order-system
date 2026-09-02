@@ -240,7 +240,7 @@ export function HolidayManager() {
         </Table>
       </Panel>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Bu takvimin tek tüketicisi <strong>ay sonu projeksiyonu</strong>. Tahmin
         iş gününe göre yapılıyor: ayın 15&apos;i bir pazara denk geldiğinde
         &quot;ayın yarısı geçti&quot; demek toptancıda yanlış. Tatil girilmemiş

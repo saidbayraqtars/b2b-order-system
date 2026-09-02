@@ -171,7 +171,7 @@ export function WarehousesPanel() {
         )}
       </Panel>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Depo <strong>silinmiyor, kapatılıyor</strong>: kapalı depo yeni
         hareketlere açılmaz ama geçmiş hareketlerin üstünde adı yazılı kalır.
         Kayıt anahtarı ad değil <strong>kod</strong> — aynı kodla kaydetmek yeni

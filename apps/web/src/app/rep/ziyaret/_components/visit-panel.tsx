@@ -124,68 +124,80 @@ export function VisitPanel({
         />
       )}
 
-      {!open && (
+      {/* Firma seçilmemişken panelin tamamı tek bir cümle taşıyordu ve o cümle
+          için bir panel çerçevesi, bir başlık ve iki kat dolgu harcanıyordu.
+          Boş durum artık düz bir satır. */}
+      {!open && !companyId && (
+        <p className="rounded-lg border border-line bg-sunken px-4 py-2 text-body-sm text-ink-faint">
+          Ziyaret açmak için üstteki seçiciden firma seçin. Aşağıdaki geçmiş
+          firma seçilmeden de okunur.
+        </p>
+      )}
+
+      {!open && companyId && (
         <Panel title="Yeni ziyaret">
-          {!companyId ? (
-            <p className="text-body-sm text-ink-faint">
-              Ziyaret açmak için üstteki seçiciden firma seçin. Aşağıdaki geçmiş
-              firma seçilmeden de okunur.
+          <>
+            <p className="mb-3 text-body-sm text-ink-muted">
+              <span className="font-medium text-ink">{companyName}</span>{" "}
+              ziyareti açılacak. Tarayıcıdan açılan ziyaretler kayıtta{" "}
+              <strong>WEB</strong> olarak işaretlenir.
             </p>
-          ) : (
-            <>
-              <p className="mb-3 text-body-sm text-ink-muted">
-                <span className="font-medium text-ink">{companyName}</span>{" "}
-                ziyareti açılacak. Tarayıcıdan açılan ziyaretler kayıtta{" "}
-                <strong>WEB</strong> olarak işaretlenir.
-              </p>
 
-              <Label htmlFor="ziyaret-not" hint="(opsiyonel)">
-                Not
-              </Label>
-              <TextInput
-                id="ziyaret-not"
-                placeholder="Örn. numune bırakıldı, sipariş görüşülecek"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
+            <Label htmlFor="ziyaret-not" hint="(opsiyonel)">
+              Not
+            </Label>
+            <TextInput
+              id="ziyaret-not"
+              placeholder="Örn. numune bırakıldı, sipariş görüşülecek"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={geoBusy}
-                  onClick={locate}
-                >
-                  <Crosshair className="h-3.5 w-3.5" />
-                  {coords ? "Konumu yenile" : "Konumu ekle"}
-                </Button>
-                {coords && (
-                  <span className="text-xs tabular-nums text-ink-faint">
-                    {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{" "}
-                    (±
-                    {coords.accuracy} m)
-                  </span>
-                )}
-              </div>
-              {geoError && <WarnLine className="mt-2">{geoError}</WarnLine>}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={geoBusy}
+                onClick={locate}
+              >
+                <Crosshair className="h-3.5 w-3.5" />
+                {coords ? "Konumu yenile" : "Konumu ekle"}
+              </Button>
+              {coords && (
+                <span className="text-xs tabular-nums text-ink-faint">
+                  {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)} (±
+                  {coords.accuracy} m)
+                </span>
+              )}
+            </div>
+            {geoError && <WarnLine className="mt-2">{geoError}</WarnLine>}
 
-              <div className="mt-4">
-                <Button
-                  loading={start.isPending}
-                  onClick={() => start.mutate()}
-                >
-                  <MapPin className="h-4 w-4" />
-                  Ziyareti başlat
-                </Button>
-              </div>
-              <ErrorLine error={start.error} />
-            </>
-          )}
+            <div className="mt-4">
+              <Button loading={start.isPending} onClick={() => start.mutate()}>
+                <MapPin className="h-4 w-4" />
+                Ziyareti başlat
+              </Button>
+            </div>
+            <ErrorLine error={start.error} />
+          </>
         </Panel>
       )}
 
+      {/* Geçmiş kapalı başlıyor: on beş satır ≈ 900 piksel ve plasiyer bu
+          ekrana ziyaret *açmak* için geliyor, geçmişi okumak için değil.
+          Künye kaç kayıt olduğunu söylüyor. */}
       <Panel
         title={companyId ? `${companyName} ziyaretleri` : "Son ziyaretlerim"}
+        collapsible
+        defaultOpen={false}
+        storageKey="rep-visits:history"
+        summary={
+          visits.data
+            ? visits.data.checkIns.length === 0
+              ? "kayıt yok"
+              : `${visits.data.checkIns.length} ziyaret`
+            : undefined
+        }
         action={
           companyId ? (
             <Link

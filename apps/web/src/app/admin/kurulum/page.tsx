@@ -21,7 +21,7 @@ export default async function AdminKurulumPage() {
         subtitle="Yeni bir kurulumun sırası — her adımın durumu canlı okunuyor"
       />
       <SetupWizard status={status} packs={packs} />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Sıra rastgele değil: kategorisiz ürün açılmaz, fiyatsız varyant sipariş
         edilemez, grubu olmayan firma liste fiyatı görür. Hiçbir yerde
         &ldquo;tamamlandı&rdquo; kutucuğu tutulmuyor — tutulsaydı son firmayı

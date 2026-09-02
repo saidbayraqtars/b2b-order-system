@@ -12,7 +12,7 @@ export default async function AdminAnnouncementsPage() {
         subtitle="Bayinin vitrinde göreceği bant, şerit ve pencereler"
       />
       <AnnouncementsManager />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Duyurular yalnızca <strong>gösterimdir</strong> — hiçbir tutarı
         değiştirmezler. İndirimin kendisi Kampanyalar ekranında tanımlanır;
         buradaki kayıt onu müşteriye duyurur.

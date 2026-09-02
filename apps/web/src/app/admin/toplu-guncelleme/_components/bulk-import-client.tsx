@@ -308,7 +308,7 @@ export function BulkImportClient() {
       )}
 
       {tab === "QUEUE" ? (
-        <Note>
+        <Note collapsible defaultOpen={false}>
           Bekleyen satır fiyatı <strong>değiştirmiyor</strong>: yürürlük günü
           gelince <a href="/admin/jobs" className="underline underline-offset-4 hover:text-ink">bakım işi</a>{" "}
           onu fiyat listesine işliyor ve o anki fiyatı satırda saklıyor — &ldquo;ne
@@ -322,7 +322,7 @@ export function BulkImportClient() {
           belirsiz bırakırdı.
         </Note>
       ) : (
-      <Note>
+      <Note collapsible defaultOpen={false}>
         <strong>Fark önizlemesi pazarlık konusu değil.</strong> Bir dosyayı
         doğrudan uygulamak, yanlış sütuna kaymış bir kopyalamanın bütün kataloğu
         bir kuruşa satması demek. Sunucu farkı hesaplayıp{" "}

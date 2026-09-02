@@ -65,7 +65,12 @@ export function CommandPanel() {
         </pre>
       )}
 
-      <Note className="mt-4">
+      <Note
+        collapsible
+        defaultOpen={false}
+        title="Bu iki komut ne yapar"
+        className="mt-4"
+      >
         Bu iki komut ERP&apos;yi yalnızca <strong>okur</strong>. Sipariş
         aktarımı buradan değil, siparişin kendi ekranından yapılır.{" "}
         <em>Sipariş tablolarını incele</em> çıktısında bakılacaklar:{" "}

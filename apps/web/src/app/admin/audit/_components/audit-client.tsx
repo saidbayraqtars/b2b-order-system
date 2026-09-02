@@ -19,6 +19,8 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import { Disclosure } from "@/components/disclosure";
+import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import { apiGet } from "@/lib/fetcher";
 import { useUrlState } from "@/lib/url-state";
 import {
@@ -84,6 +86,17 @@ export function AuditClient() {
     queryFn: () => apiGet<Page>(`/api/admin/audit?${params.toString()}`),
   });
 
+  // Kapalı süzgeç şeridinin künyesi. Gizli bir süzgeç listeyi kestiğinde
+  // kullanıcı listeyi eksik sanır — sayı bunu önlüyor.
+  const activeFilters = (
+    Object.keys(FILTER_DEFAULTS) as Array<keyof typeof FILTER_DEFAULTS>
+  ).filter((k) => filters.value[k] !== FILTER_DEFAULTS[k]).length;
+
+  // Sunucudan gelen elli satır *duruyor*; kesilen yalnızca çizim. İlk yirmi
+  // satır bir ekranı dolduruyor, gerisi "daha fazla göster"in, ellinin ötesi
+  // İleri düğmesinin arkasında.
+  const page = useVisibleSlice(query.data?.entries ?? [], 20);
+
   function resetPaging() {
     setCursor(null);
     setTrail([]);
@@ -92,77 +105,85 @@ export function AuditClient() {
   return (
     <div className="flex flex-col gap-4">
       {/* Süzgeç şeridi gömük zeminde — aranan şeye giden yol kaydırmak
-          değil, buradan daraltmak. */}
-      <div className="grid gap-3 rounded-lg border border-line bg-sunken p-3 sm:grid-cols-5">
-        <div>
-          <Label>Olay</Label>
-          <Select
-            value={action}
-            onChange={(e) => {
-              filters.set({ olay: e.target.value });
-              resetPaging();
-            }}
-          >
-            <option value="">Tümü</option>
-            {AuditActionEnum.options.map((a) => (
-              <option key={a} value={a}>
-                {AUDIT_ACTION_LABELS[a]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div>
-          <Label>Ara</Label>
-          <TextInput
-            placeholder="e-posta veya açıklama"
-            value={searchDraft}
-            onChange={(e) => setSearchDraft(e.target.value)}
-            onBlur={() => {
-              if (searchDraft !== search) {
+          değil, buradan daraltmak. Beş kontrol `Disclosure` eşiğinin üstünde,
+          o yüzden katlı; süzgeçli bir adresle gelindiğinde açık başlıyor,
+          yoksa kullanıcı listenin neden kesildiğini göremezdi. */}
+      <Disclosure
+        label="Süzgeçler"
+        badge={activeFilters}
+        defaultOpen={filters.isFiltered}
+      >
+        <div className="grid gap-3 rounded-lg border border-line bg-sunken p-3 sm:grid-cols-5">
+          <div>
+            <Label>Olay</Label>
+            <Select
+              value={action}
+              onChange={(e) => {
+                filters.set({ olay: e.target.value });
+                resetPaging();
+              }}
+            >
+              <option value="">Tümü</option>
+              {AuditActionEnum.options.map((a) => (
+                <option key={a} value={a}>
+                  {AUDIT_ACTION_LABELS[a]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Ara</Label>
+            <TextInput
+              placeholder="e-posta veya açıklama"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onBlur={() => {
+                if (searchDraft !== search) {
+                  filters.set({ ara: searchDraft });
+                  resetPaging();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
                 filters.set({ ara: searchDraft });
                 resetPaging();
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              filters.set({ ara: searchDraft });
-              resetPaging();
-            }}
-          />
+              }}
+            />
+          </div>
+          <div>
+            <Label>Başlangıç</Label>
+            <TextInput
+              type="date"
+              value={from}
+              onChange={(e) => {
+                filters.set({ baslangic: e.target.value });
+                resetPaging();
+              }}
+            />
+          </div>
+          <div>
+            <Label>Bitiş</Label>
+            <TextInput
+              type="date"
+              value={to}
+              onChange={(e) => {
+                filters.set({ bitis: e.target.value });
+                resetPaging();
+              }}
+            />
+          </div>
+          <div className="pb-2.5 sm:self-end">
+            <Checkbox
+              checked={securityOnly}
+              onChange={(e) => {
+                filters.set({ guvenlik: e.target.checked ? "1" : "" });
+                resetPaging();
+              }}
+              label="Sadece güvenlik olayları"
+            />
+          </div>
         </div>
-        <div>
-          <Label>Başlangıç</Label>
-          <TextInput
-            type="date"
-            value={from}
-            onChange={(e) => {
-              filters.set({ baslangic: e.target.value });
-              resetPaging();
-            }}
-          />
-        </div>
-        <div>
-          <Label>Bitiş</Label>
-          <TextInput
-            type="date"
-            value={to}
-            onChange={(e) => {
-              filters.set({ bitis: e.target.value });
-              resetPaging();
-            }}
-          />
-        </div>
-        <div className="pb-2.5 sm:self-end">
-          <Checkbox
-            checked={securityOnly}
-            onChange={(e) => {
-              filters.set({ guvenlik: e.target.checked ? "1" : "" });
-              resetPaging();
-            }}
-            label="Sadece güvenlik olayları"
-          />
-        </div>
-      </div>
+      </Disclosure>
 
       {query.isPending && <LoadingState />}
       <ErrorLine error={query.error} />
@@ -173,7 +194,7 @@ export function AuditClient() {
             {/* Sıralama yok: liste imleçle sayfalanıyor ve yalnızca *görünen*
                 elli satırı sıralamak, "en eski kayıt" diye yanlış bir cevap
                 verirdi. Yapışkan başlık ise tam da bu ekran için: 3530 piksel. */}
-            <Table stickyHead>
+            <Table stickyHead dense>
               <THead>
                 <tr>
                   <Th>Zaman</Th>
@@ -208,7 +229,7 @@ export function AuditClient() {
                     }
                   />
                 )}
-                {query.data.entries.map((e) => (
+                {page.visible.map((e) => (
                   <tr key={e.id}>
                     <Td numeric muted className="whitespace-nowrap">
                       {new Date(e.createdAt).toLocaleString("tr-TR")}
@@ -245,6 +266,14 @@ export function AuditClient() {
             </Table>
           </div>
 
+          <ShowMore
+            visible={page.visible.length}
+            total={page.total}
+            hidden={page.hidden}
+            onMore={page.showMore}
+            noun="kayıt"
+          />
+
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
@@ -275,10 +304,9 @@ export function AuditClient() {
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
             <span className="text-xs text-ink-faint">
-              {query.data.entries.length} kayıt gösteriliyor
               {query.data.nextCursor
-                ? " — gerisi için İleri, aradığınız kayıt için süzgeç"
-                : ""}
+                ? "Bu sayfanın gerisi için İleri, aradığınız kayıt için süzgeç"
+                : "Son sayfa"}
             </span>
           </div>
         </>

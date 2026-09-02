@@ -18,7 +18,7 @@ export default async function AuditPage() {
         <RetentionPanel />
       </div>
       <AuditClient />
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Kayıtlar <strong>silinemez ve değiştirilemez</strong>: defter yalnızca
         büyür. Tek istisna yukarıdaki saklama süresi ve o da toptan siler, tek
         tek değil — bir satırı seçip yok etmenin yolu yok. Silmeden önce CSV

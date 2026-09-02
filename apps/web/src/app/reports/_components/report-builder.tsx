@@ -585,7 +585,17 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
           />
 
           {config.filters.length > 0 && (
-            <Panel title="Filtreler">
+            <Panel
+              title="Filtreler"
+              collapsible
+              defaultOpen={config.filters.length > 0}
+              storageKey="report:filters"
+              summary={
+                config.filters.length === 0
+                  ? "yok"
+                  : `${config.filters.length} koşul`
+              }
+            >
               <ul className="space-y-2">
                 {config.filters.map((f, i) => (
                   <FilterRow
@@ -611,7 +621,16 @@ export function ReportBuilder({ saved }: { saved?: SavedDefinition }) {
             </Panel>
           )}
 
-          <Panel title="Sıralama, limit ve grafik">
+          {/* Yedi panelden dördü kapalı başlıyor. Açık kalanlar "Alanlar" ve
+              "Sütunlar": rapor kurmanın ilk iki adımı onlar, gerisi ince
+              ayar. */}
+          <Panel
+            title="Sıralama, limit ve grafik"
+            collapsible
+            defaultOpen={false}
+            storageKey="report:sort"
+            summary={`${config.limit ?? "sınırsız"} satır`}
+          >
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <Label htmlFor="sort-field">Sırala</Label>
@@ -862,7 +881,13 @@ function ComputedPanel({
   };
 
   return (
-    <Panel title={`Hesaplanmış sütunlar (${computed.length})`}>
+    <Panel
+      title="Hesaplanmış sütunlar"
+      collapsible
+      defaultOpen={computed.length > 0}
+      storageKey="report:computed"
+      summary={computed.length === 0 ? "yok" : `${computed.length} sütun`}
+    >
       <p className="mb-3 text-xs text-ink-faint">
         Diğer sütunlar üzerinde dört işlem: <code>+ - * / ( )</code>. Sıralama
         veritabanında yapıldığı için hesaplanmış sütuna göre sıralanamaz.

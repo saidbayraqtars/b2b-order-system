@@ -77,6 +77,9 @@ export function CompanyAddresses({
   return (
     <Panel
       title="Adresler"
+      collapsible
+      defaultOpen={false}
+      summary={addresses.length === 0 ? "yok" : `${addresses.length} adres`}
       action={
         <Button size="sm" onClick={() => setAdding((v) => !v)}>
           {adding ? "Vazgeç" : "Yeni adres"}

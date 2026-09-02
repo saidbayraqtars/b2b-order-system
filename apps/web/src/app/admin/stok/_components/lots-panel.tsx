@@ -260,7 +260,7 @@ export function LotsPanel() {
         )}
       </Panel>
 
-      <Note>
+      <Note collapsible defaultOpen={false}>
         Sipariş malı <strong>FEFO</strong> ile ayırır: son kullanma tarihi en
         yakın parti önce çıkar. SKT&apos;si geçmiş ve bloke partiler bu sıraya
         hiç girmez — onlar bir <strong>fire kararıdır</strong>, satış anında
