@@ -19,13 +19,13 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 |---|---|
 | D1 özel kodlar | ✔ `68de3f9` |
 | D2 modül aç/kapa | ✔ `35081cd` |
-| D3 menü 6 başlık, D4 basit/gelişmiş görünüm | kod bitti, tam doğrulamada |
+| D3 menü 6 başlık, D4 basit/gelişmiş görünüm | ✔ `38d62bd` |
 | F1 kesirli stok | sırada — 12 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet) |
 | F2 çoklu birim | sırada |
 | F3 depo bazlı kritik seviye | sırada |
 | D5 ekran ekran | sırada |
 
-Ölçüm: 1.143 test (erp-agent 18, servisler 719, web 406) yeşil.
+Ölçüm: 1.146 test (erp-agent 18, servisler 719, web 409) yeşil.
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 

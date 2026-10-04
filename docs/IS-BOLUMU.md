@@ -128,4 +128,4 @@ Başka akışların D'den istedikleri. Format: tarih · akış · ne · neden.
 | A | Başlamadı | — |
 | B | Başlamadı | — |
 | C | Başlamadı | — |
-| D | Sürüyor (dal `claude/ozel-kod`, main'e birleşmedi) | 2026-10-04: D1 özel kodlar ✔ `68de3f9` · D2 modüller ✔ `35081cd` · D3 menü 6 başlık + D4 basit/gelişmiş görünüm doğrulamada · sırada F1 kesirli stok, F2 çoklu birim, F3 depo kritik seviye, D5 ekran ekran. **B'nin özel kod sütunları D1'in main'e girmesini bekliyor.** |
+| D | Sürüyor (dal `claude/ozel-kod`, main'e birleşmedi) | 2026-10-04: D1 özel kodlar ✔ `68de3f9` · D2 modüller ✔ `35081cd` · D3 menü 6 başlık + D4 basit/gelişmiş görünüm ✔ `38d62bd` · sırada F1 kesirli stok, F2 çoklu birim, F3 depo kritik seviye, D5 ekran ekran. **B'nin özel kod sütunları D1'in main'e girmesini bekliyor.** |
