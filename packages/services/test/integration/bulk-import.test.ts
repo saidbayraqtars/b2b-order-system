@@ -241,7 +241,7 @@ suite("toplu içe aktarma", () => {
         where: { id: variantAId },
         select: { stock: true },
       });
-      expect(variant.stock).toBe(90);
+      expect(Number(variant.stock)).toBe(90);
 
       // Asıl iddia: fark bir **hareket** olarak yazıldı (Adım 51 tek kapı).
       const movements = await prisma.stockMovement.findMany({
@@ -249,7 +249,11 @@ suite("toplu içe aktarma", () => {
         select: { direction: true, quantity: true, source: true, balanceAfter: true },
       });
       expect(movements).toHaveLength(1);
-      expect(movements[0]).toMatchObject({
+      expect({
+        ...movements[0],
+        quantity: Number(movements[0]!.quantity),
+        balanceAfter: Number(movements[0]!.balanceAfter),
+      }).toMatchObject({
         direction: "OUT",
         quantity: 10,
         source: "COUNT",

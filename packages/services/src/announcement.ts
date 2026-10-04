@@ -1,4 +1,5 @@
 import { prisma } from "@repo/database";
+import { isModuleEnabled } from "./modules";
 import type {
   AnnouncementPlacement,
   AnnouncementTone,
@@ -81,6 +82,8 @@ function toView(row: Row): AnnouncementView {
 export async function listActiveAnnouncements(
   customerGroupId: string | null,
 ): Promise<AnnouncementView[]> {
+  // Duyuru modülü kapalıysa portal ve mobil duyuru göstermez.
+  if (!(await isModuleEnabled("duyuru"))) return [];
   const now = new Date();
   const rows = await prisma.announcement.findMany({
     where: {

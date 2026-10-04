@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { CurrencyEnum } from "./currency";
+import { customCodeValuesSchema } from "./custom-code";
 import { DiscountTypeEnum } from "./enums";
 import { entityIdSchema } from "./id";
+import { quantityInput, quantityScaleSchema } from "./quantity";
 
 // Admin-side catalog input contracts. Slugs are optional everywhere — the
 // service derives one from the name when omitted, so the UI never has to.
@@ -43,6 +45,8 @@ export const createProductSchema = z.object({
     .default(20),
   categoryId: z.string().cuid("Kategori seçin"),
   isActive: z.boolean().default(true),
+  /** Özel kodlar (`code1..code10`); gönderilmeyen yuva değişmez. */
+  ...customCodeValuesSchema.shape,
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
@@ -57,8 +61,8 @@ export const createVariantSchema = z.object({
   color: z.string().max(60).nullish(),
   size: z.string().max(60).nullish(),
   unitsPerCase: z.number().int().positive("Koli adedi en az 1 olmalı").default(1),
-  moqUnits: z.number().int().positive("Minimum sipariş en az 1 olmalı").default(1),
-  stock: z.number().int().min(0, "Stok negatif olamaz").default(0),
+  moqUnits: quantityInput({ message: "Minimum sipariş sıfırdan büyük olmalı" }).default(1),
+  stock: quantityInput({ allowZero: true, message: "Stok negatif olamaz" }).default(0),
   weightGram: z.number().int().positive().nullish(),
 
   /**
@@ -70,8 +74,13 @@ export const createVariantSchema = z.object({
   costPrice: z.number().nonnegative().nullish(),
   /** Satış birimi: ADET, KG, KOLİ, MT… */
   unit: z.string().max(16).nullish(),
+  /**
+   * Miktarın kaç ondalık alabildiği: 0 = tam sayı (adet, koli), 3 = gram
+   * hassasiyetinde kilo. Varsayılan 0 — kesirli satış bilerek açılır.
+   */
+  quantityScale: quantityScaleSchema.optional(),
   /** Kritik stok eşiği. Altına düşen satır uyarı listesine girer. */
-  minStock: z.number().int().min(0).nullish(),
+  minStock: quantityInput({ allowZero: true }).nullish(),
   /** Raf/lokasyon kodu — toplayıcının aradığı bilgi. */
   shelfCode: z.string().max(40).nullish(),
   /** Pasif varyant katalogda görünmez, siparişe eklenemez; silinmez. */

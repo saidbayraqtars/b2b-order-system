@@ -28,6 +28,7 @@ import {
   LoadingState,
 } from "@/components/ui";
 import { VariantPicker } from "./variant-picker";
+import { formatQuantity } from "@/lib/format";
 
 // Parti & son kullanma tarihi.
 //
@@ -206,7 +207,7 @@ export function LotsPanel() {
                         {lot.daysLeft === null ? "—" : lot.daysLeft}
                       </Td>
                       <Td align="right" numeric>
-                        {lot.onHand}
+                        {formatQuantity(lot.onHand)}
                       </Td>
                       <Td>
                         <div className="flex flex-wrap gap-1">
@@ -331,11 +332,13 @@ function LotEntryModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div>
-            <Label htmlFor="lot-qty">Adet</Label>
+            <Label htmlFor="lot-qty">Miktar</Label>
             <TextInput
               id="lot-qty"
               type="number"
-              min={1}
+              min={0}
+              step="any"
+              inputMode="decimal"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
@@ -433,16 +436,18 @@ function WriteOffModal({
         }}
       >
         <p className="text-body-sm text-ink-muted">
-          {lot.productName} · {lot.sku} · elde {lot.onHand} adet · SKT{" "}
+          {lot.productName} · {lot.sku} · elde {formatQuantity(lot.onHand)} · SKT{" "}
           {formatDate(lot.expiryDate)}
         </p>
 
         <div>
-          <Label htmlFor="wo-qty">Düşülecek adet</Label>
+          <Label htmlFor="wo-qty">Düşülecek miktar</Label>
           <TextInput
             id="wo-qty"
             type="number"
-            min={1}
+            min={0}
+            step="any"
+            inputMode="decimal"
             max={lot.onHand}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}

@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
-import { PERMISSION_LABELS, PERMISSIONS, type Permission } from "@repo/types";
+import {
+  MODULES,
+  ModuleKeyEnum,
+  PERMISSION_LABELS,
+  PERMISSIONS,
+  type Permission,
+} from "@repo/types";
 
 /**
  * Yetki reddi. `?perm=` ile gelen izin adı gösterilir: kullanıcı "yetkim yok"u
@@ -15,11 +21,14 @@ import { PERMISSION_LABELS, PERMISSIONS, type Permission } from "@repo/types";
 export default function ForbiddenPage({
   searchParams,
 }: {
-  searchParams: { perm?: string };
+  searchParams: { perm?: string; modul?: string };
 }) {
   const perm = PERMISSIONS.includes(searchParams.perm as Permission)
     ? (searchParams.perm as Permission)
     : null;
+  // Kapalı modül: yetki istemek işe yaramaz, kurulumda açılması gerekir.
+  const parsedModule = ModuleKeyEnum.safeParse(searchParams.modul);
+  const closed = parsedModule.success ? MODULES[parsedModule.data] : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
@@ -28,7 +37,13 @@ export default function ForbiddenPage({
       </span>
       <h1 className="text-display tabular-nums text-ink">403</h1>
       <p className="text-body-sm text-ink-muted">
-        {perm ? (
+        {closed ? (
+          <>
+            <strong className="font-semibold text-ink">{closed.label}</strong>{" "}
+            bu kurulumda kapalı. Yöneticiniz Ayarlar → Modüller ekranından
+            açabilir.
+          </>
+        ) : perm ? (
           <>
             Bu sayfa{" "}
             <strong className="font-semibold text-ink">

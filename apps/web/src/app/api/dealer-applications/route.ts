@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { listDealerApplications, submitDealerApplication } from "@repo/services";
+import { listDealerApplications, submitDealerApplication, isModuleEnabled } from "@repo/services";
 import { DealerApplicationStatusEnum, dealerApplicationSchema } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { requestMeta } from "@/lib/request-meta";
@@ -34,6 +34,10 @@ export function GET(req: NextRequest) {
 
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
+    // Modül kapalıysa form da yok; doğrudan gelen istek "bulunamadı" alır.
+    if (!(await isModuleEnabled("basvuru"))) {
+      return Response.json({ error: "Bulunamadı" }, { status: 404 });
+    }
     const input = await parseBody(req, dealerApplicationSchema);
     await submitDealerApplication(input, requestMeta());
 

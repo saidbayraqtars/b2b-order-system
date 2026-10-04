@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PaymentMethodEnum } from "./enums";
 import { entityIdSchema } from "./id";
+import { quantityInput } from "./quantity";
 
 // Shape of a campaign. These schemas check STRUCTURE only: that a rule has a
 // type and a params object, that a promotion has a name, and so on.
@@ -91,7 +92,7 @@ export const quoteOrderSchema = z.object({
       z.object({
         // cuid() değil — bkz. id.ts.
         variantId: entityIdSchema,
-        quantity: z.number().int().positive(),
+        quantity: quantityInput(),
       }),
     )
     .min(1, "Sepet boş olamaz"),
@@ -121,6 +122,13 @@ export const RuleParamKindEnum = z.enum([
    */
   "giftTiers",
   "percentTiers",
+  /**
+   * Özel kod eşleşmesi: `{ slot, values }` — "ürün özel kodu 3 şunlardan biri".
+   * Yuva numarası saklanıyor, etiket değil: alanın adı değişse de kural
+   * aynı kolona bakmaya devam eder.
+   */
+  "productCode",
+  "companyCode",
 ]);
 export type RuleParamKind = z.infer<typeof RuleParamKindEnum>;
 

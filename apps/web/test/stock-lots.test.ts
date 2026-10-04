@@ -94,14 +94,18 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: res.body.lotId },
       select: { onHand: true, code: true },
     });
-    expect(lot?.onHand).toBe(40);
+    expect(Number(lot?.onHand)).toBe(40);
 
     // Defter satırı da parti taşıyor — "hangi mal ne zaman girdi" oradan okunur.
     const movement = await prisma.stockMovement.findFirst({
       where: { variantId, lotId: res.body.lotId },
       select: { direction: true, quantity: true, source: true },
     });
-    expect(movement).toMatchObject({ direction: "IN", quantity: 40, source: "MANUAL" });
+    expect({ ...movement, quantity: Number(movement?.quantity) }).toMatchObject({
+      direction: "IN",
+      quantity: 40,
+      source: "MANUAL",
+    });
   });
 
   it("aynı parti koduna ikinci giriş yeni parti açmaz, üstüne ekler", async () => {
@@ -122,7 +126,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: lotId },
       select: { onHand: true },
     });
-    expect(lot?.onHand).toBe(25);
+    expect(Number(lot?.onHand)).toBe(25);
   });
 
   it("SKT boşsa raf ömründen hesaplanır", async () => {
@@ -189,8 +193,8 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
     });
 
     // 12 yakından, kalan 8 uzaktan.
-    expect(yakinRow?.onHand).toBe(0);
-    expect(uzakRow?.onHand).toBe(22);
+    expect(Number(yakinRow?.onHand)).toBe(0);
+    expect(Number(uzakRow?.onHand)).toBe(22);
 
     // Ve defterde iki ayrı çıkış satırı var — tek satır olsaydı hangi SKT'li
     // malın gittiği kaybolurdu.
@@ -199,7 +203,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       select: { quantity: true, lotId: true },
     });
     expect(outs).toHaveLength(2);
-    expect(outs.map((o) => o.quantity).sort((a, b) => a - b)).toEqual([8, 12]);
+    expect(outs.map((o) => Number(o.quantity)).sort((a, b) => a - b)).toEqual([8, 12]);
   });
 
   it("SKT'si geçmiş ve bloke partiler FEFO sırasına girmez", async () => {
@@ -231,7 +235,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: { in: [gecmis, bloke, saglam] } },
       select: { id: true, onHand: true },
     });
-    const byId = new Map(rows.map((r) => [r.id, r.onHand]));
+    const byId = new Map(rows.map((r) => [r.id, Number(r.onHand)]));
     expect(byId.get(gecmis)).toBe(50); // dokunulmadı
     expect(byId.get(bloke)).toBe(50); // dokunulmadı
     expect(byId.get(saglam)).toBe(40); // mal buradan çıktı
@@ -265,7 +269,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: { in: [yakin, uzak] } },
       select: { id: true, onHand: true },
     });
-    const byId = new Map(rows.map((r) => [r.id, r.onHand]));
+    const byId = new Map(rows.map((r) => [r.id, Number(r.onHand)]));
     // Başladığı yere döndü: 5 + 20.
     expect(byId.get(yakin)).toBe(5);
     expect(byId.get(uzak)).toBe(20);
@@ -274,7 +278,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: variantId },
       select: { stock: true },
     });
-    expect(variant?.stock).toBe(25);
+    expect(Number(variant?.stock)).toBe(25);
   });
 
   it("parti takibi kapalı kalemde sipariş ve iptal eskisi gibi çalışır", async () => {
@@ -295,7 +299,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: variantId },
       select: { stock: true },
     });
-    expect(variant?.stock).toBe(70);
+    expect(Number(variant?.stock)).toBe(70);
 
     await callRoute(changeStatus, {
       method: "POST",
@@ -308,7 +312,7 @@ suite("parti, SKT ve çift birim (HTTP)", () => {
       where: { id: variantId },
       select: { stock: true },
     });
-    expect(variant?.stock).toBe(100);
+    expect(Number(variant?.stock)).toBe(100);
   });
 
   // ── fire ──

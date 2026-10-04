@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { entityIdSchema } from "./id";
+import { quantityInput } from "./quantity";
 
 // ─────────────────────────────────────────────
 // İADE (RMA)
@@ -95,7 +96,7 @@ export const RETURN_CONDITION_LABELS: Record<ReturnCondition, string> = {
  */
 export const returnItemInputSchema = z.object({
   orderItemId: entityIdSchema,
-  quantity: z.number().int().min(1).max(1_000_000),
+  quantity: quantityInput({ max: 1_000_000 }),
   condition: ReturnConditionEnum.optional(),
 });
 export type ReturnItemInput = z.infer<typeof returnItemInputSchema>;
@@ -122,7 +123,7 @@ export type CreateReturnInput = z.infer<typeof createReturnSchema>;
 export const receivedItemSchema = z.object({
   returnItemId: entityIdSchema,
   /** 0 = bu satır hiç gelmedi; satır düşürülür, iade tutarından çıkar. */
-  quantity: z.number().int().min(0).max(1_000_000),
+  quantity: quantityInput({ allowZero: true, max: 1_000_000 }),
   condition: ReturnConditionEnum.optional(),
 });
 export type ReceivedItemInput = z.infer<typeof receivedItemSchema>;

@@ -44,7 +44,7 @@ async function stockOf(): Promise<number> {
     where: { id: variantId },
     select: { stock: true },
   });
-  return row.stock;
+  return Number(row.stock);
 }
 
 async function onHandOf(warehouseId: string): Promise<number> {
@@ -52,7 +52,7 @@ async function onHandOf(warehouseId: string): Promise<number> {
     where: { variantId_warehouseId: { variantId, warehouseId } },
     select: { onHand: true },
   });
-  return row?.onHand ?? 0;
+  return Number(row?.onHand ?? 0);
 }
 
 /** Bu varyanta ait son hareket. */

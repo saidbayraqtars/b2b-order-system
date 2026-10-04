@@ -135,6 +135,8 @@ export type BusinessErrorCode =
   | "WAREHOUSE_NOT_FOUND"
   | "WAREHOUSE_CODE_TAKEN"
   | "INVALID_STOCK"
+  /** Miktar kalemin ölçeğine uymuyor: adet satan kalemde 1,5 gibi. */
+  | "INVALID_QUANTITY"
   | "STOCK_MOVEMENT_NOT_FOUND"
   | "LOT_NOT_FOUND"
   | "LOT_CODE_TAKEN"
@@ -160,7 +162,9 @@ export type BusinessErrorCode =
   | "APPLICATION_THROTTLED"
   // ── sayfa düzeni ──
   | "PAGE_NOT_FOUND"
-  | "INVALID_BLOCK";
+  | "INVALID_BLOCK"
+  // ── özel kodlar ──
+  | "INVALID_CUSTOM_CODE";
 
 export class BusinessError extends Error {
   constructor(

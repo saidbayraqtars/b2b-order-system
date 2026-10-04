@@ -14,7 +14,8 @@ import { resolveCompanyId } from "@/lib/company-access";
  */
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    // Saha modülü kapalıysa ziyaret çağrısı yok — kim sorarsa sorsun.
+    const user = await requireUser(undefined, undefined, { module: "saha" });
     const { searchParams } = new URL(req.url);
 
     const statusParam = searchParams.getAll("status");
@@ -52,7 +53,8 @@ export function GET(req: NextRequest) {
 /** POST /api/visit-requests — "uğrayın" çağrısı aç. */
 export function POST(req: NextRequest) {
   return withAuthErrors(async () => {
-    const user = await requireUser();
+    // Saha modülü kapalıysa ziyaret çağrısı yok — kim sorarsa sorsun.
+    const user = await requireUser(undefined, undefined, { module: "saha" });
 
     const json = await req.json().catch(() => null);
     const parsed = createVisitRequestSchema.safeParse(json);

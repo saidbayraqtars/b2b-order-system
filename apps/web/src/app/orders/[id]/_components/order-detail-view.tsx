@@ -9,7 +9,7 @@ import {
   type Role,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { formatTRY } from "@/lib/format";
+import { formatTRY, formatQuantity } from "@/lib/format";
 import { CurrencyNote } from "@/components/currency-note";
 import { Button, ErrorLine, Panel, TextInput } from "@/components/form";
 import {
@@ -150,7 +150,7 @@ export function OrderDetailView({
                 </Td>
                 <Td muted>{i.sku}</Td>
                 <Td align="right" numeric>
-                  {i.quantity}
+                  {formatQuantity(i.quantity)}
                 </Td>
                 <Td align="right" numeric>
                   {formatTRY(i.unitPrice)}

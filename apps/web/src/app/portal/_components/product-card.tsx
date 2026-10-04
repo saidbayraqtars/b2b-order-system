@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ImageOff, Plus } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart } from "@/store/cart";
-import { formatTRY } from "@/lib/format";
+import { formatQuantity, formatTRY } from "@/lib/format";
+import { isFractional, roundToScale } from "@/lib/quantity";
 import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
@@ -57,13 +58,22 @@ function stockNote(product: CatalogProduct): {
   label: string;
   tone: "positive" | "caution" | "critical";
 } {
-  const total = product.variants.reduce((s, v) => s + v.stock, 0);
+  const total = roundToScale(
+    product.variants.reduce((s, v) => s + v.stock, 0),
+    3,
+  );
   if (total <= 0) return { label: "Stok yok", tone: "critical" };
+  // Tek kesirli kalemde birim kendi birimi (kg, m); karışık ya da adet
+  // ürünlerde eskisi gibi "adet".
+  const only = product.variants.length === 1 ? product.variants[0]! : null;
+  const unit =
+    only && isFractional(only) && only.unit ? only.unit.toLocaleLowerCase("tr") : "adet";
+  const amount = `${formatQuantity(total)} ${unit}`;
   const perCase = Math.max(1, ...product.variants.map((v) => v.unitsPerCase));
   if (total <= perCase * 5) {
-    return { label: `Sınırlı stok (${total} adet)`, tone: "caution" };
+    return { label: `Sınırlı stok (${amount})`, tone: "caution" };
   }
-  return { label: `Stokta var (${total} adet)`, tone: "positive" };
+  return { label: `Stokta var (${amount})`, tone: "positive" };
 }
 
 /** Karttan doğrudan sepete girebilecek tek varyant — yoksa null. */
@@ -196,6 +206,7 @@ export function ProductCard({
                   unitsPerCase: sole.unitsPerCase,
                   moqUnits: sole.moqUnits,
                   stock: sole.stock,
+                  quantityScale: sole.quantityScale,
                 })
               }
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-accent text-on-accent transition-opacity hover:opacity-90"

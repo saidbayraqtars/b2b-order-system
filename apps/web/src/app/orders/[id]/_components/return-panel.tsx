@@ -8,7 +8,7 @@ import {
   type ReturnableLineView,
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
-import { formatTRY } from "@/lib/format";
+import { formatTRY, formatQuantity } from "@/lib/format";
 import { Badge, EmptyState, LoadingState } from "@/components/ui";
 import { Button, ErrorLine, Label, Panel, TextInput } from "@/components/form";
 
@@ -153,15 +153,17 @@ export function ReturnPanel({ orderId }: { orderId: string }) {
                     {line.productName}
                   </div>
                   <div className="text-xs text-ink-faint">
-                    {line.sku} · iade edilebilir {line.returnableQuantity}
+                    {line.sku} · iade edilebilir {formatQuantity(line.returnableQuantity)}
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor={`ret-${line.orderItemId}`}>Adet</Label>
+                  <Label htmlFor={`ret-${line.orderItemId}`}>Miktar</Label>
                   <TextInput
                     id={`ret-${line.orderItemId}`}
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     max={line.returnableQuantity}
                     disabled={line.returnableQuantity === 0}
                     value={String(quantities[line.orderItemId] ?? 0)}

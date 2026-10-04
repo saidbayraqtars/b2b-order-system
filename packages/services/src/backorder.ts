@@ -1,5 +1,6 @@
 import { prisma } from "@repo/database";
 import type { OrderStatus } from "@repo/types";
+import { qty, qtyAdd, qtySub } from "./quantity";
 
 // Bekleyen bakiye (backorder): sipariş edilip **henüz sevk edilmemiş** mal.
 //
@@ -117,7 +118,7 @@ export async function getBackorders(
 
   const lines: BackorderLine[] = [];
   for (const i of items) {
-    const pending = i.quantity - i.quantityShipped;
+    const pending = qtySub(i.quantity, i.quantityShipped);
     if (pending <= 0) continue;
     lines.push({
       orderId: i.order.id,
@@ -129,10 +130,10 @@ export async function getBackorders(
       variantId: i.variantId,
       sku: i.sku,
       productName: i.productName,
-      quantity: i.quantity,
-      quantityShipped: i.quantityShipped,
+      quantity: qty(i.quantity),
+      quantityShipped: qty(i.quantityShipped),
       pending,
-      onHand: i.variant.stock,
+      onHand: qty(i.variant.stock),
       ageDays: days(i.order.createdAt, now),
     });
   }
@@ -142,7 +143,7 @@ export async function getBackorders(
   for (const l of lines) {
     const hit = byVariant.get(l.variantId);
     if (hit) {
-      hit.pending += l.pending;
+      hit.pending = qtyAdd(hit.pending, l.pending);
       hit.orderCount += 1;
       hit.oldestDays = Math.max(hit.oldestDays, l.ageDays);
     } else {
@@ -166,12 +167,12 @@ export async function getBackorders(
   // En eski borç en üstte: bekleyen bakiyede sıra, tutar değil **süre**.
   variants.sort((a, b) => b.oldestDays - a.oldestDays || b.pending - a.pending);
 
-  const totalPending = lines.reduce((s, l) => s + l.pending, 0);
+  const totalPending = qtyAdd(...lines.map((l) => l.pending));
   // Karşılanabilirlik varyant düzeyinde: aynı varyantı bekleyen iki siparişin
   // ikisi birden karşılanamıyorsa, ikisi de "karşılanabilir" sayılmamalı.
   const coverablePending = variants
     .filter((v) => v.coverable)
-    .reduce((s, v) => s + v.pending, 0);
+    .reduce((s, v) => qtyAdd(s, v.pending), 0);
 
   return { lines, variants, totalPending, coverablePending };
 }

@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { CreateShipmentInput, OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { resolveDocumentNumber } from "./document-series";
+import { assertQuantityScale, formatQuantity, qty, qtySub } from "./quantity";
 import { recordStatusChange } from "./order-lifecycle";
 
 // Partial despatch (irsaliye).
@@ -81,6 +82,7 @@ export async function createShipment(
             sku: true,
             quantity: true,
             quantityShipped: true,
+            variant: { select: { quantityScale: true } },
           },
         },
       },
@@ -105,11 +107,12 @@ export async function createShipment(
           orderItemId: line.orderItemId,
         });
       }
-      const remaining = item.quantity - item.quantityShipped;
+      assertQuantityScale(line.quantity, item.variant.quantityScale, item.sku);
+      const remaining = qtySub(item.quantity, item.quantityShipped);
       if (line.quantity > remaining) {
         throw new BusinessError(
           "OVER_SHIPMENT",
-          `${item.sku}: sevk edilebilecek en fazla ${remaining} adet kaldı`,
+          `${item.sku}: sevk edilebilecek en fazla ${formatQuantity(remaining)} kaldı`,
           { sku: item.sku, remaining },
         );
       }
@@ -176,8 +179,8 @@ async function syncFulfilmentStatus(
     select: { quantity: true, quantityShipped: true },
   });
 
-  const anyShipped = items.some((i) => i.quantityShipped > 0);
-  const allShipped = items.every((i) => i.quantityShipped >= i.quantity);
+  const anyShipped = items.some((i) => qty(i.quantityShipped) > 0);
+  const allShipped = items.every((i) => i.quantityShipped.gte(i.quantity));
 
   let next: OrderStatus;
   if (allShipped) next = "SHIPPED";
@@ -303,7 +306,7 @@ export async function listShipments(orderId: string): Promise<ShipmentView[]> {
       orderItemId: i.orderItemId,
       productName: i.orderItem.productName,
       sku: i.orderItem.sku,
-      quantity: i.quantity,
+      quantity: qty(i.quantity),
     })),
   }));
 }
@@ -327,10 +330,10 @@ export async function getOpenLines(orderId: string): Promise<OpenLine[]> {
     orderItemId: i.id,
     productName: i.productName,
     sku: i.sku,
-    quantity: i.quantity,
-    quantityShipped: i.quantityShipped,
-    quantityInvoiced: i.quantityInvoiced,
-    remainingToShip: i.quantity - i.quantityShipped,
-    remainingToInvoice: i.quantity - i.quantityInvoiced,
+    quantity: qty(i.quantity),
+    quantityShipped: qty(i.quantityShipped),
+    quantityInvoiced: qty(i.quantityInvoiced),
+    remainingToShip: qtySub(i.quantity, i.quantityShipped),
+    remainingToInvoice: qtySub(i.quantity, i.quantityInvoiced),
   }));
 }

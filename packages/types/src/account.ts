@@ -110,6 +110,7 @@ export const AuditActionEnum = z.enum([
   "PRICES_IMPORTED",
   "RECONCILIATION_ANSWERED",
   "STOCK_IMPORTED",
+  "MODULE_TOGGLED",
 ]);
 export type AuditAction = z.infer<typeof AuditActionEnum>;
 
@@ -152,6 +153,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   PRICES_IMPORTED: "Fiyatlar Excel ile güncellendi",
   RECONCILIATION_ANSWERED: "Cari mutabakat cevaplandı",
   STOCK_IMPORTED: "Stok Excel ile sayıldı",
+  MODULE_TOGGLED: "Modül açıldı/kapandı",
 };
 
 /** Actions worth surfacing as "security events" by default in the viewer. */

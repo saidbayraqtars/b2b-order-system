@@ -28,6 +28,7 @@ import {
   Th,
   THead,
 } from "@/components/ui";
+import { formatQuantity } from "@/lib/format";
 
 // Hangi üründe kaç adet var — ve bir satıra basınca o ürünün kendi defteri.
 //
@@ -177,7 +178,7 @@ export function StockLevelsPanel() {
                       <Td className="tech-num">{row.sku}</Td>
                       <Td align="right" numeric>
                         <span className={critical ? "text-critical" : ""}>
-                          {row.stock}
+                          {formatQuantity(row.stock)}
                         </span>{" "}
                         <span className="text-xs text-ink-faint">
                           {row.unit ?? "adet"}
@@ -269,10 +270,10 @@ function VariantLedger({ variantId }: { variantId: string }) {
             }
           >
             {m.direction === "IN" ? "+" : "−"}
-            {m.quantity}
+            {formatQuantity(m.quantity)}
           </span>
           <span className="tabular-nums text-ink-faint">
-            → {m.balanceAfter}
+            → {formatQuantity(m.balanceAfter)}
           </span>
           <Badge tone="neutral">{STOCK_MOVEMENT_SOURCE_LABELS[m.source]}</Badge>
           <span className="text-ink-faint">

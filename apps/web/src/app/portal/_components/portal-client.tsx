@@ -98,12 +98,17 @@ function catalogQueryOptions(
   companyId: string,
   categoryId: string | null,
   search: string,
+  codes: Record<string, string> = {},
 ) {
   const params = new URLSearchParams({ companyId });
   if (categoryId) params.set("categoryId", categoryId);
   if (search.trim()) params.set("search", search.trim());
+  // `code3` → `kod3`: adresteki süzgeç anahtarı Türkçe (bkz. custom-code.ts).
+  for (const [key, value] of Object.entries(codes)) {
+    if (value) params.set(key.replace(/^code/, "kod"), value);
+  }
   return {
-    queryKey: ["catalog", companyId, categoryId, search] as const,
+    queryKey: ["catalog", companyId, categoryId, search, codes] as const,
     queryFn: () =>
       apiGet<{ products: CatalogProduct[] }>(`/api/catalog?${params}`),
   };
@@ -166,6 +171,17 @@ export function PortalClient({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
   const [inStockOnly, setInStockOnly] = useState(false);
+  // Özel kod süzgeçleri: yalnızca yönetimin "katalogda göster" dediği alanlar.
+  const [codeFilters, setCodeFilters] = useState<Record<string, string>>({});
+  const codeFilterOptions = useQuery({
+    queryKey: ["catalog-code-filters"],
+    queryFn: () =>
+      apiGet<{ filters: Array<{ key: string; label: string; values: string[] }> }>(
+        "/api/catalog/code-filters",
+      ),
+    staleTime: 5 * 60_000,
+  });
+  const hasCodeFilter = Object.values(codeFilters).some(Boolean);
   const [scanNotice, setScanNotice] = useState<ScanNotice | null>(null);
   const [scanning, setScanning] = useState(false);
   const { itemCount, add } = useCart(companyId);
@@ -185,7 +201,7 @@ export function PortalClient({
   // firmaya göre çözülür); alıcı için zararsız — sunucu kendi firmasıyla
   // eşleşmezse zaten 403 verir.
   const catalogQuery = useQuery(
-    catalogQueryOptions(companyId, categoryId, debouncedSearch),
+    catalogQueryOptions(companyId, categoryId, debouncedSearch, codeFilters),
   );
 
   /**
@@ -224,6 +240,7 @@ export function PortalClient({
         unitsPerCase: hit.variant.unitsPerCase,
         moqUnits: hit.variant.moqUnits,
         stock: hit.variant.stock,
+        quantityScale: hit.variant.quantityScale,
       });
       // Kutu temizleniyor ki sıradaki kod üstüne yazılmadan okutulabilsin.
       setSearch("");
@@ -357,6 +374,25 @@ export function PortalClient({
                     label="Yalnızca stokta"
                   />
                 )}
+                {(codeFilterOptions.data?.filters ?? []).map((f) => (
+                  <Select
+                    key={f.key}
+                    size="sm"
+                    aria-label={f.label}
+                    value={codeFilters[f.key] ?? ""}
+                    onChange={(e) =>
+                      setCodeFilters((prev) => ({ ...prev, [f.key]: e.target.value }))
+                    }
+                    className="w-auto"
+                  >
+                    <option value="">{f.label}: hepsi</option>
+                    {f.values.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </Select>
+                ))}
                 <Select
                   size="sm"
                   value={sort}
@@ -441,18 +477,19 @@ export function PortalClient({
             ) : products.length === 0 ? (
               <EmptyState
                 label={
-                  search || categoryId
+                  search || categoryId || hasCodeFilter
                     ? "Bu süzgeçle ürün bulunamadı."
                     : "Katalogda ürün yok."
                 }
                 action={
-                  search || categoryId ? (
+                  search || categoryId || hasCodeFilter ? (
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={() => {
                         setSearch("");
                         setCategoryId(null);
+                        setCodeFilters({});
                       }}
                     >
                       Süzgeci temizle

@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { StockDirection, StockMovementSource } from "@repo/types";
 import { BusinessError } from "./errors";
+import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,7 +32,7 @@ export interface PostStockMovementInput {
   /** Depo adı verilirse `VariantStock` kırılımı da oynar; verilmezse yalnız toplam. */
   warehouseId?: string | null;
   direction: StockDirection;
-  /** Pozitif tam sayı; işareti `direction` taşır. */
+  /** Pozitif miktar, en fazla üç ondalık; işareti `direction` taşır. */
   quantity: number;
   source: StockMovementSource;
   description?: string | null;
@@ -92,9 +93,14 @@ export async function postStockMovement(
   tx: Tx,
   input: PostStockMovementInput,
 ): Promise<PostedStockMovement> {
-  const quantity = Math.trunc(input.quantity);
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new BusinessError("INVALID_STOCK", "Adet sıfırdan büyük olmalıdır");
+  // Kesir kırpılmıyor, üç ondalığa yuvarlanıyor: kolon o kadarını tutuyor ve
+  // 0,75 kg'lık bir çıkışı 0'a indirmek hareketi hiç yazmamak demekti.
+  if (!Number.isFinite(input.quantity)) {
+    throw new BusinessError("INVALID_STOCK", "Miktar sıfırdan büyük olmalıdır");
+  }
+  const quantity = qty(input.quantity);
+  if (quantity <= 0) {
+    throw new BusinessError("INVALID_STOCK", "Miktar sıfırdan büyük olmalıdır");
   }
 
   const delta = input.direction === "IN" ? quantity : -quantity;
@@ -102,14 +108,15 @@ export async function postStockMovement(
   // Önce oku-sonra-yaz yerine doğrudan artır/azalt: iki eşzamanlı siparişin aynı
   // varyantı okuyup aynı sonucu yazması (lost update) böyle imkânsız. Sonuç
   // satırdan geri okunuyor, `balanceAfter` bu yüzden gerçekten bu hareketten
-  // sonraki bakiye.
+  // sonraki bakiye. Artırım veritabanında, ondalıkta yapılıyor.
   let updated: { stock: number };
   try {
-    updated = await tx.productVariant.update({
+    const row = await tx.productVariant.update({
       where: { id: input.variantId },
       data: { stock: { increment: delta } },
       select: { stock: true },
     });
+    updated = { stock: qty(row.stock) };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
       throw new BusinessError("VARIANT_NOT_FOUND", "Ürün varyantı bulunamadı", {
@@ -145,7 +152,7 @@ export async function postStockMovement(
     // Fırlatmak işlemi geri alır: artırım da, varsa kırılım da geri sarılır.
     throw new BusinessError(
       "INVALID_STOCK",
-      `Stok eksiye düşerdi (${updated.stock} adet)`,
+      `Stok eksiye düşerdi (bakiye ${formatQuantity(updated.stock)})`,
       { variantId: input.variantId, balance: updated.stock },
     );
   }
@@ -222,11 +229,12 @@ async function moveLotRow(
     select: { onHand: true },
   });
 
-  if (row.onHand < 0 && !params.allowNegative) {
+  const onHand = qty(row.onHand);
+  if (onHand < 0 && !params.allowNegative) {
     throw new BusinessError(
       "INVALID_STOCK",
-      `${lot.code} partisinde yeterli mal yok (${row.onHand} adet)`,
-      { lotId: params.lotId, onHand: row.onHand },
+      `${lot.code} partisinde yeterli mal yok (bakiye ${formatQuantity(onHand)})`,
+      { lotId: params.lotId, onHand },
     );
   }
 }
@@ -277,14 +285,14 @@ export async function allocateFefo(
 
   for (const lot of lots) {
     if (remaining <= 0) break;
-    const take = Math.min(remaining, lot.onHand);
+    const take = Math.min(remaining, qty(lot.onHand));
     allocations.push({
       lotId: lot.id,
       lotCode: lot.code,
       expiryDate: lot.expiryDate,
       quantity: take,
     });
-    remaining -= take;
+    remaining = qtySub(remaining, take);
   }
 
   if (remaining > 0) {
@@ -340,11 +348,12 @@ async function moveWarehouseRow(
     select: { onHand: true },
   });
 
-  if (row.onHand < 0 && !params.allowNegative) {
+  const onHand = qty(row.onHand);
+  if (onHand < 0 && !params.allowNegative) {
     throw new BusinessError(
       "INVALID_STOCK",
-      `Depoda yeterli mal yok (${row.onHand} adet)`,
-      { warehouseId: params.warehouseId, onHand: row.onHand },
+      `Depoda yeterli mal yok (bakiye ${formatQuantity(onHand)})`,
+      { warehouseId: params.warehouseId, onHand },
     );
   }
 }
@@ -434,7 +443,7 @@ export async function recordOrderStockReturn(
     await postStockMovement(tx, {
       variantId: out.variantId,
       direction: "IN",
-      quantity: out.quantity,
+      quantity: qty(out.quantity),
       source: "ORDER_CANCEL",
       description: `Sipariş ${ctx.orderNumber} ${label}`,
       orderId: ctx.orderId,
@@ -443,7 +452,7 @@ export async function recordOrderStockReturn(
     });
     returnedByVariant.set(
       out.variantId,
-      (returnedByVariant.get(out.variantId) ?? 0) + out.quantity,
+      qtyAdd(returnedByVariant.get(out.variantId), out.quantity),
     );
   }
 
@@ -458,9 +467,9 @@ export async function recordOrderStockReturn(
 
   for (const item of items) {
     const alreadyReturned = returnedByVariant.get(item.variantId) ?? 0;
-    const remaining = item.quantity - alreadyReturned;
+    const remaining = qtySub(item.quantity, alreadyReturned);
     if (remaining <= 0) {
-      returnedByVariant.set(item.variantId, alreadyReturned - item.quantity);
+      returnedByVariant.set(item.variantId, qtySub(alreadyReturned, item.quantity));
       continue;
     }
     returnedByVariant.set(item.variantId, 0);
@@ -499,8 +508,9 @@ export async function recordManualStockMovement(
     throw new BusinessError("INVALID_STOCK", "Açıklama zorunludur");
   }
 
-  return prisma.$transaction((tx) =>
-    postStockMovement(tx, {
+  return prisma.$transaction(async (tx) => {
+    await assertVariantScale(tx, input.variantId, input.quantity);
+    return postStockMovement(tx, {
       variantId: input.variantId,
       warehouseId: input.warehouseId ?? null,
       direction: input.direction,
@@ -509,8 +519,30 @@ export async function recordManualStockMovement(
       description,
       occurredAt: parseOccurredAt(input.occurredAt),
       recordedById: actorId,
-    }),
-  );
+    });
+  });
+}
+
+/**
+ * İnsanın yazdığı miktar kalemin ölçeğine uymalı: adet tutulan kalemde 1,5
+ * bir yazım hatasıdır. ERP'nin sayısı burada denetlenmiyor — onun sayısı
+ * bu sistemin kuralından üstün (bkz. `applyErpStock`).
+ */
+async function assertVariantScale(
+  tx: Tx,
+  variantId: string,
+  quantity: number,
+): Promise<void> {
+  const variant = await tx.productVariant.findUnique({
+    where: { id: variantId },
+    select: { sku: true, quantityScale: true },
+  });
+  if (!variant) {
+    throw new BusinessError("VARIANT_NOT_FOUND", "Ürün varyantı bulunamadı", {
+      variantId,
+    });
+  }
+  assertQuantityScale(quantity, variant.quantityScale, variant.sku);
 }
 
 export interface StockCountInput {
@@ -541,14 +573,15 @@ export async function recordStockCount(
   input: StockCountInput,
   actorId: string,
 ): Promise<StockCountResult> {
-  const counted = Math.trunc(input.counted);
-  if (!Number.isFinite(counted) || counted < 0) {
-    throw new BusinessError("INVALID_STOCK", "Sayılan adet negatif olamaz");
+  if (!Number.isFinite(input.counted) || input.counted < 0) {
+    throw new BusinessError("INVALID_STOCK", "Sayılan miktar negatif olamaz");
   }
+  const counted = qty(input.counted);
 
   return prisma.$transaction(async (tx) => {
+    await assertVariantScale(tx, input.variantId, counted);
     const previous = await currentQuantity(tx, input.variantId, input.warehouseId);
-    const difference = counted - previous;
+    const difference = qtySub(counted, previous);
 
     if (difference === 0) {
       return { movement: null, previous, counted, difference };
@@ -561,7 +594,8 @@ export async function recordStockCount(
       direction: difference > 0 ? "IN" : "OUT",
       quantity: Math.abs(difference),
       source: "COUNT",
-      description: note || `Sayım: ${previous} → ${counted}`,
+      description:
+        note || `Sayım: ${formatQuantity(previous)} → ${formatQuantity(counted)}`,
       occurredAt: parseOccurredAt(input.occurredAt),
       recordedById: actorId,
     });
@@ -581,7 +615,7 @@ async function currentQuantity(
       where: { variantId_warehouseId: { variantId, warehouseId } },
       select: { onHand: true },
     });
-    return row?.onHand ?? 0;
+    return qty(row?.onHand);
   }
   const variant = await tx.productVariant.findUnique({
     where: { id: variantId },
@@ -592,7 +626,7 @@ async function currentQuantity(
       variantId,
     });
   }
-  return variant.stock;
+  return qty(variant.stock);
 }
 
 export interface StockTransferInput {
@@ -641,6 +675,7 @@ export async function transferStock(
     if (!from || !to) {
       throw new BusinessError("WAREHOUSE_NOT_FOUND", "Depo bulunamadı");
     }
+    await assertVariantScale(tx, input.variantId, input.quantity);
 
     const note = input.description?.trim();
     const out = await postStockMovement(tx, {
@@ -711,13 +746,16 @@ export async function applyErpStock(
   },
   options: { occurredAt?: Date } = {},
 ): Promise<ErpStockSyncResult> {
-  const target = Math.max(0, Math.trunc(input.quantity));
+  // Kesir korunuyor: ERP 12,350 kg diyorsa defter de 12,350 der. Eskiden
+  // `Math.trunc` 12'ye kırpıyordu ve her gece 0,350 kg'lık sahte bir fark
+  // doğuyordu.
+  const target = Math.max(0, qty(input.quantity));
 
   return prisma.$transaction(async (tx) => {
     const previous =
       input.previous ??
       (await currentQuantity(tx, input.variantId, input.warehouseId ?? null));
-    const difference = target - previous;
+    const difference = qtySub(target, previous);
     if (difference === 0) {
       return { movement: null, previous, difference };
     }
@@ -728,7 +766,7 @@ export async function applyErpStock(
       direction: difference > 0 ? "IN" : "OUT",
       quantity: Math.abs(difference),
       source: "ERP",
-      description: `ERP senkronu: ${previous} → ${target}`,
+      description: `ERP senkronu: ${formatQuantity(previous)} → ${formatQuantity(target)}`,
       ...(options.occurredAt ? { occurredAt: options.occurredAt } : {}),
       // ERP'nin sayısı bu sistemin sayısından üstün: ERP eksiye düşürüyorsa
       // sebebi ERP'nin işi, ve senkronu reddetmek iki defteri kalıcı olarak
@@ -797,7 +835,7 @@ export async function reverseStockMovement(
       variantId: original.variantId,
       warehouseId: original.warehouseId,
       direction: original.direction === "IN" ? "OUT" : "IN",
-      quantity: original.quantity,
+      quantity: qty(original.quantity),
       source: original.source,
       description: `İptal: ${params.reason}`,
       reversalOfId: original.id,
@@ -825,7 +863,7 @@ export async function reverseStockMovement(
           variantId: other.variantId,
           warehouseId: other.warehouseId,
           direction: other.direction === "IN" ? "OUT" : "IN",
-          quantity: other.quantity,
+          quantity: qty(other.quantity),
           source: other.source,
           description: `İptal: ${params.reason}`,
           reversalOfId: other.id,
@@ -944,8 +982,8 @@ export async function listStockMovements(
     warehouseId: r.warehouseId,
     warehouseName: r.warehouse?.name ?? null,
     direction: r.direction,
-    quantity: r.quantity,
-    balanceAfter: r.balanceAfter,
+    quantity: qty(r.quantity),
+    balanceAfter: qty(r.balanceAfter),
     source: r.source,
     description: r.description,
     occurredAt: r.occurredAt.toISOString(),
@@ -994,17 +1032,16 @@ export async function getStockSummary(range: {
   const totals = new Map<StockMovementSource, { in: number; out: number }>();
   for (const row of grouped) {
     const bucket = totals.get(row.source) ?? { in: 0, out: 0 };
-    const qty = row._sum.quantity ?? 0;
-    if (row.direction === "IN") bucket.in += qty;
-    else bucket.out += qty;
+    if (row.direction === "IN") bucket.in = qtyAdd(bucket.in, row._sum.quantity);
+    else bucket.out = qtyAdd(bucket.out, row._sum.quantity);
     totals.set(row.source, bucket);
   }
 
   let totalIn = 0;
   let totalOut = 0;
   for (const bucket of totals.values()) {
-    totalIn += bucket.in;
-    totalOut += bucket.out;
+    totalIn = qtyAdd(totalIn, bucket.in);
+    totalOut = qtyAdd(totalOut, bucket.out);
   }
 
   return {
@@ -1012,12 +1049,12 @@ export async function getStockSummary(range: {
     to: to.toISOString(),
     totalIn,
     totalOut,
-    net: totalIn - totalOut,
+    net: qtySub(totalIn, totalOut),
     bySource: [...totals.entries()].map(([source, b]) => ({
       source,
       in: b.in,
       out: b.out,
-      net: b.in - b.out,
+      net: qtySub(b.in, b.out),
     })),
   };
 }

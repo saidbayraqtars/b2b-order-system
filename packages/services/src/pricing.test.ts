@@ -86,6 +86,34 @@ describe("resolvePrice — tier selection", () => {
     ).toThrowError(BusinessError);
   });
 
+  it("prices a fractional quantity below 1 from the base tier", () => {
+    // 0,75 kg: taban kademe "en az 1" — fiyatsız kalmamalı, ama 0,75 ile
+    // çarpılmalı.
+    const r = resolvePrice({
+      prices: prices([GROUP, 1, "100.00"], [GROUP, 10, "90.00"]),
+      customerGroupId: GROUP,
+      quantity: 0.75,
+      productId: PRODUCT,
+      categoryId: CATEGORY,
+      discounts: [],
+    });
+    expect(r.unitPrice.toFixed(2)).toBe("100.00");
+    expect(r.lineNet.toFixed(2)).toBe("75.00");
+  });
+
+  it("still refuses a quantity below a tier that is not the base one", () => {
+    expect(() =>
+      resolvePrice({
+        prices: prices([GROUP, 10, "90.00"]),
+        customerGroupId: GROUP,
+        quantity: 0.5,
+        productId: PRODUCT,
+        categoryId: CATEGORY,
+        discounts: [],
+      }),
+    ).toThrowError(BusinessError);
+  });
+
   it("ignores another group's price rows entirely", () => {
     expect(() =>
       resolvePrice({

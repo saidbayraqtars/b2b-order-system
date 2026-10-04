@@ -6,6 +6,7 @@ import type {
   StockLotWriteOffInput,
 } from "@repo/types";
 import { BusinessError } from "./errors";
+import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
 import { postStockMovement } from "./stock-ledger";
 
 // Parti (lot) & son kullanma tarihi.
@@ -51,13 +52,14 @@ export async function recordLotEntry(
   return prisma.$transaction(async (tx) => {
     const variant = await tx.productVariant.findUnique({
       where: { id: input.variantId },
-      select: { id: true, sku: true, shelfLifeDays: true },
+      select: { id: true, sku: true, shelfLifeDays: true, quantityScale: true },
     });
     if (!variant) {
       throw new BusinessError("VARIANT_NOT_FOUND", "Ürün varyantı bulunamadı", {
         variantId: input.variantId,
       });
     }
+    assertQuantityScale(input.quantity, variant.quantityScale, variant.sku);
 
     const producedAt = parseDate(input.producedAt);
     const expiryDate =
@@ -208,16 +210,24 @@ export async function writeOffLot(
   return prisma.$transaction(async (tx) => {
     const lot = await tx.stockLot.findUnique({
       where: { id: lotId },
-      select: { id: true, variantId: true, code: true, onHand: true },
+      select: {
+        id: true,
+        variantId: true,
+        code: true,
+        onHand: true,
+        variant: { select: { sku: true, quantityScale: true } },
+      },
     });
     if (!lot) {
       throw new BusinessError("LOT_NOT_FOUND", "Parti bulunamadı", { lotId });
     }
-    if (input.quantity > lot.onHand) {
+    assertQuantityScale(input.quantity, lot.variant.quantityScale, lot.variant.sku);
+    const lotOnHand = qty(lot.onHand);
+    if (input.quantity > lotOnHand) {
       throw new BusinessError(
         "INVALID_STOCK",
-        `${lot.code} partisinde ${lot.onHand} adet var, ${input.quantity} adet düşülemez`,
-        { lotId, onHand: lot.onHand },
+        `${lot.code} partisinde ${formatQuantity(lotOnHand)} var, ${formatQuantity(input.quantity)} düşülemez`,
+        { lotId, onHand: lotOnHand },
       );
     }
 
@@ -235,7 +245,7 @@ export async function writeOffLot(
     return {
       movementId: movement.id,
       quantity: movement.quantity,
-      lotOnHand: lot.onHand - input.quantity,
+      lotOnHand: qtySub(lotOnHand, input.quantity),
       balance: movement.balance,
     };
   });
@@ -337,7 +347,7 @@ export async function listStockLots(
       code: r.code,
       expiryDate: r.expiryDate ? r.expiryDate.toISOString() : null,
       producedAt: r.producedAt ? r.producedAt.toISOString() : null,
-      onHand: r.onHand,
+      onHand: qty(r.onHand),
       isBlocked: r.isBlocked,
       note: r.note,
       daysLeft,
@@ -400,9 +410,9 @@ export async function getLotExpirySummary(): Promise<LotExpirySummary> {
 
   return {
     expiredLots: expired._count._all,
-    expiredUnits: expired._sum.onHand ?? 0,
+    expiredUnits: qty(expired._sum.onHand),
     warningLots: warning._count._all,
-    warningUnits: warning._sum.onHand ?? 0,
+    warningUnits: qty(warning._sum.onHand),
     blockedLots: blocked,
     nextExpiryDate: next?.expiryDate ? next.expiryDate.toISOString() : null,
   };
@@ -439,7 +449,7 @@ export async function listOrderLots(orderId: string): Promise<OrderLotLine[]> {
     productName: r.variant.product.name,
     lotCode: r.lot?.code ?? null,
     expiryDate: r.lot?.expiryDate ? r.lot.expiryDate.toISOString() : null,
-    quantity: r.quantity,
+    quantity: qty(r.quantity),
   }));
 }
 
@@ -523,7 +533,7 @@ export async function listShipmentLots(
     if (s.id === shipmentId) break;
     for (const item of s.items) {
       const key = item.orderItem.variantId;
-      consumed.set(key, (consumed.get(key) ?? 0) + item.quantity);
+      consumed.set(key, qtyAdd(consumed.get(key), item.quantity));
     }
   }
 
@@ -553,7 +563,7 @@ export async function listShipmentLots(
     list.push({
       code: out.lot?.code ?? null,
       expiryDate: out.lot?.expiryDate?.toISOString() ?? null,
-      quantity: out.quantity,
+      quantity: qty(out.quantity),
     });
     byVariant.set(out.variantId, list);
   }
@@ -563,13 +573,13 @@ export async function listShipmentLots(
     const lots = takeSlice(
       byVariant.get(variantId) ?? [],
       consumed.get(variantId) ?? 0,
-      item.quantity,
+      qty(item.quantity),
     );
     return {
       shipmentItemId: item.id,
       sku: item.orderItem.sku,
       productName: item.orderItem.productName,
-      quantity: item.quantity,
+      quantity: qty(item.quantity),
       lots,
     };
   });
@@ -606,17 +616,17 @@ function takeSlice(
     let available = a.quantity;
     if (remainingSkip > 0) {
       const skipped = Math.min(remainingSkip, available);
-      remainingSkip -= skipped;
-      available -= skipped;
+      remainingSkip = qtySub(remainingSkip, skipped);
+      available = qtySub(available, skipped);
       if (available === 0) continue;
     }
     const used = Math.min(available, remainingTake);
-    remainingTake -= used;
+    remainingTake = qtySub(remainingTake, used);
     const last = out[out.length - 1];
     // Aynı parti arka arkaya iki satır yazmışsa (aynı partiden iki kez
     // düşülmüş) kâğıtta tek satır görünmeli.
     if (last && last.code === a.code && last.expiryDate === a.expiryDate) {
-      last.quantity += used;
+      last.quantity = qtyAdd(last.quantity, used);
     } else {
       out.push({ code: a.code, expiryDate: a.expiryDate, quantity: used });
     }
@@ -624,7 +634,7 @@ function takeSlice(
 
   if (remainingTake > 0) {
     const last = out[out.length - 1];
-    if (last && last.code === null) last.quantity += remainingTake;
+    if (last && last.code === null) last.quantity = qtyAdd(last.quantity, remainingTake);
     else out.push({ code: null, expiryDate: null, quantity: remainingTake });
   }
   return out;

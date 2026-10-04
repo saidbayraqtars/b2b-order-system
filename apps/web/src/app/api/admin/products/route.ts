@@ -1,10 +1,10 @@
 import type { NextRequest } from "next/server";
 import { createProduct, listProductsAdmin } from "@repo/services";
-import { createProductSchema } from "@repo/types";
+import { createProductSchema, customCodeFiltersFrom } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { parseBody } from "@/lib/validate";
 
-// GET /api/admin/products?search=&categoryId=&onlyActive=1
+// GET /api/admin/products?search=&categoryId=&onlyActive=1&kod1..kod10=
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
     await requireUser(["SUPER_ADMIN"], "products.view");
@@ -13,6 +13,7 @@ export function GET(req: NextRequest) {
       search: searchParams.get("search") ?? undefined,
       categoryId: searchParams.get("categoryId") ?? undefined,
       onlyActive: searchParams.get("onlyActive") === "1",
+      codes: customCodeFiltersFrom(searchParams),
     });
     return Response.json({ products });
   });

@@ -28,6 +28,13 @@ import {
   TextInput,
 } from "@/components/form";
 import { CollapsibleFieldset } from "@/components/disclosure";
+import {
+  CustomCodeInputs,
+  EMPTY_CUSTOM_CODES,
+  customCodePayload,
+  useCustomCodeFields,
+  type CustomCodeForm,
+} from "@/components/custom-codes";
 
 // Company create / edit. The same form serves both; `company` decides which.
 
@@ -54,6 +61,8 @@ export interface CompanyFormValues {
   volumeDiscountMode: VolumeDiscountMode;
   /** Only read under MANUAL; empty there means "no hacim discount at all". */
   volumeTierId: string;
+  /** Özel kodlar — bölge, segment, kanal… */
+  codes: CustomCodeForm;
 }
 
 export function CompanyForm({ company }: { company?: CompanyFormValues }) {
@@ -78,8 +87,10 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       paymentTermIds: [],
       volumeDiscountMode: "AUTO",
       volumeTierId: "",
+      codes: { ...EMPTY_CUSTOM_CODES },
     },
   );
+  const codeFields = useCustomCodeFields("COMPANY");
   const set = <K extends keyof CompanyFormValues>(
     k: K,
     val: CompanyFormValues[K],
@@ -156,6 +167,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             : editing
               ? null
               : undefined,
+        ...customCodePayload(v.codes, codeFields.all),
       };
       if (editing) {
         await apiPatch(`/api/admin/companies/${company!.id}`, body);
@@ -276,6 +288,26 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
           </Select>
         </label>
       </div>
+
+      {codeFields.active.length > 0 && (
+        <CollapsibleFieldset
+          className="mt-5"
+          legend="Özel kodlar"
+          storageKey="company-form:codes"
+          summary={
+            codeFields.active
+              .filter((f) => v.codes[f.key])
+              .map((f) => `${f.label}: ${v.codes[f.key]}`)
+              .join(" · ") || "boş"
+          }
+        >
+          <CustomCodeInputs
+            entity="COMPANY"
+            value={v.codes}
+            onChange={(codes) => set("codes", codes)}
+          />
+        </CollapsibleFieldset>
+      )}
 
       {/* İki alan kümesi de kapalı başlıyor: firma ekranında günlük iş
           yukarıdaki künye ve iletişim alanları, bunlar ayda bir dokunulan

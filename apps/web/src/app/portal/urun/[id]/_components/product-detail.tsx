@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Check, Package, ShoppingCart } from "lucide-react";
 import type { CatalogProduct, CatalogVariant } from "@repo/services";
 import { useCart, normalizeQty } from "@/store/cart";
-import { formatTRY } from "@/lib/format";
+import { formatQuantity, formatTRY } from "@/lib/format";
+import { isFractional, quantityStep } from "@/lib/quantity";
 import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
 import { cn } from "@/lib/utils";
@@ -194,7 +195,10 @@ function VariantRow({
       </div>
 
       <div className="text-right text-[11px] tabular-nums text-ink-faint">
-        <p>STK {v.stock}</p>
+        <p>
+          STK {formatQuantity(v.stock)}
+          {v.unit && isFractional(v) ? ` ${v.unit}` : ""}
+        </p>
         <p>KOL {v.unitsPerCase}</p>
       </div>
 
@@ -221,7 +225,8 @@ function VariantRow({
           <input
             type="number"
             min={v.moqUnits}
-            step={v.unitsPerCase}
+            step={quantityStep(v)}
+            inputMode={isFractional(v) ? "decimal" : "numeric"}
             value={qty}
             onChange={(e) => setLocalQty(Number(e.target.value))}
             onBlur={() => setLocalQty(normalizeQty(v, qty))}

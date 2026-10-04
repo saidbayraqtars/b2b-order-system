@@ -17,6 +17,8 @@ function variant(over: Partial<CatalogVariant> = {}): CatalogVariant {
     unitsPerCase: 6,
     moqUnits: 6,
     stock: 60,
+    unit: null,
+    quantityScale: 0,
     unitPrice: "100.00",
     discountPerUnit: "0.00",
     netUnitPrice: "100.00",

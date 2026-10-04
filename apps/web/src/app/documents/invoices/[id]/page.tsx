@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getInvoice } from "@repo/services";
-import { formatTRY } from "@/lib/format";
+import { formatQuantity, formatTRY } from "@/lib/format";
 import { CurrencyNote } from "@/components/currency-note";
 import { requirePage } from "@/lib/guard";
 import { assertInvoiceVisible } from "@/lib/order-access";
@@ -96,7 +96,7 @@ export default async function InvoiceDocumentPage({
             <tr key={i.id} className="border-b border-neutral-200">
               <td className="py-2">{i.productName}</td>
               <td className="py-2 text-neutral-500">{i.sku}</td>
-              <td className="py-2 text-right tabular-nums">{i.quantity}</td>
+              <td className="py-2 text-right tabular-nums">{formatQuantity(i.quantity)}</td>
               <td className="py-2 text-right tabular-nums">
                 {formatTRY(i.unitPrice)}
                 {/* Dövizle satılan mal için zorunlu: müşteri "100 dolardan

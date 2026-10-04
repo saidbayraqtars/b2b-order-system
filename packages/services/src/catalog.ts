@@ -1,7 +1,10 @@
-import { prisma } from "@repo/database";
+import { prisma, type Prisma } from "@repo/database";
+import type { CustomCodeKey } from "@repo/types";
 import { BusinessError } from "./errors";
+import { customCodeWhere, listActiveCustomCodeFields } from "./custom-codes";
 import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
 import { resolvePrice, type DiscountRow } from "./pricing";
+import { qty } from "./quantity";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
 
 // ── Company pricing context (loaded once per request) ──
@@ -70,6 +73,10 @@ export interface CatalogVariant {
   unitsPerCase: number;
   moqUnits: number;
   stock: number;
+  /** Satış birimi (ADET, KG, MT…); boşsa adet. */
+  unit: string | null;
+  /** Miktarın kaç ondalık alabildiği: 0 = tam sayı (adet), 3 = gram hassasiyetinde kilo. */
+  quantityScale: number;
   /** Prices are null when the variant has no applicable price for this company. */
   unitPrice: string | null;
   discountPerUnit: string | null;
@@ -98,6 +105,33 @@ export interface ListCatalogParams {
   companyId: string;
   categoryId?: string;
   search?: string;
+  /**
+   * Özel kod süzgeci. Yalnızca "katalogda süzgeç olarak göster" işaretli aktif
+   * yuvalar dikkate alınıyor, öbürleri sessizce yok sayılıyor — bkz.
+   * `allowedCatalogCodes`.
+   */
+  codes?: Partial<Record<CustomCodeKey, string>>;
+}
+
+/**
+ * Alıcının süzebileceği özel kodlar.
+ *
+ * Her yuva katalogda gösterilmiyor: "Tedarikçi" ya da "Raf" gibi iç kullanım
+ * alanları da özel kod olabilir. Adresteki `kod5=…` süzgeci herhangi bir
+ * yuvayı kabul etseydi, alıcı iç bir kodun değerini deneyerek hangi ürünlerin
+ * ona karşılık geldiğini öğrenebilirdi. Bu yüzden süzgeç yalnızca ekranın
+ * zaten gösterdiği yuvalarda çalışıyor.
+ */
+async function allowedCatalogCodes(
+  codes: Partial<Record<CustomCodeKey, string>> | undefined,
+): Promise<Partial<Record<CustomCodeKey, string>>> {
+  if (!codes || Object.keys(codes).length === 0) return {};
+  const shown = (await listActiveCustomCodeFields("PRODUCT"))
+    .filter((f) => f.showInCatalogFilter)
+    .map((f) => f.key);
+  return Object.fromEntries(
+    Object.entries(codes).filter(([k]) => shown.includes(k as CustomCodeKey)),
+  ) as Partial<Record<CustomCodeKey, string>>;
 }
 
 /**
@@ -127,6 +161,7 @@ const CATALOG_SELECT = {
       moqUnits: true,
       stock: true,
       unit: true,
+      quantityScale: true,
       pricingUnit: true,
       unitFactor: true,
       tracksLots: true,
@@ -158,9 +193,10 @@ type CatalogRow = {
     color: string | null;
     size: string | null;
     unitsPerCase: number;
-    moqUnits: number;
-    stock: number;
+    moqUnits: Prisma.Decimal | number;
+    stock: Prisma.Decimal | number;
     unit: string | null;
+    quantityScale: number;
     pricingUnit: string | null;
     unitFactor: unknown;
     tracksLots: boolean;
@@ -193,9 +229,10 @@ function toCatalogProduct(
         color: v.color,
         size: v.size,
         unitsPerCase: v.unitsPerCase,
-        moqUnits: v.moqUnits,
-        stock: v.stock,
+        moqUnits: qty(v.moqUnits),
+        stock: qty(v.stock),
         unit: v.unit,
+        quantityScale: v.quantityScale,
         pricingUnit: v.pricingUnit,
         unitFactor: v.unitFactor ? String(v.unitFactor) : null,
         tracksLots: v.tracksLots,
@@ -209,7 +246,7 @@ function toCatalogProduct(
             ctx.rates,
           ),
           customerGroupId: ctx.customerGroupId,
-          quantity: v.moqUnits,
+          quantity: qty(v.moqUnits),
           productId: p.id,
           categoryId: p.categoryId,
           discounts: ctx.discounts,
@@ -244,11 +281,13 @@ export async function listCatalog(
   params: ListCatalogParams,
 ): Promise<CatalogProduct[]> {
   const ctx = await loadCompanyPricingContext(params.companyId);
+  const codes = await allowedCatalogCodes(params.codes);
 
   const products = await prisma.product.findMany({
     where: {
       isActive: true,
       ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      AND: customCodeWhere(codes),
       ...(params.search
         ? {
             OR: [

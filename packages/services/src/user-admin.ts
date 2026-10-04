@@ -189,9 +189,18 @@ function assertMayGrant(
   ctx: UserAdminContext,
   requested: readonly Permission[],
   targetRole: Role,
+  /**
+   * Hesabın şu an taşıdığı izinler. Yerinde kalan bir izin **verilmiyor**,
+   * zaten var: kural yalnızca yeni eklenenlere bakar. Bu ayrım modüllerle
+   * şart oldu — kapalı bir modülün izni yöneticinin etkin kümesinden düşüyor
+   * ve o izni zaten taşıyan bir personeli düzenlemek, liste aynen geri
+   * geldiği için reddediliyordu.
+   */
+  existing: readonly string[] = [],
 ): void {
   const own = new Set<Permission>(ctx.permissions);
-  const excess = requested.filter((p) => !own.has(p));
+  const held = new Set<string>(existing);
+  const excess = requested.filter((p) => !own.has(p) && !held.has(p));
   if (excess.length > 0) {
     throw new BusinessError(
       "FORBIDDEN",
@@ -464,7 +473,7 @@ export async function updateUser(
   }
 
   if (nextPermissions) {
-    assertMayGrant(ctx, nextPermissions, nextRole);
+    assertMayGrant(ctx, nextPermissions, nextRole, existing.permissions);
     assertNotSelfLockout(ctx, id, nextPermissions);
   }
   const permissionsChanged =

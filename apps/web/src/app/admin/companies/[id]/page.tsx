@@ -4,6 +4,7 @@ import { requirePage } from "@/lib/guard";
 import { formatTRY } from "@/lib/format";
 import { Badge, PageHeader, StatTile } from "@/components/ui";
 import { LinkButton } from "@/components/form";
+import type { CustomCodeForm } from "@/components/custom-codes";
 import { CompanyForm } from "../_components/company-form";
 import { CompanyAddresses } from "./_components/company-addresses";
 import { CompanyDiscounts } from "./_components/company-discounts";
@@ -109,6 +110,11 @@ export default async function AdminCompanyPage({
           paymentTermIds: company.paymentTerms.map((t) => t.id),
           volumeDiscountMode: company.volumeDiscountMode,
           volumeTierId: company.volumeTier?.id ?? "",
+          // Sunucu bileşeni: istemci modülündeki yardımcı burada çağrılamıyor,
+          // dönüşüm satır içinde.
+          codes: Object.fromEntries(
+            Object.entries(company.codes).map(([k, val]) => [k, val ?? ""]),
+          ) as CustomCodeForm,
         }}
       />
 

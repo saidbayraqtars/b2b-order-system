@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod } from "@repo/types";
 import { Dec, ZERO } from "./money";
+import { qtyAdd } from "./quantity";
 import { endOfDay, startOfDay } from "./ledger";
 
 // Read-only reporting over orders, order items and the cari ledger.
@@ -257,7 +258,7 @@ export async function getTopProducts(scope: ReportScope = {}): Promise<{
       revenue: ZERO,
       orders: new Set<string>(),
     };
-    cur.quantity += it.quantity;
+    cur.quantity = qtyAdd(cur.quantity, it.quantity);
     cur.revenue = cur.revenue.plus(it.lineTotal);
     cur.orders.add(it.orderId);
     map.set(it.variantId, cur);

@@ -1,5 +1,6 @@
-import { prisma } from "@repo/database";
+import { prisma, type Prisma } from "@repo/database";
 import { BusinessError } from "./errors";
+import { qty, qtyOrNull, qtySub } from "./quantity";
 import { applyErpStock, recordStockCount } from "./stock-ledger";
 
 // Depo ve stok kırılımı.
@@ -89,9 +90,9 @@ export async function getVariantStock(
     warehouseId: r.warehouseId,
     warehouseCode: r.warehouse.code,
     warehouseName: r.warehouse.name,
-    onHand: r.onHand,
-    reserved: r.reserved,
-    available: Math.max(0, r.onHand - r.reserved),
+    onHand: qty(r.onHand),
+    reserved: qty(r.reserved),
+    available: Math.max(0, qtySub(r.onHand, r.reserved)),
     erpSyncedAt: r.erpSyncedAt?.toISOString() ?? null,
   }));
 }
@@ -177,6 +178,8 @@ export interface StockLevelRow {
   stock: number;
   minStock: number | null;
   unit: string | null;
+  /** Miktarın kaç ondalık alabildiği — sayım ve hareket formunun adımı. */
+  quantityScale: number;
   shelfCode: string | null;
   /** Depo süzgeci verildiyse o deponun adedi; verilmediyse null. */
   warehouseOnHand: number | null;
@@ -228,6 +231,7 @@ export async function listStockLevels(
       stock: true,
       minStock: true,
       unit: true,
+      quantityScale: true,
       shelfCode: true,
       erpSyncedAt: true,
       product: { select: { name: true } },
@@ -248,12 +252,13 @@ export async function listStockLevels(
       sku: r.sku,
       barcode: r.barcode,
       productName: r.product.name,
-      stock: r.stock,
-      minStock: r.minStock,
+      stock: qty(r.stock),
+      minStock: qtyOrNull(r.minStock),
       unit: r.unit,
+      quantityScale: r.quantityScale,
       shelfCode: r.shelfCode,
       warehouseOnHand: filter.warehouseId
-        ? ((r as { stocks?: Array<{ onHand: number }> }).stocks?.[0]?.onHand ?? 0)
+        ? qty((r as { stocks?: Array<{ onHand: Prisma.Decimal }> }).stocks?.[0]?.onHand)
         : null,
       erpSyncedAt: r.erpSyncedAt?.toISOString() ?? null,
     }))
@@ -283,8 +288,9 @@ export async function listLowStock(limit = 100): Promise<
       id: string;
       sku: string;
       name: string;
-      stock: number;
-      minStock: number;
+      // `numeric` kolon ham sorgudan Decimal olarak döner, sayı değil.
+      stock: Prisma.Decimal;
+      minStock: Prisma.Decimal;
       unit: string | null;
     }>
   >`
@@ -302,8 +308,8 @@ export async function listLowStock(limit = 100): Promise<
     variantId: r.id,
     sku: r.sku,
     productName: r.name,
-    stock: r.stock,
-    minStock: r.minStock,
+    stock: qty(r.stock),
+    minStock: qty(r.minStock),
     unit: r.unit,
   }));
 }

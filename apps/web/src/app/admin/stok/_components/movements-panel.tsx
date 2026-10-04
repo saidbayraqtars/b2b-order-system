@@ -36,6 +36,7 @@ import {
   THead,
 } from "@/components/ui";
 import { VariantPicker } from "./variant-picker";
+import { formatQuantity } from "@/lib/format";
 
 // Defterin kendisi, üstünde insanın yazdığı üç hareket: elle giriş/çıkış, sayım
 // ve depolar arası aktarım.
@@ -284,7 +285,7 @@ function MovementRow({
             }
           >
             {movement.direction === "IN" ? "+" : "−"}
-            {movement.quantity}
+            {formatQuantity(movement.quantity)}
           </span>
         </Td>
         <Td>
@@ -299,7 +300,7 @@ function MovementRow({
           </div>
         </Td>
         <Td align="right" numeric>
-          {movement.balanceAfter}
+          {formatQuantity(movement.balanceAfter)}
         </Td>
         <Td className="whitespace-nowrap text-ink-muted">
           {new Date(movement.occurredAt).toLocaleString("tr-TR")}
@@ -438,11 +439,12 @@ function ManualEntryForm({
           </Select>
         </div>
         <div>
-          <Label>Adet</Label>
+          <Label>Miktar</Label>
           <TextInput
             type="number"
-            min={1}
-            step="1"
+            min={0}
+            step="any"
+            inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className="w-24"
@@ -507,11 +509,12 @@ function CountForm({
           onChange={setWarehouseId}
         />
         <div>
-          <Label hint="sayılan">Adet</Label>
+          <Label hint="sayılan">Miktar</Label>
           <TextInput
             type="number"
             min={0}
-            step="1"
+            step="any"
+            inputMode="decimal"
             value={counted}
             onChange={(e) => setCounted(e.target.value)}
             className="w-24"
@@ -607,11 +610,12 @@ function TransferForm({
           </Select>
         </div>
         <div>
-          <Label>Adet</Label>
+          <Label>Miktar</Label>
           <TextInput
             type="number"
-            min={1}
-            step="1"
+            min={0}
+            step="any"
+            inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             className="w-24"

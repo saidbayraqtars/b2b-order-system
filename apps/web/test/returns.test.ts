@@ -40,7 +40,7 @@ async function stockOf(id: string): Promise<number> {
     where: { id },
     select: { stock: true },
   });
-  return row!.stock;
+  return Number(row!.stock);
 }
 
 async function balanceOf(id: string): Promise<number> {
@@ -339,7 +339,7 @@ suite("iade / RMA (HTTP)", () => {
         select: { direction: true, quantity: true, lotId: true },
       });
       expect(movement?.direction).toBe("IN");
-      expect(movement?.quantity).toBe(2);
+      expect(Number(movement?.quantity)).toBe(2);
       // Geri gelen kutunun hangi partiden çıktığını kimse bilmiyor.
       expect(movement?.lotId).toBeNull();
 

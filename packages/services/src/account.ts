@@ -221,3 +221,31 @@ export async function changeOwnPassword(
     userAgent: meta.userAgent,
   });
 }
+
+// ─────────────────────────────────────────────
+// görünüm tercihi
+// ─────────────────────────────────────────────
+
+/**
+ * Basit/gelişmiş görünüm — yalnızca neyin **gösterildiğini** değiştirir.
+ *
+ * Yetkiyle karıştırılmamalı: basit görünümdeki bir yönetici gizlenen ekrana
+ * adresle girebilir, kapı izne bakar. Tercih kullanıcının satırında durur,
+ * cihazda değil — aynı kişi telefonda ve masada aynı ekranı görsün.
+ */
+export async function getAdvancedView(userId: string): Promise<boolean> {
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { advancedView: true },
+  });
+  return row?.advancedView ?? false;
+}
+
+export async function setAdvancedView(userId: string, advanced: boolean): Promise<boolean> {
+  const row = await prisma.user.update({
+    where: { id: userId },
+    data: { advancedView: advanced },
+    select: { advancedView: true },
+  });
+  return row.advancedView;
+}

@@ -201,7 +201,7 @@ suite("ERP köprüsü integration", () => {
       });
       // A catalogue showing "-3 adet" helps nobody; why the ERP went negative
       // is the ERP's business.
-      expect(variant.stock).toBe(0);
+      expect(Number(variant.stock)).toBe(0);
       expect(variant.erpSyncedAt).not.toBeNull();
     });
 
@@ -212,14 +212,14 @@ suite("ERP köprüsü integration", () => {
         where: { id: unmappedVariantId },
         select: { stock: true, erpSyncedAt: true },
       });
-      expect(untouched.stock).toBe(7);
+      expect(Number(untouched.stock)).toBe(7);
       expect(untouched.erpSyncedAt).toBeNull();
 
       const mapped = await prisma.productVariant.findUniqueOrThrow({
         where: { id: mappedVariantId },
         select: { stock: true },
       });
-      expect(mapped.stock).toBe(42);
+      expect(Number(mapped.stock)).toBe(42);
     });
   });
 

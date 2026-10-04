@@ -375,7 +375,7 @@ async function stockOf(id: string): Promise<number> {
     where: { id },
     select: { stock: true },
   });
-  return v.stock;
+  return Number(v.stock);
 }
 
 async function balanceOf(id: string): Promise<number> {

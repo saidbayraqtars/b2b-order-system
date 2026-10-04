@@ -4,6 +4,7 @@ import { loadCompanyPricingContext } from "./catalog";
 import { BusinessError } from "./errors";
 import { convertPriceRows } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
+import { assertQuantityScale, qty } from "./quantity";
 
 // The cart, kept on the server.
 //
@@ -19,6 +20,11 @@ import { resolvePrice } from "./pricing";
 // would be maddening. Those rules are enforced where they matter — quoting and
 // ordering — and the read below reports the numbers the UI needs to guide the
 // user towards a valid quantity.
+//
+// The one thing checked on write is the *shape* of the quantity: a line may
+// carry only as many decimals as the variant's `quantityScale` allows (0,75 kg
+// yes, 1,5 koli no). That used to be the schema's `.int()`; with fractional
+// stock it depends on the variant, so it moved here.
 
 export interface CartLineView {
   variantId: string;
@@ -30,6 +36,9 @@ export interface CartLineView {
   unitsPerCase: number;
   moqUnits: number;
   stock: number;
+  /** Satış birimi (ADET, KG, MT…) ve miktarın kaç ondalık alabildiği. */
+  unit: string | null;
+  quantityScale: number;
   vatRate: number;
   quantity: number;
   /** Null when the company has no applicable price — the line is not orderable. */
@@ -81,6 +90,7 @@ export async function getCart(
               moqUnits: true,
               stock: true,
               unit: true,
+              quantityScale: true,
               pricingUnit: true,
               unitFactor: true,
               prices: {
@@ -129,7 +139,7 @@ export async function getCart(
       const priced = resolvePrice({
         prices: convertPriceRows(v.prices, ctx.rates),
         customerGroupId: ctx.customerGroupId,
-        quantity: item.quantity,
+        quantity: qty(item.quantity),
         productId: v.product.id,
         categoryId: v.product.categoryId,
         discounts: ctx.discounts,
@@ -152,10 +162,12 @@ export async function getCart(
       color: v.color,
       size: v.size,
       unitsPerCase: v.unitsPerCase,
-      moqUnits: v.moqUnits,
-      stock: v.stock,
+      moqUnits: qty(v.moqUnits),
+      stock: qty(v.stock),
+      unit: v.unit,
+      quantityScale: v.quantityScale,
       vatRate: v.product.vatRate,
-      quantity: item.quantity,
+      quantity: qty(item.quantity),
       netUnitPrice,
       listCurrency,
       listUnitPrice,
@@ -200,7 +212,7 @@ export async function setCart(
   input: SetCartInput,
   ownerId: string,
 ): Promise<CartView> {
-  await assertVariantsExist(input.items.map((i) => i.variantId));
+  await assertCartLines(input.items);
   const cartId = await ensureCart(input.companyId, ownerId);
 
   await prisma.$transaction([
@@ -235,7 +247,7 @@ export async function upsertCartItem(
       where: { cartId, variantId: input.variantId },
     });
   } else {
-    await assertVariantsExist([input.variantId]);
+    await assertCartLines([input]);
     await prisma.cartItem.upsert({
       where: { cartId_variantId: { cartId, variantId: input.variantId } },
       create: { cartId, variantId: input.variantId, quantity: input.quantity },
@@ -263,17 +275,25 @@ export async function clearCart(companyId: string, ownerId: string): Promise<voi
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 }
 
-async function assertVariantsExist(variantIds: string[]): Promise<void> {
-  const unique = [...new Set(variantIds)];
+async function assertCartLines(
+  items: ReadonlyArray<{ variantId: string; quantity: number }>,
+): Promise<void> {
+  const unique = [...new Set(items.map((i) => i.variantId))];
   if (unique.length === 0) return;
 
-  const found = await prisma.productVariant.count({
+  const found = await prisma.productVariant.findMany({
     where: { id: { in: unique }, product: { isActive: true } },
+    select: { id: true, sku: true, quantityScale: true },
   });
-  if (found !== unique.length) {
+  if (found.length !== unique.length) {
     throw new BusinessError(
       "VARIANT_NOT_FOUND",
       "Sepetteki ürünlerden biri artık satışta değil",
     );
+  }
+  const byId = new Map(found.map((v) => [v.id, v]));
+  for (const item of items) {
+    const v = byId.get(item.variantId)!;
+    assertQuantityScale(item.quantity, v.quantityScale, v.sku);
   }
 }

@@ -1,6 +1,8 @@
 import { prisma } from "@repo/database";
+import { CUSTOM_CODE_SELECT, customCodeValuesOf } from "./custom-codes";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2, type Money } from "./money";
+import { qty } from "./quantity";
 import { applyPromotions, type CompiledPromotion } from "./promotion-engine";
 import type { EngineLine } from "./promotion-registry";
 import { compileAction, compileCondition } from "./promotion-registry";
@@ -139,7 +141,9 @@ export async function simulatePromotion(
       companyId: true,
       paymentMethod: true,
       shippingFee: true,
-      company: { select: { name: true, customerGroupId: true } },
+      // Özel kodlar bugünkü değeriyle: kodun geçmişi tutulmuyor. Bir firmanın
+      // bölgesi değiştiyse simülasyon onu yeni bölgesinde sayar.
+      company: { select: { name: true, customerGroupId: true, ...CUSTOM_CODE_SELECT } },
       items: {
         select: {
           variantId: true,
@@ -148,7 +152,10 @@ export async function simulatePromotion(
           promotionDiscount: true,
           isGift: true,
           variant: {
-            select: { productId: true, product: { select: { categoryId: true } } },
+            select: {
+              productId: true,
+              product: { select: { categoryId: true, ...CUSTOM_CODE_SELECT } },
+            },
           },
         },
       },
@@ -182,10 +189,11 @@ export async function simulatePromotion(
         key: i.variantId,
         productId: i.variant.productId,
         categoryId: i.variant.product.categoryId,
-        quantity: i.quantity,
+        quantity: qty(i.quantity),
         // Kayıtlı kampanyanın indirimi geri ekleniyor: motorun beklediği taban
         // "firma iskontosu sonrası, kampanya öncesi".
         net: new Dec(i.lineTotal).add(i.promotionDiscount),
+        productCodes: customCodeValuesOf(i.variant.product),
       }));
     if (lines.length === 0) continue;
 
@@ -211,6 +219,7 @@ export async function simulatePromotion(
         previousOrderCount,
         // Kampanyanın tarih penceresi koşulları bu ana göre değerlendiriliyor.
         now: order.createdAt,
+        companyCodes: customCodeValuesOf(order.company),
       },
       promotions: [compiled],
       shippingFee: new Dec(order.shippingFee),

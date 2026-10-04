@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CartLineView, CartView } from "@repo/services";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
+import { roundToScale, type QuantityRule } from "@/lib/quantity";
 
 // The cart lives on the server; this is the client's view of it.
 //
@@ -22,16 +23,21 @@ export function cartKey(companyId: string) {
   return ["cart", companyId] as const;
 }
 
-/** Clamp a quantity to [moq, stock] and snap up to a whole number of cases. */
-export function normalizeQty(
-  line: Pick<CartLine, "unitsPerCase" | "moqUnits" | "stock">,
-  qty: number,
-): number {
-  const step = Math.max(1, line.unitsPerCase);
+/**
+ * Clamp a quantity to [moq, stock] and snap it to what the line can be sold in:
+ * whole cases for a case item, the variant's decimals otherwise (0,75 kg stays
+ * 0,75 — it used to be rounded up to a whole unit).
+ */
+export function normalizeQty(line: QuantityRule, qty: number): number {
+  const scale = line.quantityScale ?? 0;
   let q = Math.max(line.moqUnits, qty);
-  q = Math.ceil(q / step) * step;
-  if (q > line.stock) {
-    q = Math.floor(line.stock / step) * step;
+  if (line.unitsPerCase > 1) {
+    const step = line.unitsPerCase;
+    q = Math.ceil(q / step) * step;
+    if (q > line.stock) q = Math.floor(line.stock / step) * step;
+  } else {
+    q = roundToScale(q, scale, "up");
+    if (q > line.stock) q = roundToScale(line.stock, scale, "down");
   }
   return Math.max(0, q);
 }
@@ -57,7 +63,11 @@ export function cartTotals(lines: CartLine[]): CartTotals {
   }
   const round = (n: number) => Math.round(n * 100) / 100;
   return {
-    itemCount: lines.reduce((s, l) => s + l.quantity, 0),
+    // Üç ondalığa yuvarlanıyor: 0,1 + 0,2 rozet üzerinde 0,30000000000000004 olmasın.
+    itemCount: roundToScale(
+      lines.reduce((s, l) => s + l.quantity, 0),
+      3,
+    ),
     subtotal: round(subtotal),
     taxTotal: round(taxTotal),
     grandTotal: round(subtotal + taxTotal),
@@ -132,16 +142,15 @@ export function useCart(companyId: string) {
     lines,
     isLoading: query.isLoading,
     error: query.error as Error | null,
-    itemCount: lines.reduce((s, l) => s + l.quantity, 0),
+    // Üç ondalığa yuvarlanıyor: 0,1 + 0,2 rozet üzerinde 0,30000000000000004 olmasın.
+    itemCount: roundToScale(
+      lines.reduce((s, l) => s + l.quantity, 0),
+      3,
+    ),
     isSaving: write.isPending || clearMutation.isPending,
 
     /** From a product card: add a case (or the MOQ, whichever is larger). */
-    add: (seed: {
-      variantId: string;
-      unitsPerCase: number;
-      moqUnits: number;
-      stock: number;
-    }) => {
+    add: (seed: QuantityRule & { variantId: string }) => {
       const existing = lines.find((l) => l.variantId === seed.variantId);
       const step = Math.max(seed.moqUnits, seed.unitsPerCase, 1);
       const next = normalizeQty(seed, (existing?.quantity ?? 0) + step);

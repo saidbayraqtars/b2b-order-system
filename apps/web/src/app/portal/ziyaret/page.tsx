@@ -20,6 +20,7 @@ export default async function PortalVisitPage({ searchParams }: Props) {
   const user = await requirePage(
     ["COMPANY_ADMIN", "COMPANY_STAFF", "SALES_REP", "SUPER_ADMIN"],
     "companies.view",
+    { module: "saha" },
   );
 
   const ctx = await resolvePortalContext(user, searchParams.companyId);

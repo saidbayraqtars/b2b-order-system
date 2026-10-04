@@ -1,5 +1,6 @@
 import type { Prisma } from "@repo/database";
 import {
+  CUSTOM_CODE_SLOTS,
   CashAccountKindEnum,
   CashDirectionEnum,
   CashMovementSourceEnum,
@@ -943,6 +944,61 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
     },
   },
 };
+
+// ─────────────────────────────────────────────
+// özel kodlar
+// ─────────────────────────────────────────────
+
+/**
+ * Özel kod alanları — ürün ve firma için `code1..code10`.
+ *
+ * Anahtar yuva numarasıyla yazılıyor (`company_code3`), etiketle değil:
+ * kayıtlı bir rapor "Bölge" yuvasının adı "Satış bölgesi" yapıldığında da
+ * çalışmaya devam etmeli. Ekrandaki ad `describeDatasetsWithCodes`'te
+ * kurulumun tanımından okunuyor; buradaki "Firma özel kod 3" yalnızca yedek.
+ *
+ * Yalnızca ürün/firma tablosuna zaten bağlanan veri kümelerine giriyor —
+ * yeni bir JOIN eklemiyor, satır sayısını değiştirmiyor.
+ */
+export const CODE_FIELD_PATTERN = /^(product|company)_code(\d+)$/;
+
+function codeFields(
+  kind: "product" | "company",
+  prefix: string,
+): Record<string, ReportFieldDef> {
+  const source = kind === "product" ? "Ürün" : "Firma";
+  return Object.fromEntries(
+    CUSTOM_CODE_SLOTS.map((slot) => [
+      `${kind}_code${slot}`,
+      text(
+        `${source} özel kod ${slot}`,
+        prefix ? `${prefix}.code${slot}` : `code${slot}`,
+        true,
+        source,
+      ),
+    ]),
+  );
+}
+
+const CODE_FIELD_PLACES: ReadonlyArray<
+  [ReportDataset, "product" | "company", string]
+> = [
+  ["ORDERS", "company", "company"],
+  ["ORDER_ITEMS", "company", "order.company"],
+  ["ORDER_ITEMS", "product", "variant.product"],
+  ["LEDGER", "company", "company"],
+  ["COMPANIES", "company", ""],
+  ["CHECKINS", "company", "company"],
+  ["CASH", "company", "order.company"],
+  ["STOCK", "company", "order.company"],
+  ["STOCK", "product", "variant.product"],
+  ["STOCK_LOTS", "product", "variant.product"],
+  ["PROMOTIONS", "company", "company"],
+];
+
+for (const [dataset, kind, prefix] of CODE_FIELD_PLACES) {
+  Object.assign(DATASETS[dataset].fields, codeFields(kind, prefix));
+}
 
 /** Aggregates a field may take, given its type. */
 export function allowedAggregates(field: ReportFieldDef): Aggregate[] {

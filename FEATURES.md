@@ -266,10 +266,58 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 - **Kategori:** ağaç yapılı oluştur/yeniden adlandır/taşı/sil. Slug isimden türetilir (Türkçe karakter duyarlı: "Şişe & Kapak" → `sise-kapak`), çakışırsa `-2`, `-3` eklenir. Kendi altına taşıma engelli (döngü koruması). Alt kategorisi, ürünü veya iskontosu olan kategori silinemez.
 - **Ürün:** ad, kategori, marka, KDV (%1/10/20), açıklama, görsel listesi, aktif/pasif. Pasif ürün katalogdan düşer ama geçmiş siparişlerde durur.
-- **Varyant:** SKU, barkod, renk, beden, koli içi adet, minimum sipariş, stok. SKU ve barkod benzersizliği kontrol edilir. Stok satır içinde düzenlenir (yalnız blur/Enter'da yazar).
+- **Varyant:** SKU, barkod, renk, beden, koli içi adet, minimum sipariş, stok, miktar ölçeği (tam sayı ya da ondalık). SKU ve barkod benzersizliği kontrol edilir. Stok satır içinde düzenlenir (yalnız blur/Enter'da yazar).
 - **Fiyat kademesi:** varyant × müşteri grubu × minimum adet → fiyat. Aynı üçlü tekrar yazıldığında hata vermez, günceller (upsert). Grup seçilmezse varsayılan liste fiyatı olur. Fiyatı olmayan varyant listede uyarı ile işaretlenir.
 - **Firma iskontosu:** firma detay sayfasında kategori **veya** ürün hedefli, yüzde ya da sabit tutar. Aynı satırda ikisi birden seçilemez (çözümleme ürünü kategoriye tercih eder), yüzde 100'ü aşamaz.
 - **Silme kuralı:** siparişte kullanılan ürün/varyant asla silinmez (`IN_USE`) — pasife alınır, sipariş geçmişi bozulmaz.
+
+### Özel kodlar (`/admin/ozel-kodlar`, 2026-10-04)
+
+Vega'nın `KOD1..KOD21` desenini sadeleştirir (kılavuz §64).
+
+- **Yuvalar:** ürüne ve firmaya 10'ar yuva. Değer düz kolonda durur
+  (`code1..code10`). Yuvanın adı, kullanımda olup olmadığı ve isteğe bağlı
+  seçenek listesi ekrandan verilir. Ürün yuvası "katalogda süzgeç olarak
+  göster" diye işaretlenebilir.
+- **Seçenek listesi:** değer listeden biri olmak zorunda. Listedeki yazım
+  kaydedilir ("bayi" → "BAYİ"). Liste daraltılınca eski değerler silinmez,
+  dışarıda kalanlar sayılır.
+- **Nerede kullanılıyor:**
+  - ürün ve firma formları; yönetim listelerinde süzgeç ve künye
+    (`?kod3=…`, adreste)
+  - portal katalog süzgeci; yalnız işaretli yuvalar. İç kullanım yuvası
+    adresten denenemez.
+  - kampanya: "firma özel kodu" koşulu ve ürün özel koduyla hedefleme.
+    Simülatör de kodları okur.
+  - rapor tasarımcısı: 8 veri kümesinde, kurulumun verdiği adla.
+- **Türkçe harfler:** Postgres'in harf duyarsız eşleşmesi İ/ı'yı bilmiyor.
+  Bu yüzden süzgeç, değerin Türkçe büyük ve küçük yazımlarını da dener.
+
+### Kesirli miktar (F1, 2026-10-04)
+
+Kilo, metre ve litre satan kurulum 0,75 kg tutabilir ve satabilir.
+
+- **Kolonlar:** stok, depo kırılımı, parti, stok hareketi, sepet, sipariş,
+  sevk, fatura ve iade satırlarındaki 15 miktar kolonu `DECIMAL(14,3)`.
+  Mevcut tam sayılar aynen korunur.
+- **Kalem ölçeği:** varyantın "Miktar" alanı (`quantityScale`) kaç ondalık
+  girilebileceğini söyler: tam sayı (varsayılan), 1, 2 ya da 3 ondalık.
+  Adet satan kalemde 1,5 girilirse sepet, sipariş, sevk, iade, sayım ve elle
+  hareket `INVALID_QUANTITY` (422) ile reddeder.
+- **En az sipariş** de ondalık: "en az 0,5 kg" yazılabilir.
+- **Fiyat kademesi:** 1'in altındaki miktar taban kademeden ("en az 1")
+  fiyatlanır; tam sayı satışta hiçbir şey değişmez.
+- **Hesap:** miktarlar ondalıkta toplanır ve çıkarılır (`quantity.ts`). Sayı
+  olarak 0,3 + 0,45 + 0,25 bir etmiyor; kısmi sevk edilen satır bu yüzden
+  kapanmazdı.
+- **ERP:** stok senkronu kesri artık kırpmıyor (12,35 kg → 12,35). Siparişin
+  ERP'ye giden satırında da miktar olduğu gibi gider.
+- **API sözleşmesi:** miktarlar yanıtta yine **sayı**. Rota testlerinin
+  ortak düzeneği her yanıtı tarar; metin olarak dönen bir miktar testi düşürür.
+- **Ekran:** portal ürün detayında ve sepette kilo kalemine ondalık yazılır;
+  stok, parti, sevk ve iade formları ondalık kabul eder; miktarlar Türkçe
+  biçimde (0,75) basılır. Mobil uygulama henüz tam sayı adımla ilerliyor
+  (C akışı).
 
 ## 8. Raporlama (Adım 8)
 
@@ -350,6 +398,33 @@ mobilde **30 gün** yaşadığı için bir kullanıcıyı pasife almak, rolünü
 - **Kendi şifresini değiştirebiliyor** (Adım 10'un açık kalan eksiği). Mevcut şifre zorunlu — sahipsiz açık bir oturum hesabı ele geçirmeye yetmesin diye. Başarılı olunca tüm oturumlar (isteği yapan dahil) sonlanıyor: şifre sızdığı için değiştiriliyorsa hırsızın oturumu da onunla birlikte ölüyor.
 - Kendi güvenlik durumunu görüyor: son giriş, son giriş IP'si, şifre son değişim tarihi.
 - Kendi denetim kayıtlarını görüyor. Kapsam oturumdan geliyor — `actorId` parametresi vermek başkasının geçmişini açmıyor.
+
+### Modüller (`/admin/moduller`, 2026-10-04)
+
+Kurulumda kullanılmayan özellik kümeleri kapatılır. Modül kapanınca menüden,
+ekranlardan, uçlardan ve mobilden kalkar. Veri silinmez; yeniden açınca her
+şey yerinde.
+
+- **16 modül:** kampanya, hacim iskontosu, saha ziyareti, satış hedefleri,
+  prim, kurye ile teslimat, iade, çek & senet, mutabakat, kart tahsilatları,
+  rapor tasarımcısı, yönetici panosu, ERP köprüsü, bayilik başvurusu,
+  etiket tasarımı, duyurular.
+- **Tek mekanizma:** modülün kendine ait izinleri, kapalıyken herkesin etkin
+  izin kümesinden düşülür (`effectivePermissions`, kapıda tek yerde). Menü,
+  sayfa, uç ve mobil gezinme zaten izinle çalıştığı için kendiliğinden uyar.
+  Paylaşılan izinle açılan ekranlar (Dağıtım → `orders.fulfil`, portal
+  "Ziyaret") yol kapısıyla (`{ module }`) ayrıca kapanır.
+- **Hesabı da değiştirenler:** kampanya kapalıyken hiçbir kampanya uygulanmaz.
+  Hacim kapalıyken elle sabitlenmiş basamak dahil iskonto düşer. Duyuru
+  kapalıyken portal duyuru göstermez.
+- **Mesaj:** kapalı modülün ucu "yetkiniz yok" değil "bu özellik kapalı" der.
+  Sayfa `/403?modul=` ekranına gider. Denetim kaydına ret yazılmaz; aç/kapa
+  ise yazılır (`MODULE_TOGGLED`).
+- **Süren iş:** ekran kapatmadan önce sayıyla söyler, örneğin "3 aktif
+  kampanya" ya da "2 kuryede bekleyen teslimat". Kapatmayı engellemez.
+- **Yetki devri:** "kendinde olmayanı veremez" kuralı artık yalnızca **yeni**
+  verilen izne bakar. Kapalı modülün iznini zaten taşıyan personeli düzenlemek
+  bu yüzden reddedilmez.
 
 ### Denetim kaydı (`/admin/audit`)
 

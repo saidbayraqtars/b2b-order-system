@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, UserRound, X, type LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+import { LogOut, Menu, UserRound, X } from "lucide-react";
 import { useBrand } from "@/components/brand";
 import { CommandPalette } from "@/components/command-palette";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -26,7 +27,8 @@ import { cn } from "@/lib/utils";
 export interface SidebarLink {
   href: string;
   label: string;
-  icon?: LucideIcon;
+  /** Lucide ya da Reicon bileşeni — ikisi de `className` alıyor. */
+  icon?: ComponentType<{ className?: string }>;
 }
 
 export interface SidebarGroup {
@@ -45,6 +47,8 @@ export function SidebarShell({
   search,
   /** Üst şeridin sağındaki ek düğmeler: firma seçici, sepet, yazdır… */
   actions,
+  /** Kenar çubuğunun altında, hesap bağlantısının üstünde: görünüm düğmesi. */
+  footer,
   children,
 }: {
   brand?: string;
@@ -54,6 +58,7 @@ export function SidebarShell({
   userLabel: string;
   search?: ReactNode;
   actions?: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const tenant = useBrand();
@@ -152,6 +157,7 @@ export function SidebarShell({
         </nav>
 
         <div className="shrink-0 border-t border-line px-3 py-3">
+          {footer}
           <Link
             href="/hesabim"
             className="flex items-center gap-3 rounded px-3 py-2 text-body-sm text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
