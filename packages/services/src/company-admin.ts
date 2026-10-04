@@ -1,5 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type {
+  CustomCodeKey,
+  CustomCodeValues,
   CreateAddressInput,
   CreateCompanyInput,
   PaymentMethod,
@@ -9,6 +11,12 @@ import type {
 } from "@repo/types";
 import { auditActor, recordAudit, type AuditContext } from "./audit";
 import { BusinessError } from "./errors";
+import {
+  CUSTOM_CODE_SELECT,
+  customCodeValuesOf,
+  customCodeWhere,
+  normalizeCustomCodes,
+} from "./custom-codes";
 
 // Company and address administration (SUPER_ADMIN). Customer groups live in
 // pricing-admin.ts, next to the price tiers that use them.
@@ -45,6 +53,8 @@ export interface CompanyRow {
    */
   volumeTier: { id: string; name: string; discountPercent: string } | null;
   counts: { orders: number; users: number; addresses: number };
+  /** Özel kodlar — bölge, segment, kanal… (`code1..code10`). */
+  codes: CustomCodeValues;
 }
 
 export interface CompanyDetail extends CompanyRow {
@@ -92,6 +102,7 @@ const companySelect = {
   volumeDiscountMode: true,
   volumeTier: { select: { id: true, name: true, discountPercent: true } },
   _count: { select: { orders: true, members: true, addresses: true } },
+  ...CUSTOM_CODE_SELECT,
 } satisfies Prisma.CompanySelect;
 
 type CompanyPayload = Prisma.CompanyGetPayload<{ select: typeof companySelect }>;
@@ -127,16 +138,20 @@ function toRow(c: CompanyPayload): CompanyRow {
       users: c._count.members,
       addresses: c._count.addresses,
     },
+    codes: customCodeValuesOf(c),
   };
 }
 
 export async function listCompanies(opts: {
   search?: string;
   includeInactive?: boolean;
+  /** Özel kod süzgeci: `{ code2: "Ege" }` — tam eşleşme, harf duyarsız. */
+  codes?: Partial<Record<CustomCodeKey, string>>;
 } = {}): Promise<CompanyRow[]> {
   const rows = await prisma.company.findMany({
     where: {
       ...(opts.includeInactive ? {} : { isActive: true }),
+      AND: customCodeWhere(opts.codes),
       ...(opts.search
         ? {
             OR: [
@@ -258,9 +273,11 @@ export async function createCompany(
 ): Promise<CompanyRow> {
   await assertReferences(input);
   if (input.taxNumber) await assertTaxNumberFree(input.taxNumber);
+  const codes = await normalizeCustomCodes("COMPANY", input);
 
   const created = await prisma.company.create({
     data: {
+      ...codes,
       name: input.name,
       taxNumber: input.taxNumber ?? null,
       taxOffice: input.taxOffice ?? null,
@@ -300,10 +317,12 @@ export async function updateCompany(
 
   await assertReferences(input);
   if (input.taxNumber) await assertTaxNumberFree(input.taxNumber, id);
+  const codes = await normalizeCustomCodes("COMPANY", input);
 
   const updated = await prisma.company.update({
     where: { id },
     data: {
+      ...codes,
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.taxNumber !== undefined ? { taxNumber: input.taxNumber ?? null } : {}),
       ...(input.taxOffice !== undefined ? { taxOffice: input.taxOffice ?? null } : {}),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CurrencyEnum } from "./currency";
+import { customCodeValuesSchema } from "./custom-code";
 import { DiscountTypeEnum } from "./enums";
 import { entityIdSchema } from "./id";
 
@@ -43,6 +44,8 @@ export const createProductSchema = z.object({
     .default(20),
   categoryId: z.string().cuid("Kategori seçin"),
   isActive: z.boolean().default(true),
+  /** Özel kodlar (`code1..code10`); gönderilmeyen yuva değişmez. */
+  ...customCodeValuesSchema.shape,
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 

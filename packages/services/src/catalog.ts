@@ -1,5 +1,7 @@
 import { prisma } from "@repo/database";
+import type { CustomCodeKey } from "@repo/types";
 import { BusinessError } from "./errors";
+import { customCodeWhere, listActiveCustomCodeFields } from "./custom-codes";
 import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
 import { resolvePrice, type DiscountRow } from "./pricing";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
@@ -98,6 +100,33 @@ export interface ListCatalogParams {
   companyId: string;
   categoryId?: string;
   search?: string;
+  /**
+   * Özel kod süzgeci. Yalnızca "katalogda süzgeç olarak göster" işaretli aktif
+   * yuvalar dikkate alınıyor, öbürleri sessizce yok sayılıyor — bkz.
+   * `allowedCatalogCodes`.
+   */
+  codes?: Partial<Record<CustomCodeKey, string>>;
+}
+
+/**
+ * Alıcının süzebileceği özel kodlar.
+ *
+ * Her yuva katalogda gösterilmiyor: "Tedarikçi" ya da "Raf" gibi iç kullanım
+ * alanları da özel kod olabilir. Adresteki `kod5=…` süzgeci herhangi bir
+ * yuvayı kabul etseydi, alıcı iç bir kodun değerini deneyerek hangi ürünlerin
+ * ona karşılık geldiğini öğrenebilirdi. Bu yüzden süzgeç yalnızca ekranın
+ * zaten gösterdiği yuvalarda çalışıyor.
+ */
+async function allowedCatalogCodes(
+  codes: Partial<Record<CustomCodeKey, string>> | undefined,
+): Promise<Partial<Record<CustomCodeKey, string>>> {
+  if (!codes || Object.keys(codes).length === 0) return {};
+  const shown = (await listActiveCustomCodeFields("PRODUCT"))
+    .filter((f) => f.showInCatalogFilter)
+    .map((f) => f.key);
+  return Object.fromEntries(
+    Object.entries(codes).filter(([k]) => shown.includes(k as CustomCodeKey)),
+  ) as Partial<Record<CustomCodeKey, string>>;
 }
 
 /**
@@ -244,11 +273,13 @@ export async function listCatalog(
   params: ListCatalogParams,
 ): Promise<CatalogProduct[]> {
   const ctx = await loadCompanyPricingContext(params.companyId);
+  const codes = await allowedCatalogCodes(params.codes);
 
   const products = await prisma.product.findMany({
     where: {
       isActive: true,
       ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      AND: customCodeWhere(codes),
       ...(params.search
         ? {
             OR: [

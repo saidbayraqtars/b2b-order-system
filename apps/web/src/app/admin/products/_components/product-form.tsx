@@ -16,6 +16,13 @@ import {
   TextArea,
   TextInput,
 } from "@/components/form";
+import {
+  CustomCodeInputs,
+  customCodeForm,
+  customCodePayload,
+  useCustomCodeFields,
+  type CustomCodeForm,
+} from "@/components/custom-codes";
 import { ImagePicker } from "./image-picker";
 
 interface FormState {
@@ -26,6 +33,7 @@ interface FormState {
   description: string;
   images: string;
   isActive: boolean;
+  codes: CustomCodeForm;
 }
 
 function initialState(product?: AdminProductDetail): FormState {
@@ -37,6 +45,7 @@ function initialState(product?: AdminProductDetail): FormState {
     description: product?.description ?? "",
     images: (product?.images ?? []).join("\n"),
     isActive: product?.isActive ?? true,
+    codes: customCodeForm(product?.codes),
   };
 }
 
@@ -48,6 +57,7 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
   const router = useRouter();
   const qc = useQueryClient();
   const [form, setForm] = useState<FormState>(() => initialState(product));
+  const codeFields = useCustomCodeFields("PRODUCT");
 
   const categories = useQuery({
     queryKey: ["admin", "categories"],
@@ -66,6 +76,7 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
       .map((s) => s.trim())
       .filter(Boolean),
     isActive: form.isActive,
+    ...customCodePayload(form.codes, codeFields.all),
   });
 
   const save = useMutation({
@@ -170,6 +181,14 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
           <TextArea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <CustomCodeInputs
+            entity="PRODUCT"
+            value={form.codes}
+            onChange={(codes) => setForm({ ...form, codes })}
           />
         </div>
 

@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, UserRound, X, type LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+import { LogOut, Menu, UserRound, X } from "lucide-react";
 import { useBrand } from "@/components/brand";
 import { CommandPalette } from "@/components/command-palette";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -26,7 +27,8 @@ import { cn } from "@/lib/utils";
 export interface SidebarLink {
   href: string;
   label: string;
-  icon?: LucideIcon;
+  /** Lucide ya da Reicon bileşeni — ikisi de `className` alıyor. */
+  icon?: ComponentType<{ className?: string }>;
 }
 
 export interface SidebarGroup {

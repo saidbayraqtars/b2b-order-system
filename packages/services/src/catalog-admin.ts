@@ -1,5 +1,7 @@
 import { prisma } from "@repo/database";
 import type {
+  CustomCodeKey,
+  CustomCodeValues,
   CreateCategoryInput,
   CreateProductInput,
   CreateVariantInput,
@@ -9,6 +11,12 @@ import type {
 } from "@repo/types";
 import { BusinessError } from "./errors";
 import { slugify, uniqueSlug } from "./slug";
+import {
+  CUSTOM_CODE_SELECT,
+  customCodeValuesOf,
+  customCodeWhere,
+  normalizeCustomCodes,
+} from "./custom-codes";
 
 // Catalog administration: the write side of what listCatalog() reads.
 // Authorization (SUPER_ADMIN) is enforced at the route layer; these functions
@@ -187,6 +195,7 @@ export interface AdminProductRow {
   totalStock: number;
   /** Variants with no price row at all — they cannot be ordered by anyone. */
   unpricedVariants: number;
+  codes: CustomCodeValues;
 }
 
 /** A variant flattened for a picker: one line, product name and SKU together. */
@@ -233,6 +242,8 @@ export interface ListProductsParams {
   categoryId?: string;
   /** Admin lists show archived products too unless asked otherwise. */
   onlyActive?: boolean;
+  /** Özel kod süzgeci: `{ code3: "BAYİ" }` — tam eşleşme, harf duyarsız. */
+  codes?: Partial<Record<CustomCodeKey, string>>;
 }
 
 export async function listProductsAdmin(
@@ -242,6 +253,7 @@ export async function listProductsAdmin(
     where: {
       ...(params.onlyActive ? { isActive: true } : {}),
       ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      AND: customCodeWhere(params.codes),
       ...(params.search
         ? {
             OR: [
@@ -269,6 +281,7 @@ export async function listProductsAdmin(
       variants: {
         select: { stock: true, _count: { select: { prices: true } } },
       },
+      ...CUSTOM_CODE_SELECT,
     },
     orderBy: { name: "asc" },
     take: 200,
@@ -285,6 +298,7 @@ export async function listProductsAdmin(
     variantCount: p.variants.length,
     totalStock: p.variants.reduce((s, v) => s + v.stock, 0),
     unpricedVariants: p.variants.filter((v) => v._count.prices === 0).length,
+    codes: customCodeValuesOf(p),
   }));
 }
 
@@ -335,6 +349,7 @@ export interface AdminProductDetail {
   vatRate: number;
   isActive: boolean;
   categoryId: string;
+  codes: CustomCodeValues;
   variants: AdminVariantDetail[];
 }
 
@@ -351,6 +366,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
       vatRate: true,
       isActive: true,
       categoryId: true,
+      ...CUSTOM_CODE_SELECT,
       variants: {
         select: {
           id: true,
@@ -402,6 +418,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
     vatRate: p.vatRate,
     isActive: p.isActive,
     categoryId: p.categoryId,
+    codes: customCodeValuesOf(p),
     variants: p.variants.map((v) => ({
       id: v.id,
       sku: v.sku,
@@ -450,9 +467,11 @@ export async function createProduct(input: CreateProductInput) {
   const slug = await uniqueSlug(slugify(input.slug ?? input.name), (s) =>
     productSlugTaken(s),
   );
+  const codes = await normalizeCustomCodes("PRODUCT", input);
 
   return prisma.product.create({
     data: {
+      ...codes,
       name: input.name,
       slug,
       description: input.description ?? null,
@@ -473,6 +492,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   });
   if (!existing) throw new BusinessError("PRODUCT_NOT_FOUND", "Ürün bulunamadı");
   if (input.categoryId) await assertCategoryExists(input.categoryId);
+  const codes = await normalizeCustomCodes("PRODUCT", input);
 
   const slug =
     input.slug || input.name
@@ -494,6 +514,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
       ...(input.vatRate !== undefined ? { vatRate: input.vatRate } : {}),
       ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...codes,
     },
     select: { id: true, name: true, slug: true, isActive: true },
   });

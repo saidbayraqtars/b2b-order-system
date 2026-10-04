@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { CUSTOM_CODE_SELECT, customCodeValuesOf } from "./custom-codes";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
 import type { Money } from "./money";
@@ -168,12 +169,19 @@ export async function buildEngineContext(
     now?: Date;
   },
 ): Promise<EngineContext> {
-  const previousOrderCount = await client.order.count({
-    where: {
-      companyId: params.companyId,
-      status: { notIn: [...UNTRADED_ORDER_STATUSES] },
-    },
-  });
+  const [previousOrderCount, company] = await Promise.all([
+    client.order.count({
+      where: {
+        companyId: params.companyId,
+        status: { notIn: [...UNTRADED_ORDER_STATUSES] },
+      },
+    }),
+    // Firma özel kodu koşulu için (COMPANY_CODE_IN).
+    client.company.findUnique({
+      where: { id: params.companyId },
+      select: CUSTOM_CODE_SELECT,
+    }),
+  ]);
 
   return {
     companyId: params.companyId,
@@ -181,6 +189,7 @@ export async function buildEngineContext(
     paymentMethod: params.paymentMethod,
     previousOrderCount,
     now: params.now ?? new Date(),
+    companyCodes: company ? customCodeValuesOf(company) : undefined,
   };
 }
 

@@ -374,9 +374,31 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Özel kodlar — ürünlerdekiyle aynı desen (bölge, segment, kanal…).
+  code1  String? @db.VarChar(100)
+  code2  String? @db.VarChar(100)
+  code3  String? @db.VarChar(100)
+  code4  String? @db.VarChar(100)
+  code5  String? @db.VarChar(100)
+  code6  String? @db.VarChar(100)
+  code7  String? @db.VarChar(100)
+  code8  String? @db.VarChar(100)
+  code9  String? @db.VarChar(100)
+  code10 String? @db.VarChar(100)
+
   @@index([customerGroupId])
   @@index([salesRepId])
   @@index([volumeTierId])
+  @@index([code1])
+  @@index([code2])
+  @@index([code3])
+  @@index([code4])
+  @@index([code5])
+  @@index([code6])
+  @@index([code7])
+  @@index([code8])
+  @@index([code9])
+  @@index([code10])
 }
 
 model Address {
@@ -515,6 +537,20 @@ model Product {
   vatRate     Int      @default(20) // KDV % (TR: 1 / 10 / 20). Used for taxTotal calc.
   isActive    Boolean  @default(true)
 
+  /// Özel kodlar (Vega'nın KOD1..KOD21 deseni, kılavuz §64). Etiketi ve
+  /// seçenek listesi `CustomCodeField`'da durur; değer burada, düz kolon
+  /// olarak — süzgeç, rapor ve indeks JSON'la değil kolonla çalışıyor.
+  code1  String? @db.VarChar(100)
+  code2  String? @db.VarChar(100)
+  code3  String? @db.VarChar(100)
+  code4  String? @db.VarChar(100)
+  code5  String? @db.VarChar(100)
+  code6  String? @db.VarChar(100)
+  code7  String? @db.VarChar(100)
+  code8  String? @db.VarChar(100)
+  code9  String? @db.VarChar(100)
+  code10 String? @db.VarChar(100)
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
@@ -525,6 +561,16 @@ model Product {
   updatedAt DateTime @updatedAt
 
   @@index([categoryId])
+  @@index([code1])
+  @@index([code2])
+  @@index([code3])
+  @@index([code4])
+  @@index([code5])
+  @@index([code6])
+  @@index([code7])
+  @@index([code8])
+  @@index([code9])
+  @@index([code10])
 }
 
 model ProductVariant {
@@ -3007,4 +3053,32 @@ model Holiday {
   updatedAt DateTime @updatedAt
 
   @@index([date])
+}
+
+/// Özel kod alanının tanımı: hangi yuva, hangi adla, hangi seçeneklerle.
+///
+/// Değerler `Product.code1..10` / `Company.code1..10` kolonlarında durur; bu
+/// tablo yalnızca onları adlandırır. Kapalı bir yuvanın değeri silinmez,
+/// yalnızca ekranlardan kalkar — yeniden açıldığında veri yerinde olmalı.
+enum CustomCodeEntity {
+  PRODUCT
+  COMPANY
+}
+
+model CustomCodeField {
+  id                  String           @id @default(cuid())
+  entity              CustomCodeEntity
+  /// 1..10 — `code{slot}` kolonu.
+  slot                Int
+  label               String
+  isActive            Boolean          @default(true)
+  /// Boşsa serbest metin; doluysa değer bu listeden biri olmak zorunda.
+  options             String[]         @default([])
+  /// Portal kataloğunda süzgeç olarak gösterilsin mi (yalnızca ürün alanları).
+  showInCatalogFilter Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entity, slot])
 }

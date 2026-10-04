@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { PaymentMethodEnum } from "@repo/types";
+import { CUSTOM_CODE_SLOTS, PaymentMethodEnum } from "@repo/types";
 import type {
+  CustomCodeKey,
   PaymentMethod,
   PromotionRuleCatalog,
   RuleMeta,
@@ -39,6 +40,12 @@ export interface EngineLine {
   quantity: number;
   /** Line net *right now*: what earlier promotions have left of it. */
   net: Money;
+  /**
+   * Ürünün özel kodları (`code1..code10`). İsteğe bağlı: motoru doğrudan
+   * çağıran eski testler ve simülasyon bunu vermeyebilir; verilmeyen satır hiçbir
+   * özel kod hedefine uymaz.
+   */
+  productCodes?: Partial<Record<CustomCodeKey, string | null>>;
 }
 
 /** Everything a condition may look at besides the lines themselves. */
@@ -49,6 +56,8 @@ export interface EngineContext {
   /** Orders the company has placed before this one (rejected/cancelled excluded). */
   previousOrderCount: number;
   now: Date;
+  /** Firmanın özel kodları; verilmezse hiçbir firma kodu koşulu tutmaz. */
+  companyCodes?: Partial<Record<CustomCodeKey, string | null>>;
 }
 
 export interface EngineState {
@@ -64,15 +73,42 @@ export interface EngineState {
 
 const idList = z.array(z.string().min(1).max(60)).max(200);
 
+/**
+ * Özel kod eşleşmesi: yuva + kabul edilen değerler.
+ *
+ * Karşılaştırma büyük/küçük harf duyarsız; değerler formdan yazım farkıyla
+ * gelebilir ve "bayi" ile "BAYİ" aynı segmenttir (custom-codes.ts ile aynı kural).
+ */
+const codeMatchSchema = z.object({
+  slot: z
+    .number()
+    .int()
+    .refine((n) => (CUSTOM_CODE_SLOTS as readonly number[]).includes(n), "Yuva 1-10 olmalı"),
+  values: z.array(z.string().trim().min(1).max(100)).min(1, "En az bir değer seçin").max(200),
+});
+type CodeMatch = z.infer<typeof codeMatchSchema>;
+
+function codeMatches(
+  codes: Partial<Record<CustomCodeKey, string | null>> | undefined,
+  match: CodeMatch,
+): boolean {
+  const value = codes?.[`code${match.slot}` as CustomCodeKey];
+  if (!value) return false;
+  const wanted = value.toLocaleUpperCase("tr");
+  return match.values.some((v) => v.toLocaleUpperCase("tr") === wanted);
+}
+
 /** Product/category filter shared by the item-scoped rules. */
 const targetSchema = {
   categoryIds: idList.optional(),
   productIds: idList.optional(),
+  productCode: codeMatchSchema.optional(),
 };
 
 interface TargetParams {
   categoryIds?: string[];
   productIds?: string[];
+  productCode?: CodeMatch;
 }
 
 const TARGET_META: RuleParamMeta[] = [
@@ -90,18 +126,30 @@ const TARGET_META: RuleParamMeta[] = [
     required: false,
     hint: "Boş bırakılırsa tüm ürünler",
   },
+  {
+    key: "productCode",
+    label: "Ürün özel kodu",
+    kind: "productCode",
+    required: false,
+    hint: "Boş bırakılırsa koda bakılmaz",
+  },
 ];
 
 /**
  * Lines a targeted rule applies to. An empty filter means "the whole cart";
- * giving both lists means "in these categories OR these products".
+ * giving several means "in these categories OR these products OR carrying this
+ * product code" — the same OR the two lists always had.
  */
 function matchLines(lines: EngineLine[], target: TargetParams): EngineLine[] {
   const cats = target.categoryIds ?? [];
   const prods = target.productIds ?? [];
-  if (cats.length === 0 && prods.length === 0) return lines;
+  const code = target.productCode;
+  if (cats.length === 0 && prods.length === 0 && !code) return lines;
   return lines.filter(
-    (l) => cats.includes(l.categoryId) || prods.includes(l.productId),
+    (l) =>
+      cats.includes(l.categoryId) ||
+      prods.includes(l.productId) ||
+      (code !== undefined && codeMatches(l.productCodes, code)),
   );
 }
 
@@ -307,6 +355,18 @@ const COMPANY_IN: ConditionDef<{ companyIds: string[] }> = {
     { key: "companyIds", label: "Firmalar", kind: "companyIds", required: true },
   ],
   check: (p, s) => p.companyIds.includes(s.context.companyId),
+};
+
+const COMPANY_CODE_IN: ConditionDef<{ companyCode: CodeMatch }> = {
+  type: "COMPANY_CODE_IN",
+  label: "Firma özel kodu",
+  description:
+    "Firmanın seçilen özel kodu (bölge, segment, kanal…) verilen değerlerden biriyse geçerli.",
+  schema: z.object({ companyCode: codeMatchSchema }),
+  params: [
+    { key: "companyCode", label: "Firma özel kodu", kind: "companyCode", required: true },
+  ],
+  check: (p, s) => codeMatches(s.context.companyCodes, p.companyCode),
 };
 
 const PAYMENT_METHOD_IS: ConditionDef<{
@@ -615,6 +675,7 @@ const CONDITIONS = new Map<string, ConditionDef<any>>(
     MIN_ITEM_QUANTITY,
     CUSTOMER_GROUP_IN,
     COMPANY_IN,
+    COMPANY_CODE_IN,
     PAYMENT_METHOD_IS,
     FIRST_ORDER,
   ].map((d) => [d.type, d]),

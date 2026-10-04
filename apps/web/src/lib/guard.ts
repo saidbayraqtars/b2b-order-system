@@ -552,6 +552,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   NOTHING_TO_RETURN: 422,
   OVER_RETURN: 409,
   INVALID_BLOCK: 422,
+  // özel kodlar: değer, yuvanın seçenek listesinde yok
+  INVALID_CUSTOM_CODE: 422,
   INVALID_STOCK: 422,
   STOCK_MOVEMENT_NOT_FOUND: 404,
   LOT_NOT_FOUND: 404,

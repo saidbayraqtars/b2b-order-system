@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   Activity,
   BarChart3,
@@ -37,15 +37,15 @@ import {
   Timer,
   Wand2,
   ArrowUpCircle,
-  type LucideIcon,
 } from "lucide-react";
+import { HashtagSquareIcon } from "@/components/reicon";
 import { hasPermission, type Permission } from "@repo/types";
 import { SidebarShell, type SidebarGroup } from "@/components/app-sidebar";
 
 interface AdminLink {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
   /** Bu bölümü açan izin. Yoksa herkese görünür (yalnızca panel). */
   permission?: Permission;
 }
@@ -263,6 +263,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         href: "/admin/organization",
         label: "Kuruluş",
         icon: Landmark,
+        permission: "organization.manage",
+      },
+      {
+        href: "/admin/ozel-kodlar",
+        label: "Özel kodlar",
+        icon: HashtagSquareIcon,
         permission: "organization.manage",
       },
       {

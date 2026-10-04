@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   PAYMENT_METHOD_LABELS,
   PaymentMethodEnum,
@@ -14,6 +15,7 @@ import {
   Select,
   TextInput,
 } from "@/components/form";
+import { useCustomCodeFields } from "@/components/custom-codes";
 
 // The builder does not know the rule catalogue: it renders whatever
 // /api/admin/promotions/rules describes. Adding a condition or an action on the
@@ -164,6 +166,17 @@ function ParamField({
     );
   }
 
+  if (param.kind === "productCode" || param.kind === "companyCode") {
+    return (
+      <CodeMatchField
+        param={param}
+        entity={param.kind === "productCode" ? "PRODUCT" : "COMPANY"}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
   if (param.kind === "variantId") {
     return (
       <label className="block">
@@ -236,6 +249,103 @@ function ParamField({
         }}
       />
     </label>
+  );
+}
+
+/**
+ * Özel kod eşleşmesi: hangi yuva, hangi değerler. Değer `{ slot, values }`;
+ * yuva seçilmemişse parametre hiç gönderilmiyor (isteğe bağlı hedef boş kalır).
+ *
+ * Yuvanın seçenek listesi varsa değerler listeden seçiliyor, yoksa virgülle
+ * yazılıyor — serbest metin bir yuvada olası değerleri ekran bilemez.
+ */
+function CodeMatchField({
+  param,
+  entity,
+  value,
+  onChange,
+}: {
+  param: RuleParamMeta;
+  entity: "PRODUCT" | "COMPANY";
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const { active } = useCustomCodeFields(entity);
+  const current =
+    value && typeof value === "object"
+      ? (value as { slot?: number; values?: string[] })
+      : {};
+  const field = active.find((f) => f.slot === current.slot);
+  const values = current.values ?? [];
+  // Serbest metin kutusu kendi taslağını tutuyor: her tuşta "Ege," → "Ege"
+  // diye yeniden biçimlense virgülden sonra yazılamazdı.
+  const [draft, setDraft] = useState(values.join(", "));
+  // Yalnızca yuva değişince sıfırlanıyor; değerler her tuşta değiştiği için
+  // bağımlılıkta olsalardı taslak yine her tuşta biçimlenirdi.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setDraft((current.values ?? []).join(", ")), [current.slot]);
+
+  const emit = (slot: number | undefined, next: string[]) =>
+    onChange(slot ? { slot, values: next } : undefined);
+
+  if (active.length === 0) {
+    return (
+      <div className="block">
+        <Label hint={param.hint}>{param.label}</Label>
+        <p className="text-xs text-ink-faint">
+          Kullanımda özel kod alanı yok — Özel kodlar ekranından tanımlayın.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      <label className="block">
+        <Label hint={param.hint}>{param.label}</Label>
+        <Select
+          className="w-48"
+          value={current.slot ? String(current.slot) : ""}
+          onChange={(e) => emit(Number(e.target.value) || undefined, [])}
+        >
+          <option value="">{param.required ? "Seçin…" : "— yok —"}</option>
+          {active.map((f) => (
+            <option key={f.slot} value={f.slot}>
+              {f.label}
+            </option>
+          ))}
+        </Select>
+      </label>
+      {field && (
+        <label className="block">
+          <Label>Değerler</Label>
+          {field.options.length > 0 ? (
+            <MultiSelect
+              className="w-56"
+              options={field.options.map((o) => ({ id: o, name: o }))}
+              value={values}
+              onChange={(next) => emit(field.slot, next)}
+            />
+          ) : (
+            <TextInput
+              className="w-56"
+              placeholder="virgülle ayırın"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                emit(
+                  field.slot,
+                  e.target.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                );
+              }}
+            />
+          )}
+        </label>
+      )}
+    </div>
   );
 }
 

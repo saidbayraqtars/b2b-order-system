@@ -596,3 +596,76 @@ describe("quantity ladders", () => {
     ).toThrowError(BusinessError);
   });
 });
+
+describe("özel kod kuralları", () => {
+  // Ürün ve firma özel kodları (`code1..code10`). Karşılaştırma harf duyarsız:
+  // "bayi" ile "BAYİ" aynı segment, custom-codes.ts'teki yazma kuralıyla aynı.
+  const percent = [{ type: "PERCENT_OFF", params: { percent: 10 } }];
+
+  it("firma özel kodu tutunca geçerli, tutmayınca değil", () => {
+    const rule = {
+      type: "COMPANY_CODE_IN",
+      params: { companyCode: { slot: 2, values: ["Ege", "Marmara"] } },
+    };
+    const run = (code2: string | null) =>
+      applyPromotions({
+        lines: [line("a", "100.00")],
+        context: { ...CONTEXT, companyCodes: { code2 } },
+        promotions: [promo("p1", [rule], percent)],
+      }).total.toFixed(2);
+
+    expect(run("EGE")).toBe("10.00");
+    expect(run("İç Anadolu")).toBe("0.00");
+    expect(run(null)).toBe("0.00");
+  });
+
+  it("firma kodu hiç yüklenmemiş bağlamda koşul tutmaz", () => {
+    const result = applyPromotions({
+      lines: [line("a", "100.00")],
+      context: CONTEXT,
+      promotions: [
+        promo(
+          "p1",
+          [{ type: "COMPANY_CODE_IN", params: { companyCode: { slot: 2, values: ["Ege"] } } }],
+          percent,
+        ),
+      ],
+    });
+    expect(result.total.toFixed(2)).toBe("0.00");
+  });
+
+  it("ürün özel koduyla hedeflenen indirim yalnız o koddaki satırlara iner", () => {
+    const result = applyPromotions({
+      lines: [
+        line("a", "200.00", { productCodes: { code1: "bayi" } }),
+        line("b", "300.00", { productCodes: { code1: "PERAKENDE" } }),
+        line("c", "500.00"),
+      ],
+      context: CONTEXT,
+      promotions: [
+        promo(
+          "p1",
+          [],
+          [
+            {
+              type: "PERCENT_OFF",
+              params: { percent: 10, productCode: { slot: 1, values: ["BAYİ"] } },
+            },
+          ],
+        ),
+      ],
+    });
+    expect(result.total.toFixed(2)).toBe("20.00");
+    expect(result.perLine.get("a")?.toFixed(2)).toBe("20.00");
+    expect(result.perLine.has("b")).toBe(false);
+  });
+
+  it("yuvası 1-10 dışında olan kod kuralı kaydedilemez", () => {
+    expect(() =>
+      compileCondition({
+        type: "COMPANY_CODE_IN",
+        params: { companyCode: { slot: 11, values: ["Ege"] } },
+      }),
+    ).toThrow(BusinessError);
+  });
+});

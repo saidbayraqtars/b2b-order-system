@@ -1,10 +1,10 @@
 import { createCompany, listCompanies } from "@repo/services";
-import { createCompanySchema } from "@repo/types";
+import { createCompanySchema, customCodeFiltersFrom } from "@repo/types";
 import { auditContext } from "@/lib/audit-context";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { parseBody } from "@/lib/validate";
 
-// GET  /api/admin/companies?search&includeInactive — cari list for the admin panel.
+// GET  /api/admin/companies?search&includeInactive&kod1..kod10 — cari list for the admin panel.
 // POST /api/admin/companies — onboard a new customer.
 export function GET(req: Request) {
   return withAuthErrors(async () => {
@@ -14,6 +14,7 @@ export function GET(req: Request) {
     const companies = await listCompanies({
       search: params.get("search") ?? undefined,
       includeInactive: params.get("includeInactive") === "1",
+      codes: customCodeFiltersFrom(params),
     });
     return Response.json({ companies });
   });

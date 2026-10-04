@@ -25,9 +25,15 @@ import {
 } from "@/components/form";
 import { SortableTh, useTableSort } from "@/components/table-sort";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
+import {
+  CODE_FILTER_DEFAULTS,
+  CustomCodeFilters,
+  CustomCodeSummary,
+  appendCodeFilters,
+} from "@/components/custom-codes";
 
 /** Süzgeç varsayılanları — modül düzeyinde, `useUrlState` kimlik bekliyor. */
-const FILTER_DEFAULTS = { ara: "", kategori: "" };
+const FILTER_DEFAULTS = { ara: "", kategori: "", ...CODE_FILTER_DEFAULTS };
 
 export function ProductsTable() {
   const filters = useUrlState(FILTER_DEFAULTS);
@@ -48,10 +54,11 @@ export function ProductsTable() {
   const params = new URLSearchParams();
   if (query) params.set("search", query);
   if (categoryId) params.set("categoryId", categoryId);
+  appendCodeFilters(params, filters.value);
   const qs = params.toString();
 
   const products = useQuery({
-    queryKey: ["admin", "products", query, categoryId],
+    queryKey: ["admin", "products", qs],
     queryFn: () =>
       apiGet<{ products: AdminProductRow[] }>(
         `/api/admin/products${qs ? `?${qs}` : ""}`,
@@ -104,6 +111,11 @@ export function ProductsTable() {
             </option>
           ))}
         </Select>
+        <CustomCodeFilters
+          entity="PRODUCT"
+          value={filters.value}
+          onChange={(key, next) => filters.set({ [key]: next })}
+        />
       </div>
 
       {products.isLoading && <LoadingState />}
@@ -178,6 +190,9 @@ export function ProductsTable() {
                         {p.brand}
                       </span>
                     )}
+                    <div>
+                      <CustomCodeSummary entity="PRODUCT" codes={p.codes} />
+                    </div>
                   </Td>
                   <Td muted>{p.category.name}</Td>
                   <Td align="right" numeric>

@@ -160,7 +160,9 @@ export type BusinessErrorCode =
   | "APPLICATION_THROTTLED"
   // ── sayfa düzeni ──
   | "PAGE_NOT_FOUND"
-  | "INVALID_BLOCK";
+  | "INVALID_BLOCK"
+  // ── özel kodlar ──
+  | "INVALID_CUSTOM_CODE";
 
 export class BusinessError extends Error {
   constructor(

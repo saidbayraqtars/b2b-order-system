@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { CUSTOM_CODE_SELECT, customCodeValuesOf } from "./custom-codes";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
 import {
@@ -234,7 +235,8 @@ export async function buildQuote(
       pricingUnit: true,
       unitFactor: true,
       product: {
-        select: { id: true, name: true, vatRate: true, categoryId: true },
+        // Özel kodlar kampanya hedefi için (ürün özel kodu = X).
+        select: { id: true, name: true, vatRate: true, categoryId: true, ...CUSTOM_CODE_SELECT },
       },
       prices: {
         select: {
@@ -342,6 +344,7 @@ export async function buildQuote(
       categoryId: l.categoryId,
       quantity: l.quantity,
       net: l.lineNet,
+      productCodes: customCodeValuesOf(vmap.get(l.variantId)!.product),
     }));
 
     const result = applyPromotions({

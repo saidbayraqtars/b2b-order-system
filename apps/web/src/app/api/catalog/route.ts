@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { listCatalog } from "@repo/services";
+import { customCodeFiltersFrom } from "@repo/types";
 import { requireUser, withAuthErrors } from "@/lib/guard";
 import { resolveCompanyId } from "@/lib/company-access";
 
-// GET /api/catalog?companyId=&categoryId=&search=
+// GET /api/catalog?companyId=&categoryId=&search=&kod1..kod10=
 // Products with prices resolved for the given company.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
@@ -20,6 +21,7 @@ export function GET(req: NextRequest) {
       companyId,
       categoryId: searchParams.get("categoryId") ?? undefined,
       search: searchParams.get("search") ?? undefined,
+      codes: customCodeFiltersFrom(searchParams),
     });
     return Response.json({ products });
   });

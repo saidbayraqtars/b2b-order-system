@@ -121,6 +121,13 @@ export const RuleParamKindEnum = z.enum([
    */
   "giftTiers",
   "percentTiers",
+  /**
+   * Özel kod eşleşmesi: `{ slot, values }` — "ürün özel kodu 3 şunlardan biri".
+   * Yuva numarası saklanıyor, etiket değil: alanın adı değişse de kural
+   * aynı kolona bakmaya devam eder.
+   */
+  "productCode",
+  "companyCode",
 ]);
 export type RuleParamKind = z.infer<typeof RuleParamKindEnum>;
 

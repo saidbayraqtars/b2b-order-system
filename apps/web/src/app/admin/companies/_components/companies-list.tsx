@@ -17,19 +17,31 @@ import {
 } from "@/components/ui";
 import { formatTRY } from "@/lib/format";
 import { ErrorLine, Select, TextInput } from "@/components/form";
+import { useUrlState } from "@/lib/url-state";
+import {
+  CODE_FILTER_DEFAULTS,
+  CustomCodeFilters,
+  CustomCodeSummary,
+  appendCodeFilters,
+} from "@/components/custom-codes";
 
 export function CompaniesList() {
   const [search, setSearch] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
+  // Özel kod süzgeci adreste: "Ege bölgesindeki bayiler" paylaşılabilir bir
+  // bağlantı olsun.
+  const codeFilters = useUrlState(CODE_FILTER_DEFAULTS);
+
+  const qs = new URLSearchParams();
+  if (search) qs.set("search", search);
+  if (includeInactive) qs.set("includeInactive", "1");
+  appendCodeFilters(qs, codeFilters.value);
+  const queryString = qs.toString();
 
   const query = useQuery({
-    queryKey: ["admin-companies", search, includeInactive],
-    queryFn: () => {
-      const qs = new URLSearchParams();
-      if (search) qs.set("search", search);
-      if (includeInactive) qs.set("includeInactive", "1");
-      return apiGet<{ companies: CompanyRow[] }>(`/api/admin/companies?${qs}`);
-    },
+    queryKey: ["admin-companies", queryString],
+    queryFn: () =>
+      apiGet<{ companies: CompanyRow[] }>(`/api/admin/companies?${queryString}`),
   });
 
   return (
@@ -49,6 +61,11 @@ export function CompaniesList() {
           <option value="0">Yalnız aktifler</option>
           <option value="1">Pasifler dahil</option>
         </Select>
+        <CustomCodeFilters
+          entity="COMPANY"
+          value={codeFilters.value}
+          onChange={(key, next) => codeFilters.set({ [key]: next })}
+        />
       </div>
 
       {query.isLoading && <LoadingState />}
@@ -86,6 +103,7 @@ export function CompaniesList() {
                       {c.counts.orders} sipariş · {c.counts.users} kullanıcı ·{" "}
                       {c.counts.addresses} adres
                     </p>
+                    <CustomCodeSummary entity="COMPANY" codes={c.codes} />
                   </Td>
                   <Td muted>{c.customerGroup?.name ?? "—"}</Td>
                   <Td muted>{c.salesRep?.name ?? "—"}</Td>
