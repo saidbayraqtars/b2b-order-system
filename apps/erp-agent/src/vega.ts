@@ -192,11 +192,77 @@ export interface PriceRow {
   /** B2B müşteri grubunun adı; null = varsayılan kademe. */
   customerGroupCode: string | null;
   minQuantity: number | null;
+  /** Paket biriminin kodu (`TBLBIRIMLEREX.IND`); null = kartın satış birimi. */
+  unitCode: string | null;
+}
+
+export interface UnitRow {
+  code: string;
+  unitCode: string;
+  name: string;
+  factor: number;
+  barcode: string | null;
+}
+
+/**
+ * Paket birimleri — `TBLBIRIMLEREX`, kartın taban birimi dışındakiler.
+ *
+ * Bir kartın birim satırları `STOKNO` ile karta bağlı. `ANABIRIM = 1` taban
+ * birimdir ve `CARPAN` "bu birim kaç taban birim eder"dir: Galya'da Pepsi
+ * ADET (1) + KOLİ (24), süzme yoğurt KG (1) + ADET (5). Çarpanı 1 olan satır
+ * paket değildir (Özdemirkaya'nın 104.603 satırının 104.601'i böyle) ve
+ * gönderilmez. `ANABIRIM` boş da olabilir; boşu taban saymıyoruz, çarpana
+ * bakıyoruz.
+ */
+export async function readUnits(pool: sql.ConnectionPool, cfg: AgentConfig): Promise<UnitRow[]> {
+  const stoklar = firmTable(cfg, "STOKLAR");
+  const birimler = firmTable(cfg, "BIRIMLEREX");
+
+  const result = await pool.request().query<{
+    code: string;
+    unitCode: number;
+    name: string | null;
+    factor: number | null;
+    barcode: string | null;
+  }>(`
+    SELECT
+      s.STOKKODU  AS code,
+      b.IND       AS unitCode,
+      b.BIRIMADI  AS name,
+      b.CARPAN    AS factor,
+      b.BARCODE   AS barcode
+    FROM [${birimler}] b
+    JOIN [${stoklar}] s ON s.IND = b.STOKNO
+    WHERE ISNULL(s.STOKKODU, '') <> ''
+      AND ISNULL(s.IPTAL, 0) = 0
+      AND s.IND >= 100
+      AND ISNULL(b.ANABIRIM, 0) = 0
+      AND b.CARPAN > 0
+      AND b.CARPAN <> 1
+  `);
+
+  const rows: UnitRow[] = [];
+  for (const r of result.recordset) {
+    const code = String(r.code).trim();
+    const name = String(r.name ?? "").trim().slice(0, 16);
+    const factor = Number(r.factor);
+    if (!code || !name || !Number.isFinite(factor) || factor <= 0) continue;
+    rows.push({
+      code,
+      unitCode: String(r.unitCode),
+      name,
+      factor,
+      barcode: r.barcode?.trim() || null,
+    });
+  }
+  return rows;
 }
 
 /** Bir Vega fiyat listesi satırının ham hâli. */
 interface RawPriceRow {
   code: string;
+  /** Kartın satış birimi değil de paket birimiyse o birimin IND'i. */
+  unitCode: number | null;
   kdv: number | null;
   kdvDahil: number | null;
   [key: string]: unknown;
@@ -248,9 +314,16 @@ export async function readPrices(
     .map((l) => `b.SATISFIYATI${l.list} AS f${l.list}, b.PB${l.list} AS pb${l.list}`)
     .join(", ");
 
+  // Kartın satış birimi (`BIRIMEX`) taban fiyatı verir; birleştirme eskisi
+  // gibi yalnız `IND` üzerinden (Özdemirkaya'da 3 kartın satış birimi başka
+  // kartın satırında duruyor, `STOKNO` şartı onları düşürürdü). Paket
+  // birimlerinin (çarpanı 1 olmayan, taban olmayan) kendi fiyatları ikinci
+  // yarıda `unitCode` ile gider; sunucu onları `readUnits`'in gönderdiği
+  // birime bağlar.
   const result = await pool.request().query<RawPriceRow>(`
     SELECT
       s.STOKKODU AS code,
+      NULL       AS unitCode,
       k.KDV      AS kdv,
       b.KDVDAHIL AS kdvDahil,
       ${columns}
@@ -260,6 +333,23 @@ export async function readPrices(
     WHERE ISNULL(s.STOKKODU, '') <> ''
       AND ISNULL(s.IPTAL, 0) = 0
       AND s.IND >= 100
+    UNION ALL
+    SELECT
+      s.STOKKODU AS code,
+      b.IND      AS unitCode,
+      k.KDV      AS kdv,
+      b.KDVDAHIL AS kdvDahil,
+      ${columns}
+    FROM [${stoklar}] s
+    JOIN [${birimler}] b ON b.STOKNO = s.IND
+    LEFT JOIN [${kdvGruplari}] k ON k.IND = s.KDVGRUBU
+    WHERE ISNULL(s.STOKKODU, '') <> ''
+      AND ISNULL(s.IPTAL, 0) = 0
+      AND s.IND >= 100
+      AND b.IND <> s.BIRIMEX
+      AND ISNULL(b.ANABIRIM, 0) = 0
+      AND b.CARPAN > 0
+      AND b.CARPAN <> 1
   `);
 
   const rows: PriceRow[] = [];
@@ -290,6 +380,7 @@ export async function readPrices(
         price: Math.round(net * 100) / 100,
         customerGroupCode: l.customerGroupCode,
         minQuantity: null,
+        unitCode: r.unitCode === null || r.unitCode === undefined ? null : String(r.unitCode),
       });
     }
   }

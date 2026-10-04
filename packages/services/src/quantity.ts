@@ -19,7 +19,7 @@ export const QUANTITY_DECIMALS = 3;
 /** Bir kalemin girişte izin verdiği en büyük ölçek. */
 export const MAX_QUANTITY_SCALE = QUANTITY_DECIMALS;
 
-type QuantityLike = Prisma.Decimal | number | string;
+export type QuantityLike = Prisma.Decimal | number | string;
 
 function toDecimal(value: QuantityLike): Prisma.Decimal {
   return value instanceof Prisma.Decimal ? value : new Prisma.Decimal(value);
@@ -88,6 +88,37 @@ export function assertQuantityScale(
 }
 
 /** Ekranda ve belgede miktar: gereksiz sıfır yok, en fazla üç ondalık (1,5 · 0,75 · 12). */
+/** Satırın paket birimi: ad ve kaç taban birim ettiği. */
+export interface PackageUnit {
+  name: string;
+  factor: QuantityLike;
+}
+
+/** Taban birimdeki miktar kaç paket eder. */
+export function packageCount(quantity: QuantityLike, factor: QuantityLike): number {
+  return new Prisma.Decimal(quantity.toString()).div(factor.toString()).toNumber();
+}
+
+/**
+ * Paketle alınan satır tam paket olmalı: 1,5 koli sipariş edilmez. Miktar
+ * taban birimde gelir (2 koli = 24 adet), burada paket sayısına çevrilip
+ * denetlenir.
+ */
+export function assertWholePackages(
+  quantity: QuantityLike,
+  unit: PackageUnit,
+  label: string,
+  baseUnit?: string | null,
+): void {
+  const count = new Prisma.Decimal(quantity.toString()).div(unit.factor.toString());
+  if (count.isInteger() && count.gt(0)) return;
+  throw new BusinessError(
+    "INVALID_QUANTITY",
+    `${label}: ${unit.name} tam sayı olmalı (1 ${unit.name} = ${formatQuantity(unit.factor)} ${baseUnit ?? "adet"})`,
+    { label, unit: unit.name, factor: qty(unit.factor), quantity: qty(quantity) },
+  );
+}
+
 export function formatQuantity(value: QuantityLike | null | undefined): string {
   return new Intl.NumberFormat("tr-TR", {
     minimumFractionDigits: 0,

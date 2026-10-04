@@ -169,6 +169,11 @@ function VariantRow({
   const { lines, setQty } = useCart(companyId);
   const inCart = lines.find((l) => l.variantId === v.id);
 
+  // Paket birimi (koli, palet): seçiliyse kutu paket sayısını tutar, sepete
+  // taban birim karşılığı gider (2 koli = 24 adet).
+  const [unitId, setUnitId] = useState<string | null>(inCart?.unitId ?? null);
+  const unit = unitId ? (v.units.find((u) => u.id === unitId) ?? null) : null;
+
   // Başlangıç adedi: koli katına yuvarlanmış MOQ. Kullanıcı serbest sayı
   // yazabilir; sepete basınca aynı kural sunucuda da uygulanır.
   const step = Math.max(v.moqUnits, v.unitsPerCase, 1);
@@ -176,7 +181,24 @@ function VariantRow({
 
   const priced = v.netUnitPrice !== null;
   const orderable = priced && v.stock >= v.moqUnits;
-  const lineTotal = priced ? Number(v.netUnitPrice) * qty : 0;
+  const lineTotal = unit
+    ? Number(unit.netUnitPrice ?? 0) * qty
+    : priced
+      ? Number(v.netUnitPrice) * qty
+      : 0;
+
+  const chooseUnit = (next: string | null) => {
+    setUnitId(next);
+    setLocalQty(next ? 1 : step);
+  };
+  const addToCart = () => {
+    if (unit) {
+      const count = Math.max(1, Math.round(qty));
+      setQty(v.id, count * unit.factor, { id: unit.id, factor: unit.factor });
+    } else {
+      setQty(v.id, normalizeQty(v, qty), null);
+    }
+  };
 
   return (
     <div
@@ -200,11 +222,23 @@ function VariantRow({
           {v.unit && isFractional(v) ? ` ${v.unit}` : ""}
         </p>
         <p>KOL {v.unitsPerCase}</p>
+        {v.units.map((u) => (
+          <p key={u.id}>
+            {u.name} {formatQuantity(u.factor)}
+          </p>
+        ))}
       </div>
 
       <div className="min-w-[5.5rem] text-right tabular-nums">
         <p className="text-body-sm font-bold text-ink">
-          {priced ? formatTRY(v.netUnitPrice!) : "—"}
+          {unit
+            ? unit.netUnitPrice !== null
+              ? formatTRY(unit.netUnitPrice)
+              : "—"
+            : priced
+              ? formatTRY(v.netUnitPrice!)
+              : "—"}
+          {unit && <span className="ml-1 text-[10px] font-normal text-ink-faint">/ {unit.name}</span>}
         </p>
         {/* Dövizle listelenen ürünün orijinal fiyatı — karttakiyle aynı not.
             Tahsil edilen tutar her zaman yukarıdaki TL. */}
@@ -222,15 +256,32 @@ function VariantRow({
 
       {orderable ? (
         <div className="flex items-center gap-2">
+          {v.units.length > 0 && (
+            <select
+              value={unitId ?? ""}
+              onChange={(e) => chooseUnit(e.target.value || null)}
+              aria-label={`${variantLabel(v)} birim`}
+              className="h-8 rounded border border-line bg-panel px-1 text-xs text-ink"
+            >
+              <option value="">{v.unit ?? "ADET"}</option>
+              {v.units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({formatQuantity(u.factor)})
+                </option>
+              ))}
+            </select>
+          )}
           <input
             type="number"
-            min={v.moqUnits}
-            step={quantityStep(v)}
-            inputMode={isFractional(v) ? "decimal" : "numeric"}
+            min={unit ? 1 : v.moqUnits}
+            step={unit ? 1 : quantityStep(v)}
+            inputMode={!unit && isFractional(v) ? "decimal" : "numeric"}
             value={qty}
             onChange={(e) => setLocalQty(Number(e.target.value))}
-            onBlur={() => setLocalQty(normalizeQty(v, qty))}
-            aria-label={`${variantLabel(v)} adet`}
+            onBlur={() =>
+              setLocalQty(unit ? Math.max(1, Math.round(qty)) : normalizeQty(v, qty))
+            }
+            aria-label={`${variantLabel(v)} ${unit ? unit.name.toLocaleLowerCase("tr") : "adet"}`}
             className="h-8 w-20 rounded border border-line bg-panel px-2 text-right text-xs tabular-nums text-ink outline-none transition-colors hover:border-line-strong focus:border-ink-muted"
           />
           <span className="hidden min-w-[5.5rem] text-right text-xs font-semibold tabular-nums text-ink sm:block">
@@ -238,7 +289,7 @@ function VariantRow({
           </span>
           <button
             type="button"
-            onClick={() => setQty(v.id, normalizeQty(v, qty))}
+            onClick={addToCart}
             className="inline-flex h-8 items-center gap-1.5 rounded bg-accent px-3 text-xs font-medium text-on-accent transition-opacity hover:opacity-90"
           >
             {inCart ? (

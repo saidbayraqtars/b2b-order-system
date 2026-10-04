@@ -1,6 +1,6 @@
 import sql from "mssql";
 import { loadConfig, type AgentConfig } from "./config";
-import { connect, readCustomers, readPrices, readStock } from "./vega";
+import { connect, readCustomers, readPrices, readStock, readUnits } from "./vega";
 import { startCommandServer } from "./server";
 
 // ERP ajanı — müşterinin makinesinde çalışır.
@@ -98,6 +98,12 @@ async function runOnce(cfg: AgentConfig): Promise<void> {
     if (cfg.sync.stock) {
       const stock = await readStock(pool, cfg);
       await sendBatched(cfg, "stock", stock, "Stok");
+    }
+
+    // Birimler fiyattan önce: paket fiyatı, sunucuda o paket birimine bağlanıyor.
+    if (cfg.sync.units) {
+      const units = await readUnits(pool, cfg);
+      await sendBatched(cfg, "units", units, "Paket birimi");
     }
 
     if (cfg.sync.prices) {

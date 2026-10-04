@@ -118,6 +118,8 @@ export interface AgentConfig {
     customers: boolean;
     stock: boolean;
     prices: boolean;
+    /** Paket birimleri (koli, palet) — `TBLBIRIMLEREX`. Fiyattan önce gider. */
+    units: boolean;
   };
 }
 
@@ -232,6 +234,7 @@ export function loadConfig(argPath?: string): AgentConfig {
       customers: c.sync?.customers ?? true,
       stock: c.sync?.stock ?? true,
       prices: c.sync?.prices ?? false,
+      units: c.sync?.units ?? true,
     },
   };
 }

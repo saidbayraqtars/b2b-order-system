@@ -10,6 +10,7 @@ import {
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { formatTRY, formatQuantity } from "@/lib/format";
+import { PackageCount, PackagePrice } from "@/components/package-note";
 import { CurrencyNote } from "@/components/currency-note";
 import { Button, ErrorLine, Panel, TextInput } from "@/components/form";
 import {
@@ -151,9 +152,17 @@ export function OrderDetailView({
                 <Td muted>{i.sku}</Td>
                 <Td align="right" numeric>
                   {formatQuantity(i.quantity)}
+                  <PackageCount
+                    unit={i.unit}
+                    className="block text-[11px] font-normal text-ink-faint"
+                  />
                 </Td>
                 <Td align="right" numeric>
                   {formatTRY(i.unitPrice)}
+                  <PackagePrice
+                    unit={i.unit}
+                    className="block text-[11px] font-normal text-ink-faint"
+                  />
                   {/* Dövizle listelenmişse hangi sayıdan hangi kurla
                       çevrildiği: sipariş bir kez fiyatlanır ve o kur burada
                       donmuştur, bugünkü kurla yeniden hesaplanamaz. */}

@@ -88,6 +88,22 @@ export interface CatalogVariant {
    */
   listCurrency: string | null;
   listUnitPrice: string | null;
+  /**
+   * Paket birimleri (koli, palet), çarpana göre sıralı. Fiyatlar **bir paket**
+   * için çözülmüş: paketin kendi fiyatı varsa o, yoksa taban fiyat × çarpan.
+   * Sepete eklerken miktar yine taban birimde gönderilir (1 koli = factor).
+   */
+  units: CatalogVariantUnit[];
+}
+
+export interface CatalogVariantUnit {
+  id: string;
+  name: string;
+  factor: number;
+  barcode: string | null;
+  /** Paket başına liste ve net fiyat; bu firma için fiyat yoksa null. */
+  unitPrice: string | null;
+  netUnitPrice: string | null;
 }
 
 export interface CatalogProduct {
@@ -165,9 +181,15 @@ const CATALOG_SELECT = {
       pricingUnit: true,
       unitFactor: true,
       tracksLots: true,
+      units: {
+        where: { isActive: true },
+        select: { id: true, name: true, factor: true, barcode: true },
+        orderBy: { factor: "asc" },
+      },
       prices: {
         select: {
           customerGroupId: true,
+          unitId: true,
           minQuantity: true,
           price: true,
           currency: true,
@@ -200,8 +222,10 @@ type CatalogRow = {
     pricingUnit: string | null;
     unitFactor: unknown;
     tracksLots: boolean;
+    units: Array<{ id: string; name: string; factor: Prisma.Decimal; barcode: string | null }>;
     prices: Array<{
       customerGroupId: string | null;
+      unitId: string | null;
       minQuantity: number;
       price: unknown;
     }>;
@@ -237,14 +261,47 @@ function toCatalogProduct(
         unitFactor: v.unitFactor ? String(v.unitFactor) : null,
         tracksLots: v.tracksLots,
       };
+      // Döviz satırları fiyatlamadan önce TL'ye çevriliyor; iskonto ve KDV
+      // tek para biriminde hesaplanıyor. Kuru girilmemiş para birimi bütün
+      // kataloğu düşürmez: o kalem fiyatsız görünür (aşağıdaki catch).
+      const pricesInLira = () =>
+        convertPriceRows(
+          v.prices as Array<{
+            customerGroupId: string | null;
+            unitId: string | null;
+            minQuantity: number;
+            price: Prisma.Decimal;
+            currency?: string | null;
+          }>,
+          ctx.rates,
+        );
+      // Her paket bir paketlik miktarla fiyatlanır: "1 koli kaça".
+      const units: CatalogVariantUnit[] = v.units.map((u) => {
+        const unit = { id: u.id, name: u.name, factor: qty(u.factor), barcode: u.barcode };
+        try {
+          const r = resolvePrice({
+            prices: pricesInLira(),
+            customerGroupId: ctx.customerGroupId,
+            quantity: qty(u.factor),
+            productId: p.id,
+            categoryId: p.categoryId,
+            discounts: ctx.discounts,
+            volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
+            unitFactor: v.unitFactor as Prisma.Decimal | null,
+            unit: { id: u.id, factor: u.factor },
+          });
+          return {
+            ...unit,
+            unitPrice: r.package!.unitPrice.toFixed(2),
+            netUnitPrice: r.package!.netUnitPrice.toFixed(2),
+          };
+        } catch {
+          return { ...unit, unitPrice: null, netUnitPrice: null };
+        }
+      });
       try {
         const r = resolvePrice({
-          // Döviz satırları fiyatlamadan önce TL'ye çevriliyor; iskonto ve KDV
-          // tek para biriminde hesaplanıyor.
-          prices: convertPriceRows(
-            v.prices as Array<{ customerGroupId: string | null; minQuantity: number; price: import("@prisma/client").Prisma.Decimal; currency?: string | null }>,
-            ctx.rates,
-          ),
+          prices: pricesInLira(),
           customerGroupId: ctx.customerGroupId,
           quantity: qty(v.moqUnits),
           productId: p.id,
@@ -261,6 +318,7 @@ function toCatalogProduct(
           // Vitrinde "≈ 100 USD" notunu basabilmek için; tutarın kendisi TL.
           listCurrency: r.listCurrency,
           listUnitPrice: r.listUnitPrice.toFixed(2),
+          units,
         };
       } catch {
         // No price defined for this company/variant → not orderable, priced null.
@@ -271,6 +329,7 @@ function toCatalogProduct(
           netUnitPrice: null,
           listCurrency: null,
           listUnitPrice: null,
+          units,
         };
       }
     }),
@@ -300,6 +359,15 @@ export async function listCatalog(
                     OR: [
                       { sku: { contains: params.search, mode: "insensitive" } },
                       { barcode: { contains: params.search, mode: "insensitive" } },
+                      // Koli/palet barkodu da aynı kaleme çıkar.
+                      {
+                        units: {
+                          some: {
+                            isActive: true,
+                            barcode: { contains: params.search, mode: "insensitive" },
+                          },
+                        },
+                      },
                     ],
                   },
                 },

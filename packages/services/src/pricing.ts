@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { DiscountType } from "@repo/types";
 import { BusinessError } from "./errors";
-import { ZERO, round2 } from "./money";
+import { Dec, ZERO, round2, round6 } from "./money";
 
 type Decimal = Prisma.Decimal;
 
@@ -22,6 +22,18 @@ export interface PriceRow {
   currency?: string | null;
   /** O para birimindeki orijinal tutar; yoksa `price`. */
   listPrice?: Decimal;
+  /**
+   * Paket birimi fiyatıysa o birim; yoksa taban birim fiyatı. Paket fiyatı
+   * paket başınadır ve `minQuantity` paket sayısıyla okunur.
+   */
+  unitId?: string | null;
+}
+
+/** Satırın alındığı paket birimi (koli, palet). */
+export interface PriceUnit {
+  id: string;
+  /** 1 paket kaç taban birim eder. */
+  factor: Decimal;
 }
 
 export interface DiscountRow {
@@ -60,6 +72,25 @@ export interface ResolvePriceInput {
    * hiç geçmemiş gibi davranır.
    */
   unitFactor?: Decimal | null;
+  /**
+   * Satır bir paket birimiyle alınıyorsa o birim. `quantity` yine taban
+   * birimdedir; paket sayısı `quantity / factor`.
+   */
+  unit?: PriceUnit | null;
+}
+
+/** Paket düzeyindeki rakamlar — müşterinin gördüğü "koli 100 ₺". */
+export interface ResolvedPackagePrice {
+  unitId: string;
+  factor: Decimal;
+  /** Paket sayısı. */
+  count: number;
+  /** İskontodan önce paket fiyatı. */
+  unitPrice: Decimal;
+  /** Paket başına toplam iskonto. */
+  discountPerUnit: Decimal;
+  /** Paket başına net. */
+  netUnitPrice: Decimal;
 }
 
 export interface ResolvedPrice {
@@ -83,6 +114,11 @@ export interface ResolvedPrice {
   listCurrency: string;
   /** O para birimindeki birim liste fiyatı — belgede "100 USD" diye basılan. */
   listUnitPrice: Decimal;
+  /**
+   * Satır paketle alındıysa paket düzeyindeki rakamlar; yoksa null. Bu
+   * durumda yukarıdaki birim alanları taban birime altı ondalıkla inmiştir.
+   */
+  package: ResolvedPackagePrice | null;
 }
 
 /**
@@ -134,33 +170,57 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
   const { prices, customerGroupId, quantity, productId, categoryId, discounts } =
     input;
 
-  const groupTier =
-    customerGroupId === null
-      ? null
-      : pickTier(
-          prices.filter((p) => p.customerGroupId === customerGroupId),
-          quantity,
-        );
-  const defaultTier = pickTier(
-    prices.filter((p) => p.customerGroupId === null),
-    quantity,
-  );
+  // Taban birim satırları: `unitId` yok. Paket satırları yalnızca o paketle
+  // alınan satırda okunur — adetle alan müşteri koli fiyatını görmez.
+  const baseRows = prices.filter((p) => (p.unitId ?? null) === null);
+  const unit = input.unit && input.unit.factor.gt(ZERO) ? input.unit : null;
+  const unitRows = unit ? prices.filter((p) => p.unitId === unit.id) : [];
+  const packageCount = unit ? new Dec(quantity).div(unit.factor).toNumber() : 0;
 
-  const chosen = groupTier ?? defaultTier;
-  if (chosen === null) {
+  // Sıra: grubun paket fiyatı → grubun taban fiyatı × çarpan → listenin paket
+  // fiyatı → listenin taban fiyatı × çarpan. Grup birimden önce gelir: bayiyle
+  // konuşulmuş adet fiyatı, herkese açık koli fiyatıyla ezilmemeli.
+  const tierFor = (groupId: string | null) => {
+    const unitTier = unit
+      ? pickTier(
+          unitRows.filter((p) => p.customerGroupId === groupId),
+          packageCount,
+        )
+      : null;
+    if (unitTier) return { row: unitTier, perPackage: true };
+    const baseTier = pickTier(
+      baseRows.filter((p) => p.customerGroupId === groupId),
+      quantity,
+    );
+    return baseTier ? { row: baseTier, perPackage: false } : null;
+  };
+
+  const picked =
+    (customerGroupId === null ? null : tierFor(customerGroupId)) ?? tierFor(null);
+  if (picked === null) {
     throw new BusinessError("NO_PRICE", "Ürün için fiyat tanımlı değil", {
       productId,
     });
   }
 
+  const chosen = picked.row;
+
   // Fiyat birimi → satış birimi. `listPrice` çarpılmıyor: belgede basılacak
-  // olan "84,50 ₺/kg" satırı, kg fiyatının kendisi.
+  // olan "84,50 ₺/kg" satırı, kg fiyatının kendisi. Paket fiyatı zaten paketin
+  // son fiyatıdır, ona çift birim çarpanı uygulanmaz.
   const factor = input.unitFactor;
-  const base =
-    factor && factor.gt(ZERO) && !factor.eq(1) ? chosen.price.mul(factor) : chosen.price;
+  let base =
+    !picked.perPackage && factor && factor.gt(ZERO) && !factor.eq(1)
+      ? chosen.price.mul(factor)
+      : chosen.price;
+  // Paketle alınan satır: bütün hesap paket başına yapılır (müşterinin gördüğü
+  // "koli 100 ₺, %10 iskonto = 90 ₺" kuruşuyla tutsun), sonra taban birime
+  // altı ondalıkla iner.
+  if (unit && !picked.perPackage) base = base.mul(unit.factor);
   const unitPrice = round2(base);
   const companyDiscountPerUnit = round2(
-    computeDiscount(base, productId, categoryId, discounts),
+    // FIXED iskonto taban birim başınadır; paket başına çarpanla büyür.
+    computeDiscount(base, productId, categoryId, discounts, unit?.factor ?? null),
   );
 
   // Floored before the tier is applied: a FIXED discount larger than the price
@@ -179,6 +239,32 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
   if (netUnitPrice.lt(ZERO)) netUnitPrice = ZERO;
   netUnitPrice = round2(netUnitPrice);
 
+  if (unit) {
+    const perBase = (d: Decimal) => round6(d.div(unit.factor));
+    const list = chosen.listPrice ?? chosen.price;
+    const listPackage = picked.perPackage ? list : list.mul(unit.factor);
+    return {
+      unitPrice: perBase(unitPrice),
+      discountPerUnit: perBase(discountPerUnit),
+      companyDiscountPerUnit: perBase(companyDiscountPerUnit),
+      volumeDiscountPerUnit: perBase(volumeDiscountPerUnit),
+      netUnitPrice: perBase(netUnitPrice),
+      // Satır toplamı paket üzerinden: 2 koli × 90 ₺ = 180 ₺, 24 × 7,5 değil
+      // (ikisi burada eşit, ama bölünemeyen fiyatta yalnız bu kuruşu tutar).
+      lineNet: round2(netUnitPrice.mul(packageCount)),
+      listCurrency: chosen.currency ?? "TRY",
+      listUnitPrice: round2(listPackage.div(unit.factor)),
+      package: {
+        unitId: unit.id,
+        factor: unit.factor,
+        count: packageCount,
+        unitPrice,
+        discountPerUnit,
+        netUnitPrice,
+      },
+    };
+  }
+
   return {
     unitPrice,
     discountPerUnit,
@@ -188,6 +274,7 @@ export function resolvePrice(input: ResolvePriceInput): ResolvedPrice {
     lineNet: round2(netUnitPrice.mul(quantity)),
     listCurrency: chosen.currency ?? "TRY",
     listUnitPrice: chosen.listPrice ?? unitPrice,
+    package: null,
   };
 }
 
@@ -197,6 +284,8 @@ function computeDiscount(
   productId: string,
   categoryId: string,
   discounts: DiscountRow[],
+  /** Paket satırında FIXED iskontonun çarpanı (taban birim başına → paket başına). */
+  fixedScale: Decimal | null = null,
 ): Decimal {
   const match =
     discounts.find((d) => d.productId === productId) ??
@@ -207,5 +296,6 @@ function computeDiscount(
     return base.mul(match.value).div(100);
   }
   // FIXED: absolute amount off per unit, never below 0.
-  return match.value.gt(base) ? base : match.value;
+  const off = fixedScale ? match.value.mul(fixedScale) : match.value;
+  return off.gt(base) ? base : off;
 }

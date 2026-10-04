@@ -216,7 +216,8 @@ async function planPrices(rows: SheetRow[]): Promise<ImportPlan> {
   // Mevcut fiyatlar tek sorguda: satır başına sorgu, beş bin satırlık bir
   // dosyada beş bin gidiş-dönüş demek olurdu.
   const existing = await prisma.price.findMany({
-    where: { variantId: { in: variants.map((v) => v.id) } },
+    // Excel taban birim fiyatını yazar; paket fiyatı birim ekranında.
+    where: { variantId: { in: variants.map((v) => v.id) }, unitId: null },
     select: {
       variantId: true,
       customerGroupId: true,
@@ -570,6 +571,7 @@ async function applyPrices(
           where: {
             variantId,
             customerGroupId: row.groupId,
+            unitId: null,
             minQuantity: row.minQuantity,
           },
           select: { id: true },
@@ -706,6 +708,7 @@ export async function importTemplateRows(
       stock: true,
       product: { select: { name: true } },
       prices: {
+        where: { unitId: null },
         select: {
           price: true,
           minQuantity: true,

@@ -187,7 +187,7 @@ function config(overrides: Partial<AgentConfig["write"]> = {}): AgentConfig {
     },
     intervalMinutes: 30,
     batchSize: 1000,
-    sync: { customers: true, stock: true, prices: false },
+    sync: { customers: true, stock: true, prices: false, units: true },
   };
 }
 

@@ -606,6 +606,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   INVALID_STOCK: 422,
   // Miktar kalemin ölçeğine uymuyor (adet satan kalemde 1,5) — koli katı ile aynı aile.
   INVALID_QUANTITY: 422,
+  UNIT_NOT_FOUND: 404,
+  DUPLICATE_UNIT: 409,
   STOCK_MOVEMENT_NOT_FOUND: 404,
   LOT_NOT_FOUND: 404,
   LOT_CODE_TAKEN: 409,

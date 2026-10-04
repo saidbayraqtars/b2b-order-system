@@ -18,6 +18,8 @@ export const ErpSyncKindEnum = z.enum([
   "BALANCES",
   /** Tek yön dışarı: bir siparişin ERP'ye belge olarak yazılması. */
   "ORDER_WRITE",
+  /** Paket birimleri (koli, palet). */
+  "UNITS",
 ]);
 export type ErpSyncKind = z.infer<typeof ErpSyncKindEnum>;
 
@@ -27,6 +29,7 @@ export const ERP_SYNC_KIND_LABELS: Record<ErpSyncKind, string> = {
   PRICES: "Fiyat listesi",
   BALANCES: "Cari bakiyeleri",
   ORDER_WRITE: "Sipariş aktarımı",
+  UNITS: "Paket birimleri",
 };
 
 export const ERP_SYNC_STATUS_LABELS: Record<string, string> = {
@@ -62,6 +65,27 @@ export const erpPriceRowSchema = z.object({
   /** Müşteri grubu adı; boş = varsayılan kademe. */
   customerGroupCode: z.string().trim().max(120).optional().nullable(),
   minQuantity: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),
+  /**
+   * Fiyat bir paket birimine aitse o birimin ERP kodu (`/api/erp/units` ile
+   * gönderilen `unitCode`); boş = taban birim fiyatı. Paket fiyatı paket
+   * başınadır.
+   */
+  unitCode: z.string().trim().max(60).optional().nullable(),
+});
+
+/**
+ * Paket birimi: bir stok kartının koli/palet gibi ikinci birimi. Taban birim
+ * (çarpanı 1 olan) gönderilmez — taban birim kalemin kendisidir.
+ */
+export const erpUnitRowSchema = z.object({
+  /** Stok kodu — hangi kalemin birimi. */
+  code: externalCode,
+  /** Birim kartının ERP'deki anahtarı; tekrar gönderimde aynı satırı bulur. */
+  unitCode: externalCode,
+  name: z.string().trim().min(1).max(16),
+  /** 1 paket kaç taban birim eder. Üç ondalığa yuvarlanır. */
+  factor: z.coerce.number().finite().positive().max(1_000_000),
+  barcode: z.string().trim().max(64).optional().nullable(),
 });
 
 export const erpCustomerBatchSchema = z.object({
@@ -78,6 +102,11 @@ export const erpPriceBatchSchema = z.object({
   rows: z.array(erpPriceRowSchema).max(MAX_ROWS),
 });
 export type ErpPriceBatch = z.infer<typeof erpPriceBatchSchema>;
+
+export const erpUnitBatchSchema = z.object({
+  rows: z.array(erpUnitRowSchema).max(MAX_ROWS),
+});
+export type ErpUnitBatch = z.infer<typeof erpUnitBatchSchema>;
 
 // ─────────────────────────────────────────────
 // YÖNETİM

@@ -18,6 +18,12 @@ import {
   normalizeCustomCodes,
 } from "./custom-codes";
 import { qty, qtyAdd, qtyOrNull } from "./quantity";
+import {
+  assertBarcodeFree,
+  toVariantUnitView,
+  VARIANT_UNIT_SELECT,
+  type AdminVariantUnit,
+} from "./variant-unit";
 
 // Catalog administration: the write side of what listCatalog() reads.
 // Authorization (SUPER_ADMIN) is enforced at the route layer; these functions
@@ -340,6 +346,8 @@ export interface AdminVariantDetail {
   /** How many order lines reference this variant — non-zero blocks deletion. */
   orderItemCount: number;
   prices: AdminPriceRow[];
+  /** Paket birimleri (koli, palet). */
+  units: AdminVariantUnit[];
 }
 
 export interface AdminProductDetail {
@@ -394,7 +402,13 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
           unitFactor: true,
           isVariableWeight: true,
           _count: { select: { orderItems: true } },
+          units: {
+            select: VARIANT_UNIT_SELECT,
+            orderBy: [{ factor: "asc" }, { sortOrder: "asc" }],
+          },
           prices: {
+            // Paket fiyatları birimin kendi satırında listelenir.
+            where: { unitId: null },
             select: {
               id: true,
               customerGroupId: true,
@@ -454,6 +468,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
         price: pr.price.toFixed(2),
         currency: pr.currency,
       })),
+      units: v.units.map(toVariantUnitView),
     })),
   };
 }
@@ -566,18 +581,6 @@ async function assertSkuFree(sku: string, exceptId?: string) {
   }
 }
 
-async function assertBarcodeFree(barcode: string, exceptId?: string) {
-  const found = await prisma.productVariant.findUnique({
-    where: { barcode },
-    select: { id: true },
-  });
-  if (found && found.id !== exceptId) {
-    throw new BusinessError(
-      "DUPLICATE_BARCODE",
-      `"${barcode}" barkodu zaten kullanılıyor`,
-    );
-  }
-}
 
 export async function createVariant(productId: string, input: CreateVariantInput) {
   const product = await prisma.product.findUnique({
@@ -626,7 +629,7 @@ export async function updateVariant(id: string, input: UpdateVariantInput) {
     throw new BusinessError("VARIANT_NOT_FOUND", "Varyant bulunamadı");
   }
   if (input.sku) await assertSkuFree(input.sku, id);
-  if (input.barcode) await assertBarcodeFree(input.barcode, id);
+  if (input.barcode) await assertBarcodeFree(input.barcode, { variantId: id });
 
   return prisma.productVariant.update({
     where: { id },

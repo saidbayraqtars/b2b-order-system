@@ -28,6 +28,11 @@ export const upsertCartItemSchema = z.object({
   quantity: quantityInput({ allowZero: true, max: 1_000_000 }),
   /** true → add to what is already there; false/absent → set it outright. */
   increment: z.boolean().optional(),
+  /**
+   * Paket birimi (koli, palet). Miktar yine taban birimdedir. Verilmezse
+   * taban birim; bir kalem sepette tek satırdır, birimi o satırın görünümü.
+   */
+  unitId: entityIdSchema.nullish(),
 });
 export type UpsertCartItemInput = z.infer<typeof upsertCartItemSchema>;
 

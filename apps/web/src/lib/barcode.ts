@@ -1,4 +1,4 @@
-import type { CatalogProduct, CatalogVariant } from "@repo/services";
+import type { CatalogProduct, CatalogVariant, CatalogVariantUnit } from "@repo/services";
 
 // El terminali / USB barkod okuyucu klavye gibi yazar: kodu tuşlar, sonuna
 // Enter basar. Bu yüzden kamera ya da kütüphane gerekmiyor — gereken tek şey,
@@ -10,6 +10,8 @@ import type { CatalogProduct, CatalogVariant } from "@repo/services";
 export interface ScanMatch {
   product: CatalogProduct;
   variant: CatalogVariant;
+  /** Koli/palet barkodu okutulduysa o paket; kalemin kendi barkoduysa null. */
+  unit: CatalogVariantUnit | null;
 }
 
 /**
@@ -46,9 +48,15 @@ export function findScannedVariant(
   for (const product of products) {
     for (const variant of product.variants) {
       if (variant.barcode && norm(variant.barcode) === code) {
-        byBarcode.push({ product, variant });
+        byBarcode.push({ product, variant, unit: null });
       } else if (norm(variant.sku) === code) {
-        bySku.push({ product, variant });
+        bySku.push({ product, variant, unit: null });
+      }
+      // Paket barkodu: okutulan koli bir koli olarak sepete girer.
+      for (const unit of variant.units ?? []) {
+        if (unit.barcode && norm(unit.barcode) === code) {
+          byBarcode.push({ product, variant, unit });
+        }
       }
     }
   }
@@ -58,6 +66,10 @@ export function findScannedVariant(
 }
 
 /** Sepete atılabilir mi: fiyatı çözülmüş ve en az bir asgari sipariş kadar stok var. */
-export function isScanOrderable(variant: CatalogVariant): boolean {
+export function isScanOrderable(
+  variant: CatalogVariant,
+  unit: CatalogVariantUnit | null = null,
+): boolean {
+  if (unit) return unit.netUnitPrice !== null && variant.stock >= unit.factor;
   return variant.netUnitPrice !== null && variant.stock >= variant.moqUnits;
 }

@@ -47,6 +47,18 @@ export interface ErpPriceRow {
   /** Which customer group this price is for; omitted means the default tier. */
   customerGroupCode?: string | null;
   minQuantity?: number | null;
+  /** Paket biriminin ERP kodu; boş = taban birim fiyatı. */
+  unitCode?: string | null;
+}
+
+export interface ErpUnitRow {
+  /** Stok kodu. */
+  code: string;
+  /** Birim kartının ERP anahtarı. */
+  unitCode: string;
+  name: string;
+  factor: number;
+  barcode?: string | null;
 }
 
 export interface IngestResult {
@@ -285,6 +297,17 @@ export async function ingestPrices(
     });
     const groupByName = new Map(groups.map((g) => [g.name.toLocaleLowerCase("tr"), g.id]));
 
+    // Paket fiyatı: birim (kalem, birim kodu) ile bulunur. Birim önce
+    // `/api/erp/units` ile gelmiş olmalı.
+    const unitCodes = rows.map((r) => r.unitCode?.trim()).filter((c): c is string => !!c);
+    const units = unitCodes.length
+      ? await prisma.variantUnit.findMany({
+          where: { externalCode: { in: unitCodes }, variantId: { in: [...byCode.values()] } },
+          select: { id: true, variantId: true, externalCode: true },
+        })
+      : [];
+    const unitByKey = new Map(units.map((u) => [`${u.variantId}|${u.externalCode}`, u.id]));
+
     for (const row of rows) {
       const code = row.code.trim();
       const variantId = code ? byCode.get(code) : undefined;
@@ -317,11 +340,26 @@ export async function ingestPrices(
       }
       const minQuantity = Math.max(1, Math.trunc(row.minQuantity ?? 1));
 
+      let unitId: string | null = null;
+      const unitCode = row.unitCode?.trim();
+      if (unitCode) {
+        const found = unitByKey.get(`${variantId}|${unitCode}`);
+        if (!found) {
+          skipped.push({
+            externalCode: code,
+            label: unitCode,
+            reason: "Bu birim kodu kalemde yok — önce paket birimlerini eşitleyin",
+          });
+          continue;
+        }
+        unitId = found;
+      }
+
       // The default tier (no group) cannot be upserted by a compound key —
       // Postgres treats NULLs as distinct, which is why the partial unique
       // index Price_variant_default_tier_key exists. So it is matched by hand.
       const existing = await prisma.price.findFirst({
-        where: { variantId, customerGroupId, minQuantity },
+        where: { variantId, customerGroupId, unitId, minQuantity },
         select: { id: true },
       });
 
@@ -329,8 +367,121 @@ export async function ingestPrices(
         await prisma.price.update({ where: { id: existing.id }, data: { price } });
       } else {
         await prisma.price.create({
-          data: { variantId, customerGroupId, minQuantity, price },
+          data: { variantId, customerGroupId, unitId, minQuantity, price },
         });
+      }
+      applied++;
+    }
+
+    return { applied, skipped };
+  });
+}
+
+// ─────────────────────────────────────────────
+// PAKET BİRİMİ
+// ─────────────────────────────────────────────
+
+/**
+ * Paket birimlerini (koli, palet) ERP'den al.
+ *
+ * Birim (kalem, ERP birim kodu) ile eşlenir: tekrar gönderim aynı satırı
+ * günceller. Elle açılmış aynı adlı birim varsa (KOLİ) ERP koduyla ona
+ * bağlanır, ikincisi açılmaz. Gönderilmeyen birim silinmez: ajan büyük
+ * tabloları sayfa sayfa gönderiyor, bir sayfada olmamak "ERP'de yok"
+ * demek değil.
+ *
+ * Barkod başka bir kalemde ya da pakette kullanılıyorsa birim barkodsuz
+ * yazılır ve sorun kaydına düşer — çakışan barkod okutmada yanlış kaleme
+ * çıkardı, birimi tümden atlamak ise siparişi engellerdi.
+ */
+export async function ingestUnits(
+  rows: ErpUnitRow[],
+  agentId: string | null,
+): Promise<IngestResult> {
+  return withRun("UNITS", agentId, rows.length, async () => {
+    const skipped: Skip[] = [];
+    let applied = 0;
+
+    const codes = rows.map((r) => r.code.trim()).filter(Boolean);
+    const known = await prisma.productVariant.findMany({
+      where: { externalCode: { in: codes } },
+      select: { id: true, externalCode: true },
+    });
+    const byCode = new Map(known.map((v) => [v.externalCode!, v.id]));
+
+    for (const row of rows) {
+      const code = row.code.trim();
+      const variantId = code ? byCode.get(code) : undefined;
+      if (!variantId) {
+        skipped.push({
+          externalCode: code || "(boş)",
+          reason: "Bu stok koduna bağlı varyant yok — ürün kartında eşleyin",
+        });
+        continue;
+      }
+
+      const factor = new Dec(row.factor).toDecimalPlaces(3);
+      if (factor.lte(0)) {
+        skipped.push({ externalCode: code, label: row.unitCode, reason: "Çarpan üç ondalıkta sıfır" });
+        continue;
+      }
+      if (factor.eq(1)) {
+        skipped.push({
+          externalCode: code,
+          label: row.unitCode,
+          reason: "Çarpanı 1 — taban birim, paket değil",
+        });
+        continue;
+      }
+
+      const name = row.name.trim().toLocaleUpperCase("tr");
+      const unitCode = row.unitCode.trim();
+      const current =
+        (await prisma.variantUnit.findFirst({
+          where: { variantId, externalCode: unitCode },
+          select: { id: true, barcode: true },
+        })) ??
+        (await prisma.variantUnit.findFirst({
+          where: { variantId, name, externalCode: null },
+          select: { id: true, barcode: true },
+        }));
+
+      // Aynı kalemde aynı adla başka ERP kodlu birim: ikisi ayrı kart ama ad
+      // tekil. Sonradan gelen atlanır.
+      const nameClash = await prisma.variantUnit.findFirst({
+        where: { variantId, name, ...(current ? { id: { not: current.id } } : {}) },
+        select: { id: true },
+      });
+      if (nameClash) {
+        skipped.push({
+          externalCode: code,
+          label: `${name} (${unitCode})`,
+          reason: "Kalemde bu adla başka bir birim var",
+        });
+        continue;
+      }
+
+      let barcode = row.barcode?.trim() || null;
+      if (barcode) {
+        const [variantHit, unitHit] = await Promise.all([
+          prisma.productVariant.findUnique({ where: { barcode }, select: { id: true } }),
+          prisma.variantUnit.findUnique({ where: { barcode }, select: { id: true } }),
+        ]);
+        if (variantHit || (unitHit && unitHit.id !== current?.id)) {
+          skipped.push({
+            externalCode: code,
+            label: barcode,
+            reason: `${name} barkodsuz yazıldı — barkod başka bir kalemde kullanılıyor`,
+          });
+          barcode = null;
+        }
+      }
+
+      const data = { name, factor, externalCode: unitCode, barcode };
+      if (current) {
+        await prisma.variantUnit.update({ where: { id: current.id }, data });
+      } else {
+        await prisma.variantUnit.create({ data: { variantId, ...data } });
       }
       applied++;
     }

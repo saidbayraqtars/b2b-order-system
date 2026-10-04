@@ -54,7 +54,8 @@ export async function listVariantPrices(
   }
 
   const rows = await prisma.price.findMany({
-    where: { variantId },
+    // Fiyat düzenleyicisi taban birimi yönetir; paket fiyatı birim satırında.
+    where: { variantId, unitId: null },
     select: {
       id: true,
       customerGroupId: true,
@@ -168,7 +169,12 @@ export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
   const price = round2(new Dec(input.price));
 
   const existing = await prisma.price.findFirst({
-    where: { variantId, customerGroupId: groupId, minQuantity: input.minQuantity },
+    where: {
+      variantId,
+      customerGroupId: groupId,
+      unitId: null,
+      minQuantity: input.minQuantity,
+    },
     select: { id: true },
   });
 

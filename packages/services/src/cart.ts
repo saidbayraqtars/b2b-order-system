@@ -4,7 +4,7 @@ import { loadCompanyPricingContext } from "./catalog";
 import { BusinessError } from "./errors";
 import { convertPriceRows } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
-import { assertQuantityScale, qty } from "./quantity";
+import { assertQuantityScale, assertWholePackages, packageCount, qty } from "./quantity";
 
 // The cart, kept on the server.
 //
@@ -25,6 +25,11 @@ import { assertQuantityScale, qty } from "./quantity";
 // carry only as many decimals as the variant's `quantityScale` allows (0,75 kg
 // yes, 1,5 koli no). That used to be the schema's `.int()`; with fractional
 // stock it depends on the variant, so it moved here.
+//
+// Paket birimi (F2): satır "2 koli" olarak eklenebilir. Miktar yine taban
+// birimde saklanır (24), `unitId` yalnızca satırın hangi birimle görüneceğini
+// söyler. Paketle eklenen satır tam paket olmalı — bu da miktarın biçimi,
+// yukarıdaki ölçek denetimiyle aynı yerde.
 
 export interface CartLineView {
   variantId: string;
@@ -40,7 +45,14 @@ export interface CartLineView {
   unit: string | null;
   quantityScale: number;
   vatRate: number;
+  /** Taban birimde miktar. */
   quantity: number;
+  /** Satırın paket birimi; null = taban birim. */
+  unitId: string | null;
+  /** Kalemin seçilebilir paket birimleri, çarpana göre sıralı. */
+  units: Array<{ id: string; name: string; factor: number }>;
+  /** Paketli satırda paket başına net fiyat ("koli 90,00 ₺"); değilse null. */
+  packageNetPrice: string | null;
   /** Null when the company has no applicable price — the line is not orderable. */
   netUnitPrice: string | null;
   /**
@@ -80,6 +92,7 @@ export async function getCart(
       items: {
         select: {
           quantity: true,
+          unitId: true,
           variant: {
             select: {
               id: true,
@@ -93,9 +106,15 @@ export async function getCart(
               quantityScale: true,
               pricingUnit: true,
               unitFactor: true,
+              units: {
+                where: { isActive: true },
+                select: { id: true, name: true, factor: true },
+                orderBy: [{ factor: "asc" }, { sortOrder: "asc" }],
+              },
               prices: {
                 select: {
                   customerGroupId: true,
+                  unitId: true,
                   minQuantity: true,
                   price: true,
                   currency: true,
@@ -135,6 +154,12 @@ export async function getCart(
     let netUnitPrice: string | null = null;
     let listCurrency: string | null = null;
     let listUnitPrice: string | null = null;
+    let packageNetPrice: string | null = null;
+    // Birim kapatılmışsa ya da miktar artık tam paket değilse satır taban
+    // birimde fiyatlanır; sipariş adımı tam paket kuralını ayrıca denetler.
+    const unit = item.unitId ? v.units.find((u) => u.id === item.unitId) : undefined;
+    const packaged =
+      unit && Number.isInteger(packageCount(item.quantity, unit.factor)) ? unit : null;
     try {
       const priced = resolvePrice({
         prices: convertPriceRows(v.prices, ctx.rates),
@@ -145,8 +170,10 @@ export async function getCart(
         discounts: ctx.discounts,
         volumeDiscountPercent: ctx.volumeDiscount?.percent ?? null,
         unitFactor: v.unitFactor,
+        unit: packaged ? { id: packaged.id, factor: packaged.factor } : null,
       });
       netUnitPrice = priced.netUnitPrice.toFixed(2);
+      packageNetPrice = priced.package ? priced.package.netUnitPrice.toFixed(2) : null;
       listCurrency = priced.listCurrency;
       listUnitPrice = priced.listUnitPrice.toFixed(2);
     } catch {
@@ -168,6 +195,9 @@ export async function getCart(
       quantityScale: v.quantityScale,
       vatRate: v.product.vatRate,
       quantity: qty(item.quantity),
+      unitId: packaged?.id ?? null,
+      units: v.units.map((u) => ({ id: u.id, name: u.name, factor: qty(u.factor) })),
+      packageNetPrice,
       netUnitPrice,
       listCurrency,
       listUnitPrice,
@@ -224,6 +254,7 @@ export async function setCart(
               cartId,
               variantId: i.variantId,
               quantity: i.quantity,
+              unitId: i.unitId ?? null,
             })),
           }),
         ]
@@ -247,14 +278,30 @@ export async function upsertCartItem(
       where: { cartId, variantId: input.variantId },
     });
   } else {
-    await assertCartLines([input]);
-    await prisma.cartItem.upsert({
-      where: { cartId_variantId: { cartId, variantId: input.variantId } },
-      create: { cartId, variantId: input.variantId, quantity: input.quantity },
-      update: input.increment
-        ? { quantity: { increment: input.quantity } }
-        : { quantity: input.quantity },
-    });
+    const unitId = input.unitId ?? null;
+    if (input.increment) {
+      // Eklenen miktar kendi biriminde tam paket olmalı; toplam, mevcut satırla
+      // birlikte denetlenir. Satır farklı bir birimdeyse toplam taban birime
+      // düşer: 1 koli + 5 adet "1,4 koli" değildir.
+      const existing = await prisma.cartItem.findUnique({
+        where: { cartId_variantId: { cartId, variantId: input.variantId } },
+        select: { quantity: true, unitId: true },
+      });
+      await assertCartLines([{ variantId: input.variantId, quantity: input.quantity, unitId }]);
+      const keepUnit = !existing || existing.unitId === unitId ? unitId : null;
+      await prisma.cartItem.upsert({
+        where: { cartId_variantId: { cartId, variantId: input.variantId } },
+        create: { cartId, variantId: input.variantId, quantity: input.quantity, unitId },
+        update: { quantity: { increment: input.quantity }, unitId: keepUnit },
+      });
+    } else {
+      await assertCartLines([{ variantId: input.variantId, quantity: input.quantity, unitId }]);
+      await prisma.cartItem.upsert({
+        where: { cartId_variantId: { cartId, variantId: input.variantId } },
+        create: { cartId, variantId: input.variantId, quantity: input.quantity, unitId },
+        update: { quantity: input.quantity, unitId },
+      });
+    }
   }
 
   await prisma.cart.update({ where: { id: cartId }, data: { updatedAt: new Date() } });
@@ -276,14 +323,20 @@ export async function clearCart(companyId: string, ownerId: string): Promise<voi
 }
 
 async function assertCartLines(
-  items: ReadonlyArray<{ variantId: string; quantity: number }>,
+  items: ReadonlyArray<{ variantId: string; quantity: number; unitId?: string | null }>,
 ): Promise<void> {
   const unique = [...new Set(items.map((i) => i.variantId))];
   if (unique.length === 0) return;
 
   const found = await prisma.productVariant.findMany({
     where: { id: { in: unique }, product: { isActive: true } },
-    select: { id: true, sku: true, quantityScale: true },
+    select: {
+      id: true,
+      sku: true,
+      unit: true,
+      quantityScale: true,
+      units: { where: { isActive: true }, select: { id: true, name: true, factor: true } },
+    },
   });
   if (found.length !== unique.length) {
     throw new BusinessError(
@@ -295,5 +348,15 @@ async function assertCartLines(
   for (const item of items) {
     const v = byId.get(item.variantId)!;
     assertQuantityScale(item.quantity, v.quantityScale, v.sku);
+    if (item.unitId) {
+      const unit = v.units.find((u) => u.id === item.unitId);
+      if (!unit) {
+        throw new BusinessError("UNIT_NOT_FOUND", `${v.sku}: birim bulunamadı`, {
+          sku: v.sku,
+          unitId: item.unitId,
+        });
+      }
+      assertWholePackages(item.quantity, unit, v.sku, v.unit);
+    }
   }
 }

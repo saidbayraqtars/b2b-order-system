@@ -11,7 +11,14 @@ import {
 } from "./order-policy";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
-import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
+import {
+  assertQuantityScale,
+  assertWholePackages,
+  formatQuantity,
+  qty,
+  qtyAdd,
+  qtySub,
+} from "./quantity";
 import { createsReceivable, resolvePaymentTerm } from "./payment-terms";
 import { convertPriceRows, currentRatesTx, rateFor } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
@@ -45,7 +52,24 @@ export interface QuoteInput {
   /** Freight, excl. VAT. Seller-side only — a buyer cannot price its own delivery. */
   shippingFee?: number | string;
   shippingVatRate?: number;
-  items: Array<{ variantId: string; quantity: number }>;
+  /**
+   * `quantity` her zaman **taban birimde** (2 koli × 12 = 24). `unitId`
+   * satırın paket birimidir; verilirse miktar o paketin tam katı olmalı.
+   */
+  items: Array<{ variantId: string; quantity: number; unitId?: string | null }>;
+}
+
+/** Satırın paket birimi künyesi — siparişe donar, belgede "2 KOLİ" yazar. */
+export interface QuotedLineUnit {
+  id: string;
+  name: string;
+  /** 1 paket kaç taban birim. */
+  factor: number;
+  /** Paket sayısı. */
+  count: number;
+  /** Paket başına liste fiyatı ve paket başına net. */
+  unitPrice: Money;
+  netUnitPrice: Money;
 }
 
 /** One priced cart line, still in Decimal — the API layer stringifies it. */
@@ -88,6 +112,12 @@ export interface QuotedLine {
    */
   pricingUnit: string | null;
   unitFactor: Money | null;
+  /**
+   * Paketle alınan satırda paket künyesi; taban birimle alınan satırda null.
+   * Paketli satırda yukarıdaki birim alanları taban birim başınadır (altı
+   * ondalık), paket rakamları burada.
+   */
+  unit: QuotedLineUnit | null;
 }
 
 export interface QuoteCompany {
@@ -236,6 +266,10 @@ export async function buildQuote(
       quantityScale: true,
       pricingUnit: true,
       unitFactor: true,
+      units: {
+        where: { isActive: true },
+        select: { id: true, name: true, factor: true },
+      },
       product: {
         // Özel kodlar kampanya hedefi için (ürün özel kodu = X).
         select: { id: true, name: true, vatRate: true, categoryId: true, ...CUSTOM_CODE_SELECT },
@@ -243,6 +277,7 @@ export async function buildQuote(
       prices: {
         select: {
           customerGroupId: true,
+          unitId: true,
           minQuantity: true,
           price: true,
           currency: true,
@@ -264,6 +299,14 @@ export async function buildQuote(
     // Önce biçim: adet satan kalemde 1,5 bir yazım hatasıdır ve "minimum
     // sipariş" ya da "koli katı" mesajı kullanıcıya yanlış şeyi söylerdi.
     assertQuantityScale(item.quantity, v.quantityScale, v.sku);
+    const unit = item.unitId ? v.units.find((u) => u.id === item.unitId) : null;
+    if (item.unitId && !unit) {
+      throw new BusinessError("UNIT_NOT_FOUND", `${v.sku}: birim bulunamadı`, {
+        sku: v.sku,
+        unitId: item.unitId,
+      });
+    }
+    if (unit) assertWholePackages(item.quantity, unit, v.sku, v.unit);
     const moq = qty(v.moqUnits);
     if (item.quantity < moq) {
       throw new BusinessError(
@@ -297,6 +340,7 @@ export async function buildQuote(
       discounts: company.discounts,
       volumeDiscountPercent: volumePercent,
       unitFactor: v.unitFactor,
+      unit: unit ? { id: unit.id, factor: unit.factor } : null,
     });
 
     lines.push({
@@ -314,14 +358,31 @@ export async function buildQuote(
       listCurrency: r.listCurrency,
       listUnitPrice: r.listUnitPrice,
       exchangeRate: rateFor(r.listCurrency, rates),
-      lineGross: round2(r.unitPrice.mul(item.quantity)),
-      lineDiscount: round2(r.discountPerUnit.mul(item.quantity)),
+      // Paketli satırda brüt ve iskonto paket üzerinden: taban birime inmiş
+      // altı ondalıklı fiyatın çarpımı kuruşu bir oynatabilirdi.
+      lineGross: r.package
+        ? round2(r.package.unitPrice.mul(r.package.count))
+        : round2(r.unitPrice.mul(item.quantity)),
+      lineDiscount: r.package
+        ? round2(r.package.discountPerUnit.mul(r.package.count))
+        : round2(r.discountPerUnit.mul(item.quantity)),
       promotionDiscount: ZERO,
       lineNet: r.lineNet,
       lineTax: ZERO,
       isGift: false,
       pricingUnit: v.pricingUnit,
       unitFactor: v.unitFactor,
+      unit:
+        unit && r.package
+          ? {
+              id: unit.id,
+              name: unit.name,
+              factor: qty(unit.factor),
+              count: r.package.count,
+              unitPrice: r.package.unitPrice,
+              netUnitPrice: r.package.netUnitPrice,
+            }
+          : null,
     });
   }
 
@@ -526,6 +587,7 @@ async function priceGifts(
       prices: {
         select: {
           customerGroupId: true,
+          unitId: true,
           minQuantity: true,
           price: true,
           currency: true,
@@ -594,6 +656,8 @@ async function priceGifts(
         isGift: true,
         pricingUnit: v.pricingUnit,
         unitFactor: v.unitFactor,
+        // Hediye taban birimde verilir: kampanya "3 adet" der, "3 koli" değil.
+        unit: null,
       },
     });
   }
@@ -619,6 +683,18 @@ export interface QuoteLineView {
   /** O para birimindeki birim liste fiyatı ve kullanılan kur. */
   listUnitPrice: string;
   exchangeRate: string;
+  /**
+   * Paketle alınan satır: "2 KOLİ × 100,00 ₺". `quantity` ve `unitPrice`
+   * yine taban birimdedir; ekran paket rakamlarını buradan basar.
+   */
+  unit: {
+    id: string;
+    name: string;
+    factor: number;
+    count: number;
+    unitPrice: string;
+    netUnitPrice: string;
+  } | null;
 }
 
 export interface OrderQuoteView {
@@ -681,6 +757,16 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
       lineNet: l.lineNet.toFixed(2),
       vatRate: l.vatRate,
       isGift: l.isGift,
+      unit: l.unit
+        ? {
+            id: l.unit.id,
+            name: l.unit.name,
+            factor: l.unit.factor,
+            count: l.unit.count,
+            unitPrice: l.unit.unitPrice.toFixed(2),
+            netUnitPrice: l.unit.netUnitPrice.toFixed(2),
+          }
+        : null,
     })),
     subtotal: quote.subtotal.toFixed(2),
     discountTotal: quote.discountTotal.toFixed(2),

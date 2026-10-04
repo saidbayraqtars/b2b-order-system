@@ -10,3 +10,12 @@ export const ZERO = new Prisma.Decimal(0);
 export function round2(d: Prisma.Decimal): Prisma.Decimal {
   return d.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 }
+
+/**
+ * Altı ondalığa yuvarla — paket fiyatının taban birime bölünmüş hâli
+ * (koli 100 ₺ / 12 = 8,333333 ₺). Yalnızca birim fiyat ve birim iskonto
+ * kolonları bu hassasiyeti tutar; tutarlar her zaman `round2`.
+ */
+export function round6(d: Prisma.Decimal): Prisma.Decimal {
+  return d.toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP);
+}

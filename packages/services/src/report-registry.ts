@@ -402,6 +402,9 @@ export const DATASETS: Record<ReportDataset, DatasetDef> = {
         format: "number",
       },
       isGift: { label: "Hediye", type: "boolean", path: "isGift", groupable: true },
+      // Paket birimi (koli, palet). "Adet" yine taban birimde; bu alan "koliyle
+      // ne kadar satılıyor" sorusu için gruplanır.
+      unitName: text("Paket birimi", "unitName"),
       // Döviz künyesi. Gruplanabilir olması asıl işi: "dolarla satılan malın
       // cirosu ne kadar" sorusu ancak para birimine göre kırılınca cevaplanıyor.
       // Kur toplanabilir bir sayı değil — ortalaması bile yanıltıcı, çünkü

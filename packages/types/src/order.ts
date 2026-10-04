@@ -14,7 +14,10 @@ export const cartItemInputSchema = z.object({
   // cuid() değil: içe aktarılan katalogda kimlik Prisma'nın ürettiği biçimde
   // değil ve o kontrol 2.654 ürünü sipariş edilemez yapıyordu — bkz. id.ts.
   variantId: entityIdSchema,
+  /** Taban birimde miktar — 2 koli × 12 = 24. */
   quantity: quantityInput(),
+  /** Satırın paket birimi (koli, palet); yoksa taban birim. */
+  unitId: entityIdSchema.nullish(),
 });
 export type CartItemInput = z.infer<typeof cartItemInputSchema>;
 

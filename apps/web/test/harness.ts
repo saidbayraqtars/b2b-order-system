@@ -135,6 +135,8 @@ const QUANTITY_KEYS = new Set([
   "balanceAfter",
   "pending",
   "totalStock",
+  // Paket biriminin çarpanı (1 koli = 12): miktar gibi Decimal kolondan gelir.
+  "factor",
 ]);
 
 function assertNumericQuantities(value: unknown, url: string, path = "body"): void {

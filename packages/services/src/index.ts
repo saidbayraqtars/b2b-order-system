@@ -33,6 +33,7 @@ export * from "./erp-ingest";
 export * from "./erp-write";
 export * from "./slug";
 export * from "./catalog-admin";
+export * from "./variant-unit";
 export * from "./pricing-admin";
 export * from "./ledger";
 export * from "./report-templates";

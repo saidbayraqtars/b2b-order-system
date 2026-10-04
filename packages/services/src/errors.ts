@@ -137,6 +137,8 @@ export type BusinessErrorCode =
   | "INVALID_STOCK"
   /** Miktar kalemin ölçeğine uymuyor: adet satan kalemde 1,5 gibi. */
   | "INVALID_QUANTITY"
+  | "UNIT_NOT_FOUND"
+  | "DUPLICATE_UNIT"
   | "STOCK_MOVEMENT_NOT_FOUND"
   | "LOT_NOT_FOUND"
   | "LOT_CODE_TAKEN"

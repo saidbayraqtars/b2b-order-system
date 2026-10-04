@@ -10,7 +10,7 @@ import type {
   PaymentOptions,
 } from "@repo/services";
 import type { PaymentMethod } from "@repo/types";
-import { useCart, cartTotals } from "@/store/cart";
+import { useCart, cartTotals, lineFactor, type CartLine } from "@/store/cart";
 import { formatQuantity, formatTRY } from "@/lib/format";
 import { isFractional, parseQuantity } from "@/lib/quantity";
 import { CurrencyNote } from "@/components/currency-note";
@@ -33,7 +33,7 @@ const STATUS_MESSAGE: Record<string, string> = {
 };
 
 export function CartPanel({ companyId }: { companyId: string }) {
-  const { lines, inc, dec, setQty, remove, clear, isLoading } = useCart(companyId);
+  const { lines, inc, dec, setQty, setUnit, remove, clear, isLoading } = useCart(companyId);
   const localTotals = cartTotals(lines);
 
   const [couponDraft, setCouponDraft] = useState("");
@@ -44,6 +44,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
   const items = lines.map((l) => ({
     variantId: l.variantId,
     quantity: l.quantity,
+    unitId: l.unitId,
   }));
 
   // What this customer is allowed to pick. The server re-checks the choice when
@@ -192,7 +193,13 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     >
                       <Minus className="h-3 w-3" />
                     </StepButton>
-                    {isFractional(l) ? (
+                    {lineFactor(l) ? (
+                      // Paketli satır paket sayısını gösterir; taban birim
+                      // karşılığı birim seçicinin altında.
+                      <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
+                        {formatQuantity(l.quantity / lineFactor(l)!)}
+                      </span>
+                    ) : isFractional(l) ? (
                       <FractionalQuantity
                         key={l.quantity}
                         value={l.quantity}
@@ -211,11 +218,17 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     >
                       <Plus className="h-3 w-3" />
                     </StepButton>
+                    {l.units.length > 0 && (
+                      <UnitSelect
+                        line={l}
+                        onChange={(unitId) => setUnit(l.variantId, unitId)}
+                      />
+                    )}
                   </div>
                   <span className="text-right text-body-sm font-semibold tabular-nums text-ink">
                     {l.netUnitPrice === null
                       ? "fiyat yok"
-                      : formatTRY(Number(l.netUnitPrice) * l.quantity)}
+                      : formatTRY(lineNet(l))}
                     {/* Kur yok: sepetteki kur henüz donmadı, sipariş
                         verildiğinde donacak. Burada gösterilen sayı bir söz
                         değil, malın hangi para biriminde listelendiği. */}
@@ -429,6 +442,49 @@ export function CartPanel({ companyId }: { companyId: string }) {
  * 0,75 kg ancak yazılarak girilir. Kutudan çıkınca (ya da Enter) sepete gider;
  * sunucu yanıtı ölçeğe yuvarlanmış miktarı geri yazar.
  */
+/** Satır tutarı: paketli satır paket fiyatıyla, öbürü birim fiyatıyla. */
+function lineNet(l: CartLine): number {
+  const factor = lineFactor(l);
+  if (factor && l.packageNetPrice) return Number(l.packageNetPrice) * (l.quantity / factor);
+  return Number(l.netUnitPrice ?? 0) * l.quantity;
+}
+
+/**
+ * Satırın birimi: taban birim (ADET) ya da paket (KOLİ × 12). Değiştirince
+ * miktar yeni birimin tam katına yukarı yuvarlanır.
+ */
+function UnitSelect({
+  line,
+  onChange,
+}: {
+  line: CartLine;
+  onChange: (unitId: string | null) => void;
+}) {
+  const factor = lineFactor(line);
+  return (
+    <span className="ml-2 flex flex-col">
+      <select
+        value={line.unitId ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        aria-label={`${line.productName} birimi`}
+        className="rounded border border-line bg-surface px-1 py-0.5 text-xs text-ink"
+      >
+        <option value="">{line.unit ?? "ADET"}</option>
+        {line.units.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.name} ({formatQuantity(u.factor)})
+          </option>
+        ))}
+      </select>
+      {factor && (
+        <span className="mt-0.5 text-[10px] text-ink-faint tabular-nums">
+          = {formatQuantity(line.quantity)} {line.unit ?? "adet"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function FractionalQuantity({
   value,
   unit,

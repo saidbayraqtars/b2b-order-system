@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import { BASE_CURRENCY } from "@repo/types";
 import type { CreateInvoiceInput, InvoiceStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
+import { lineUnitView, type LineUnitView } from "./variant-unit";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
 import { formatQuantity, qty as toQty, qtyAdd, qtySub } from "./quantity";
@@ -32,6 +33,8 @@ export interface InvoiceContext {
 }
 
 export interface InvoiceLineView {
+  /** Paketle sipariş edilmiş satırın künyesi; sipariş satırından okunur. */
+  unit: LineUnitView | null;
   id: string;
   productName: string;
   sku: string;
@@ -489,7 +492,13 @@ const invoiceSelect = {
       vatRate: true,
       lineTotal: true,
       orderItem: {
-        select: { listCurrency: true, listUnitPrice: true, exchangeRate: true },
+        select: {
+          listCurrency: true,
+          listUnitPrice: true,
+          exchangeRate: true,
+          unitName: true,
+          unitMultiplier: true,
+        },
       },
     },
     orderBy: { productName: "asc" },
@@ -532,6 +541,14 @@ function toView(r: InvoiceRow): InvoiceView {
       listCurrency: i.orderItem?.listCurrency ?? BASE_CURRENCY,
       listUnitPrice: i.orderItem?.listUnitPrice?.toFixed(2) ?? null,
       exchangeRate: i.orderItem?.exchangeRate.toFixed(4) ?? "1.0000",
+      unit: i.orderItem
+        ? lineUnitView({
+            quantity: i.quantity,
+            unitName: i.orderItem.unitName,
+            unitMultiplier: i.orderItem.unitMultiplier,
+            unitPrice: i.unitPrice,
+          })
+        : null,
     })),
     shipmentNumbers: r.shipments.map((s) => s.documentNumber),
   };

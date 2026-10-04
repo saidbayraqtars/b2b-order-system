@@ -224,24 +224,29 @@ export function PortalClient({
         setScanNotice({ kind: "warn", text: `${term}: tam eşleşme yok` });
         return;
       }
-      const label = `${hit.product.name} · ${hit.variant.sku}`;
-      if (!isScanOrderable(hit.variant)) {
+      const label = hit.unit
+        ? `${hit.product.name} · ${hit.variant.sku} · 1 ${hit.unit.name}`
+        : `${hit.product.name} · ${hit.variant.sku}`;
+      if (!isScanOrderable(hit.variant, hit.unit)) {
         setScanNotice({
           kind: "warn",
           text:
-            hit.variant.netUnitPrice === null
+            (hit.unit ? hit.unit.netUnitPrice : hit.variant.netUnitPrice) === null
               ? `${label}: fiyat tanımsız, sepete eklenmedi`
               : `${label}: yeterli stok yok, sepete eklenmedi`,
         });
         return;
       }
-      add({
-        variantId: hit.variant.id,
-        unitsPerCase: hit.variant.unitsPerCase,
-        moqUnits: hit.variant.moqUnits,
-        stock: hit.variant.stock,
-        quantityScale: hit.variant.quantityScale,
-      });
+      add(
+        {
+          variantId: hit.variant.id,
+          unitsPerCase: hit.variant.unitsPerCase,
+          moqUnits: hit.variant.moqUnits,
+          stock: hit.variant.stock,
+          quantityScale: hit.variant.quantityScale,
+        },
+        hit.unit ? { id: hit.unit.id, factor: hit.unit.factor } : null,
+      );
       // Kutu temizleniyor ki sıradaki kod üstüne yazılmadan okutulabilsin.
       setSearch("");
       setScanNotice({ kind: "ok", text: `${label} sepete eklendi` });

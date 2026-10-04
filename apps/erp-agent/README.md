@@ -61,6 +61,7 @@ Dönem kodları `TBLDONEM` tablosunda; ilk müşteride D0016=2025, D0017=2026.
 | Cari kartları + bakiye | `TBLCARI` + `TBLCARIHAREKETLERI` | ✅ |
 | Stok | `F{f}D{d}TBLDEPOENVANTER` + `TBLSTOKLAR` (dönem defterinin toplamı) | ✅ |
 | Fiyat listesi | `TBLBIRIMLEREX.SATISFIYATI1..6` | ✅ (`prices.lists` haritası şart) |
+| Paket birimleri | `TBLBIRIMLEREX` (`ANABIRIM` dışı, `CARPAN ≠ 1`) | ✅ fiyattan önce gider |
 
 **Stok neden dönem tablosundan okunuyor:** firma seviyesindeki
 `TBLSTOKENVANTER` aynı şeye benziyor ama kritik seviye ızgarasıdır
@@ -101,6 +102,15 @@ kartın KDV grubundaki orana göre net'e indirilir (ilk müşteride 95.017 satı
 95.009'u KDV dahil); grup adlarına güvenmeyin, "8 KDV" grubunun oranı **10**'dur.
 TL dışı para birimindeki satırlar gönderilmez, sayısı günlüğe yazılır — b2b
 fiyat satırında para birimi alanı yok ve dönüştürmek bu sürecin işi değil.
+
+**Paket birimleri (koli, palet):** bir kartın birim satırları `STOKNO` ile
+karta bağlı; `ANABIRIM = 1` taban birim, `CARPAN` "bu birim kaç taban birim
+eder". Galya'da Pepsi ADET (1) + KOLİ (24), süzme yoğurt KG (1) + ADET (5).
+Çarpanı 1 olan satır paket değildir ve gönderilmez (Özdemirkaya'nın 104.603
+birim satırının 104.601'i böyle). Paketin kendi fiyatı varsa fiyat eşitlemesi
+onu `unitCode` (birimin `IND`'i) ile gönderir; b2b bu fiyatı paket başına
+okur. Birimler fiyattan önce gönderilir, yoksa paket fiyatı bağlanacak birimi
+bulamaz.
 
 ## Eşleme
 

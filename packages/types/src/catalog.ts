@@ -111,6 +111,28 @@ export type CreateVariantInput = z.infer<typeof createVariantSchema>;
 export const updateVariantSchema = createVariantSchema.partial();
 export type UpdateVariantInput = z.infer<typeof updateVariantSchema>;
 
+// ── Paket birimi (koli, palet) ──
+
+export const upsertVariantUnitSchema = z.object({
+  /** KOLİ, PALET, ÇUVAL — sunucuda büyük harfe çevrilir. */
+  name: z.string().trim().min(1, "Birim adı boş olamaz").max(16),
+  /** 1 paket kaç taban birim eder: "1 koli = 12 adet" ise 12. */
+  factor: quantityInput({ max: 1_000_000, message: "Çarpan sıfırdan büyük olmalı" }),
+  barcode: z.string().trim().max(64).nullish(),
+  externalCode: z.string().trim().max(64).nullish(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).max(999).optional(),
+  /**
+   * Paketin liste fiyatı (grupsuz, ilk kademe). null = fiyatı kaldır, paket
+   * taban fiyat × çarpandan fiyatlansın; verilmezse dokunulmaz.
+   */
+  price: z.number().nonnegative("Fiyat negatif olamaz").max(99_999_999).nullish(),
+});
+export type UpsertVariantUnitInput = z.infer<typeof upsertVariantUnitSchema>;
+
+export const updateVariantUnitSchema = upsertVariantUnitSchema.partial();
+export type UpdateVariantUnitInput = z.infer<typeof updateVariantUnitSchema>;
+
 // ── Price tier ──
 
 export const upsertPriceSchema = z.object({

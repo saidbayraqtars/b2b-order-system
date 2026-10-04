@@ -68,7 +68,11 @@ async function currentPrices(
 ): Promise<Map<string, Prisma.Decimal>> {
   if (rows.length === 0) return new Map();
   const prices = await prisma.price.findMany({
-    where: { variantId: { in: [...new Set(rows.map((r) => r.variant.id))] } },
+    where: {
+      variantId: { in: [...new Set(rows.map((r) => r.variant.id))] },
+      // Zamanlı değişim taban birim fiyatına uygulanır.
+      unitId: null,
+    },
     select: {
       variantId: true,
       customerGroupId: true,
@@ -234,6 +238,7 @@ export async function applyDuePriceChanges(
           where: {
             variantId: change.variantId,
             customerGroupId: change.customerGroupId,
+            unitId: null,
             minQuantity: change.minQuantity,
           },
           select: { id: true, price: true, currency: true },

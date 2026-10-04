@@ -17,6 +17,7 @@ import { formatQuantity } from "@/lib/format";
 import { parseQuantity, QUANTITY_SCALE_OPTIONS } from "@/lib/quantity";
 import { Advanced } from "@/components/ui-mode";
 import { PriceEditor } from "./price-editor";
+import { UnitEditor } from "./unit-editor";
 
 const EMPTY_VARIANT = {
   sku: "",
@@ -119,6 +120,11 @@ export function VariantList({
                     ? "fiyat yok"
                     : `${v.prices.length} fiyat kademesi`}
                 </span>
+                {v.units.length > 0 && (
+                  <span className="text-xs text-ink-faint">
+                    {v.units.map((u) => `${u.name} ${formatQuantity(u.factor)}`).join(" · ")}
+                  </span>
+                )}
 
                 <div className="ml-auto flex items-center gap-2">
                   <Label>Stok</Label>
@@ -156,6 +162,12 @@ export function VariantList({
                     onSave={(body) => update.mutate({ id: v.id, body })}
                   />
                   <PriceEditor variantId={v.id} productId={productId} />
+                  <UnitEditor
+                    productId={productId}
+                    variantId={v.id}
+                    baseUnit={v.unit}
+                    units={v.units}
+                  />
                 </div>
               )}
             </div>

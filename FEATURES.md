@@ -266,7 +266,7 @@ Süper admin, ürün ağacını uygulama içinden yönetir — seed'e bağımlı
 
 - **Kategori:** ağaç yapılı oluştur/yeniden adlandır/taşı/sil. Slug isimden türetilir (Türkçe karakter duyarlı: "Şişe & Kapak" → `sise-kapak`), çakışırsa `-2`, `-3` eklenir. Kendi altına taşıma engelli (döngü koruması). Alt kategorisi, ürünü veya iskontosu olan kategori silinemez.
 - **Ürün:** ad, kategori, marka, KDV (%1/10/20), açıklama, görsel listesi, aktif/pasif. Pasif ürün katalogdan düşer ama geçmiş siparişlerde durur.
-- **Varyant:** SKU, barkod, renk, beden, koli içi adet, minimum sipariş, stok, miktar ölçeği (tam sayı ya da ondalık). SKU ve barkod benzersizliği kontrol edilir. Stok satır içinde düzenlenir (yalnız blur/Enter'da yazar).
+- **Varyant:** SKU, barkod, renk, beden, koli içi adet, minimum sipariş, stok, miktar ölçeği (tam sayı ya da ondalık), paket birimleri (koli, palet: çarpan, barkod, fiyat). SKU ve barkod benzersizliği kontrol edilir; paket barkodları da aynı havuzda. Stok satır içinde düzenlenir (yalnız blur/Enter'da yazar).
 - **Fiyat kademesi:** varyant × müşteri grubu × minimum adet → fiyat. Aynı üçlü tekrar yazıldığında hata vermez, günceller (upsert). Grup seçilmezse varsayılan liste fiyatı olur. Fiyatı olmayan varyant listede uyarı ile işaretlenir.
 - **Firma iskontosu:** firma detay sayfasında kategori **veya** ürün hedefli, yüzde ya da sabit tutar. Aynı satırda ikisi birden seçilemez (çözümleme ürünü kategoriye tercih eder), yüzde 100'ü aşamaz.
 - **Silme kuralı:** siparişte kullanılan ürün/varyant asla silinmez (`IN_USE`) — pasife alınır, sipariş geçmişi bozulmaz.
@@ -318,6 +318,41 @@ Kilo, metre ve litre satan kurulum 0,75 kg tutabilir ve satabilir.
   stok, parti, sevk ve iade formları ondalık kabul eder; miktarlar Türkçe
   biçimde (0,75) basılır. Mobil uygulama henüz tam sayı adımla ilerliyor
   (C akışı).
+
+### Çoklu birim (F2, 2026-10-05)
+
+Bir kalem adet, koli ve palet olarak satılır; her paketin kendi çarpanı,
+barkodu ve isteğe bağlı fiyatı vardır (Vega `TBLBIRIMLEREX`).
+
+- **Miktar taban birimde kalır.** Stok, sipariş, sevk, fatura ve iade
+  satırları yine adet (ya da kg) tutar. Paket yalnızca künyedir: sipariş
+  satırı "KOLİ × 12" bilgisini donmuş taşır, belge "= 2 KOLİ" yazar. Birim
+  kartı sonradan değişse ya da silinse de geçmiş sipariş değişmez.
+- **Tam paket:** koliyle alınan satır koli katı olmalı; 18 adet "1,5 koli"
+  reddedilir (`INVALID_QUANTITY`).
+- **Paket fiyatı:** paketin kendi fiyatı varsa ("koli 100 ₺") o, yoksa taban
+  fiyat × çarpan. Hesap paket üzerinden kuruşuyla yapılır, sonra taban
+  birime altı ondalıkla iner (8,333333 ₺/adet); kısmi faturada 12 adet yine
+  100,00 ₺ tutar. Sıra: grubun paket fiyatı → grubun adet fiyatı × çarpan →
+  liste paket fiyatı → liste adet fiyatı × çarpan — bayiyle konuşulmuş adet
+  fiyatı herkese açık koli fiyatına ezilmez. Paket kademesi paket sayısıyla
+  okunur. Sabit (FIXED) iskonto taban birim başınadır, paket başına çarpanla
+  büyür.
+- **Barkod:** kalem ve paket barkodları birlikte tekildir. Portalda koli
+  barkodu okutulunca sepete 1 koli girer.
+- **Yönetim:** ürün formunda varyantın altında "Paket birimleri": ad, çarpan,
+  barkod, liste fiyatı; pasife alma ve silme.
+- **Portal:** ürün detayında birim seçici ve paket fiyatı; sepette satır
+  birimi değiştirilebilir (miktar yeni paketin katına yuvarlanır).
+- **ERP:** ajan `TBLBIRIMLEREX`'ten paket birimlerini (`ANABIRIM` dışı,
+  çarpanı 1 olmayan) `/api/erp/units`'e gönderir; paketin kendi fiyatları
+  `unitCode` ile fiyat eşitlemesine katılır. Elle açılmış aynı adlı birim
+  ERP koduna bağlanır, çakışan barkod barkodsuz yazılıp sorun kaydına düşer.
+- **Rapor:** sipariş kalemleri veri kümesinde "Paket birimi" alanı.
+- **Açık:** mobil uygulama birim seçmiyor (C akışı; API `units`,
+  `unitId` ve satır `unit` künyesini döndürüyor). Gruba özel paket fiyatı
+  ekrandan girilmiyor, ERP'den geliyor. Excel içe aktarımı birim taşımıyor
+  (B akışı).
 
 ## 8. Raporlama (Adım 8)
 

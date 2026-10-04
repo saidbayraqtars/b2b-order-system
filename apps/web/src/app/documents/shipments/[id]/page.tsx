@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
-import { formatQuantity, listShipmentLots } from "@repo/services";
+import { formatQuantity, lineUnitView, listShipmentLots } from "@repo/services";
+import { PackageCount } from "@/components/package-note";
 import { requirePage } from "@/lib/guard";
 import { assertShipmentVisible } from "@/lib/order-access";
 import {
@@ -76,7 +77,13 @@ export default async function ShipmentDocumentPage({
           id: true,
           quantity: true,
           orderItem: {
-            select: { productName: true, sku: true, quantity: true },
+            select: {
+              productName: true,
+              sku: true,
+              quantity: true,
+              unitName: true,
+              unitMultiplier: true,
+            },
           },
         },
       },
@@ -157,7 +164,18 @@ export default async function ShipmentDocumentPage({
                   )}
                 </td>
                 <td className="py-2 text-neutral-500">{i.orderItem.sku}</td>
-                <td className="py-2 text-right tabular-nums">{formatQuantity(i.quantity)}</td>
+                <td className="py-2 text-right tabular-nums">
+                  {formatQuantity(i.quantity)}
+                  {/* Paket karşılığı: depocu "2 koli" sayıyor, 24 adet değil. */}
+                  <PackageCount
+                    unit={lineUnitView({
+                      quantity: i.quantity,
+                      unitName: i.orderItem.unitName,
+                      unitMultiplier: i.orderItem.unitMultiplier,
+                    })}
+                    className="block text-[10px] text-neutral-500"
+                  />
+                </td>
                 <td className="py-2 text-right tabular-nums text-neutral-500">
                   {formatQuantity(i.orderItem.quantity)}
                 </td>

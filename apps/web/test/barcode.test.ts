@@ -24,6 +24,7 @@ function variant(over: Partial<CatalogVariant> = {}): CatalogVariant {
     netUnitPrice: "100.00",
     listCurrency: null,
     listUnitPrice: null,
+    units: [],
     ...over,
   };
 }
@@ -114,5 +115,38 @@ describe("isScanOrderable", () => {
 
   it("accepts a priced variant with stock at the minimum", () => {
     expect(isScanOrderable(variant({ stock: 6, moqUnits: 6 }))).toBe(true);
+  });
+});
+
+describe("paket barkodu (F2)", () => {
+  const koli = {
+    id: "u-koli",
+    name: "KOLİ",
+    factor: 12,
+    barcode: "8690000000099",
+    unitPrice: "1200.00",
+    netUnitPrice: "1100.00",
+  };
+
+  it("koli barkodu kalemi ve koli birimini birlikte bulur", () => {
+    const products = [product([variant({ units: [koli] })])];
+    const hit = findScannedVariant(products, "8690000000099");
+    expect(hit?.variant.id).toBe("v1");
+    expect(hit?.unit?.id).toBe("u-koli");
+  });
+
+  it("kalemin kendi barkodu birimsiz eşleşir", () => {
+    const products = [product([variant({ units: [koli] })])];
+    expect(findScannedVariant(products, "8690000000001")?.unit).toBeNull();
+  });
+
+  it("stok bir koliyi karşılamıyorsa koli okutması sepete gitmez", () => {
+    expect(isScanOrderable(variant({ stock: 11, units: [koli] }), koli)).toBe(false);
+    expect(isScanOrderable(variant({ stock: 12, units: [koli] }), koli)).toBe(true);
+  });
+
+  it("koli fiyatı yoksa koli okutması sepete gitmez", () => {
+    const fiyatsiz = { ...koli, netUnitPrice: null };
+    expect(isScanOrderable(variant({ units: [fiyatsiz] }), fiyatsiz)).toBe(false);
   });
 });

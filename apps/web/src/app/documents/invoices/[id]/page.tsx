@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getInvoice } from "@repo/services";
 import { formatQuantity, formatTRY } from "@/lib/format";
+import { PackageCount, PackagePrice } from "@/components/package-note";
 import { CurrencyNote } from "@/components/currency-note";
 import { requirePage } from "@/lib/guard";
 import { assertInvoiceVisible } from "@/lib/order-access";
@@ -96,9 +97,13 @@ export default async function InvoiceDocumentPage({
             <tr key={i.id} className="border-b border-neutral-200">
               <td className="py-2">{i.productName}</td>
               <td className="py-2 text-neutral-500">{i.sku}</td>
-              <td className="py-2 text-right tabular-nums">{formatQuantity(i.quantity)}</td>
+              <td className="py-2 text-right tabular-nums">
+                {formatQuantity(i.quantity)}
+                <PackageCount unit={i.unit} className="block text-[10px] text-neutral-500" />
+              </td>
               <td className="py-2 text-right tabular-nums">
                 {formatTRY(i.unitPrice)}
+                <PackagePrice unit={i.unit} className="block text-[10px] text-neutral-500" />
                 {/* Dövizle satılan mal için zorunlu: müşteri "100 dolardan
                     anlaşmıştık" diyerek faturayı kontrol ediyor ve çarpımı
                     kendi yapabilmeli. Kur o günden, bugünkü kurdan değil. */}

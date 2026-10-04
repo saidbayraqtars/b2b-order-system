@@ -143,6 +143,14 @@ async function buildOrder(
       // faturanın "12,5 kg × 84,50 ₺/kg" açıklaması değişmemeli.
       pricingUnit: l.pricingUnit,
       unitFactor: l.unitFactor,
+      // Paket künyesi: miktar taban birimde kalır, belge "2 KOLİ" yazar.
+      ...(l.unit
+        ? {
+            unit: { connect: { id: l.unit.id } },
+            unitName: l.unit.name,
+            unitMultiplier: l.unit.factor,
+          }
+        : {}),
     }),
   );
   const stockLines = quote.lines.map((l) => ({

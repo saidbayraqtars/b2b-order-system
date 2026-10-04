@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
 import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
+import { lineUnitView, type LineUnitView } from "./variant-unit";
 import { qty } from "./quantity";
 import { releaseIntentsForOrder } from "./payment-intent";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
@@ -311,6 +312,8 @@ export interface OrderDetailItem {
   listCurrency: string;
   listUnitPrice: string | null;
   exchangeRate: string;
+  /** Paketle sipariş edildiyse künyesi ("2 KOLİ × 100,00 ₺"); yoksa null. */
+  unit: LineUnitView | null;
 }
 
 export interface OrderStatusEvent {
@@ -423,6 +426,8 @@ export async function getOrderDetail(
           listCurrency: true,
           listUnitPrice: true,
           exchangeRate: true,
+          unitName: true,
+          unitMultiplier: true,
         },
         orderBy: { productName: "asc" },
       },
@@ -493,6 +498,7 @@ export async function getOrderDetail(
       // belgede basılan çarpımı tutmaz hâle getirir.
       listUnitPrice: i.listUnitPrice?.toFixed(2) ?? null,
       exchangeRate: i.exchangeRate.toFixed(4),
+      unit: lineUnitView(i),
     })),
     history: o.statusHistory.map((h) => ({
       id: h.id,

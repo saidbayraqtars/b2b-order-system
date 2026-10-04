@@ -92,7 +92,10 @@ export const quoteOrderSchema = z.object({
       z.object({
         // cuid() değil — bkz. id.ts.
         variantId: entityIdSchema,
+        /** Taban birimde; sipariş satırıyla aynı sözleşme (order.ts). */
         quantity: quantityInput(),
+        /** Paket birimi (koli, palet); yoksa taban birim. */
+        unitId: entityIdSchema.nullish(),
       }),
     )
     .min(1, "Sepet boş olamaz"),

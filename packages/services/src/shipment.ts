@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { CreateShipmentInput, OrderStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
+import { lineUnitView, type LineUnitView } from "./variant-unit";
 import { resolveDocumentNumber } from "./document-series";
 import { assertQuantityScale, formatQuantity, qty, qtySub } from "./quantity";
 import { recordStatusChange } from "./order-lifecycle";
@@ -27,6 +28,8 @@ export interface ShipmentLineView {
   productName: string;
   sku: string;
   quantity: number;
+  /** Paketle sipariş edilmiş satırın künyesi (irsaliyede "2 KOLİ"). */
+  unit: LineUnitView | null;
 }
 
 export interface ShipmentView {
@@ -284,7 +287,9 @@ export async function listShipments(orderId: string): Promise<ShipmentView[]> {
         select: {
           orderItemId: true,
           quantity: true,
-          orderItem: { select: { productName: true, sku: true } },
+          orderItem: {
+            select: { productName: true, sku: true, unitName: true, unitMultiplier: true },
+          },
         },
       },
     },
@@ -307,6 +312,11 @@ export async function listShipments(orderId: string): Promise<ShipmentView[]> {
       productName: i.orderItem.productName,
       sku: i.orderItem.sku,
       quantity: qty(i.quantity),
+      unit: lineUnitView({
+        quantity: i.quantity,
+        unitName: i.orderItem.unitName,
+        unitMultiplier: i.orderItem.unitMultiplier,
+      }),
     })),
   }));
 }
