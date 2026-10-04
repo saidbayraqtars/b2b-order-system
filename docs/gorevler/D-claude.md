@@ -20,12 +20,15 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | D1 özel kodlar | ✔ `68de3f9` |
 | D2 modül aç/kapa | ✔ `35081cd` |
 | D3 menü 6 başlık, D4 basit/gelişmiş görünüm | ✔ `38d62bd` |
-| F1 kesirli stok | ✔ `2e16988` (dal `claude/kesirli-stok`) — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
+| F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | sırada |
 | F3 depo bazlı kritik seviye | sırada |
 | D5 ekran ekran | sırada |
 
-Ölçüm: 1.146 test (erp-agent 18, servisler 719, web 409) yeşil.
+D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
+`claude/coklu-birim` dalında.
+
+Ölçüm: 1.165 test (erp-agent 22, servisler 734, web 409) yeşil.
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 
