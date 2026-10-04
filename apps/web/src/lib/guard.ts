@@ -6,6 +6,7 @@ import { hasRole, defaultRouteForRole } from "@repo/auth/rbac";
 import {
   BusinessError,
   checkPrincipal,
+  getDisabledModules,
   recordAudit,
   requiresTwoFactor,
   secretBoxReady,
@@ -15,8 +16,12 @@ import {
   type PrincipalRejection,
 } from "@repo/services";
 import {
+  effectivePermissions,
   hasPermission,
+  MODULES,
+  moduleOfPermission,
   PERMISSION_LABELS,
+  type ModuleKey,
   type Permission,
   type Role,
   type SessionUser,
@@ -133,6 +138,8 @@ const resolvePrincipal = cache(async (): Promise<
       user: SessionUser;
       channel: "web" | "mobile";
       twoFactorEnabled: boolean;
+      /** Kapalı modüller — izinleri `user.permissions`'tan zaten düşüldü. */
+      disabledModules: ModuleKey[];
     }
   | { ok: false; rejection: PrincipalRejection | "NONE"; claim: SessionClaim | null }
 > => {
@@ -141,11 +148,13 @@ const resolvePrincipal = cache(async (): Promise<
 
   const { user, rejection } = await checkPrincipal(claim.user.id, claim.tokenVersion);
   if (rejection) return { ok: false, rejection, claim };
+  const disabledModules = await getDisabledModules();
 
   return {
     ok: true,
     channel: claim.channel,
     twoFactorEnabled: user!.twoFactorEnabled,
+    disabledModules,
     user: {
       id: user!.id,
       email: user!.email,
@@ -154,7 +163,11 @@ const resolvePrincipal = cache(async (): Promise<
       companyId: user!.companyId,
       // Rol gibi: izinler de token'dan değil satırdan. Yetkisi az önce kısılan
       // bir kullanıcının açık sekmesi bir sonraki istekte bunu hisseder.
-      permissions: user!.permissions,
+      //
+      // Kapalı modülün izinleri burada, tek yerde düşülüyor: menü, sayfa, uç
+      // ve mobil gezinme hepsi bu listeyle çalıştığı için modül kapanınca
+      // her yer kendiliğinden uyuyor (`@repo/types` modules.ts).
+      permissions: effectivePermissions(user!.permissions, disabledModules),
     },
   };
 });
@@ -199,6 +212,11 @@ export interface GuardOptions {
    * hesabın işi.
    */
   twoFactorGate?: boolean;
+  /**
+   * Bu ekran/uç bir modüle bağlı ama izni paylaşılan bir izin (dağıtım ekranı
+   * `orders.fulfil` ile açılıyor). Modül kapalıysa izin yetse de kapı kapalı.
+   */
+  module?: ModuleKey;
 }
 
 /**
@@ -231,6 +249,28 @@ function missingPermissions(
   if (!needed) return [];
   const list = Array.isArray(needed) ? needed : [needed];
   return list.filter((p) => !hasPermission(user.permissions, p));
+}
+
+/**
+ * Eksik izinlerden biri kapalı bir modülün mü? Öyleyse mesaj "yetkiniz yok"
+ * değil "bu özellik kapalı" olmalı: kullanıcıya yetki istemesini söylemek,
+ * kimsenin veremeyeceği bir şeyi aratmak olurdu.
+ */
+function closedModuleOf(
+  missing: readonly Permission[],
+  disabled: readonly ModuleKey[],
+  options: GuardOptions | undefined,
+): ModuleKey | null {
+  if (options?.module && disabled.includes(options.module)) return options.module;
+  for (const p of missing) {
+    const key = moduleOfPermission(p);
+    if (key && disabled.includes(key)) return key;
+  }
+  return null;
+}
+
+function moduleClosedMessage(key: ModuleKey): string {
+  return `Bu özellik bu kurulumda kapalı (${MODULES[key].label}). Ayarlar → Modüller ekranından açılabilir.`;
 }
 
 async function recordDenial(
@@ -295,6 +335,13 @@ export async function requireUser(
   }
 
   const missing = missingPermissions(result.user, needed);
+  const closed = closedModuleOf(missing, result.disabledModules, options);
+  if (closed) {
+    // Kaydedilmiyor: kapalı bir modülün ucuna gelen istek bir yetki ihlali
+    // değil, kurulum kararı. Denetim kaydını bununla doldurmak gerçek
+    // reddedilmeleri gömerdi.
+    throw new AuthError(403, moduleClosedMessage(closed), "FORBIDDEN");
+  }
   if (missing.length > 0) {
     // Ayrı kaydediliyor: rol reddi yapılandırma hatasına, izin reddi çoğu zaman
     // birinin yetkisinin kısılmış olmasına işaret eder.
@@ -383,6 +430,8 @@ export async function requirePage(
   }
 
   const missing = missingPermissions(result.user, needed);
+  const closed = closedModuleOf(missing, result.disabledModules, options);
+  if (closed) redirect(`/403?modul=${closed}`);
   if (missing.length > 0) {
     await recordDenial(result.user, result.channel, {
       missingPermissions: missing,

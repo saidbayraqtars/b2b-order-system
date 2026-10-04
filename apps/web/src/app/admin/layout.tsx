@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { getDisabledModules } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { AdminShell } from "./_components/admin-shell";
 
@@ -17,8 +18,15 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   const user = await requirePage(["SUPER_ADMIN"]);
+  // İzinler kapalı modüllerinkiler düşülmüş geliyor; bu liste yalnızca
+  // paylaşılan izinle açılan satırlar için (Dağıtım → `orders.fulfil`).
+  const disabledModules = await getDisabledModules();
   return (
-    <AdminShell email={user.email} permissions={user.permissions}>
+    <AdminShell
+      email={user.email}
+      permissions={user.permissions}
+      disabledModules={disabledModules}
+    >
       {children}
     </AdminShell>
   );

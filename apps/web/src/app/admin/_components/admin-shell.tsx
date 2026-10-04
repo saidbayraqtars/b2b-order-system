@@ -38,8 +38,8 @@ import {
   Wand2,
   ArrowUpCircle,
 } from "lucide-react";
-import { HashtagSquareIcon } from "@/components/reicon";
-import { hasPermission, type Permission } from "@repo/types";
+import { HashtagSquareIcon, WidgetIcon } from "@/components/reicon";
+import { hasPermission, type ModuleKey, type Permission } from "@repo/types";
 import { SidebarShell, type SidebarGroup } from "@/components/app-sidebar";
 
 interface AdminLink {
@@ -48,6 +48,12 @@ interface AdminLink {
   icon: ComponentType<{ className?: string }>;
   /** Bu bölümü açan izin. Yoksa herkese görünür (yalnızca panel). */
   permission?: Permission;
+  /**
+   * İzni paylaşılan ama ekranı bir modüle ait satır (Dağıtım). Modül kapalıysa
+   * izin yetse de gizli. Modüle ait izinle açılan satırlara gerek yok: o izin
+   * zaten düşmüş geliyor.
+   */
+  module?: ModuleKey;
 }
 
 /**
@@ -153,6 +159,7 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         label: "Dağıtım",
         icon: Truck,
         permission: "orders.fulfil",
+        module: "teslimat",
       },
       {
         href: "/admin/iadeler",
@@ -272,6 +279,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "organization.manage",
       },
       {
+        href: "/admin/moduller",
+        label: "Modüller",
+        icon: WidgetIcon,
+        permission: "organization.manage",
+      },
+      {
         href: "/admin/erp",
         label: "ERP köprüsü",
         icon: Plug,
@@ -311,12 +324,17 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
   },
 ];
 
-/** Yetkisi olmayan bölümleri ve tümüyle boşalan grupları atar. */
-function visibleGroups(permissions: readonly Permission[]): SidebarGroup[] {
+/** Yetkisi olmayan ya da modülü kapalı bölümleri ve boşalan grupları atar. */
+function visibleGroups(
+  permissions: readonly Permission[],
+  disabledModules: readonly ModuleKey[],
+): SidebarGroup[] {
   return GROUPS.map((g) => ({
     title: g.title,
     links: g.links.filter(
-      (l) => !l.permission || hasPermission(permissions, l.permission),
+      (l) =>
+        (!l.permission || hasPermission(permissions, l.permission)) &&
+        (!l.module || !disabledModules.includes(l.module)),
     ),
   })).filter((g) => g.links.length > 0);
 }
@@ -324,16 +342,18 @@ function visibleGroups(permissions: readonly Permission[]): SidebarGroup[] {
 export function AdminShell({
   email,
   permissions,
+  disabledModules = [],
   children,
 }: {
   email: string;
   permissions: readonly Permission[];
+  disabledModules?: readonly ModuleKey[];
   children: ReactNode;
 }) {
   return (
     <SidebarShell
       context="Yönetim Paneli"
-      groups={visibleGroups(permissions)}
+      groups={visibleGroups(permissions, disabledModules)}
       userLabel={email}
     >
       {children}

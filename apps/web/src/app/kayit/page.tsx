@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { isModuleEnabled } from "@repo/services";
 import { AuthShell } from "@/components/auth-shell";
 import { DealerApplicationForm } from "./_components/dealer-application-form";
 
 export const metadata = { title: "Bayilik başvurusu" };
+
+// Modül kapalıysa sayfa yok: kurulumun açık olup olmadığı istek anında okunuyor.
+export const dynamic = "force-dynamic";
 
 /**
  * Bayilik başvurusu — bu sistemdeki "kayıt ol".
@@ -16,7 +21,8 @@ export const metadata = { title: "Bayilik başvurusu" };
  * Ekranın metni de bunu saklamıyor: "kayıt ol" değil "başvuru gönder" yazıyor
  * ve gönderildikten sonra çıkan ekran hesabın açıldığını söylemiyor.
  */
-export default function DealerApplicationPage() {
+export default async function DealerApplicationPage() {
+  if (!(await isModuleEnabled("basvuru"))) notFound();
   return (
     <AuthShell
       eyebrow="Bayilik başvurusu"

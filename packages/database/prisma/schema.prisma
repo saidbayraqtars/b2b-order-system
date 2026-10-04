@@ -2644,6 +2644,7 @@ enum AuditAction {
   /// Cari mutabakat cevabı. Defter oynamıyor — "mutabıkım" bir beyandır, bir
   /// işlem değil — dolayısıyla cevabın izi **yalnızca** burada kalıyor.
   RECONCILIATION_ANSWERED
+  MODULE_TOGGLED // bir modül (özellik kümesi) açıldı ya da kapandı
 }
 
 /// Append-only record of security-relevant events. Nothing in the application
@@ -3081,4 +3082,18 @@ model CustomCodeField {
   updatedAt DateTime @updatedAt
 
   @@unique([entity, slot])
+}
+
+/// Kurulumda açık/kapalı modüller (özellik kümeleri: kampanya, çek, kurye…).
+///
+/// Satır yoksa modül **açık** — tablo eklenmeden önce kurulmuş bir sistem
+/// yükseldiğinde hiçbir ekran kaybolmasın. Anahtarlar `@repo/types` modules.ts'te.
+/// Kapatmak veriyi silmez; yalnızca ekranları ve uçları kapatır.
+model InstallationModule {
+  key     String  @id
+  enabled Boolean @default(true)
+
+  /// Son değiştiren. İlişki bilerek yok: hesap silinse de satır kalmalı.
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }

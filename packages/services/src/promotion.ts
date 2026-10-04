@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { isModuleEnabled } from "./modules";
 import { CUSTOM_CODE_SELECT, customCodeValuesOf } from "./custom-codes";
 import type { PaymentMethod } from "@repo/types";
 import { BusinessError } from "./errors";
@@ -54,6 +55,13 @@ export async function loadEligiblePromotions(
 ): Promise<LoadedPromotions> {
   const now = params.now ?? new Date();
   const coupon = normalizeCoupon(params.couponCode);
+
+  // Kampanya modülü kapalıysa hiçbir kampanya uygulanmaz: menüden kaybolan
+  // bir kampanyanın sepette indirim yapmaya devam etmesi, kimsenin göremediği
+  // bir fiyat kuralı demek olurdu. Kupon yazılmışsa "geçersiz" düşer.
+  if (!(await isModuleEnabled("kampanya"))) {
+    return { promotions: [], couponFound: false };
+  }
 
   const rows = await client.promotion.findMany({
     where: {

@@ -28,3 +28,6 @@ function reicon(name: string): IconComponent {
 
 /** Özel kodlar: köşeli kare içinde diyez. */
 export const HashtagSquareIcon = reicon("it/hashtag-square");
+
+/** Modüller: dört parçalı ızgara. */
+export const WidgetIcon = reicon("settings/widget");

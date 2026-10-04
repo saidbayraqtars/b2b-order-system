@@ -19,6 +19,7 @@ import {
 import { hasPermission, type Permission, type Role } from "@repo/types";
 import { SidebarShell, type SidebarLink } from "@/components/app-sidebar";
 import { CompanySwitcher } from "@/components/storefront/company-switcher";
+import { useDisabledModules } from "@/lib/use-modules";
 
 /**
  * Portalın kabuğu. İki farklı kullanıcıya hizmet eder:
@@ -64,6 +65,7 @@ export function PortalNav({
   const q =
     isProxy && companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
   const can = (p: Permission) => hasPermission(permissions, p);
+  const disabledModules = useDisabledModules();
 
   const links: SidebarLink[] = [];
   if (can("products.view")) {
@@ -82,7 +84,9 @@ export function PortalNav({
       label: "Ekstre",
       icon: Receipt,
     });
-    links.push({ href: `/portal/ziyaret${q}`, label: "Ziyaret", icon: MapPin });
+    if (!disabledModules.includes("saha")) {
+      links.push({ href: `/portal/ziyaret${q}`, label: "Ziyaret", icon: MapPin });
+    }
   }
 
   // Rol *ve* izin: onay/kullanıcı ekranları müşterinin kendi iç işleyişi

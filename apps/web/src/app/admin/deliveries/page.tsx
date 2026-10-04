@@ -5,7 +5,8 @@ import { DeliveryTabs } from "./_components/delivery-tabs";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDeliveriesPage() {
-  await requirePage(["SUPER_ADMIN"], "orders.fulfil");
+  // İzin paylaşılan (sevkiyat da `orders.fulfil`), ekran teslimat modülünün.
+  await requirePage(["SUPER_ADMIN"], "orders.fulfil", { module: "teslimat" });
 
   return (
     <main className="mx-auto max-w-5xl">

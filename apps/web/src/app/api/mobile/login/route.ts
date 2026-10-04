@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import { attemptLogin, LOCKOUT_MINUTES } from "@repo/services";
-import { loginSchema } from "@repo/types";
+import { attemptLogin, getDisabledModules, LOCKOUT_MINUTES } from "@repo/services";
+import { effectivePermissions, loginSchema } from "@repo/types";
 import { AuthError, InputError, withAuthErrors } from "@/lib/guard";
 import { signMobileToken } from "@/lib/mobile-token";
 import { requestMetaFrom } from "@/lib/request-meta";
@@ -52,6 +52,12 @@ export function POST(req: NextRequest) {
     }
 
     const token = await signMobileToken(result.user, result.tokenVersion);
-    return Response.json({ token, user: result.user });
+    // Uygulama gezinmesini bu listeden kuruyor: kapalı modülün ekranı ilk
+    // açılışta da görünmesin. (/api/mobile/me zaten etkin listeyi dönüyor.)
+    const user = {
+      ...result.user,
+      permissions: effectivePermissions(result.user.permissions, await getDisabledModules()),
+    };
+    return Response.json({ token, user });
   });
 }

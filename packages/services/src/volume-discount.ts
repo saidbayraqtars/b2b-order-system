@@ -1,4 +1,5 @@
 import { Prisma, prisma } from "@repo/database";
+import { isModuleEnabled } from "./modules";
 import type { VolumeDiscountMode } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
@@ -66,6 +67,9 @@ export async function resolveVolumeDiscount(
   company: VolumeDiscountSubject,
   now: Date = new Date(),
 ): Promise<ResolvedVolumeDiscount | null> {
+  // Modül kapalıyken hiçbir firma basamak iskontosu almaz — elle sabitlenmiş
+  // olanlar dahil. Basamaklar silinmiyor; modül açılınca aynen döner.
+  if (!(await isModuleEnabled("hacim"))) return null;
   if (company.volumeDiscountMode === "MANUAL") {
     if (!company.volumeTierId) return null;
     const tier = await client.volumeTier.findUnique({
@@ -235,6 +239,17 @@ export async function getVolumeStatus(
   });
   if (!company) {
     throw new BusinessError("COMPANY_NOT_FOUND", "Firma bulunamadı", { companyId });
+  }
+
+  // Kapalı modülde "bir üst basamağa şu kadar kaldı" teşviki de gösterilmez.
+  if (!(await isModuleEnabled("hacim"))) {
+    return {
+      mode: company.volumeDiscountMode,
+      current: null,
+      turnover: null,
+      windowMonths: null,
+      next: null,
+    };
   }
 
   const resolved = await resolveVolumeDiscount(prisma, company, now);
