@@ -73,10 +73,13 @@ Docker yok. Taşınabilir PostgreSQL 16 kurulu:
 - Port **5434**, yalnız `localhost` dinlenir. Kullanıcı/parola `b2b`/`b2b`
   (CI'daki değerin aynısı, gizli değil). Veritabanı adı `b2b_test`.
 
-Sunucu kapalıysa:
+Sunucu kapalıysa **WMI ile** başlatın. Kabuktan `pg_ctl start` çalıştırırsanız
+sunucu o kabuğa bağlı kalır: ajanın arka plan görevi zaman aşımında
+kapatılınca Postgres de kapanır (2026-10-04'te iki kez oldu).
 
 ```powershell
-& "C:\Users\Saidb\tools\pg16\pgsql\bin\pg_ctl.exe" -D "C:\Users\Saidb\tools\pg16-data" -o "-p 5434 -c listen_addresses=localhost" -l "C:\Users\Saidb\tools\pg16-data\server.log" start
+$cmd = '"C:\Users\Saidb\tools\pg16\pgsql\bin\pg_ctl.exe" -D "C:\Users\Saidb\tools\pg16-data" -o "-p 5434 -c listen_addresses=localhost" -l "C:\Users\Saidb\tools\pg16-data\server.log" start'
+Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmd }
 ```
 
 Her akış testten önce kendi ortam değişkenlerini verir. Değerler akışa göre
@@ -90,6 +93,11 @@ export TEST_SCHEMA="test_codex"   # akışın kendi şeması
 pnpm db:generate
 pnpm db:test-prepare              # o klasörün göçlerini o şemaya uygular
 ```
+
+`TEST_SCHEMA` ve `TEST_DATABASE_URL` `turbo.json`'un `globalEnv` listesinde.
+Orada değilken turbo değişkeni alt süreçlere geçirmiyordu ve `pnpm test`
+sessizce varsayılan `test` şemasında koşuyordu, yani yeni göçü olmayan bir
+şemada. 2026-10-04'te D akışında 28 test dosyası bu yüzden düştü.
 
 Neden ayrı şema: iki koşu aynı şemayı paylaşırsa ikisi de belge numarasını aynı
 `DocumentSeries` sayacından alır ve testler rastgele kırılır
