@@ -1,6 +1,6 @@
 import sql from "mssql";
 import { loadConfig, type AgentConfig } from "./config";
-import { connect, readCustomers, readStock } from "./vega";
+import { connect, readCustomers, readPrices, readStock } from "./vega";
 import { startCommandServer } from "./server";
 
 // ERP ajanı — müşterinin makinesinde çalışır.
@@ -101,11 +101,16 @@ async function runOnce(cfg: AgentConfig): Promise<void> {
     }
 
     if (cfg.sync.prices) {
-      // readPrices throws with an explanation: the sales price source is
-      // firm-specific and has to be written for this installation before it can
-      // be trusted to reprice anything.
-      const { readPrices } = await import("./vega");
-      readPrices();
+      const { rows, skippedForeignCurrency } = await readPrices(pool, cfg);
+      if (skippedForeignCurrency > 0) {
+        // Not an error: the ERP is allowed to keep a foreign-currency list. It
+        // is said out loud because a silently shorter catalogue is the kind of
+        // thing nobody notices until a customer sees no price.
+        log(
+          `Fiyat: ${skippedForeignCurrency} satır TL dışı para biriminde, gönderilmedi`,
+        );
+      }
+      await sendBatched(cfg, "prices", rows, "Fiyat");
     }
   } finally {
     await pool?.close().catch(() => undefined);

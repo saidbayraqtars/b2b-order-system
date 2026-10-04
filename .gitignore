@@ -72,3 +72,6 @@ coverage/
 # dursun ama herkese açık depoya gitmesin: imza anahtarı parolası ve gösterim
 # hesabı şifreleri geçiyor.
 docs/hafiza/
+
+# AI devir notlari (sunucu/erisim bilgisi icerir)
+AI-DEVIR-NOTLARI.md

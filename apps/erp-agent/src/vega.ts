@@ -138,30 +138,45 @@ export interface StockRow {
 /**
  * Stok miktarları, summed across warehouses.
  *
- * Read from the inventory table rather than the `KALAN` column on the stock
- * card: inventory is per-warehouse and is what the ERP's own stock screens add
- * up, while `KALAN` is a running figure that is only as fresh as the last thing
- * that touched it.
+ * Read from the **period** `TBLDEPOENVANTER`, which is where Vega keeps the
+ * warehouse ledger: one row per movement, with `ENVANTER` signed (+ in, − out),
+ * so the sum per stock card is the quantity the ERP's own stock screens show.
  *
- * `REZERV` is subtracted. Stock reserved against an order the ERP has already
- * accepted is not stock the B2B may sell again — that is the double-sell this
- * whole sync exists to prevent.
+ * The firm-level `TBLSTOKENVANTER` looks like the same thing and is not. It is
+ * the critical-level grid — `ALTSEVIYE`, `KRITIKSEVIYE`, `SIPARISALINMASIN` —
+ * and its `ENVANTER` is a leftover that nothing keeps current: on the first
+ * customer's database 189.004 rows carry 13.462 units between them, of which
+ * only 2.740 rows are non-zero, while the period ledger for the same firm holds
+ * 78.559 units across 13.588 cards. Reading the wrong one publishes a catalogue
+ * that is empty almost everywhere.
+ *
+ * `REZERV` is not subtracted, because it is never written: it is 0 on every row
+ * of that table in all three installations examined. Reserved quantity lives in
+ * `TBLALSIPLIST.REZERV` and `TBLREZERVHAREKETLERI` instead (kılavuz §62.2), and
+ * subtracting an always-zero column only made the query look careful.
+ *
+ * `IND < 100` is skipped. Every Vega firm opens with the same four system cards
+ * — VADE FARKI, KUR FARKI, DEVIR, HIZMET — and Vega posts non-stock lines
+ * against them: on the first customer's 2026 period the DEVIR card alone
+ * carries 18.062 ledger rows. They are not products and must not reach a
+ * catalogue.
  */
 export async function readStock(
   pool: sql.ConnectionPool,
   cfg: AgentConfig,
 ): Promise<StockRow[]> {
   const stoklar = firmTable(cfg, "STOKLAR");
-  const envanter = firmTable(cfg, "STOKENVANTER");
+  const envanter = periodTable(cfg, "DEPOENVANTER");
 
   const result = await pool.request().query<{ code: string; quantity: number }>(`
     SELECT
       s.STOKKODU AS code,
-      SUM(ISNULL(e.ENVANTER, 0) - ISNULL(e.REZERV, 0)) AS quantity
+      SUM(ISNULL(e.ENVANTER, 0)) AS quantity
     FROM [${envanter}] e
     JOIN [${stoklar}] s ON s.IND = e.STOKNO
     WHERE ISNULL(s.STOKKODU, '') <> ''
       AND ISNULL(s.IPTAL, 0) = 0
+      AND s.IND >= 100
     GROUP BY s.STOKKODU
   `);
 
@@ -171,23 +186,113 @@ export async function readStock(
   }));
 }
 
+export interface PriceRow {
+  code: string;
+  price: number;
+  /** B2B müşteri grubunun adı; null = varsayılan kademe. */
+  customerGroupCode: string | null;
+  minQuantity: number | null;
+}
+
+/** Bir Vega fiyat listesi satırının ham hâli. */
+interface RawPriceRow {
+  code: string;
+  kdv: number | null;
+  kdvDahil: number | null;
+  [key: string]: unknown;
+}
+
 /**
- * Fiyat listesi — **bilerek yazılmadı.**
+ * Satış fiyatları — `TBLBIRIMLEREX.SATISFIYATI1..6`.
  *
- * Where a Vega installation keeps the price it sells at is firm-specific. On the
- * first customer's database the obvious candidates are empty: of 95.026 stock
- * cards exactly one has `ISKSATISFIYATI2` set, so that column is plainly not the
- * source there. Prices decide what a customer is charged, and a guess that
- * looked plausible would quietly reprice a catalogue.
+ * Vega keeps up to six sales price lists per **unit**, not per stock card, and
+ * the card points at the unit it sells in through `TBLSTOKLAR.BIRIMEX`. That
+ * column is the join Vega itself uses, and it is the only one that is safe:
+ * joining on `VARSAYILAN = 1` instead loses every card whose unit row does not
+ * carry the flag — 15.821 of 95.026 on the first customer's database, silently.
  *
- * Enabling this means: find where that installation really keeps its sales
- * price, write the read here, and turn `sync.prices` on. The B2B side already
- * accepts the rows — /api/erp/prices is implemented and tested.
+ * `SATISFIYATI` (no number) is a dead column: zero rows in all three
+ * installations. It is what an earlier version of this agent looked at, which is
+ * why prices "did not exist" here.
+ *
+ * Which list belongs to which B2B customer group is a business decision, so it
+ * comes from config rather than being guessed. A list nobody mapped is not sent.
+ *
+ * Prices stored VAT-inclusive (`KDVDAHIL = 1`) are converted down using the
+ * card's own VAT group, because the B2B stores net prices and adds VAT itself.
+ * Beware the group names: the group called "8 KDV" carries `KDV = 10`. The name
+ * is a label somebody stopped updating; the column is the rate.
+ *
+ * Only prices in TL are sent — the B2B price row carries no currency, so a
+ * foreign-currency list would arrive as if it were lira. Those rows are counted
+ * and reported instead of being converted here at a rate this process does not
+ * have.
  */
-export function readPrices(): never {
-  throw new Error(
-    "Fiyat okuma bu kurulum için tanımlanmadı — satış fiyatının Vega'da nerede " +
-      "tutulduğu firmaya göre değişir. sync.prices'ı açmadan önce vega.ts " +
-      "içindeki readPrices'ı o kuruluma göre yazın.",
-  );
+export async function readPrices(
+  pool: sql.ConnectionPool,
+  cfg: AgentConfig,
+): Promise<{ rows: PriceRow[]; skippedForeignCurrency: number }> {
+  const stoklar = firmTable(cfg, "STOKLAR");
+  const birimler = firmTable(cfg, "BIRIMLEREX");
+  const kdvGruplari = firmTable(cfg, "KDVGRUPLARI");
+
+  const lists = cfg.prices.lists.filter((l) => l.list >= 1 && l.list <= 6);
+  if (lists.length === 0) {
+    throw new Error(
+      "prices.lists boş — hangi Vega fiyat listesinin (1..6) hangi müşteri " +
+        "grubuna karşılık geldiğini agent.config.json içinde yazın.",
+    );
+  }
+
+  const columns = lists
+    .map((l) => `b.SATISFIYATI${l.list} AS f${l.list}, b.PB${l.list} AS pb${l.list}`)
+    .join(", ");
+
+  const result = await pool.request().query<RawPriceRow>(`
+    SELECT
+      s.STOKKODU AS code,
+      k.KDV      AS kdv,
+      b.KDVDAHIL AS kdvDahil,
+      ${columns}
+    FROM [${stoklar}] s
+    JOIN [${birimler}] b ON b.IND = s.BIRIMEX
+    LEFT JOIN [${kdvGruplari}] k ON k.IND = s.KDVGRUBU
+    WHERE ISNULL(s.STOKKODU, '') <> ''
+      AND ISNULL(s.IPTAL, 0) = 0
+      AND s.IND >= 100
+  `);
+
+  const rows: PriceRow[] = [];
+  let skippedForeignCurrency = 0;
+
+  for (const r of result.recordset) {
+    const code = String(r.code).trim();
+    if (!code) continue;
+
+    for (const l of lists) {
+      const price = Number(r[`f${l.list}`] ?? 0);
+      if (!Number.isFinite(price) || price <= 0) continue;
+
+      const currency = String(r[`pb${l.list}`] ?? "").trim().toUpperCase();
+      if (currency && currency !== "TL" && currency !== "TRY") {
+        skippedForeignCurrency += 1;
+        continue;
+      }
+
+      // KDV dahil tutulan fiyatı net'e indir. Oran yoksa fiyata dokunulmaz:
+      // bilinmeyen bir oranla bölmek, kataloğu sessizce yanlış fiyatlar.
+      const vat = Number(r.kdv ?? 0);
+      const net =
+        Number(r.kdvDahil ?? 0) === 1 && vat > 0 ? price / (1 + vat / 100) : price;
+
+      rows.push({
+        code,
+        price: Math.round(net * 100) / 100,
+        customerGroupCode: l.customerGroupCode,
+        minQuantity: null,
+      });
+    }
+  }
+
+  return { rows, skippedForeignCurrency };
 }

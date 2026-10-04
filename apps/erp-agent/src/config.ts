@@ -8,6 +8,13 @@ import path from "node:path";
 // end up anywhere but this machine. So the file is read from a path given at
 // start-up and is never written back, never uploaded, never logged.
 
+export interface PriceListMapping {
+  /** Vega fiyat listesi numarası, 1..6. */
+  list: number;
+  /** b2b'deki müşteri grubunun **adı**; null = varsayılan kademe. */
+  customerGroupCode: string | null;
+}
+
 export interface AgentConfig {
   /** Where the B2B installation lives, e.g. https://siparis.musteri.com */
   apiUrl: string;
@@ -90,6 +97,18 @@ export interface AgentConfig {
     till: string;
   };
 
+  /**
+   * Hangi Vega fiyat listesi hangi b2b müşteri grubuna karşılık gelir.
+   *
+   * Vega bir birim kartında altı satış fiyatı tutar (`SATISFIYATI1..6`) ve
+   * hangisinin kime satıldığını hiçbir yerde yazmaz — bu bir iş kararı, bu
+   * yüzden tahmin edilmiyor, buraya yazılıyor. `customerGroupCode` boş
+   * bırakılırsa o liste varsayılan kademe olur (grubu olmayan herkes).
+   */
+  prices: {
+    lists: PriceListMapping[];
+  };
+
   /** Minutes between runs when the agent is left running. */
   intervalMinutes: number;
   /** How many rows go in one request. */
@@ -150,6 +169,24 @@ export function loadConfig(argPath?: string): AgentConfig {
     );
   }
 
+  // Fiyat eşitlemesi açıksa listenin haritası şart: liste numarası olmadan
+  // hangi fiyatın gönderileceği belli değil, boş liste sessizce hiçbir şey
+  // göndermez ve bu "çalışıyor" gibi görünür.
+  if (c.sync?.prices) {
+    const lists = c.prices?.lists ?? [];
+    if (lists.length === 0) {
+      problems.push(
+        'sync.prices açık ama prices.lists boş — örn. ' +
+          '[{ "list": 1, "customerGroupCode": null }]',
+      );
+    }
+    for (const l of lists) {
+      if (!Number.isInteger(l?.list) || l.list < 1 || l.list > 6) {
+        problems.push(`prices.lists[].list 1..6 arası olmalı, alınan: ${JSON.stringify(l?.list)}`);
+      }
+    }
+  }
+
   // Every complaint at once — the same courtesy tenant.json gets. A half-filled
   // file should take one edit to fix, not one round trip per field.
   if (problems.length > 0) {
@@ -182,6 +219,12 @@ export function loadConfig(argPath?: string): AgentConfig {
       userNo: c.write?.userNo ?? 100,
       branch: c.write?.branch?.trim() || "MERKEZ",
       till: c.write?.till?.trim() || "MERKEZ",
+    },
+    prices: {
+      lists: (c.prices?.lists ?? []).map((l) => ({
+        list: Number(l.list),
+        customerGroupCode: l.customerGroupCode?.trim() || null,
+      })),
     },
     intervalMinutes: c.intervalMinutes ?? 30,
     batchSize: Math.min(c.batchSize ?? 1000, 5000),

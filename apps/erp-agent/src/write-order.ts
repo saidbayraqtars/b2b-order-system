@@ -15,7 +15,14 @@ import {
   type Tx,
 } from "./vega-write";
 
-// Siparişi Vega'ya yazmak — `TBLALSIPBASLIK` + `TBLALSIPHAREKET`.
+// Siparişi Vega'ya yazmak — `TBLALSIPBASLIK` + `TBLALSIPHAREKET`
+// + `TBLALSIPLIST` + `TBLREZERVHAREKETLERI`.
+//
+// **Neden dört tablo.** Vega'nın kendisi bir sipariş satırını kaydederken dördüne
+// birden yazıyor; canlı kurulumda sayılar bire bir tutuyor (F0101/D0017:
+// 15.086 hareket, 15.087 `ALSIPLIST`, 15.086 `REZERVHAREKETLERI`). Yalnız
+// başlık + hareket yazılırsa sipariş listede görünür ama Vega'nın rezerv ve
+// sipariş-takip ekranlarında eksik kalır. Kılavuz §62.2.
 //
 // **Neden sipariş, neden fatura değil.** An order (BELGETIPI 60) is not a legal
 // document, and the guide's own document map (§20.1) shows it touching nothing
@@ -173,6 +180,8 @@ function omitted(columns: Map<string, ColumnInfo>, fields: Record<string, unknow
 interface Resolved {
   cariInd: number;
   stockInd: Map<string, number>;
+  /** Kartın sattığı birim satırı (`TBLSTOKLAR.BIRIMEX`) — kılavuz §60.1. */
+  birimEx: Map<string, number>;
 }
 
 /**
@@ -217,15 +226,20 @@ async function resolveCodes(
     params[`s${i}`] = code;
     return `@s${i}`;
   });
-  const stocks = await tx.query<{ ind: number; code: string }>(
-    `SELECT IND AS ind, LTRIM(RTRIM(STOKKODU)) AS code FROM [${stoklar}]
+  const stocks = await tx.query<{ ind: number; code: string; birimEx: number | null }>(
+    `SELECT IND AS ind, LTRIM(RTRIM(STOKKODU)) AS code, BIRIMEX AS birimEx FROM [${stoklar}]
       WHERE LTRIM(RTRIM(STOKKODU)) IN (${placeholders.join(", ")})
         AND ISNULL(IPTAL, 0) = 0`,
     params,
   );
 
   const stockInd = new Map<string, number>();
-  for (const row of stocks) stockInd.set(String(row.code), Number(row.ind));
+  const birimEx = new Map<string, number>();
+  for (const row of stocks) {
+    stockInd.set(String(row.code), Number(row.ind));
+    // Vega satırda birim kartının IND'ini tutuyor; her satırda dolu (§44.4).
+    birimEx.set(String(row.code), Number(row.birimEx ?? 0));
+  }
 
   const missing = codes.filter((c) => !stockInd.has(c));
   if (missing.length > 0) {
@@ -237,7 +251,7 @@ async function resolveCodes(
   }
 
   const cariInd = Number(customers[0]!.ind);
-  return { cariInd, stockInd };
+  return { cariInd, stockInd, birimEx };
 }
 
 /**
@@ -279,6 +293,8 @@ export async function writeOrderWithin(
 
   const headerTable = periodTable(cfg, "ALSIPBASLIK");
   const lineTable = periodTable(cfg, "ALSIPHAREKET");
+  const listTable = periodTable(cfg, "ALSIPLIST");
+  const reserveTable = periodTable(cfg, "REZERVHAREKETLERI");
   const referenceColumn = cfg.write.referenceColumn;
   const date = payload.date ? new Date(payload.date) : new Date();
   if (Number.isNaN(date.getTime())) {
@@ -287,6 +303,16 @@ export async function writeOrderWithin(
 
   const headerColumns = await readColumns(tx, headerTable);
   const lineColumns = await readColumns(tx, lineTable);
+  // Yan tablolar: kurulumda yoksa sipariş yine yazılır, sadece uyarı düşer.
+  const listColumns = await readColumns(tx, listTable).catch(() => new Map<string, ColumnInfo>());
+  const reserveColumns = await readColumns(tx, reserveTable).catch(
+    () => new Map<string, ColumnInfo>(),
+  );
+  // Eksik yan tablo siparişi düşürmez (§44): yazılamayanı sonuçta bildiriyoruz.
+  const canWriteList = ["BELGENO", "SATIRNO", "KALAN"].every((c) => listColumns.has(c));
+  const canWriteReserve = ["IZAHAT", "STOKNO", "BELGENO", "LN", "GIREN"].every((c) =>
+    reserveColumns.has(c),
+  );
 
   // Fail closed. Without the marker column there is no way to tell a second
   // push from a first, and the failure mode of guessing is a duplicate order
@@ -317,7 +343,7 @@ export async function writeOrderWithin(
     };
   }
 
-  const { cariInd, stockInd } = await resolveCodes(tx, cfg, payload);
+  const { cariInd, stockInd, birimEx } = await resolveCodes(tx, cfg, payload);
   const documentNumber = await nextDocumentNumber(tx, headerTable, cfg.write.orderPrefix);
 
   const headerFields: Record<string, unknown> = {
@@ -346,7 +372,64 @@ export async function writeOrderWithin(
     OZELKOD2: cfg.write.till,
     [referenceColumn]: payload.reference,
     UID: uid(),
+
+    // Kılavuz §44.3: Vega bir belgeyi **okurken** de alanların dolu olmasını
+    // bekliyor. NULL bıraktığımız kolon satırı tabloya sokar, sipariş listede
+    // görünür, ama Vega'nın kendi sipariş ekranı belgeyi açamayabilir — ve bu
+    // hata yazma anında değil, aylar sonra müşteri belgeyi açtığında çıkar.
+    //
+    // Aşağıdakiler ozdemirkaya F0101/D0017'deki **6.748 gerçek siparişin
+    // tamamında** dolu olan kolonlar (§44.4). Değerlerin çoğu veri değil,
+    // Vega'nın beklediği doluluk: 0, '' ve iki bayrak.
+    FIRMAADI: "",
+    AK: 0,
+    ENVANTERUPDATE: 0,
+    ODMODIFIED: 0,
+    ALTBELGENO: "",
+    ALT1: dec(0),
+    ALT2: dec(0),
+    ALT3: dec(0),
+    ALT4: dec(0),
+    DEPO: cfg.write.depo,
+    SUCCESS: 0,
+    OZELKOD: "",
+    KALEM1: dec(0),
+    KALEM2: dec(0),
+    KALEM3: dec(0),
+    KALEM4: dec(0),
+    SELECTED: 0,
+    YUVARLAMA: dec(0),
+    ALLOWYUVARLAMA: 0,
+    ODENEN: dec(0),
+    MASRAF1: dec(0),
+    MASRAF2: dec(0),
+    MASRAF3: dec(0),
+    MASRAF4: dec(0),
+    MASRAFKDV1: 0,
+    MASRAFKDV2: 0,
+    MASRAFKDV3: 0,
+    MASRAFKDV4: 0,
+    ENTEGRE: 0,
+    KDVISK: dec(0),
+    SATISSEKLI: 0,
+    KONSOLIDE: 0,
+    ODEMEOPSIYONU: 0,
+    TEVKIFATORAN: dec(0),
+    STATUS: 0,
+    MUHASEBELESMEYECEK: 0,
+    CHECKAPATMA: 0,
+    KAYNAK: 0,
+    // Vega'nın kendi siparişlerinde ikisi de 1: sipariş kapanınca stok ve cari
+    // hareketinin yazılacağını söyler. 6.748 satırın 6.748'inde 1.
+    STOKHAREKETEYAZ: 1,
+    CARIHAREKETEYAZ: 1,
   };
+
+  // Özel kod alanları: biri b2b sipariş numarasını taşıyor (referenceColumn),
+  // ötekiler şube/kasa. Kalanları boş **string** olarak yazıyoruz — NULL değil.
+  for (const k of ["OZELKOD3", "OZELKOD4", "OZELKOD5", "OZELKOD6", "OZELKOD7", "OZELKOD8", "OZELKOD9"]) {
+    if (!(k in headerFields)) headerFields[k] = "";
+  }
 
   const documentInd = await insertRow(tx, headerTable, headerColumns, headerFields, {
     required: ["BELGENO", "TARIH", "FIRMANO", "BELGETIPI", "TUTAR", "ARATOPLAM"],
@@ -377,6 +460,7 @@ export async function writeOrderWithin(
       MIKTAR: dec(line.quantity),
       BIRIMMIKTAR: dec(1),
       BIRIM: line.unit ?? null,
+      BIRIMEX: birimEx.get(line.productCode) ?? 0,
       FIYATI: dec(line.unitPrice),
       KDV: dec(line.vatRate),
       GERCEKTOPLAM: dec(line.lineTotal),
@@ -404,13 +488,73 @@ export async function writeOrderWithin(
       GRUPMIKTAR: 1,
       // Kılavuz §22.1: satırın rastgele int32 kimliği, içerikten türemez.
       GK: gk(),
+      // Kılavuz §44.4: satır tablolarında Vega'nın her satırda doldurduğu
+      // kalan dört alan. AFIYATI maliyettir; b2b maliyeti bilmez, 0 yazıyoruz
+      // (Vega kendi maliyetlendirmesinde yeniden hesaplıyor — §30).
+      AFIYATI: dec(0),
+      BARKOD: "",
+      KARSISTOKKODU: "",
     };
 
     for (const field of omitted(lineColumns, lineFields)) omittedFields.add(field);
 
-    await insertRow(tx, lineTable, lineColumns, lineFields, {
+    const lineInd = await insertRow(tx, lineTable, lineColumns, lineFields, {
       required: ["EVRAKNO", "STOKNO", "MIKTAR", "FIYATI", "GERCEKTOPLAM"],
     });
+    if (!lineInd) {
+      throw new WriteError("Sipariş satırı yazıldı ama IND okunamadı", "IND_OKUNAMADI");
+    }
+
+    // Kılavuz §62.2 — Vega'nın kendi yazdığı iki yan satır.
+    //
+    // `ALSIPLIST.KALAN` sevkiyatla düşmüyor (Vega da düşürmüyor); sipariş
+    // miktarını yazıp bırakıyoruz, açık miktar `MIKTAR − Σ GIDEN` ile bulunur.
+    if (canWriteList) {
+      await insertRow(tx, listTable, listColumns, {
+        BELGENO: documentInd,
+        SATIRNO: lineInd,
+        KALAN: dec(line.quantity),
+        REZERV: dec(0),
+      });
+    } else {
+      omittedFields.add(`${listTable} (sütunları yok)`);
+    }
+
+    // Rezerv defteri: sipariş stok hareketine yazmaz, izi burada durur.
+    // `BELGENO` başlığın IND'i, `LN` satırın IND'i (stok hareketindeki gibi).
+    if (canWriteReserve) {
+      await insertRow(
+        tx,
+        reserveTable,
+        reserveColumns,
+        {
+          EVRAKNO: documentNumber,
+          IZAHAT: 60,
+          TARIH: date,
+          GIREN: dec(line.quantity),
+          CIKAN: dec(0),
+          TUTAR: dec(0),
+          FIRMANO: cariInd,
+          STOKNO: stockInd.get(line.productCode)!,
+          BELGENO: documentInd,
+          LN: lineInd,
+          DEPO: cfg.write.depo,
+          KDV: dec(line.vatRate),
+          SERINO: 0,
+          PERSONEL: 0,
+          IADE: 0,
+          OPSIYON: 0,
+          BIRIMFIYAT: dec(line.unitPrice),
+          BIRIMMALIYET: dec(0),
+          SIRALAMATARIHI: date,
+          KUR: dec(payload.exchangeRate ?? 1),
+          PARABIRIMI: vegaCurrency(payload.currency),
+        },
+        { expressions: { SIRALAMATARIHIEX: raw("CONVERT(FLOAT, GETDATE())") } },
+      );
+    } else {
+      omittedFields.add(`${reserveTable} (sütunları yok)`);
+    }
   }
 
   return {

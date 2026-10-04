@@ -25,6 +25,14 @@
     "prices": false
   },
 
+  "prices": {
+    "lists": [
+      { "list": 1, "customerGroupCode": null },
+      { "list": 2, "customerGroupCode": "Bayi" },
+      { "list": 3, "customerGroupCode": "Toptan" }
+    ]
+  },
+
   "command": {
     "enabled": false,
     "host": "127.0.0.1",

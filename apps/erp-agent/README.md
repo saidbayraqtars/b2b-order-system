@@ -59,16 +59,48 @@ Dönem kodları `TBLDONEM` tablosunda; ilk müşteride D0016=2025, D0017=2026.
 | Eşitleme | Kaynak | Durum |
 |----------|--------|-------|
 | Cari kartları + bakiye | `TBLCARI` + `TBLCARIHAREKETLERI` | ✅ |
-| Stok | `TBLSTOKENVANTER` + `TBLSTOKLAR` (depo toplamı − rezerv) | ✅ |
-| Fiyat listesi | firmaya göre değişir | ❌ yazılmadı |
+| Stok | `F{f}D{d}TBLDEPOENVANTER` + `TBLSTOKLAR` (dönem defterinin toplamı) | ✅ |
+| Fiyat listesi | `TBLBIRIMLEREX.SATISFIYATI1..6` | ✅ (`prices.lists` haritası şart) |
 
-**Fiyat neden yok:** satış fiyatının Vega'da nerede tutulduğu kuruluma göre
-değişiyor. İlk müşterinin veritabanında bariz aday olan `ISKSATISFIYATI2`
-kolonu 95.026 stok kartının **1**'inde dolu — yani orası değil. Fiyat, müşteriden
-tahsil edilecek tutarı belirler; makul görünen bir tahmin, sessizce bütün
-katalogu yeniden fiyatlandırırdı. B2B tarafı hazır (`/api/erp/prices` yazıldı ve
-test edildi); yapılacak iş `src/vega.ts` içindeki `readPrices`'ı o kuruluma göre
-yazıp `sync.prices`'ı açmak.
+**Stok neden dönem tablosundan okunuyor:** firma seviyesindeki
+`TBLSTOKENVANTER` aynı şeye benziyor ama kritik seviye ızgarasıdır
+(`ALTSEVIYE`, `KRITIKSEVIYE`, `SIPARISALINMASIN`); `ENVANTER` kolonunu kimse
+güncel tutmuyor. İlk müşteride o tablonun 189.004 satırı toplam 13.462 adet
+taşıyor (yalnız 2.740 satır sıfırdan farklı), aynı firmanın dönem defteri ise
+13.587 kart için 101.692 adet. Yanlış tabloyu okumak, neredeyse boş bir katalog
+yayımlar. `REZERV` de çıkarılmıyor: üç kurulumda da o kolon hep 0 — gerçek
+rezerv `TBLALSIPLIST.REZERV` ile `TBLREZERVHAREKETLERI`'nde (kılavuz §62.2).
+`IND < 100` olan dört sistem kartı (VADE FARKI, KUR FARKI, DEVIR, HIZMET) ürün
+değildir ve atlanır — ilk müşteride tek başına DEVIR kartı 18.062 defter satırı
+taşıyor.
+
+**Fiyat nerede:** Vega altı satış fiyatını **stok kartında değil birim
+kartında** tutar (`TBLBIRIMLEREX.SATISFIYATI1..6`), kart da sattığı birime
+`TBLSTOKLAR.BIRIMEX` ile bağlanır. Bağlantıyı `VARSAYILAN = 1` üzerinden kurmak
+kartların %17'sini (95.026'nın 15.821'i) sessizce düşürür — Vega'nın kendi
+kullandığı kolon `BIRIMEX`'tir. Numarasız `SATISFIYATI` kolonu ölüdür (üç
+kurulumda da sıfır satır); ajanın eski sürümü oraya baktığı için "fiyat yok"
+sanılıyordu.
+
+Hangi listenin hangi müşteri grubuna gittiği bir **iş kararıdır**, tahmin
+edilmez — `agent.config.json` içinde yazılır:
+
+```json
+"sync": { "prices": true },
+"prices": {
+  "lists": [
+    { "list": 1, "customerGroupCode": null },
+    { "list": 2, "customerGroupCode": "Bayi" }
+  ]
+}
+```
+
+`customerGroupCode: null` = varsayılan kademe (grubu olmayan herkes). B2B'de
+adı bulunmayan grup **atlanır**, açılmaz. Fiyat `KDVDAHIL = 1` ile tutuluyorsa
+kartın KDV grubundaki orana göre net'e indirilir (ilk müşteride 95.017 satırın
+95.009'u KDV dahil); grup adlarına güvenmeyin, "8 KDV" grubunun oranı **10**'dur.
+TL dışı para birimindeki satırlar gönderilmez, sayısı günlüğe yazılır — b2b
+fiyat satırında para birimi alanı yok ve dönüştürmek bu sürecin işi değil.
 
 ## Eşleme
 

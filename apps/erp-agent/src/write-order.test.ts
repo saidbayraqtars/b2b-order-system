@@ -23,6 +23,8 @@ interface Insert {
 interface FakeOptions {
   headerColumns?: string[];
   lineColumns?: string[];
+  /** Yan tabloları (ALSIPLIST / REZERVHAREKETLERI) yok say. */
+  withoutSideTables?: boolean;
   existingReference?: { ind: number; belgeNo: string } | null;
   customerInds?: number[];
   stockCodes?: Record<string, number>;
@@ -49,6 +51,28 @@ const DEFAULT_HEADER_COLUMNS = [
   "CREDATE",
 ];
 
+// Vega'nın kendi yazdığı yan satırlar (kılavuz §62.2).
+const LIST_COLUMNS = ["BELGENO", "SATIRNO", "KALAN", "REZERV"];
+
+const RESERVE_COLUMNS = [
+  "EVRAKNO",
+  "IZAHAT",
+  "TARIH",
+  "GIREN",
+  "CIKAN",
+  "TUTAR",
+  "FIRMANO",
+  "STOKNO",
+  "BELGENO",
+  "LN",
+  "DEPO",
+  "KDV",
+  "BIRIMFIYAT",
+  "KUR",
+  "PARABIRIMI",
+  "SIRALAMATARIHIEX",
+];
+
 const DEFAULT_LINE_COLUMNS = [
   "EVRAKNO",
   "TARIH",
@@ -62,6 +86,34 @@ const DEFAULT_LINE_COLUMNS = [
   "KDV",
   "GERCEKTOPLAM",
   "GK",
+];
+
+// Kılavuz §44.4: Vega'nın **her** satırda doldurduğu kolonlar. Ölçüm
+// 09.09.2026, `VEGADBozdemirkaya` F0101/D0017 — 6.748 sipariş başlığı ve
+// 15.086 satır. Bir kolonu NULL bırakmak siparişi yazar ama Vega'nın kendi
+// sipariş ekranı belgeyi açamayabilir; bu liste onu koruyor.
+const ZORUNLU_BASLIK_KOLONLARI = [
+  "FIRMAADI", "TUTAR", "BELGENO", "TARIH", "KDV", "AK", "ENVANTERUPDATE",
+  "ODEMETARIHI", "ODMODIFIED", "ALTBELGENO", "ALT1", "ALT2", "ALT3", "ALT4",
+  "DEPO", "SUCCESS", "OZELKOD", "OZELKOD1", "OZELKOD2", "KALEM1", "KALEM2",
+  "KALEM3", "KALEM4", "IADE", "IPTAL", "CONVERTED", "CREDATE", "LADATE",
+  "FIRMANO", "PARABIRIMI", "KUR", "YUVARLAMA", "ALLOWYUVARLAMA", "ODENEN",
+  "GIRIS", "BELGETIPI", "EKBELGETIPI", "SELECTED", "MASRAF1", "MASRAF2",
+  "MASRAF3", "MASRAF4", "MASRAFKDV1", "MASRAFKDV2", "MASRAFKDV3", "MASRAFKDV4",
+  "ENTEGRE", "USERNO", "KDVISK", "SATISSEKLI", "ARATOPLAM", "KONSOLIDE",
+  "ODEMEOPSIYONU", "TEVKIFATORAN", "STATUS", "MUHASEBELESMEYECEK", "OZELKOD3",
+  "OZELKOD4", "HAREKETDEPOSU", "CHECKAPATMA", "KAYNAK", "OZELKOD5", "OZELKOD6",
+  "OZELKOD7", "OZELKOD8", "OZELKOD9", "STOKHAREKETEYAZ", "CARIHAREKETEYAZ",
+  "UID",
+];
+
+const ZORUNLU_SATIR_KOLONLARI = [
+  "TARIH", "DETAY", "EVRAKNO", "FIRMANO", "STOKNO", "MALINCINSI", "STOKKODU",
+  "STOKTIPI", "MIKTAR", "BIRIMMIKTAR", "BIRIM", "BIRIMEX", "KDV", "ISK1",
+  "ISK2", "ISK3", "ISK4", "AFIYATI", "FIYATI", "GERCEKTOPLAM", "DEPO",
+  "PERSONEL", "PIRIM", "OPSIYON", "PROMOSYON", "SATISKOSULU", "SERIMIKTAR",
+  "ENVANTER", "KARSISTOKKODU", "PARABIRIMI", "KUR", "BARKOD", "MASRAF", "OIV",
+  "INDIRIM", "OTV", "GK",
 ];
 
 function fakeTx(options: FakeOptions = {}): { tx: Tx; inserts: Insert[] } {
@@ -84,7 +136,12 @@ function fakeTx(options: FakeOptions = {}): { tx: Tx; inserts: Insert[] } {
       }
       if (text.includes("sys.columns")) {
         const table = String(params?.table ?? "");
-        const names = table.endsWith("ALSIPHAREKET") ? lineColumns : headerColumns;
+        let names = headerColumns;
+        if (table.endsWith("ALSIPHAREKET")) names = lineColumns;
+        else if (table.endsWith("ALSIPLIST")) names = options.withoutSideTables ? [] : LIST_COLUMNS;
+        else if (table.endsWith("REZERVHAREKETLERI")) {
+          names = options.withoutSideTables ? [] : RESERVE_COLUMNS;
+        }
         // Metin sütunlarında bayt cinsinden uzunluk: nvarchar iki bayt/karakter,
         // 40 bayt = 20 karakter. Kırpma testi buna dayanıyor.
         return names.map((name) => ({ name, type: "nvarchar", bytes: 40 })) as T[];
@@ -117,6 +174,7 @@ function config(overrides: Partial<AgentConfig["write"]> = {}): AgentConfig {
     db: { server: "localhost", port: 1433, database: "VEGADB", user: "", password: "" },
     vega: { firma: "0101", donem: "0017" },
     command: { enabled: true, host: "127.0.0.1", port: 8787, token: "y".repeat(40) },
+    prices: { lists: [{ list: 1, customerGroupCode: null }] },
     write: {
       enabled: true,
       orderPrefix: "B",
@@ -185,7 +243,8 @@ describe("sipariş yazma", () => {
     expect(result.duplicate).toBe(false);
     expect(result.documentInd).toBe(5150);
     expect(result.lineCount).toBe(2);
-    expect(inserts).toHaveLength(3);
+    // Başlık + her satır için hareket / ALSIPLIST / REZERVHAREKETLERI.
+    expect(inserts).toHaveLength(7);
 
     // Kılavuz §19.1: HAREKET.EVRAKNO = BAŞLIK.IND. Yanlış bağlanan satır
     // hatasız yazılır ve hiçbir ekranda görünmez — bu yüzden test ediliyor.
@@ -193,6 +252,53 @@ describe("sipariş yazma", () => {
     expect(line.table).toContain("ALSIPHAREKET");
     const evraknoParam = line.columns.indexOf("EVRAKNO");
     expect(line.params[`p${evraknoParam}`]).toBe(5150);
+  });
+
+  // Kılavuz §62.2: Vega bir sipariş satırını dört tabloya birden yazıyor.
+  // Yalnız başlık+hareket yazılırsa sipariş Vega'nın rezerv ve sipariş-takip
+  // ekranlarında eksik kalır — sessiz bozulma, bu yüzden test ediliyor.
+  // dec() sayıyı { type, value } olarak sarıyor; testte değeri açıyoruz.
+  const sayi = (v: unknown) => Number((v as { value: number } | null)?.value ?? v);
+
+  it("her satır için ALSIPLIST ve REZERVHAREKETLERI satırı yazar", async () => {
+    const { tx, inserts } = fakeTx();
+    await writeOrderWithin(tx, config(), payload());
+
+    const tables = inserts.map((i) => i.table.replace(/^F\d+D\d+TBL/, ""));
+    expect(tables).toEqual([
+      "ALSIPBASLIK",
+      "ALSIPHAREKET",
+      "ALSIPLIST",
+      "REZERVHAREKETLERI",
+      "ALSIPHAREKET",
+      "ALSIPLIST",
+      "REZERVHAREKETLERI",
+    ]);
+
+    const lineInd = 6002; // sahte işlemin ikinci INSERT'e verdiği IND
+    const list = inserts[2]!;
+    expect(list.params[`p${list.columns.indexOf("BELGENO")}`]).toBe(5150);
+    expect(list.params[`p${list.columns.indexOf("SATIRNO")}`]).toBe(lineInd);
+    expect(sayi(list.params[`p${list.columns.indexOf("KALAN")}`])).toBe(4);
+
+    // Rezerv satırı stok hareketi deseniyle bağlanır: BELGENO = başlık IND,
+    // LN = satır IND.
+    const reserve = inserts[3]!;
+    expect(reserve.params[`p${reserve.columns.indexOf("IZAHAT")}`]).toBe(60);
+    expect(reserve.params[`p${reserve.columns.indexOf("BELGENO")}`]).toBe(5150);
+    expect(reserve.params[`p${reserve.columns.indexOf("LN")}`]).toBe(lineInd);
+    expect(sayi(reserve.params[`p${reserve.columns.indexOf("GIREN")}`])).toBe(4);
+    expect(reserve.columns).toContain("SIRALAMATARIHIEX");
+  });
+
+  it("yan tablolar yoksa siparişi yine yazar, eksikleri bildirir", async () => {
+    const { tx, inserts } = fakeTx({ withoutSideTables: true });
+    const result = await writeOrderWithin(tx, config(), payload());
+
+    expect(result.lineCount).toBe(2);
+    expect(inserts).toHaveLength(3);
+    expect(result.omittedColumns.join(" ")).toMatch(/ALSIPLIST/);
+    expect(result.omittedColumns.join(" ")).toMatch(/REZERVHAREKETLERI/);
   });
 
   it("belge numarasını kendi önekiyle ve serideki genişlikle üretir", async () => {
@@ -287,6 +393,33 @@ describe("sipariş yazma", () => {
     const header = inserts[0]!;
     const index = header.columns.indexOf("PARABIRIMI");
     expect(header.params[`p${index}`]).toBe("TL");
+  });
+
+  it("Vega'nın her satırda doldurduğu kolonların hepsini yazar (§44.4)", async () => {
+    // Tabloda kolonların hepsi varsa ajan hepsini doldurmalı: eksik kalan
+    // kolon belgeyi Vega'nın ekranında açılmaz yapabiliyor.
+    const { tx, inserts } = fakeTx({
+      headerColumns: ZORUNLU_BASLIK_KOLONLARI,
+      lineColumns: ZORUNLU_SATIR_KOLONLARI,
+    });
+    await writeOrderWithin(tx, config(), payload());
+
+    const header = inserts.find((i) => i.table.endsWith("TBLALSIPBASLIK"))!;
+    const eksikBaslik = ZORUNLU_BASLIK_KOLONLARI.filter((c) => !header.columns.includes(c));
+    expect(eksikBaslik).toEqual([]);
+
+    const line = inserts.find((i) => i.table.endsWith("TBLALSIPHAREKET"))!;
+    const eksikSatir = ZORUNLU_SATIR_KOLONLARI.filter((c) => !line.columns.includes(c));
+    expect(eksikSatir).toEqual([]);
+  });
+
+  it("kolonu olmayan kurulumda o alanı atlar, siparişi yine yazar", async () => {
+    // §44.1'in öteki yüzü: kurulumda olmayan kolona INSERT denemek belgenin
+    // tamamını düşürür. Kolon listesi dar bir kurulumda sipariş yine yazılmalı.
+    const { tx, inserts } = fakeTx();
+    const sonuc = await writeOrderWithin(tx, config(), payload());
+    expect(sonuc.lineCount).toBe(2);
+    expect(inserts[0]!.columns).not.toContain("KONSOLIDE");
   });
 });
 
