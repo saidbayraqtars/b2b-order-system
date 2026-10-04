@@ -1,9 +1,10 @@
-import { prisma } from "@repo/database";
+import { prisma, type Prisma } from "@repo/database";
 import type { CustomCodeKey } from "@repo/types";
 import { BusinessError } from "./errors";
 import { customCodeWhere, listActiveCustomCodeFields } from "./custom-codes";
 import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
 import { resolvePrice, type DiscountRow } from "./pricing";
+import { qty } from "./quantity";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
 
 // ── Company pricing context (loaded once per request) ──
@@ -72,6 +73,10 @@ export interface CatalogVariant {
   unitsPerCase: number;
   moqUnits: number;
   stock: number;
+  /** Satış birimi (ADET, KG, MT…); boşsa adet. */
+  unit: string | null;
+  /** Miktarın kaç ondalık alabildiği: 0 = tam sayı (adet), 3 = gram hassasiyetinde kilo. */
+  quantityScale: number;
   /** Prices are null when the variant has no applicable price for this company. */
   unitPrice: string | null;
   discountPerUnit: string | null;
@@ -156,6 +161,7 @@ const CATALOG_SELECT = {
       moqUnits: true,
       stock: true,
       unit: true,
+      quantityScale: true,
       pricingUnit: true,
       unitFactor: true,
       tracksLots: true,
@@ -187,9 +193,10 @@ type CatalogRow = {
     color: string | null;
     size: string | null;
     unitsPerCase: number;
-    moqUnits: number;
-    stock: number;
+    moqUnits: Prisma.Decimal | number;
+    stock: Prisma.Decimal | number;
     unit: string | null;
+    quantityScale: number;
     pricingUnit: string | null;
     unitFactor: unknown;
     tracksLots: boolean;
@@ -222,9 +229,10 @@ function toCatalogProduct(
         color: v.color,
         size: v.size,
         unitsPerCase: v.unitsPerCase,
-        moqUnits: v.moqUnits,
-        stock: v.stock,
+        moqUnits: qty(v.moqUnits),
+        stock: qty(v.stock),
         unit: v.unit,
+        quantityScale: v.quantityScale,
         pricingUnit: v.pricingUnit,
         unitFactor: v.unitFactor ? String(v.unitFactor) : null,
         tracksLots: v.tracksLots,
@@ -238,7 +246,7 @@ function toCatalogProduct(
             ctx.rates,
           ),
           customerGroupId: ctx.customerGroupId,
-          quantity: v.moqUnits,
+          quantity: qty(v.moqUnits),
           productId: p.id,
           categoryId: p.categoryId,
           discounts: ctx.discounts,

@@ -10,6 +10,7 @@ import { recordPayment } from "./payment";
 import { createShipment } from "./shipment";
 import { normalizePeriodStart } from "./sales-target";
 import { applySetupPack } from "./setup";
+import { qty, qtyAdd } from "./quantity";
 import { postStockMovement } from "./stock-ledger";
 import { recordLotEntry } from "./stock-lot";
 
@@ -350,11 +351,11 @@ async function restoreStockFor(orderIds: string[]): Promise<void> {
   const byWarehouse = new Map<string, number>();
   const byLot = new Map<string, number>();
   const add = (map: Map<string, number>, key: string, delta: number) =>
-    map.set(key, (map.get(key) ?? 0) + delta);
+    map.set(key, qtyAdd(map.get(key), delta));
 
   for (const m of movements) {
     // Hareketin *tersi*: çıkışsa geri konur, girişse (iptal iadesi) geri alınır.
-    const back = m.direction === "OUT" ? m.quantity : -m.quantity;
+    const back = m.direction === "OUT" ? qty(m.quantity) : -qty(m.quantity);
     add(byVariant, m.variantId, back);
     if (m.warehouseId) add(byWarehouse, `${m.variantId}|${m.warehouseId}`, back);
     if (m.lotId) add(byLot, m.lotId, back);
@@ -624,7 +625,7 @@ async function seedStock(variants: DemoVariant[], adminId: string): Promise<void
       where: { id: v.id },
       select: { stock: true },
     });
-    if ((current?.stock ?? 0) >= 60 * v.unitsPerCase) continue;
+    if (qty(current?.stock) >= 60 * v.unitsPerCase) continue;
 
     // Üç parti: biri eski (SKT'si yakın), ikisi taze. FEFO gösterimi ancak aynı
     // kalemde farklı tarihli partiler varken bir şey anlatıyor.
@@ -816,7 +817,7 @@ async function fulfil(
   const { shipmentId } = await createShipment(
     orderId,
     {
-      items: items.map((i) => ({ orderItemId: i.id, quantity: i.quantity })),
+      items: items.map((i) => ({ orderItemId: i.id, quantity: qty(i.quantity) })),
       carrier: pick(["Kendi aracımız", "Soğuk zincir aracı", "Bölge dağıtım"]),
       shippedAt: shipAt.toISOString(),
     },
@@ -1311,10 +1312,10 @@ async function main(): Promise<void> {
     sku: v.sku,
     name: v.product.name,
     unitsPerCase: v.unitsPerCase,
-    moqUnits: v.moqUnits,
+    moqUnits: qty(v.moqUnits),
     tracksLots: v.tracksLots,
     shelfLifeDays: v.shelfLifeDays,
-    stock: v.stock,
+    stock: qty(v.stock),
   }));
 
   const couriers = await prisma.user.findMany({

@@ -10,8 +10,11 @@ import {
   ErrorLine,
   Label,
   Panel,
+  Select,
   TextInput,
 } from "@/components/form";
+import { formatQuantity } from "@/lib/format";
+import { parseQuantity, QUANTITY_SCALE_OPTIONS } from "@/lib/quantity";
 import { Advanced } from "@/components/ui-mode";
 import { PriceEditor } from "./price-editor";
 
@@ -24,6 +27,7 @@ const EMPTY_VARIANT = {
   moqUnits: "1",
   stock: "0",
   unit: "",
+  quantityScale: "0",
   costPrice: "",
   minStock: "",
   shelfCode: "",
@@ -53,11 +57,12 @@ export function VariantList({
         color: draft.color.trim() || null,
         size: draft.size.trim() || null,
         unitsPerCase: Number(draft.unitsPerCase),
-        moqUnits: Number(draft.moqUnits),
-        stock: Number(draft.stock),
+        moqUnits: parseQuantity(draft.moqUnits),
+        stock: parseQuantity(draft.stock),
         unit: draft.unit.trim() || null,
+        quantityScale: Number(draft.quantityScale),
         costPrice: draft.costPrice ? Number(draft.costPrice) : null,
-        minStock: draft.minStock ? Number(draft.minStock) : null,
+        minStock: draft.minStock ? parseQuantity(draft.minStock) : null,
         shelfCode: draft.shelfCode.trim() || null,
       }),
     onSuccess: () => {
@@ -103,7 +108,7 @@ export function VariantList({
                   {[v.color, v.size].filter(Boolean).join(" / ") || "—"}
                 </span>
                 <span className="text-xs text-ink-faint">
-                  koli {v.unitsPerCase} · min {v.moqUnits}
+                  koli {v.unitsPerCase} · min {formatQuantity(v.moqUnits)}
                 </span>
                 <span
                   className={`text-xs ${
@@ -206,7 +211,7 @@ export function VariantList({
             <Label>Min. sipariş</Label>
             <TextInput
               value={draft.moqUnits}
-              inputMode="numeric"
+              inputMode="decimal"
               onChange={(e) => setDraft({ ...draft, moqUnits: e.target.value })}
             />
           </div>
@@ -214,7 +219,7 @@ export function VariantList({
             <Label>Stok</Label>
             <TextInput
               value={draft.stock}
-              inputMode="numeric"
+              inputMode="decimal"
               onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
             />
           </div>
@@ -224,6 +229,21 @@ export function VariantList({
               value={draft.unit}
               onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
             />
+          </div>
+          <div>
+            <Label hint="Kilo, metre: ondalık">Miktar</Label>
+            <Select
+              value={draft.quantityScale}
+              onChange={(e) =>
+                setDraft({ ...draft, quantityScale: e.target.value })
+              }
+            >
+              {QUANTITY_SCALE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label hint="Müşteriye gösterilmez">Alış fiyatı</Label>
@@ -239,7 +259,7 @@ export function VariantList({
             <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
             <TextInput
               value={draft.minStock}
-              inputMode="numeric"
+              inputMode="decimal"
               onChange={(e) => setDraft({ ...draft, minStock: e.target.value })}
             />
           </div>
@@ -277,12 +297,13 @@ function StockInput({
   pending: boolean;
   onCommit: (stock: number) => void;
 }) {
-  const [text, setText] = useState(String(value));
+  const [text, setText] = useState(formatQuantity(value));
 
   const commit = () => {
-    const next = Number(text);
-    if (!Number.isInteger(next) || next < 0 || next === value) {
-      setText(String(value)); // reject junk, snap back
+    // Kesirli stok (0,75 kg) geçerli; kalemin ölçeğini sunucu denetliyor.
+    const next = parseQuantity(text);
+    if (!Number.isFinite(next) || next < 0 || next === value) {
+      setText(formatQuantity(value)); // reject junk, snap back
       return;
     }
     onCommit(next);
@@ -291,7 +312,7 @@ function StockInput({
   return (
     <TextInput
       value={text}
-      inputMode="numeric"
+      inputMode="decimal"
       disabled={pending}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
@@ -322,8 +343,9 @@ function StockCard({
 }) {
   const [form, setForm] = useState({
     unit: variant.unit ?? "",
+    quantityScale: String(variant.quantityScale),
     costPrice: variant.costPrice ?? "",
-    minStock: variant.minStock != null ? String(variant.minStock) : "",
+    minStock: variant.minStock != null ? formatQuantity(variant.minStock) : "",
     shelfCode: variant.shelfCode ?? "",
     isActive: variant.isActive,
     tracksLots: variant.tracksLots,
@@ -361,7 +383,7 @@ function StockCard({
           <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
           <TextInput
             value={form.minStock}
-            inputMode="numeric"
+            inputMode="decimal"
             onChange={(e) => setForm({ ...form, minStock: e.target.value })}
           />
         </div>
@@ -371,6 +393,19 @@ function StockCard({
             value={form.shelfCode}
             onChange={(e) => setForm({ ...form, shelfCode: e.target.value })}
           />
+        </div>
+        <div>
+          <Label hint="Kilo, metre: ondalık">Miktar</Label>
+          <Select
+            value={form.quantityScale}
+            onChange={(e) => setForm({ ...form, quantityScale: e.target.value })}
+          >
+            {QUANTITY_SCALE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 
@@ -470,8 +505,9 @@ function StockCard({
           onClick={() =>
             onSave({
               unit: form.unit.trim() || null,
+              quantityScale: Number(form.quantityScale),
               costPrice: form.costPrice ? Number(form.costPrice) : null,
-              minStock: form.minStock ? Number(form.minStock) : null,
+              minStock: form.minStock ? parseQuantity(form.minStock) : null,
               shelfCode: form.shelfCode.trim() || null,
               isActive: form.isActive,
               tracksLots: form.tracksLots,

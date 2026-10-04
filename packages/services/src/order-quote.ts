@@ -11,6 +11,7 @@ import {
 } from "./order-policy";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
+import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
 import { createsReceivable, resolvePaymentTerm } from "./payment-terms";
 import { convertPriceRows, currentRatesTx, rateFor } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
@@ -232,6 +233,7 @@ export async function buildQuote(
       unitsPerCase: true,
       moqUnits: true,
       unit: true,
+      quantityScale: true,
       pricingUnit: true,
       unitFactor: true,
       product: {
@@ -259,11 +261,15 @@ export async function buildQuote(
         variantId: item.variantId,
       });
     }
-    if (item.quantity < v.moqUnits) {
+    // Önce biçim: adet satan kalemde 1,5 bir yazım hatasıdır ve "minimum
+    // sipariş" ya da "koli katı" mesajı kullanıcıya yanlış şeyi söylerdi.
+    assertQuantityScale(item.quantity, v.quantityScale, v.sku);
+    const moq = qty(v.moqUnits);
+    if (item.quantity < moq) {
       throw new BusinessError(
         "MOQ_NOT_MET",
-        `${v.sku}: minimum sipariş ${v.moqUnits} adet`,
-        { sku: v.sku, moqUnits: v.moqUnits },
+        `${v.sku}: minimum sipariş ${formatQuantity(moq)} ${v.unit ?? "adet"}`,
+        { sku: v.sku, moqUnits: moq },
       );
     }
     if (v.unitsPerCase > 1 && item.quantity % v.unitsPerCase !== 0) {
@@ -273,11 +279,12 @@ export async function buildQuote(
         { sku: v.sku, unitsPerCase: v.unitsPerCase },
       );
     }
-    if (item.quantity > v.stock) {
+    const stock = qty(v.stock);
+    if (item.quantity > stock) {
       throw new BusinessError(
         "INSUFFICIENT_STOCK",
-        `${v.sku}: yetersiz stok (${v.stock} adet)`,
-        { sku: v.sku, stock: v.stock },
+        `${v.sku}: yetersiz stok (${formatQuantity(stock)}${v.unit ? ` ${v.unit}` : ""})`,
+        { sku: v.sku, stock },
       );
     }
 
@@ -377,7 +384,7 @@ export async function buildQuote(
         // A gift of something already in the cart must not eat the stock the
         // paid line is holding.
         reserved: lines.reduce<Map<string, number>>((map, l) => {
-          map.set(l.variantId, (map.get(l.variantId) ?? 0) + l.quantity);
+          map.set(l.variantId, qtyAdd(map.get(l.variantId), l.quantity));
           return map;
         }, new Map()),
       });
@@ -504,7 +511,7 @@ async function priceGifts(
   // Several campaigns may grant the same item; ask for each variant once.
   const wanted = new Map<string, number>();
   for (const gift of params.gifts) {
-    wanted.set(gift.variantId, (wanted.get(gift.variantId) ?? 0) + gift.quantity);
+    wanted.set(gift.variantId, qtyAdd(wanted.get(gift.variantId), gift.quantity));
   }
 
   const variants = await client.productVariant.findMany({
@@ -537,7 +544,7 @@ async function priceGifts(
     if (!v) continue; // withdrawn from the catalogue since the campaign was written
 
     const already = taken.get(v.id) ?? 0;
-    const available = v.stock - already;
+    const available = qtySub(v.stock, already);
     const quantity = Math.min(gift.quantity, Math.max(0, available));
     if (quantity === 0) continue;
 
@@ -560,7 +567,7 @@ async function priceGifts(
     const value = round2(priced.netUnitPrice.mul(quantity));
     if (value.lte(ZERO)) continue;
 
-    taken.set(v.id, already + quantity);
+    taken.set(v.id, qtyAdd(already, quantity));
     out.push({
       promotionId: gift.promotionId,
       value,

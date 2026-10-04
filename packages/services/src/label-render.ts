@@ -1,6 +1,7 @@
 import { prisma } from "@repo/database";
 import type { LabelTemplateKind } from "@repo/types";
 import { BusinessError } from "./errors";
+import { qty } from "./quantity";
 import { loadTenant } from "./tenant";
 
 // Şablonun içine ne yazılacağı.
@@ -115,7 +116,7 @@ export async function buildOrderLabelData(
         items: o.items.map((i) => ({
           name: i.productName,
           sku: i.sku,
-          quantity: i.quantity,
+          quantity: qty(i.quantity),
           total: tr(i.lineTotal),
         })),
         totals: [
@@ -199,8 +200,8 @@ export async function buildShipmentLabelData(
         items: s.items.map((i) => ({
           name: i.orderItem.productName,
           sku: i.orderItem.sku,
-          quantity: i.quantity,
-          total: tr(Number(i.orderItem.unitPrice) * i.quantity),
+          quantity: qty(i.quantity),
+          total: tr(Number(i.orderItem.unitPrice) * qty(i.quantity)),
         })),
         totals: [{ label: "Genel toplam", value: tr(s.order.grandTotal) }],
       },

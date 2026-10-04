@@ -604,6 +604,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   // özel kodlar: değer, yuvanın seçenek listesinde yok
   INVALID_CUSTOM_CODE: 422,
   INVALID_STOCK: 422,
+  // Miktar kalemin ölçeğine uymuyor (adet satan kalemde 1,5) — koli katı ile aynı aile.
+  INVALID_QUANTITY: 422,
   STOCK_MOVEMENT_NOT_FOUND: 404,
   LOT_NOT_FOUND: 404,
   LOT_CODE_TAKEN: 409,

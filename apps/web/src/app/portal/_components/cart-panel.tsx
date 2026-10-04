@@ -11,7 +11,8 @@ import type {
 } from "@repo/services";
 import type { PaymentMethod } from "@repo/types";
 import { useCart, cartTotals } from "@/store/cart";
-import { formatTRY } from "@/lib/format";
+import { formatQuantity, formatTRY } from "@/lib/format";
+import { isFractional, parseQuantity } from "@/lib/quantity";
 import { CurrencyNote } from "@/components/currency-note";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import {
@@ -32,7 +33,7 @@ const STATUS_MESSAGE: Record<string, string> = {
 };
 
 export function CartPanel({ companyId }: { companyId: string }) {
-  const { lines, inc, dec, remove, clear, isLoading } = useCart(companyId);
+  const { lines, inc, dec, setQty, remove, clear, isLoading } = useCart(companyId);
   const localTotals = cartTotals(lines);
 
   const [couponDraft, setCouponDraft] = useState("");
@@ -191,9 +192,18 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     >
                       <Minus className="h-3 w-3" />
                     </StepButton>
-                    <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
-                      {l.quantity}
-                    </span>
+                    {isFractional(l) ? (
+                      <FractionalQuantity
+                        key={l.quantity}
+                        value={l.quantity}
+                        unit={l.unit}
+                        onCommit={(q) => setQty(l.variantId, q)}
+                      />
+                    ) : (
+                      <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
+                        {l.quantity}
+                      </span>
+                    )}
                     <StepButton
                       label="Artır"
                       onClick={() => inc(l.variantId)}
@@ -414,6 +424,42 @@ export function CartPanel({ companyId }: { companyId: string }) {
 }
 
 /** Adet kutusunun iki ucundaki düğme — üçü tek bir kutu gibi görünsün diye. */
+/**
+ * Kilo/metre satırında miktar yazılabiliyor: artı/eksi bir birim ilerliyor ama
+ * 0,75 kg ancak yazılarak girilir. Kutudan çıkınca (ya da Enter) sepete gider;
+ * sunucu yanıtı ölçeğe yuvarlanmış miktarı geri yazar.
+ */
+function FractionalQuantity({
+  value,
+  unit,
+  onCommit,
+}: {
+  value: number;
+  unit: string | null;
+  onCommit: (quantity: number) => void;
+}) {
+  const [draft, setDraft] = useState(formatQuantity(value));
+  const commit = () => {
+    const n = parseQuantity(draft);
+    if (Number.isFinite(n) && n !== value) onCommit(n);
+    else setDraft(formatQuantity(value));
+  };
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      aria-label={`Miktar${unit ? ` (${unit})` : ""}`}
+      className="w-16 border-y border-line bg-panel py-1 text-center text-xs tabular-nums text-ink outline-none focus:border-ink-muted"
+    />
+  );
+}
+
 function StepButton({
   label,
   onClick,

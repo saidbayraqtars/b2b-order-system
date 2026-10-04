@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import type { OrderStatus } from "@prisma/client";
 import { BusinessError } from "./errors";
 import { Dec, round2, ZERO, type Money } from "./money";
+import { qty } from "./quantity";
 
 // Siparişi müşterinin ERP'sine yazmak — b2b tarafı.
 //
@@ -330,11 +331,12 @@ export async function pushOrderToErp(
     netTotal = netTotal.plus(net);
     vatTotal = vatTotal.plus(vat);
 
-    const unitPrice = item.quantity > 0 ? net.dividedBy(item.quantity) : ZERO;
+    const unitPrice = item.quantity.gt(0) ? net.dividedBy(item.quantity) : ZERO;
     return {
       productCode: item.variant.externalCode!,
       name: item.productName,
-      quantity: item.quantity,
+      // Kesir ERP'ye olduğu gibi gidiyor: 0,750 kg'lık satır ERP'de de 0,750.
+      quantity: qty(item.quantity),
       unit: item.variant.unit,
       unitPrice: Number(unitPrice.toDecimalPlaces(4).toFixed(4)),
       lineTotal: Number(net.toFixed(2)),

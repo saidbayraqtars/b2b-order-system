@@ -91,9 +91,13 @@ export interface ResolvedPrice {
  * Tie-break: the lowest price. Returns null if none applies.
  */
 function pickTier(rows: PriceRow[], quantity: number): PriceRow | null {
+  // Kademe eşiği tam sayı ve taban kademe "en az 1". Kesirli satışta 0,75 kg
+  // o eşiğin altında kalıp fiyatsız görünüyordu; 1'in altındaki miktar taban
+  // kademeden fiyatlanır. Tam sayı satışta (miktar >= 1) hiçbir şey değişmez.
+  const threshold = Math.max(quantity, 1);
   let best: PriceRow | null = null;
   for (const row of rows) {
-    if (row.minQuantity > quantity) continue;
+    if (row.minQuantity > threshold) continue;
     if (
       best === null ||
       row.minQuantity > best.minQuantity ||

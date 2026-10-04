@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import type { ErpSyncKind } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
+import { qty } from "./quantity";
 import { applyErpStock } from "./stock-ledger";
 
 // ERP'den gelen veriyi karşılamak.
@@ -235,7 +236,7 @@ export async function ingestStock(
       }
 
       await applyErpStock(
-        { variantId: variant.id, quantity: row.quantity, previous: variant.stock },
+        { variantId: variant.id, quantity: row.quantity, previous: qty(variant.stock) },
         { occurredAt: now },
       );
       // `erpSyncedAt` her satırda tazeleniyor, fark olmasa bile: sorusu "bu

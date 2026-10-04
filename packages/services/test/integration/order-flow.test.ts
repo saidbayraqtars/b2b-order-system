@@ -243,7 +243,7 @@ suite("order + promotion integration", () => {
         where: { id: variantId },
         select: { stock: true },
       });
-      expect(after.stock).toBe(before.stock - 2000);
+      expect(Number(after.stock)).toBe(Number(before.stock) - 2000);
 
       const debit = await prisma.transaction.findFirstOrThrow({
         where: { orderId: order.orderId, type: "DEBIT" },
@@ -322,7 +322,7 @@ suite("order + promotion integration", () => {
           where: { id: variantId },
           select: { stock: true },
         })
-      ).stock;
+      ).stock.toNumber();
       const balanceAfterOrder = (
         await prisma.company.findUniqueOrThrow({
           where: { id: companyId },
@@ -336,7 +336,7 @@ suite("order + promotion integration", () => {
         where: { id: variantId },
         select: { stock: true },
       });
-      expect(stock.stock).toBe(stockAfterOrder + 2000);
+      expect(Number(stock.stock)).toBe(stockAfterOrder + 2000);
 
       const balance = await prisma.company.findUniqueOrThrow({
         where: { id: companyId },

@@ -1,4 +1,4 @@
-import { fillTokens, type LabelData } from "@repo/services";
+import { fillTokens, formatQuantity, type LabelData } from "@repo/services";
 import type { LabelBlock } from "@repo/types";
 
 /**
@@ -94,7 +94,7 @@ function Block({ block, data }: { block: LabelBlock; data: LabelData }) {
                   </span>
                 </td>
                 <td className="whitespace-nowrap pl-1 text-right align-top">
-                  {it.quantity} ad
+                  {formatQuantity(it.quantity)} ad
                 </td>
                 <td className="whitespace-nowrap pl-1 text-right align-top">
                   {it.total}

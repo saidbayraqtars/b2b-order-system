@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
-import { listShipmentLots } from "@repo/services";
+import { formatQuantity, listShipmentLots } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { assertShipmentVisible } from "@/lib/order-access";
 import {
@@ -30,7 +30,7 @@ function lotLabel(lot: {
   const skt = lot.expiryDate
     ? ` (SKT ${trDate(new Date(lot.expiryDate))})`
     : "";
-  return `${head}${skt} · ${lot.quantity} adet`;
+  return `${head}${skt} · ${formatQuantity(lot.quantity)} adet`;
 }
 
 export default async function ShipmentDocumentPage({
@@ -157,9 +157,9 @@ export default async function ShipmentDocumentPage({
                   )}
                 </td>
                 <td className="py-2 text-neutral-500">{i.orderItem.sku}</td>
-                <td className="py-2 text-right tabular-nums">{i.quantity}</td>
+                <td className="py-2 text-right tabular-nums">{formatQuantity(i.quantity)}</td>
                 <td className="py-2 text-right tabular-nums text-neutral-500">
-                  {i.orderItem.quantity}
+                  {formatQuantity(i.orderItem.quantity)}
                 </td>
               </tr>
             );

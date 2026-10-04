@@ -109,7 +109,48 @@ export async function callRoute<
       parsed = text;
     }
   }
+  assertNumericQuantities(parsed, url);
   return { status: response.status, body: parsed as T };
+}
+
+// Miktar kolonları `Decimal` (kesirli stok, F1). Prisma'nın Decimal'ı JSON'a
+// metin olarak yazılıyor: dönüştürülmeden yanıta giren bir miktar istemcide
+// "2" + 1 = "21" olur. Web ve mobil istemcinin sözleşmesi sayı; her rota
+// yanıtı burada bunun için taranıyor, yani her rota testi bu bekçiyi de koşturuyor.
+const QUANTITY_KEYS = new Set([
+  "quantity",
+  "quantityShipped",
+  "quantityInvoiced",
+  "quantityOrdered",
+  "quantityReturned",
+  "returnableQuantity",
+  "remainingToShip",
+  "remainingToInvoice",
+  "stock",
+  "minStock",
+  "moqUnits",
+  "onHand",
+  "reserved",
+  "available",
+  "balanceAfter",
+  "pending",
+  "totalStock",
+]);
+
+function assertNumericQuantities(value: unknown, url: string, path = "body"): void {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => assertNumericQuantities(v, url, `${path}[${i}]`));
+    return;
+  }
+  if (value === null || typeof value !== "object") return;
+  for (const [key, v] of Object.entries(value)) {
+    if (QUANTITY_KEYS.has(key) && typeof v === "string") {
+      throw new Error(
+        `${url}: ${path}.${key} metin olarak döndü ("${v}") — miktar sayı olmalı, qty() ile çevirin`,
+      );
+    }
+    assertNumericQuantities(v, url, `${path}.${key}`);
+  }
 }
 
 // ─────────────────────────────────────────────

@@ -103,3 +103,19 @@ export function formatCell(
 export function isNumericFormat(format: string): boolean {
   return format === "money" || format === "number" || format === "percent";
 }
+
+const QUANTITY = new Intl.NumberFormat("tr-TR", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 3,
+});
+
+/**
+ * Miktar: gereksiz sıfır yok, en fazla üç ondalık (12 · 1,5 · 0,75).
+ *
+ * Adet satan kurulumda çıktı eskisiyle aynı; kilo ve metre satan kalemde
+ * "0.75" yerine "0,75" basılıyor.
+ */
+export function formatQuantity(value: number | string | null | undefined): string {
+  const n = typeof value === "string" ? Number(value) : (value ?? 0);
+  return QUANTITY.format(Number.isFinite(n) ? n : 0);
+}

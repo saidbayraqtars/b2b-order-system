@@ -13,7 +13,7 @@ import {
 } from "@repo/types";
 import { apiGet, apiPost } from "@/lib/fetcher";
 import { useUrlState } from "@/lib/url-state";
-import { formatTRY } from "@/lib/format";
+import { formatTRY, formatQuantity } from "@/lib/format";
 import {
   Badge,
   Card,
@@ -374,7 +374,7 @@ function ActionModal({
                       {item.productName}
                     </div>
                     <div className="text-xs text-ink-faint">
-                      {item.sku} · talep {item.quantity}
+                      {item.sku} · talep {formatQuantity(item.quantity)}
                     </div>
                   </div>
                   <div>
@@ -383,6 +383,8 @@ function ActionModal({
                       id={`qty-${item.id}`}
                       type="number"
                       min={0}
+                      step="any"
+                      inputMode="decimal"
                       max={item.quantity}
                       value={String(lines[item.id]?.quantity ?? item.quantity)}
                       onChange={(e) =>

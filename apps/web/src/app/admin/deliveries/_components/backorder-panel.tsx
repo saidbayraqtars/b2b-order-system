@@ -17,6 +17,7 @@ import {
   THead,
 } from "@/components/ui";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
+import { formatQuantity } from "@/lib/format";
 
 // Bekleyen bakiye — sipariş edilip sevk edilmemiş mal.
 //
@@ -97,10 +98,10 @@ export function BackorderPanel() {
                 <Td className="font-mono text-xs">{v.sku}</Td>
                 <Td muted>{v.productName}</Td>
                 <Td align="right" numeric className="font-medium text-ink">
-                  {v.pending}
+                  {formatQuantity(v.pending)}
                 </Td>
                 <Td align="right" numeric muted>
-                  {v.onHand}
+                  {formatQuantity(v.onHand)}
                 </Td>
                 <Td align="right" numeric muted>
                   {v.orderCount}
@@ -154,13 +155,13 @@ export function BackorderPanel() {
                   </span>
                 </Td>
                 <Td align="right" numeric muted>
-                  {l.quantity}
+                  {formatQuantity(l.quantity)}
                 </Td>
                 <Td align="right" numeric muted>
-                  {l.quantityShipped}
+                  {formatQuantity(l.quantityShipped)}
                 </Td>
                 <Td align="right" numeric className="font-medium text-ink">
-                  {l.pending}
+                  {formatQuantity(l.pending)}
                 </Td>
                 <Td
                   align="right"

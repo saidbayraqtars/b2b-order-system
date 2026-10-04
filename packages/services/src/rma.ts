@@ -13,6 +13,7 @@ import {
 } from "@repo/types";
 import { BusinessError } from "./errors";
 import { round2, ZERO } from "./money";
+import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
 import { postStockMovement } from "./stock-ledger";
 
 // İade (RMA).
@@ -123,10 +124,10 @@ export async function listReturnableLines(
       variantId: item.variantId,
       productName: item.productName,
       sku: item.sku,
-      quantityOrdered: item.quantity,
+      quantityOrdered: qty(item.quantity),
       quantityShipped: shipped,
       quantityReturned: already,
-      returnableQuantity: Math.max(0, shipped - already),
+      returnableQuantity: Math.max(0, qtySub(shipped, already)),
       unitPrice: item.unitPrice.toFixed(2),
       discount: item.discount.toFixed(2),
       vatRate: item.vatRate,
@@ -143,8 +144,12 @@ export async function listReturnableLines(
  * adedi devreye giriyor. Kısmi sevkiyat kullanan kurulumda ise gerçek sayı
  * `quantityShipped` ve iade onu aşamaz.
  */
-function shippedQuantity(quantityShipped: number, quantity: number): number {
-  return quantityShipped > 0 ? quantityShipped : quantity;
+function shippedQuantity(
+  quantityShipped: Prisma.Decimal | number,
+  quantity: Prisma.Decimal | number,
+): number {
+  const shipped = qty(quantityShipped);
+  return shipped > 0 ? shipped : qty(quantity);
 }
 
 async function returnedByOrderItem(
@@ -165,7 +170,7 @@ async function returnedByOrderItem(
 
   const map = new Map<string, number>();
   for (const row of rows) {
-    map.set(row.orderItemId, (map.get(row.orderItemId) ?? 0) + row.quantity);
+    map.set(row.orderItemId, qtyAdd(map.get(row.orderItemId), row.quantity));
   }
   return map;
 }
@@ -184,7 +189,7 @@ async function returnedByOrderItem(
  */
 function lineAmounts(
   item: {
-    quantity: number;
+    quantity: Prisma.Decimal | number;
     unitPrice: Prisma.Decimal;
     discount: Prisma.Decimal;
     promotionDiscount: Prisma.Decimal;
@@ -193,7 +198,7 @@ function lineAmounts(
   quantity: number,
 ): { promotionShare: Prisma.Decimal; net: Prisma.Decimal; gross: Prisma.Decimal } {
   const promotionShare =
-    item.quantity > 0
+    qty(item.quantity) > 0
       ? round2(item.promotionDiscount.mul(quantity).div(item.quantity))
       : ZERO;
   const gross = round2(item.unitPrice.sub(item.discount).mul(quantity));
@@ -256,6 +261,7 @@ async function createInTx(
           discount: true,
           promotionDiscount: true,
           vatRate: true,
+          variant: { select: { quantityScale: true } },
         },
       },
     },
@@ -294,13 +300,15 @@ async function createInTx(
     }
     seen.add(item.id);
 
-    const allowed =
-      shippedQuantity(item.quantityShipped, item.quantity) -
-      (returned.get(item.id) ?? 0);
+    assertQuantityScale(wanted.quantity, item.variant.quantityScale, item.sku);
+    const allowed = qtySub(
+      shippedQuantity(item.quantityShipped, item.quantity),
+      returned.get(item.id),
+    );
     if (wanted.quantity > allowed) {
       throw new BusinessError(
         "OVER_RETURN",
-        `${item.productName}: en fazla ${allowed} adet iade edilebilir`,
+        `${item.productName}: en fazla ${formatQuantity(allowed)} iade edilebilir`,
         { orderItemId: item.id, requested: wanted.quantity, allowed },
       );
     }
@@ -392,6 +400,7 @@ async function actInTx(
           id: true,
           orderItemId: true,
           variantId: true,
+          variant: { select: { quantityScale: true } },
           quantity: true,
           condition: true,
           productName: true,
@@ -454,12 +463,13 @@ type LoadedReturn = {
     id: string;
     orderItemId: string;
     variantId: string;
-    quantity: number;
+    variant: { quantityScale: number };
+    quantity: Prisma.Decimal;
     condition: ReturnCondition;
     productName: string;
     orderItem: {
-      quantity: number;
-      quantityShipped: number;
+      quantity: Prisma.Decimal;
+      quantityShipped: Prisma.Decimal;
       unitPrice: Prisma.Decimal;
       discount: Prisma.Decimal;
       promotionDiscount: Prisma.Decimal;
@@ -505,23 +515,28 @@ async function receiveInTx(
 
   for (const item of request.items) {
     const correction = corrections.get(item.id);
-    const quantity = correction ? correction.quantity : item.quantity;
+    const requested = qty(item.quantity);
+    const quantity = correction ? correction.quantity : requested;
     const condition = correction?.condition ?? item.condition;
 
-    if (quantity > item.quantity) {
+    if (correction) {
+      assertQuantityScale(quantity, item.variant.quantityScale, item.productName);
+    }
+    if (quantity > requested) {
       throw new BusinessError(
         "OVER_RETURN",
         `${item.productName}: talep edilenden fazlası teslim alınamaz`,
-        { returnItemId: item.id, requested: quantity, allowed: item.quantity },
+        { returnItemId: item.id, requested: quantity, allowed: requested },
       );
     }
-    const roomLeft =
-      shippedQuantity(item.orderItem.quantityShipped, item.orderItem.quantity) -
-      (returnedElsewhere.get(item.orderItemId) ?? 0);
+    const roomLeft = qtySub(
+      shippedQuantity(item.orderItem.quantityShipped, item.orderItem.quantity),
+      returnedElsewhere.get(item.orderItemId),
+    );
     if (quantity > roomLeft) {
       throw new BusinessError(
         "OVER_RETURN",
-        `${item.productName}: en fazla ${roomLeft} adet iade edilebilir`,
+        `${item.productName}: en fazla ${formatQuantity(roomLeft)} iade edilebilir`,
         { returnItemId: item.id, requested: quantity, allowed: roomLeft },
       );
     }
@@ -681,7 +696,7 @@ export async function getReturn(
         variantId: item.variantId,
         productName: item.productName,
         sku: item.sku,
-        quantity: item.quantity,
+        quantity: qty(item.quantity),
         condition: item.condition,
         unitPrice: item.unitPrice.toFixed(2),
         discount: item.discount.toFixed(2),

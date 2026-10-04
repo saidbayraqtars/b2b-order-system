@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { StockLevelRow } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { Label, Select, TextInput } from "@/components/form";
+import { formatQuantity } from "@/lib/format";
 
 // Hareket girerken ürünü seçmenin yolu: ara, sonra çıkan listeden seç.
 //
@@ -62,7 +63,7 @@ export function VariantPicker({
           <option value="">Seçin</option>
           {rows.map((r) => (
             <option key={r.variantId} value={r.variantId}>
-              {r.productName} — {r.sku} ({r.stock} {r.unit ?? "adet"})
+              {r.productName} — {r.sku} ({formatQuantity(r.stock)} {r.unit ?? "adet"})
             </option>
           ))}
         </Select>

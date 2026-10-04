@@ -185,7 +185,7 @@ suite("promotion v2: gifts and shipping", () => {
       });
 
       const gift = order.items.find((i) => i.isGift)!;
-      expect(gift.quantity).toBe(2);
+      expect(Number(gift.quantity)).toBe(2);
       expect(gift.lineTotal.toFixed(2)).toBe("0.00");
 
       const lineSum = order.items.reduce(
@@ -215,7 +215,7 @@ suite("promotion v2: gifts and shipping", () => {
         where: { id: giftVariant },
         select: { stock: true },
       });
-      expect(after.stock).toBe(before.stock - 5);
+      expect(Number(after.stock)).toBe(Number(before.stock) - 5);
     });
 
     it("gives what stock allows rather than failing the order", async () => {

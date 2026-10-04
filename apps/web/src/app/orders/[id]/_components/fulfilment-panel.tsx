@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InvoiceView, OpenLine, ShipmentView } from "@repo/services";
 import type { Role } from "@repo/types";
 import { apiDelete, apiGet, apiPost } from "@/lib/fetcher";
-import { formatTRY } from "@/lib/format";
+import { formatQuantity, formatTRY } from "@/lib/format";
 import {
   Button,
   Checkbox,
@@ -84,7 +84,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
                   </Link>
                   <p className="text-ink-muted">
                     {new Date(s.shippedAt).toLocaleDateString("tr-TR")} ·{" "}
-                    {s.items.reduce((n, i) => n + i.quantity, 0)} adet
+                    {formatQuantity(s.items.reduce((n, i) => n + i.quantity, 0))} adet
                     {s.carrier ? ` · ${s.carrier}` : ""}
                     {s.invoiceNumber
                       ? ` · fatura ${s.invoiceNumber}`
@@ -115,7 +115,7 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
               <ul className="mt-2 space-y-0.5 text-xs text-ink-faint">
                 {s.items.map((i) => (
                   <li key={i.orderItemId}>
-                    {i.productName} — {i.quantity} adet
+                    {i.productName} — {formatQuantity(i.quantity)} adet
                   </li>
                 ))}
               </ul>
@@ -240,12 +240,14 @@ function ShipmentForm({
             <span className="min-w-0 truncate text-body-sm">
               {l.productName}
               <span className="ml-1 text-xs text-ink-faint">
-                (kalan {l.remainingToShip})
+                (kalan {formatQuantity(l.remainingToShip)})
               </span>
             </span>
             <TextInput
               type="number"
               min={0}
+              step="any"
+              inputMode="decimal"
               max={l.remainingToShip}
               className="w-24"
               value={quantities[l.orderItemId] ?? ""}
@@ -345,7 +347,7 @@ function InvoiceForm({
                         : cur.filter((id) => id !== s.id),
                     )
                   }
-                  label={`${s.documentNumber} · ${s.items.reduce((n, i) => n + i.quantity, 0)} adet`}
+                  label={`${s.documentNumber} · ${formatQuantity(s.items.reduce((n, i) => n + i.quantity, 0))} adet`}
                 />
               </li>
             ))}

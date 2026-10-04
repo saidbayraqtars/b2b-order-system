@@ -17,6 +17,7 @@ import {
   customCodeWhere,
   normalizeCustomCodes,
 } from "./custom-codes";
+import { qty, qtyAdd, qtyOrNull } from "./quantity";
 
 // Catalog administration: the write side of what listCatalog() reads.
 // Authorization (SUPER_ADMIN) is enforced at the route layer; these functions
@@ -231,7 +232,7 @@ export async function listVariantOptions(): Promise<VariantOption[]> {
     return {
       id: v.id,
       sku: v.sku,
-      stock: v.stock,
+      stock: qty(v.stock),
       name: `${v.product.name}${traits ? ` (${traits})` : ""} — ${v.sku}`,
     };
   });
@@ -296,7 +297,7 @@ export async function listProductsAdmin(
     isActive: p.isActive,
     category: p.category,
     variantCount: p.variants.length,
-    totalStock: p.variants.reduce((s, v) => s + v.stock, 0),
+    totalStock: qtyAdd(...p.variants.map((v) => v.stock)),
     unpricedVariants: p.variants.filter((v) => v._count.prices === 0).length,
     codes: customCodeValuesOf(p),
   }));
@@ -324,6 +325,8 @@ export interface AdminVariantDetail {
   /** ERP stok kartı alanları; köprü bağlı değilse boş kalırlar. */
   costPrice: string | null;
   unit: string | null;
+  /** Miktarın kaç ondalık alabildiği: 0 = tam sayı, 3 = gram hassasiyetinde kilo. */
+  quantityScale: number;
   minStock: number | null;
   shelfCode: string | null;
   isActive: boolean;
@@ -380,6 +383,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
           weightGram: true,
           costPrice: true,
           unit: true,
+          quantityScale: true,
           minStock: true,
           shelfCode: true,
           isActive: true,
@@ -426,12 +430,13 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
       color: v.color,
       size: v.size,
       unitsPerCase: v.unitsPerCase,
-      moqUnits: v.moqUnits,
-      stock: v.stock,
+      moqUnits: qty(v.moqUnits),
+      stock: qty(v.stock),
       weightGram: v.weightGram,
       costPrice: v.costPrice?.toFixed(2) ?? null,
       unit: v.unit,
-      minStock: v.minStock,
+      quantityScale: v.quantityScale,
+      minStock: qtyOrNull(v.minStock),
       shelfCode: v.shelfCode,
       isActive: v.isActive,
       tracksLots: v.tracksLots,
@@ -597,6 +602,7 @@ export async function createVariant(productId: string, input: CreateVariantInput
       weightGram: input.weightGram ?? null,
       costPrice: input.costPrice ?? null,
       unit: input.unit ?? null,
+      quantityScale: input.quantityScale ?? 0,
       minStock: input.minStock ?? null,
       shelfCode: input.shelfCode ?? null,
       isActive: input.isActive ?? true,
@@ -641,6 +647,9 @@ export async function updateVariant(id: string, input: UpdateVariantInput) {
         ? { costPrice: input.costPrice ?? null }
         : {}),
       ...(input.unit !== undefined ? { unit: input.unit ?? null } : {}),
+      ...(input.quantityScale !== undefined
+        ? { quantityScale: input.quantityScale }
+        : {}),
       ...(input.minStock !== undefined
         ? { minStock: input.minStock ?? null }
         : {}),
@@ -666,7 +675,7 @@ export async function updateVariant(id: string, input: UpdateVariantInput) {
         : {}),
     },
     select: { id: true, sku: true, stock: true },
-  });
+  }).then((v) => ({ ...v, stock: qty(v.stock) }));
 }
 
 export async function deleteVariant(id: string): Promise<void> {

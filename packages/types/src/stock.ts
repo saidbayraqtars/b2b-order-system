@@ -1,23 +1,19 @@
 import { z } from "zod";
 import { StockDirectionEnum, StockMovementSourceEnum } from "./enums";
+import { quantityInput } from "./quantity";
 
 // Stok hareket defteri: elle giriş/çıkış, sayım, depolar arası aktarım, ters
 // kayıt ve defteri okuma süzgeci. Kimin çağırabileceği rota katmanında;
 // buradakiler yalnızca biçim.
 
-/** Adet her yerde tam sayı: yarım koli diye bir şey yok, birim ürün kartında. */
-const quantity = z.coerce
-  .number()
-  .int("Adet tam sayı olmalı")
-  .min(1, "Adet sıfırdan büyük olmalı")
-  .max(9_999_999);
+/**
+ * Miktar üç ondalığa kadar (0,75 kg). Kalemin kendi ölçeği — adet tutulan
+ * kalemde tam sayı — servis katmanında `quantityScale` ile denetleniyor.
+ */
+const quantity = quantityInput({ coerce: true, message: "Miktar sıfırdan büyük olmalı" });
 
 /** Sayımda sıfır geçerli bir cevap — "hiç kalmamış" da bir sayım sonucudur. */
-const countedQuantity = z.coerce
-  .number()
-  .int("Adet tam sayı olmalı")
-  .min(0)
-  .max(9_999_999);
+const countedQuantity = quantityInput({ coerce: true, allowZero: true });
 
 /** ISO tarih (YYYY-MM-DD) ya da tam zaman damgası; servis güne normalize eder. */
 const dateString = z.string().trim().min(8).max(40);

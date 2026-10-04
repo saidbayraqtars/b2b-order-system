@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { entityIdSchema } from "./id";
 import { cartItemInputSchema } from "./order";
+import { quantityInput } from "./quantity";
 
 // The server cart holds intent, not money: a variant and how many. Prices,
 // campaigns and VAT are resolved when the cart is read or quoted, never stored
@@ -23,7 +24,8 @@ export const upsertCartItemSchema = z.object({
   // cuid() değil — bkz. id.ts: içe aktarılan kataloğun kimlikleri o biçimde
   // değil ve satır sepete hiç girmiyordu.
   variantId: entityIdSchema,
-  quantity: z.number().int().min(0).max(1_000_000),
+  /** 0 = satırı sil. Kalemin ölçeği (tam sayı mı, kaç ondalık) serviste denetlenir. */
+  quantity: quantityInput({ allowZero: true, max: 1_000_000 }),
   /** true → add to what is already there; false/absent → set it outright. */
   increment: z.boolean().optional(),
 });

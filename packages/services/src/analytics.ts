@@ -888,13 +888,13 @@ async function computeProducts(now: Date): Promise<ProductSnapshot> {
       productName: string;
       revenue: number;
       cost: number;
-      quantity: bigint;
+      quantity: number;
     }>
   >`
     SELECT p."id" AS "productId", p."name" AS "productName",
            SUM(oi."lineTotal")::float8 AS revenue,
            SUM(oi."quantity" * COALESCE(v."costPrice", 0))::float8 AS cost,
-           SUM(oi."quantity") AS quantity
+           SUM(oi."quantity")::float8 AS quantity
     FROM "OrderItem" oi
     JOIN "Order" o ON o."id" = oi."orderId"
     JOIN "ProductVariant" v ON v."id" = oi."variantId"
@@ -935,7 +935,7 @@ async function computeProducts(now: Date): Promise<ProductSnapshot> {
     }>
   >`
     SELECT v."id" AS "variantId", v."productId" AS "productId", v."sku" AS sku,
-           p."name" AS "productName", v."stock" AS stock,
+           p."name" AS "productName", v."stock"::float8 AS stock,
            (v."stock" * COALESCE(v."costPrice", 0))::float8 AS "costValue",
            MAX(m."occurredAt") AS "lastMovementAt"
     FROM "ProductVariant" v

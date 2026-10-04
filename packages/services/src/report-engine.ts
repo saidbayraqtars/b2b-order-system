@@ -585,7 +585,9 @@ function emit(
 function toCell(value: unknown): ReportCellValue {
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value.toISOString();
-  if (value instanceof Prisma.Decimal) return Number(value.toFixed(2));
+  // Kolonun kendi ölçeği korunuyor: para iki, miktar üç ondalık (0,375 kg
+  // iki basamağa yuvarlanınca 0,38 oluyordu).
+  if (value instanceof Prisma.Decimal) return value.toNumber();
   // Raw SQL hands back what Postgres has: COUNT is bigint, SUM/AVG over money
   // is numeric, and the driver renders those as BigInt and string. A total that
   // arrived as "2400" is still a total, so it goes out as one.
@@ -616,7 +618,10 @@ function toAggregateCell(
 
   if (numeric) {
     const n = Number(value instanceof Prisma.Decimal ? value.toFixed(4) : value);
-    return Number.isNaN(n) ? toCell(value) : Number(n.toFixed(2));
+    // Para iki ondalık; miktar ve öbür sayılar üç — kesirli stokun toplamı
+    // kuruş hassasiyetine yuvarlanmamalı.
+    const places = def.type === "money" ? 2 : 3;
+    return Number.isNaN(n) ? toCell(value) : Number(n.toFixed(places));
   }
   return toCell(value);
 }

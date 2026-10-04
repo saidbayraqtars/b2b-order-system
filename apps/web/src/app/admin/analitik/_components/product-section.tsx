@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ProductSnapshot } from "@repo/services";
-import { formatTRY } from "@/lib/format";
+import { formatTRY, formatQuantity } from "@/lib/format";
 import { Panel } from "@/components/form";
 import {
   Badge,
@@ -113,7 +113,7 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
                   {formatTRY(p.revenue)}
                 </Td>
                 <Td align="right" numeric muted>
-                  {p.quantity}
+                  {formatQuantity(p.quantity)}
                 </Td>
                 <Td
                   align="right"
@@ -194,7 +194,7 @@ export function ProductSection({ data }: { data: ProductSnapshot }) {
                   {d.sku}
                 </Td>
                 <Td align="right" numeric>
-                  {d.stock}
+                  {formatQuantity(d.stock)}
                 </Td>
                 <Td align="right" numeric>
                   {formatTRY(d.costValue)}

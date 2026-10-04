@@ -4,6 +4,7 @@ import type { CreateInvoiceInput, InvoiceStatus, Role } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, ZERO, round2 } from "./money";
 import type { Money } from "./money";
+import { formatQuantity, qty as toQty, qtyAdd, qtySub } from "./quantity";
 import { resolveDocumentNumber } from "./document-series";
 
 // Faturalama.
@@ -128,10 +129,19 @@ export async function createInvoice(
       );
     }
 
+    // Miktarlar sayıya bir kez, burada çevriliyor; aşağıdaki çıkarmalar
+    // `qtySub` ile ondalıkta yapılıyor (bkz. quantity.ts).
+    const orderItems = order.items.map((i) => ({
+      ...i,
+      quantity: toQty(i.quantity),
+      quantityShipped: toQty(i.quantityShipped),
+      quantityInvoiced: toQty(i.quantityInvoiced),
+    }));
+
     const shipmentIds = input.shipmentIds ?? [];
     const quantities = shipmentIds.length
       ? await quantitiesFromShipments(tx, order.id, shipmentIds)
-      : quantitiesFromOrder(order.items);
+      : quantitiesFromOrder(orderItems);
 
     if (quantities.size === 0) {
       throw new BusinessError(
@@ -147,15 +157,15 @@ export async function createInvoice(
     let promotionTotal = ZERO;
     let taxTotal = ZERO;
 
-    for (const item of order.items) {
+    for (const item of orderItems) {
       const qty = quantities.get(item.id) ?? 0;
       if (qty === 0) continue;
 
-      const remainingToInvoice = item.quantity - item.quantityInvoiced;
+      const remainingToInvoice = qtySub(item.quantity, item.quantityInvoiced);
       if (qty > remainingToInvoice) {
         throw new BusinessError(
           "OVER_INVOICE",
-          `${item.sku}: faturalanabilecek en fazla ${remainingToInvoice} adet kaldı`,
+          `${item.sku}: faturalanabilecek en fazla ${formatQuantity(remainingToInvoice)} kaldı`,
           { sku: item.sku, remaining: remainingToInvoice },
         );
       }
@@ -338,7 +348,7 @@ async function quantitiesFromShipments(
   const out = new Map<string, number>();
   for (const s of shipments) {
     for (const line of s.items) {
-      out.set(line.orderItemId, (out.get(line.orderItemId) ?? 0) + line.quantity);
+      out.set(line.orderItemId, qtyAdd(out.get(line.orderItemId), line.quantity));
     }
   }
   return out;
@@ -350,7 +360,7 @@ function quantitiesFromOrder(
 ): Map<string, number> {
   const out = new Map<string, number>();
   for (const item of items) {
-    const left = item.quantity - item.quantityInvoiced;
+    const left = qtySub(item.quantity, item.quantityInvoiced);
     if (left > 0) out.set(item.id, left);
   }
   return out;
@@ -513,7 +523,7 @@ function toView(r: InvoiceRow): InvoiceView {
       id: i.id,
       productName: i.productName,
       sku: i.sku,
-      quantity: i.quantity,
+      quantity: toQty(i.quantity),
       unitPrice: i.unitPrice.toFixed(2),
       discount: i.discount.toFixed(2),
       promotionDiscount: i.promotionDiscount.toFixed(2),

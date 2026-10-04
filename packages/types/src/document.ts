@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quantityInput } from "./quantity";
 
 // Documents: numbering serials, despatches (irsaliye) and invoices (fatura).
 
@@ -54,7 +55,7 @@ export const createShipmentSchema = z.object({
     .array(
       z.object({
         orderItemId: z.string().cuid(),
-        quantity: z.number().int().positive(),
+        quantity: quantityInput(),
       }),
     )
     .min(1, "Sevk edilecek kalem seçin"),

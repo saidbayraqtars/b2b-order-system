@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
 import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
+import { qty } from "./quantity";
 import { releaseIntentsForOrder } from "./payment-intent";
 import { listOrderPromotions, type OrderPromotionRow } from "./promotion";
 import { recordOrderStockReturn } from "./stock-ledger";
@@ -478,14 +479,14 @@ export async function getOrderDetail(
       id: i.id,
       productName: i.productName,
       sku: i.sku,
-      quantity: i.quantity,
+      quantity: qty(i.quantity),
       unitPrice: i.unitPrice.toFixed(2),
       discount: i.discount.toFixed(2),
       promotionDiscount: i.promotionDiscount.toFixed(2),
       vatRate: i.vatRate,
       lineTotal: i.lineTotal.toFixed(2),
-      quantityShipped: i.quantityShipped,
-      quantityInvoiced: i.quantityInvoiced,
+      quantityShipped: qty(i.quantityShipped),
+      quantityInvoiced: qty(i.quantityInvoiced),
       isGift: i.isGift,
       listCurrency: i.listCurrency,
       // Dört ondalık: kur 34,2150 gibi girilir ve iki basamağa yuvarlamak

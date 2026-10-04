@@ -240,6 +240,7 @@ export function PortalClient({
         unitsPerCase: hit.variant.unitsPerCase,
         moqUnits: hit.variant.moqUnits,
         stock: hit.variant.stock,
+        quantityScale: hit.variant.quantityScale,
       });
       // Kutu temizleniyor ki sıradaki kod üstüne yazılmadan okutulabilsin.
       setSearch("");

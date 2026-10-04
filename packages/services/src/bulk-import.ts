@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
+import { fitsQuantityScale, formatQuantity, qty, qtySub } from "./quantity";
 import { postStockMovement } from "./stock-ledger";
 import { parseDecimal, readSpreadsheet, type SheetRow } from "./xlsx-read";
 
@@ -348,7 +349,13 @@ async function planStock(rows: SheetRow[]): Promise<ImportPlan> {
   ];
   const variants = await prisma.productVariant.findMany({
     where: { sku: { in: skus } },
-    select: { id: true, sku: true, stock: true, product: { select: { name: true } } },
+    select: {
+      id: true,
+      sku: true,
+      stock: true,
+      quantityScale: true,
+      product: { select: { name: true } },
+    },
   });
   const bySku = new Map(variants.map((v) => [v.sku, v]));
 
@@ -363,7 +370,9 @@ async function planStock(rows: SheetRow[]): Promise<ImportPlan> {
       sku: sku ?? "",
       productName: null,
       currentStock: null,
-      countedStock: counted === null ? null : Math.trunc(counted),
+      // Kesir kırpılmıyor: 12,350 kg sayılan malı 12 diye yazmak her sayımda
+      // 0,350 kg'lık sahte bir fark doğururdu. Kalemin ölçeği aşağıda denetleniyor.
+      countedStock: counted === null ? null : qty(counted),
       difference: null,
       status: "invalid",
     };
@@ -379,13 +388,22 @@ async function planStock(rows: SheetRow[]): Promise<ImportPlan> {
       });
     }
     base.productName = variant.product.name;
-    base.currentStock = variant.stock;
+    base.currentStock = qty(variant.stock);
 
     if (base.countedStock === null || base.countedStock < 0) {
       return withCount(counts, { ...base, message: "Sayılan adet okunamadı" });
     }
+    if (!fitsQuantityScale(base.countedStock, variant.quantityScale)) {
+      return withCount(counts, {
+        ...base,
+        message:
+          variant.quantityScale === 0
+            ? "Bu kalem tam sayıyla sayılır"
+            : `Bu kalem en fazla ${variant.quantityScale} ondalıkla sayılır`,
+      });
+    }
 
-    base.difference = base.countedStock - variant.stock;
+    base.difference = qtySub(base.countedStock, variant.stock);
     if (base.difference === 0) {
       return withCount(counts, { ...base, status: "unchanged" });
     }
@@ -643,7 +661,7 @@ async function applyStock(
           direction: row.difference > 0 ? "IN" : "OUT",
           quantity: Math.abs(row.difference),
           source: "COUNT",
-          description: `Excel ile toplu sayım: ${row.currentStock} → ${row.countedStock}`,
+          description: `Excel ile toplu sayım: ${formatQuantity(row.currentStock)} → ${formatQuantity(row.countedStock)}`,
           recordedById: actorId,
         });
       }
@@ -709,7 +727,7 @@ export async function importTemplateRows(
         groupName: null,
         minQuantity: 1,
         price: null,
-        stock: v.stock,
+        stock: qty(v.stock),
       });
       continue;
     }
@@ -720,7 +738,7 @@ export async function importTemplateRows(
         groupName: null,
         minQuantity: 1,
         price: null,
-        stock: v.stock,
+        stock: qty(v.stock),
       });
       continue;
     }
@@ -731,7 +749,7 @@ export async function importTemplateRows(
         groupName: p.customerGroup?.name ?? null,
         minQuantity: p.minQuantity,
         price: Number(p.price),
-        stock: v.stock,
+        stock: qty(v.stock),
       });
     }
   }
