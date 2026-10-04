@@ -10,6 +10,22 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
   listesi isteğe bağlı.
 - Sadeleştirme: dördü birden — modül aç/kapa, menüyü 5-6 başlığa indirmek,
   basit/gelişmiş görünüm, ekran ekran yeniden tasarım.
+- Özellik adaylarından **ilk üçü** alındı: kesirli stok, çoklu birim, depo
+  bazlı kritik seviye.
+
+## Durum (2026-10-04)
+
+| Adım | Durum |
+|---|---|
+| D1 özel kodlar | ✔ `68de3f9` |
+| D2 modül aç/kapa | ✔ `35081cd` |
+| D3 menü 6 başlık, D4 basit/gelişmiş görünüm | kod bitti, tam doğrulamada |
+| F1 kesirli stok | sırada — 12 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet) |
+| F2 çoklu birim | sırada |
+| F3 depo bazlı kritik seviye | sırada |
+| D5 ekran ekran | sırada |
+
+Ölçüm: 1.143 test (erp-agent 18, servisler 719, web 406) yeşil.
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 
