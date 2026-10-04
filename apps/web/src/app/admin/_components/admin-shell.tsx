@@ -41,6 +41,7 @@ import {
 import { HashtagSquareIcon, WidgetIcon } from "@/components/reicon";
 import { hasPermission, type ModuleKey, type Permission } from "@repo/types";
 import { SidebarShell, type SidebarGroup } from "@/components/app-sidebar";
+import { useAdvancedView, ViewModeToggle } from "@/components/ui-mode";
 
 interface AdminLink {
   href: string;
@@ -54,42 +55,31 @@ interface AdminLink {
    * zaten düşmüş geliyor.
    */
   module?: ModuleKey;
+  /** Nadir kullanılan ayar ekranı: basit görünümde gizli. */
+  advanced?: boolean;
 }
 
 /**
- * Yönetim panelinin bölümleri, işe göre gruplanmış.
+ * Yönetim panelinin bölümleri: altı başlık, işe göre.
+ *
+ * Satış · Katalog · Müşteriler · Finans · Raporlar · Ayarlar. Önceki yedi
+ * grup (Saha & Dağıtım, Belge & Rapor, Sistem…) ekranın nerede durduğunu
+ * değil kimin yazdığını anlatıyordu; kullanıcı "kampanya nerede" diye
+ * aradığında cevap "Satış" olmalı.
  *
  * Her satır kendi iznini taşır ve menü buna göre süzülür — ama süzgeç yalnızca
- * görgüseldir: ekranın kendisi `requirePage(..., "izin")` ile ayrıca kapalıdır.
- * Menüden gizlemek bir güvenlik önlemi değil, adres çubuğuna yazan biri için
- * hiçbir şey ifade etmez.
+ * görseldir: ekranın kendisi `requirePage(..., "izin")` ile ayrıca kapalıdır.
+ * `advanced` işaretli satırlar basit görünümde gizlenir (nadir kullanılan
+ * ayar ekranları); bu da yetki değil, görüntü.
  */
 const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
   {
-    title: "Genel",
+    title: "",
     links: [{ href: "/admin", label: "Panel", icon: LayoutDashboard }],
   },
   {
-    title: "Katalog",
+    title: "Satış",
     links: [
-      {
-        href: "/admin/products",
-        label: "Ürünler",
-        icon: Package,
-        permission: "products.view",
-      },
-      {
-        href: "/admin/toplu-guncelleme",
-        label: "Toplu güncelleme",
-        icon: FileSpreadsheet,
-        permission: "pricing.manage",
-      },
-      {
-        href: "/admin/categories",
-        label: "Kategoriler",
-        icon: Tags,
-        permission: "products.view",
-      },
       {
         href: "/admin/promotions",
         label: "Kampanyalar",
@@ -97,62 +87,10 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "promotions.manage",
       },
       {
-        href: "/admin/stok",
-        label: "Stok defteri",
-        icon: Boxes,
-        permission: "stock.view",
-      },
-      {
-        href: "/admin/sayfa-duzeni",
-        label: "Sayfa düzeni",
-        icon: LayoutTemplate,
-        permission: "design.manage",
-      },
-    ],
-  },
-  {
-    title: "Müşteriler",
-    links: [
-      {
-        href: "/admin/companies",
-        label: "Firmalar",
-        icon: Building2,
-        permission: "companies.view",
-      },
-      {
-        href: "/admin/users",
-        label: "Kullanıcılar",
-        icon: Users,
-        permission: "users.manage",
-      },
-      {
-        href: "/admin/customer-groups",
-        label: "Gruplar",
-        icon: Layers,
-        permission: "companies.view",
-      },
-      {
-        href: "/admin/basvurular",
-        label: "Bayi başvuruları",
-        icon: Inbox,
-        permission: "applications.manage",
-      },
-    ],
-  },
-  {
-    title: "Saha & Dağıtım",
-    links: [
-      {
-        href: "/admin/targets",
-        label: "Hedefler",
-        icon: Target,
-        permission: "targets.manage",
-      },
-      {
-        href: "/admin/prim",
-        label: "Prim",
-        icon: Coins,
-        permission: "commission.manage",
+        href: "/admin/volume-tiers",
+        label: "Hacim iskontosu",
+        icon: TrendingUp,
+        permission: "volume_tiers.manage",
       },
       {
         href: "/admin/deliveries",
@@ -167,6 +105,83 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         icon: Undo2,
         permission: "returns.manage",
       },
+      {
+        href: "/admin/targets",
+        label: "Hedefler",
+        icon: Target,
+        permission: "targets.manage",
+      },
+      {
+        href: "/admin/prim",
+        label: "Prim",
+        icon: Coins,
+        permission: "commission.manage",
+      },
+      {
+        href: "/admin/basvurular",
+        label: "Bayi başvuruları",
+        icon: Inbox,
+        permission: "applications.manage",
+      },
+      {
+        href: "/admin/siparis-kurallari",
+        label: "Sipariş kuralları",
+        icon: ClipboardCheck,
+        permission: "order_policy.manage",
+        advanced: true,
+      },
+    ],
+  },
+  {
+    title: "Katalog",
+    links: [
+      {
+        href: "/admin/products",
+        label: "Ürünler",
+        icon: Package,
+        permission: "products.view",
+      },
+      {
+        href: "/admin/categories",
+        label: "Kategoriler",
+        icon: Tags,
+        permission: "products.view",
+      },
+      {
+        href: "/admin/stok",
+        label: "Stok defteri",
+        icon: Boxes,
+        permission: "stock.view",
+      },
+      {
+        href: "/admin/toplu-guncelleme",
+        label: "Toplu güncelleme",
+        icon: FileSpreadsheet,
+        permission: "pricing.manage",
+      },
+    ],
+  },
+  {
+    title: "Müşteriler",
+    links: [
+      {
+        href: "/admin/companies",
+        label: "Firmalar",
+        icon: Building2,
+        permission: "companies.view",
+      },
+      {
+        href: "/admin/customer-groups",
+        label: "Gruplar",
+        icon: Layers,
+        permission: "companies.view",
+      },
+      {
+        href: "/admin/users",
+        label: "Kullanıcılar",
+        icon: Users,
+        permission: "users.manage",
+      },
     ],
   },
   {
@@ -179,22 +194,16 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "cash.view",
       },
       {
-        href: "/admin/mutabakat",
-        label: "Mutabakat",
-        icon: Handshake,
-        permission: "reconciliation.manage",
-      },
-      {
         href: "/admin/cekler",
         label: "Çek & senet",
         icon: ScrollText,
         permission: "cheques.manage",
       },
       {
-        href: "/admin/kurlar",
-        label: "Döviz kurları",
-        icon: Coins,
-        permission: "pricing.manage",
+        href: "/admin/mutabakat",
+        label: "Mutabakat",
+        icon: Handshake,
+        permission: "reconciliation.manage",
       },
       {
         href: "/admin/payment-terms",
@@ -203,33 +212,22 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "payment_terms.manage",
       },
       {
-        href: "/admin/volume-tiers",
-        label: "Hacim iskontosu",
-        icon: TrendingUp,
-        permission: "volume_tiers.manage",
-      },
-      {
-        href: "/admin/siparis-kurallari",
-        label: "Sipariş kuralları",
-        icon: ClipboardCheck,
-        permission: "order_policy.manage",
+        href: "/admin/kurlar",
+        label: "Döviz kurları",
+        icon: Coins,
+        permission: "pricing.manage",
+        advanced: true,
       },
     ],
   },
   {
-    title: "Belge & Rapor",
+    title: "Raporlar",
     links: [
       {
-        href: "/admin/documents",
-        label: "Belgeler",
-        icon: FileText,
-        permission: "documents.view",
-      },
-      {
-        href: "/admin/labels",
-        label: "Etiket & fiş",
-        icon: Sticker,
-        permission: "labels.manage",
+        href: "/admin/reports",
+        label: "Raporlar",
+        icon: BarChart3,
+        permission: "reports.view",
       },
       {
         href: "/admin/analitik",
@@ -238,34 +236,23 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "analytics.view",
       },
       {
-        href: "/admin/reports",
-        label: "Raporlar",
-        icon: BarChart3,
-        permission: "reports.view",
+        href: "/admin/documents",
+        label: "Belgeler",
+        icon: FileText,
+        permission: "documents.view",
       },
       {
         href: "/reports",
         label: "Rapor tasarımcısı",
         icon: Wand2,
         permission: "reports.build",
+        advanced: true,
       },
     ],
   },
   {
-    title: "Sistem",
+    title: "Ayarlar",
     links: [
-      {
-        href: "/admin/kurulum",
-        label: "Kurulum",
-        icon: ListChecks,
-        permission: "organization.manage",
-      },
-      {
-        href: "/admin/tatiller",
-        label: "Resmî tatiller",
-        icon: CalendarOff,
-        permission: "organization.manage",
-      },
       {
         href: "/admin/organization",
         label: "Kuruluş",
@@ -273,9 +260,9 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "organization.manage",
       },
       {
-        href: "/admin/ozel-kodlar",
-        label: "Özel kodlar",
-        icon: HashtagSquareIcon,
+        href: "/admin/kurulum",
+        label: "Kurulum",
+        icon: ListChecks,
         permission: "organization.manage",
       },
       {
@@ -285,10 +272,10 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "organization.manage",
       },
       {
-        href: "/admin/erp",
-        label: "ERP köprüsü",
-        icon: Plug,
-        permission: "erp.manage",
+        href: "/admin/ozel-kodlar",
+        label: "Özel kodlar",
+        icon: HashtagSquareIcon,
+        permission: "organization.manage",
       },
       {
         href: "/admin/announcements",
@@ -297,28 +284,59 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
         permission: "announcements.manage",
       },
       {
+        href: "/admin/erp",
+        label: "ERP köprüsü",
+        icon: Plug,
+        permission: "erp.manage",
+      },
+      {
+        href: "/admin/labels",
+        label: "Etiket & fiş",
+        icon: Sticker,
+        permission: "labels.manage",
+        advanced: true,
+      },
+      {
+        href: "/admin/sayfa-duzeni",
+        label: "Sayfa düzeni",
+        icon: LayoutTemplate,
+        permission: "design.manage",
+        advanced: true,
+      },
+      {
+        href: "/admin/tatiller",
+        label: "Resmî tatiller",
+        icon: CalendarOff,
+        permission: "organization.manage",
+        advanced: true,
+      },
+      {
         href: "/admin/activity",
         label: "Hareketler",
         icon: Activity,
         permission: "activity.view",
+        advanced: true,
       },
       {
         href: "/admin/audit",
         label: "Güvenlik",
         icon: ShieldCheck,
         permission: "audit.view",
+        advanced: true,
       },
       {
         href: "/admin/jobs",
         label: "Bakım işleri",
         icon: Timer,
         permission: "jobs.manage",
+        advanced: true,
       },
       {
         href: "/admin/surum",
         label: "Sürüm",
         icon: ArrowUpCircle,
         permission: "system.update",
+        advanced: true,
       },
     ],
   },
@@ -328,13 +346,15 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
 function visibleGroups(
   permissions: readonly Permission[],
   disabledModules: readonly ModuleKey[],
+  advanced: boolean,
 ): SidebarGroup[] {
   return GROUPS.map((g) => ({
     title: g.title,
     links: g.links.filter(
       (l) =>
         (!l.permission || hasPermission(permissions, l.permission)) &&
-        (!l.module || !disabledModules.includes(l.module)),
+        (!l.module || !disabledModules.includes(l.module)) &&
+        (advanced || !l.advanced),
     ),
   })).filter((g) => g.links.length > 0);
 }
@@ -350,10 +370,12 @@ export function AdminShell({
   disabledModules?: readonly ModuleKey[];
   children: ReactNode;
 }) {
+  const advanced = useAdvancedView();
   return (
     <SidebarShell
       context="Yönetim Paneli"
-      groups={visibleGroups(permissions, disabledModules)}
+      footer={<ViewModeToggle />}
+      groups={visibleGroups(permissions, disabledModules, advanced)}
       userLabel={email}
     >
       {children}

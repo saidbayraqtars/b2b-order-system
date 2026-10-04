@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { getDisabledModules } from "@repo/services";
+import { getAdvancedView, getDisabledModules } from "@repo/services";
+import { UiModeProvider } from "@/components/ui-mode";
 import { requirePage } from "@/lib/guard";
 import { AdminShell } from "./_components/admin-shell";
 
@@ -20,14 +21,19 @@ export default async function AdminLayout({
   const user = await requirePage(["SUPER_ADMIN"]);
   // İzinler kapalı modüllerinkiler düşülmüş geliyor; bu liste yalnızca
   // paylaşılan izinle açılan satırlar için (Dağıtım → `orders.fulfil`).
-  const disabledModules = await getDisabledModules();
+  const [disabledModules, advanced] = await Promise.all([
+    getDisabledModules(),
+    getAdvancedView(user.id),
+  ]);
   return (
-    <AdminShell
-      email={user.email}
-      permissions={user.permissions}
-      disabledModules={disabledModules}
-    >
-      {children}
-    </AdminShell>
+    <UiModeProvider advanced={advanced}>
+      <AdminShell
+        email={user.email}
+        permissions={user.permissions}
+        disabledModules={disabledModules}
+      >
+        {children}
+      </AdminShell>
+    </UiModeProvider>
   );
 }

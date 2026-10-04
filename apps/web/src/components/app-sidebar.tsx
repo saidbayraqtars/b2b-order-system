@@ -47,6 +47,8 @@ export function SidebarShell({
   search,
   /** Üst şeridin sağındaki ek düğmeler: firma seçici, sepet, yazdır… */
   actions,
+  /** Kenar çubuğunun altında, hesap bağlantısının üstünde: görünüm düğmesi. */
+  footer,
   children,
 }: {
   brand?: string;
@@ -56,6 +58,7 @@ export function SidebarShell({
   userLabel: string;
   search?: ReactNode;
   actions?: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const tenant = useBrand();
@@ -154,6 +157,7 @@ export function SidebarShell({
         </nav>
 
         <div className="shrink-0 border-t border-line px-3 py-3">
+          {footer}
           <Link
             href="/hesabim"
             className="flex items-center gap-3 rounded px-3 py-2 text-body-sm text-ink-muted transition-colors hover:bg-subtle hover:text-ink"

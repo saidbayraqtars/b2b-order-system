@@ -160,6 +160,10 @@ model User {
   /// anahtarlar okunurken `sanitizePermissions` ile atılır.
   permissions String[] @default([])
 
+  /// Gelişmiş görünüm. Kapalıyken (varsayılan) ileri ayarlar ve nadir kullanılan
+  /// ekranlar gizli; yetkiyi değiştirmez, yalnızca ne gösterildiğini.
+  advancedView Boolean @default(false)
+
   /// Bumped whenever the account's privileges or password change. Every issued
   /// session (web cookie JWT and mobile bearer token) carries the value it was
   /// minted with; a mismatch invalidates it on the next request. Without this,

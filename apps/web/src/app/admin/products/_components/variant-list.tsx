@@ -12,6 +12,7 @@ import {
   Panel,
   TextInput,
 } from "@/components/form";
+import { Advanced } from "@/components/ui-mode";
 import { PriceEditor } from "./price-editor";
 
 const EMPTY_VARIANT = {
@@ -89,10 +90,7 @@ export function VariantList({
         {variants.map((v) => {
           const expanded = open === v.id;
           return (
-            <div
-              key={v.id}
-              className="rounded border border-line"
-            >
+            <div key={v.id} className="rounded border border-line">
               <div className="flex flex-wrap items-center gap-3 px-3 py-2">
                 <button
                   type="button"
@@ -109,9 +107,7 @@ export function VariantList({
                 </span>
                 <span
                   className={`text-xs ${
-                    v.prices.length === 0
-                      ? "text-caution"
-                      : "text-ink-faint"
+                    v.prices.length === 0 ? "text-caution" : "text-ink-faint"
                   }`}
                 >
                   {v.prices.length === 0
@@ -384,64 +380,84 @@ function StockCard({
         karıştırılsalardı, ambalaj malzemesi giren kullanıcı da SKT sorusuyla
         karşılaşırdı.
       */}
-      <div className="mt-3 rounded border border-line p-3">
-        <p className="tech-label mb-2">Parti / SKT &amp; çift birim</p>
-        <div className="grid gap-2 sm:grid-cols-4">
-          <div>
-            <Label hint="Gün — SKT boşsa üretimden hesaplanır">Raf ömrü</Label>
-            <TextInput
-              value={form.shelfLifeDays}
-              inputMode="numeric"
-              onChange={(e) =>
-                setForm({ ...form, shelfLifeDays: e.target.value })
-              }
-            />
+      {/* Basit görünümde gizli — ama kalemde kullanılıyorsa her zaman görünür:
+          dolu bir ayarı gizlemek, kullanıcının bilmediği bir şeyin stoğu ya da
+          fiyatı değiştirmesi demek olurdu. */}
+      <Advanced
+        inUse={
+          form.tracksLots ||
+          form.isVariableWeight ||
+          Boolean(form.pricingUnit || form.unitFactor || form.shelfLifeDays)
+        }
+        hint="Parti/SKT takibi ve çift birim gelişmiş görünümde."
+      >
+        <div className="mt-3 rounded border border-line p-3">
+          <p className="tech-label mb-2">Parti / SKT &amp; çift birim</p>
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div>
+              <Label hint="Gün — SKT boşsa üretimden hesaplanır">
+                Raf ömrü
+              </Label>
+              <TextInput
+                value={form.shelfLifeDays}
+                inputMode="numeric"
+                onChange={(e) =>
+                  setForm({ ...form, shelfLifeDays: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label hint="Kaç gün kala uyarılsın (boş = 30)">
+                Uyarı eşiği
+              </Label>
+              <TextInput
+                value={form.expiryWarningDays}
+                inputMode="numeric"
+                onChange={(e) =>
+                  setForm({ ...form, expiryWarningDays: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label hint="Fiyat hangi birimde: KG, LT…">Fiyat birimi</Label>
+              <TextInput
+                value={form.pricingUnit}
+                onChange={(e) =>
+                  setForm({ ...form, pricingUnit: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label hint="1 satış birimi kaç fiyat birimi (1 kasa = 12,5 kg)">
+                Çarpan
+              </Label>
+              <TextInput
+                value={form.unitFactor}
+                inputMode="decimal"
+                onChange={(e) =>
+                  setForm({ ...form, unitFactor: e.target.value })
+                }
+              />
+            </div>
           </div>
-          <div>
-            <Label hint="Kaç gün kala uyarılsın (boş = 30)">Uyarı eşiği</Label>
-            <TextInput
-              value={form.expiryWarningDays}
-              inputMode="numeric"
+          <div className="mt-2 flex flex-wrap gap-4">
+            <Checkbox
+              checked={form.tracksLots}
               onChange={(e) =>
-                setForm({ ...form, expiryWarningDays: e.target.value })
+                setForm({ ...form, tracksLots: e.target.checked })
               }
+              label="Parti & SKT takibi"
             />
-          </div>
-          <div>
-            <Label hint="Fiyat hangi birimde: KG, LT…">Fiyat birimi</Label>
-            <TextInput
-              value={form.pricingUnit}
+            <Checkbox
+              checked={form.isVariableWeight}
               onChange={(e) =>
-                setForm({ ...form, pricingUnit: e.target.value })
+                setForm({ ...form, isVariableWeight: e.target.checked })
               }
-            />
-          </div>
-          <div>
-            <Label hint="1 satış birimi kaç fiyat birimi (1 kasa = 12,5 kg)">
-              Çarpan
-            </Label>
-            <TextInput
-              value={form.unitFactor}
-              inputMode="decimal"
-              onChange={(e) => setForm({ ...form, unitFactor: e.target.value })}
+              label="Tartılarak sevk edilir"
             />
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap gap-4">
-          <Checkbox
-            checked={form.tracksLots}
-            onChange={(e) => setForm({ ...form, tracksLots: e.target.checked })}
-            label="Parti & SKT takibi"
-          />
-          <Checkbox
-            checked={form.isVariableWeight}
-            onChange={(e) =>
-              setForm({ ...form, isVariableWeight: e.target.checked })
-            }
-            label="Tartılarak sevk edilir"
-          />
-        </div>
-      </div>
+      </Advanced>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <Checkbox
