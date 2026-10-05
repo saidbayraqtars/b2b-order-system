@@ -382,6 +382,28 @@ depo satırları boştur, açık gelen modül bütün siparişleri reddederdi.
   depo seçmiyor (C akışı; teklif `warehouse` döndürüyor, satıcı
   `warehouseId` gönderebilir). Bekleyen sipariş listesi toplam stoka bakıyor.
 
+### Ürün tipi: ürün / hizmet (D5, 2026-10-05)
+
+Ürün formunda "Tip" seçimi. **Hizmet** (nakliye, montaj) stok tutmaz:
+
+- Stok 0'dayken satılır; sipariş, iptal ve iade stok defterine hareket
+  yazmaz; teklif ne adet ne depo bayrağı sorar.
+- Stok ekranlarında ve kritik stok listesinde görünmez.
+- Katalog ve sepet adet yerine `SERVICE_STOCK` gönderir, ürün `isService`
+  taşır; ekran "Tükendi" yerine "Hizmet" yazar, koli bilgisini göstermez.
+- Yönetimde hizmetin varyant satırında stok kutusu yok ("hizmet · stok
+  tutulmaz").
+
+### Fiyat geçmişi (D5, 2026-10-05)
+
+Yalnız yönetimde. Fiyat yazan beş yol — elle, toplu (Excel), ERP, zamanlı
+değişim, paket birimi — tek kapıdan (`recordPriceChange`) `PriceHistory`ye
+satır bırakır: eski/yeni fiyat, grup ve birim adı (o anki adıyla), kaynak,
+değiştiren. Aynı fiyatın yeniden yazılması kayıt bırakmaz; yeni açılan satırda
+eski fiyat, silinende yeni fiyat boştur. Ürün sayfasında kapalı başlayan
+"Fiyat geçmişi" paneli (künyede değişiklik sayısı ve son tarih),
+`GET /api/admin/products/:id/price-history`.
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.

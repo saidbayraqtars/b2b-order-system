@@ -231,7 +231,8 @@ function VariantRow({
             </>
           )}
         </p>
-        <p>KOL {v.unitsPerCase}</p>
+        {/* Hizmette koli yok (yönetimdeki satır da göstermiyor). */}
+        {!isService && <p>KOL {v.unitsPerCase}</p>}
         {v.units.map((u) => (
           <p key={u.id}>
             {u.name} {formatQuantity(u.factor)}

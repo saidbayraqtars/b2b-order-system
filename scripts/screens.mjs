@@ -991,4 +991,51 @@ export const SCREENS = [
       return o && `/orders/${o.id}`;
     },
   },
+
+  // ── Adım 18: D5 ürün formu (önce: urun-formu-once.png) ──────────────────
+  {
+    step: 18,
+    slug: "urun-formu",
+    label: "Ürün formu — tip seçimi, sessiz Sil, yeni varyant düğmede, fiyat geçmişi",
+    as: "admin",
+    // Fiyat geçmişi olan kalem (seed-gida: GD-YAG-5L): panel boş görünmesin.
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { variants: { some: { priceHistory: { some: {} } } } },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/admin/products/${p.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "urun-formu-hizmet",
+    label: "Ürün formu — hizmet: stok alanları yok",
+    as: "admin",
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { type: "SERVICE" },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/admin/products/${p.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "portal-hizmet",
+    label: "Portal ürün detayı — hizmet \"Tükendi\" değil \"Hizmet\"",
+    as: "portal",
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { type: "SERVICE", isActive: true },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/portal/urun/${p.id}`;
+    },
+  },
 ];
