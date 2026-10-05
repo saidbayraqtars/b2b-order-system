@@ -22,7 +22,7 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | D3 menü 6 başlık, D4 basit/gelişmiş görünüm | ✔ `38d62bd` |
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
-| F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın" |
+| F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
 | D5 ekran ekran | sırada |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş

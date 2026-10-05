@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   StockLevelRow,
@@ -56,16 +57,33 @@ const PAGE_SIZE = 50;
 const RENDER_STEP = 20;
 
 export function StockLevelsPanel() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const urlParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [warehouseId, setWarehouseId] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
-  const [openVariantId, setOpenVariantId] = useState<string | null>(null);
 
   const warehouses = useQuery({
     queryKey: ["warehouses"],
     queryFn: () =>
       apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
   });
+
+  // Seçili depo ve açık satır adreste (`?depo=SAM&kalem=SKU`), bileşen
+  // durumunda değil: ekran görüntüsü betiği düğmeye basmıyor ve depo
+  // kırılımı ile depo ayarı formu ancak böyle fotoğraflanıyor. Kimlik yerine
+  // kod ve SKU: adres okunur kalıyor, yeniden tohumlamada değişmiyor.
+  const warehouseCode = urlParams.get("depo");
+  const openSku = urlParams.get("kalem");
+  const warehouseId =
+    (warehouses.data?.warehouses ?? []).find((w) => w.code === warehouseCode)
+      ?.id ?? "";
+  const setUrlParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(urlParams.toString());
+    if (value) next.set(key, value);
+    else next.delete(key);
+    router.replace(`${pathname}?${next}`, { scroll: false });
+  };
 
   const levels = useQuery({
     queryKey: ["stock-levels", "table", search, warehouseId, lowOnly],
@@ -122,7 +140,14 @@ export function StockLevelsPanel() {
                 id="lvl-wh"
                 size="sm"
                 value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
+                onChange={(e) =>
+                  setUrlParam(
+                    "depo",
+                    (warehouses.data?.warehouses ?? []).find(
+                      (w) => w.id === e.target.value,
+                    )?.code ?? null,
+                  )
+                }
                 className="w-36"
               >
                 <option value="">Tümü</option>
@@ -184,7 +209,7 @@ export function StockLevelsPanel() {
                   ? (row.warehouseOnHand ?? 0)
                   : row.stock;
                 const critical = threshold !== null && amount <= threshold;
-                const open = openVariantId === row.variantId;
+                const open = openSku === row.sku;
                 return (
                   <Fragment key={row.variantId}>
                     <tr>
@@ -225,7 +250,7 @@ export function StockLevelsPanel() {
                           size="xs"
                           variant="ghost"
                           onClick={() =>
-                            setOpenVariantId(open ? null : row.variantId)
+                            setUrlParam("kalem", open ? null : row.sku)
                           }
                         >
                           {open ? "Gizle" : "Defter"}

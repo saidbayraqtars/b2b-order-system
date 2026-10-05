@@ -869,4 +869,63 @@ export const SCREENS = [
     as: "admin",
     path: `/reports/sablonlar?kategori=${encodeURIComponent("Tahsilat")}`,
   },
+  // ── Adım 18: D akışı — depo bazlı stok (F3) ─────────────────────────────
+  {
+    step: 18,
+    slug: "moduller-depo",
+    label: "Modüller — \"Depo bazlı stok\" açık",
+    as: "admin",
+    path: "/admin/moduller",
+  },
+
+  {
+    step: 18,
+    slug: "stok-depo-ayari",
+    label: "Stok durumu — depo kırılımı, kritik seviye ve \"sipariş alınmasın\"",
+    as: "admin",
+    // Şubede kritik seviyesi girilmiş ilk kalem: form dolu görünsün.
+    path: async (db) => {
+      const row = await db.variantStock.findFirst({
+        where: { minStock: { not: null }, warehouse: { isDefault: false } },
+        select: {
+          warehouse: { select: { code: true } },
+          variant: { select: { sku: true } },
+        },
+        orderBy: { variant: { sku: "asc" } },
+      });
+      return (
+        row &&
+        `/admin/stok?bolum=durum&depo=${encodeURIComponent(row.warehouse.code)}&kalem=${encodeURIComponent(row.variant.sku)}`
+      );
+    },
+  },
+
+  {
+    step: 18,
+    slug: "firma-cikis-deposu",
+    label: "Firma formu — çıkış deposu",
+    as: "admin",
+    path: async (db) => {
+      const c = await db.company.findFirst({
+        where: { warehouseId: { not: null } },
+        select: { id: true },
+      });
+      return c && `/admin/companies/${c.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "siparis-cikis-deposu",
+    label: "Sipariş detayı — çıkış deposu",
+    as: "admin",
+    path: async (db) => {
+      const o = await db.order.findFirst({
+        where: { warehouseId: { not: null } },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+      });
+      return o && `/orders/${o.id}`;
+    },
+  },
 ];
