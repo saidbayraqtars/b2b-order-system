@@ -8,6 +8,7 @@ import { formatQuantity, formatTRY } from "@/lib/format";
 import { isFractional, roundToScale } from "@/lib/quantity";
 import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
+import { orderBlock, orderBlockLabel } from "@/lib/orderable";
 import { cn } from "@/lib/utils";
 
 /**
@@ -58,6 +59,7 @@ function stockNote(product: CatalogProduct): {
   label: string;
   tone: "positive" | "caution" | "critical";
 } {
+  if (product.isService) return { label: "Hizmet", tone: "positive" };
   const total = roundToScale(
     product.variants.reduce((s, v) => s + v.stock, 0),
     3,
@@ -67,8 +69,19 @@ function stockNote(product: CatalogProduct): {
   // ürünlerde eskisi gibi "adet".
   const only = product.variants.length === 1 ? product.variants[0]! : null;
   const unit =
-    only && isFractional(only) && only.unit ? only.unit.toLocaleLowerCase("tr") : "adet";
+    only && isFractional(only) && only.unit
+      ? only.unit.toLocaleLowerCase("tr")
+      : "adet";
   const amount = `${formatQuantity(total)} ${unit}`;
+  // Stok var ama bir koli etmiyor: düğme kapalı, sebebi burada. Önce "Sınırlı
+  // stok" yazıp düğmeyi sessizce kapatıyordu.
+  const block = only ? orderBlock(only) : null;
+  if (only && block?.kind === "moq") {
+    return {
+      label: `${amount} var · en az ${formatQuantity(block.moq)} alınır`,
+      tone: "caution",
+    };
+  }
   const perCase = Math.max(1, ...product.variants.map((v) => v.unitsPerCase));
   if (total <= perCase * 5) {
     return { label: `Sınırlı stok (${amount})`, tone: "caution" };
@@ -80,7 +93,16 @@ function stockNote(product: CatalogProduct): {
 function soleOrderableVariant(product: CatalogProduct): CatalogVariant | null {
   if (product.variants.length !== 1) return null;
   const v = product.variants[0]!;
-  return v.netUnitPrice !== null && v.stock >= v.moqUnits ? v : null;
+  return orderBlock(v) === null ? v : null;
+}
+
+/** Kapalı düğmenin ipucu: neden sipariş edilemiyor. */
+function blockedTitle(product: CatalogProduct): string {
+  const only = product.variants.length === 1 ? product.variants[0]! : null;
+  const block = only ? orderBlock(only) : null;
+  return only && block
+    ? `Sipariş edilemez: ${orderBlockLabel(block, only)}`
+    : "Sipariş edilemez";
 }
 
 const STOCK_TONE = {
@@ -154,13 +176,13 @@ export function ProductCard({
 
         <p
           className={cn(
-            "mt-1.5 flex items-center gap-1.5 text-xs tabular-nums",
+            "mt-1.5 flex items-start gap-1.5 text-xs tabular-nums",
             STOCK_TONE[stock.tone],
           )}
         >
           <span
             aria-hidden
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+            className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-current"
           />
           {stock.label}
         </p>
@@ -224,7 +246,7 @@ export function ProductCard({
             </Link>
           ) : (
             <span
-              title="Sipariş edilemez"
+              title={blockedTitle(product)}
               className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center rounded border border-line text-ink-faint opacity-50"
             >
               <Plus className="h-4 w-4" aria-hidden />

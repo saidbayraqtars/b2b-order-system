@@ -2,6 +2,7 @@ import { Prisma, prisma } from "@repo/database";
 import type { UpsertVariantUnitInput } from "@repo/types";
 import { BusinessError } from "./errors";
 import { round2 } from "./money";
+import { recordPriceChange } from "./price-history";
 import { packageCount, qty, type QuantityLike } from "./quantity";
 
 // Paket birimleri (F2 çoklu birim): koli, palet, çuval.
@@ -166,16 +167,25 @@ async function setListPrice(
   variantId: string,
   unitId: string,
   price: number | null,
+  actorId: string | null,
 ): Promise<void> {
   const existing = await tx.price.findFirst({
     where: { variantId, unitId, customerGroupId: null, minQuantity: 1 },
-    select: { id: true },
+    select: { id: true, price: true },
   });
-  if (price === null) {
+  const amount = price === null ? null : round2(new Prisma.Decimal(price));
+  await recordPriceChange(tx, {
+    variantId,
+    unitId,
+    oldPrice: existing?.price ?? null,
+    newPrice: amount,
+    source: "UNIT",
+    actorId,
+  });
+  if (amount === null) {
     if (existing) await tx.price.delete({ where: { id: existing.id } });
     return;
   }
-  const amount = round2(new Prisma.Decimal(price));
   if (existing) {
     await tx.price.update({ where: { id: existing.id }, data: { price: amount } });
   } else {
@@ -188,6 +198,7 @@ async function setListPrice(
 export async function createVariantUnit(
   variantId: string,
   input: UpsertVariantUnitInput,
+  actorId: string | null = null,
 ): Promise<AdminVariantUnit> {
   const variant = await prisma.productVariant.findUnique({
     where: { id: variantId },
@@ -212,7 +223,9 @@ export async function createVariantUnit(
       },
       select: { id: true },
     });
-    if (input.price !== undefined) await setListPrice(tx, variantId, unit.id, input.price);
+    if (input.price !== undefined) {
+      await setListPrice(tx, variantId, unit.id, input.price, actorId);
+    }
     return unit.id;
   });
   return toVariantUnitView(await prisma.variantUnit.findUniqueOrThrow({ where: { id }, select: VARIANT_UNIT_SELECT }));
@@ -221,6 +234,7 @@ export async function createVariantUnit(
 export async function updateVariantUnit(
   id: string,
   input: Partial<UpsertVariantUnitInput>,
+  actorId: string | null = null,
 ): Promise<AdminVariantUnit> {
   const current = await prisma.variantUnit.findUnique({
     where: { id },
@@ -249,7 +263,7 @@ export async function updateVariantUnit(
       },
     });
     if (input.price !== undefined) {
-      await setListPrice(tx, current.variantId, id, input.price);
+      await setListPrice(tx, current.variantId, id, input.price, actorId);
     }
   });
   return toVariantUnitView(await prisma.variantUnit.findUniqueOrThrow({ where: { id }, select: VARIANT_UNIT_SELECT }));

@@ -2,6 +2,7 @@ import { prisma } from "@repo/database";
 import type { ErpSyncKind } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
+import { recordPriceChange } from "./price-history";
 import { qty } from "./quantity";
 import { applyErpStock } from "./stock-ledger";
 
@@ -360,7 +361,17 @@ export async function ingestPrices(
       // index Price_variant_default_tier_key exists. So it is matched by hand.
       const existing = await prisma.price.findFirst({
         where: { variantId, customerGroupId, unitId, minQuantity },
-        select: { id: true },
+        select: { id: true, price: true },
+      });
+
+      await recordPriceChange(prisma, {
+        variantId,
+        customerGroupId,
+        unitId,
+        minQuantity,
+        oldPrice: existing?.price ?? null,
+        newPrice: price,
+        source: "ERP",
       });
 
       if (existing) {

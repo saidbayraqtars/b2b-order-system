@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OrderDetail } from "@repo/services";
 import {
+  ORDER_LINE_STATE_LABELS,
   PAYMENT_METHOD_LABELS,
+  type OrderLineState,
   type OrderStatus,
   type Role,
 } from "@repo/types";
@@ -55,6 +57,13 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   DELIVERED: "success",
   CANCELLED: "neutral",
   REJECTED: "danger",
+};
+
+const LINE_TONE: Record<OrderLineState, BadgeTone> = {
+  WAITING: "neutral",
+  PARTIAL: "warning",
+  SHIPPED: "success",
+  RETURNED: "info",
 };
 
 function dateTime(iso: string) {
@@ -113,6 +122,16 @@ export function OrderDetailView({
 
   const o = query.data!.order;
   const shipping = o.availableTransitions.includes("SHIPPED");
+  // Boş sütun çizilmiyor: iskonto ve kampanya çoğu siparişte yok ve iki sütun
+  // boyunca "—" basmak tabloyu okunmaz yapıyordu. Sevk sütunu onaydan sonra.
+  const hasDiscount = o.items.some((i) => Number(i.discount) > 0);
+  const hasPromotion = o.items.some((i) => Number(i.promotionDiscount) > 0);
+  const hasLineState = o.items.some((i) => i.line !== null);
+  // Onaysız ya da reddedilmiş siparişin irsaliyesi, faturası olmaz; iki boş
+  // panel "henüz yok" demekten başka bir şey yapmıyordu.
+  const hasFulfilment = !(
+    ["DRAFT", "PENDING_APPROVAL", "PENDING_CREDIT", "REJECTED"] as OrderStatus[]
+  ).includes(o.status);
 
   return (
     <div className="space-y-6">
@@ -130,11 +149,11 @@ export function OrderDetailView({
           <THead>
             <tr>
               <Th>Ürün</Th>
-              <Th>SKU</Th>
               <Th align="right">Adet</Th>
+              {hasLineState && <Th>Sevk</Th>}
               <Th align="right">Birim</Th>
-              <Th align="right">İskonto</Th>
-              <Th align="right">Kampanya</Th>
+              {hasDiscount && <Th align="right">İskonto</Th>}
+              {hasPromotion && <Th align="right">Kampanya</Th>}
               <Th align="right">Tutar</Th>
             </tr>
           </THead>
@@ -148,8 +167,8 @@ export function OrderDetailView({
                       <Badge tone="success">hediye</Badge>
                     </span>
                   )}
+                  <span className="block text-xs text-ink-faint">{i.sku}</span>
                 </Td>
-                <Td muted>{i.sku}</Td>
                 <Td align="right" numeric>
                   {formatQuantity(i.quantity)}
                   <PackageCount
@@ -157,6 +176,13 @@ export function OrderDetailView({
                     className="block text-[11px] font-normal text-ink-faint"
                   />
                 </Td>
+                {hasLineState && (
+                  <Td>
+                    {i.line && (
+                      <LineState line={i.line} quantity={i.quantity} />
+                    )}
+                  </Td>
+                )}
                 <Td align="right" numeric>
                   {formatTRY(i.unitPrice)}
                   <PackagePrice
@@ -173,14 +199,18 @@ export function OrderDetailView({
                     className="block text-[11px] font-normal text-ink-faint"
                   />
                 </Td>
-                <Td align="right" numeric>
-                  {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}
-                </Td>
-                <Td align="right" numeric className="text-positive">
-                  {Number(i.promotionDiscount) > 0
-                    ? `− ${formatTRY(i.promotionDiscount)}`
-                    : "—"}
-                </Td>
+                {hasDiscount && (
+                  <Td align="right" numeric>
+                    {Number(i.discount) > 0 ? formatTRY(i.discount) : "—"}
+                  </Td>
+                )}
+                {hasPromotion && (
+                  <Td align="right" numeric className="text-positive">
+                    {Number(i.promotionDiscount) > 0
+                      ? `− ${formatTRY(i.promotionDiscount)}`
+                      : "—"}
+                  </Td>
+                )}
                 <Td align="right" numeric>
                   {formatTRY(i.lineTotal)}
                 </Td>
@@ -193,7 +223,9 @@ export function OrderDetailView({
       <section className="grid gap-4 sm:grid-cols-2">
         <Card className="space-y-1 text-body-sm">
           <Row label="Ara toplam" value={formatTRY(o.subtotal)} />
-          <Row label="İskonto" value={formatTRY(o.discountTotal)} />
+          {Number(o.discountTotal) > 0 && (
+            <Row label="İskonto" value={formatTRY(o.discountTotal)} />
+          )}
           {o.volumeTier && (
             // Part of "İskonto" above, not a further deduction — named because
             // a customer asking why the price moved deserves the reason.
@@ -256,11 +288,13 @@ export function OrderDetailView({
         </Card>
       </section>
 
-      <FulfilmentPanel
-        orderId={orderId}
-        role={role}
-        canShip={o.status === "CONFIRMED" || o.status === "PROCESSING"}
-      />
+      {hasFulfilment && (
+        <FulfilmentPanel
+          orderId={orderId}
+          role={role}
+          canShip={o.status === "CONFIRMED" || o.status === "PROCESSING"}
+        />
+      )}
 
       {/* Mal çıkmadan iade olmaz: çıkmamış mal için doğru işlem iptal ve o
           aşağıdaki "Durum güncelle" panelinde. İki işi yan yana koymak,
@@ -363,6 +397,27 @@ export function OrderDetailView({
       </Panel>
     </div>
   );
+}
+
+/**
+ * Satırın sevk rozeti. Kısmi ve iadede sayı rozetin içinde: "Kısmi" tek başına
+ * kaçının çıktığını söylemiyordu, depo onu soruyor.
+ */
+function LineState({
+  line,
+  quantity,
+}: {
+  line: NonNullable<OrderDetail["items"][number]["line"]>;
+  quantity: number;
+}) {
+  const label = ORDER_LINE_STATE_LABELS[line.state];
+  const text =
+    line.state === "PARTIAL"
+      ? `${label} ${formatQuantity(line.shipped)}/${formatQuantity(quantity)}`
+      : line.state === "RETURNED"
+        ? `${label} ${formatQuantity(line.returned)}`
+        : label;
+  return <Badge tone={LINE_TONE[line.state]}>{text}</Badge>;
 }
 
 function Row({

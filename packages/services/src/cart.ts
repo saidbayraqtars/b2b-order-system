@@ -1,5 +1,9 @@
 import { prisma } from "@repo/database";
-import type { SetCartInput, UpsertCartItemInput } from "@repo/types";
+import {
+  SERVICE_STOCK,
+  type SetCartInput,
+  type UpsertCartItemInput,
+} from "@repo/types";
 import { loadCompanyPricingContext } from "./catalog";
 import { availabilityOf, loadWarehouseAvailability, sellableIn } from "./warehouse-stock";
 import { BusinessError } from "./errors";
@@ -129,6 +133,7 @@ export async function getCart(
                   vatRate: true,
                   categoryId: true,
                   isActive: true,
+                  type: true,
                 },
               },
             },
@@ -200,7 +205,13 @@ export async function getCart(
       size: v.size,
       unitsPerCase: v.unitsPerCase,
       moqUnits: qty(v.moqUnits),
-      stock: stockIn ? sellableIn(availabilityOf(stockIn, v.id)) : qty(v.stock),
+      // Hizmet stok tutmuyor; adet sınırı olmasın (bkz. SERVICE_STOCK).
+      stock:
+        v.product.type === "SERVICE"
+          ? SERVICE_STOCK
+          : stockIn
+            ? sellableIn(availabilityOf(stockIn, v.id))
+            : qty(v.stock),
       unit: v.unit,
       quantityScale: v.quantityScale,
       vatRate: v.product.vatRate,

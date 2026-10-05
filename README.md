@@ -25,7 +25,7 @@ aynı uçları Expo mobil uygulaması da kullanıyor. Her müşteri için **ayr�
 | API            | 165 route handler                                                   |
 | Arayüz         | 70 sayfa · 96 arşivlenmiş ekran görüntüsü                           |
 | Domain katmanı | 177 dosya (`packages/services`) — fiyatlama, defter, kampanya, rapor |
-| Test           | **1.091** (383 web · 690 servis · 18 ERP ajanı) + 23 e2e senaryo    |
+| Test           | **1.091** (383 web · 690 servis · 18 ERP ajanı) + 137 Playwright testi |
 | CI             | `typecheck → lint → test → build`, dördü de yeşil                   |
 
 ---
@@ -223,14 +223,16 @@ verisiyle tohumlanmış** bir veritabanı istiyor (giriş yaptığı hesaplar or
 geliyor). Yayın öncesi elle:
 
 ```bash
-pnpm --filter web dev -p 3100
-E2E_BASE_URL=http://localhost:3100 pnpm e2e
+pnpm --filter web exec next dev -p 3100   # DATABASE_URL, AUTH_SECRET, TENANT_DIR ortamda
+DATABASE_URL=... E2E_BASE_URL=http://localhost:3100 pnpm e2e
 ```
 
-Playwright kurulmadı; `puppeteer-core` zaten bağımlılıkta (ekran görüntüsü
-betiği kullanıyor) ve sistemdeki Chrome'u sürüyor. Sınanan şey tarayıcılar
-arası uyum değil, uygulamanın gerçek bir tarayıcıda ayakta durması: sayfa
-boyanıyor mu, yönlendirmeler gerçek çerezle çalışıyor mu, konsolda hata var mı.
+Takım Playwright (`e2e/`, 2026-10-05'ten beri; öncesi puppeteer betiğiydi).
+Ekran görüntüsü kayıt defterindeki (`scripts/screens.mjs`) **her ekran** bir
+test: sunucu hata dönmüyor, sayfa biçimli, veri geliyor, konsolda ve ekranda
+hata yok. Üstüne rol giriş noktaları, yetki yönlendirmeleri ve D5 ekranlarının
+etkileşimleri (sekme, arama, geri tuşu, form aç/kapa). Yazma yok — gösterim
+verisi değişmesin. Tarayıcı Playwright'ın Chromium'u; yoksa `E2E_CHANNEL=chrome`.
 
 `pnpm test` iki takım çalıştırıyor. **Birim takımı** saf domain matematiği,
 hiçbir şeye ihtiyacı yok. **Entegrasyon takımı** gerçek bir Postgres ile

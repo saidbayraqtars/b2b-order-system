@@ -23,12 +23,29 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
 | F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
-| D5 ekran ekran | sırada |
+| D5 ekran ekran | bitti — 6/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok); ürün formu ✔ (ürün tipi ürün/hizmet — hizmet stok tutmaz; fiyat geçmişi beş yoldan, kapalı panel; sessiz Sil, yeni varyant formu düğmede); firma formu ✔ (künye / ticari koşullar, sözleşme ayarları basit görünümde yalnız doluysa, hacim modülü kapalıyken alan yok ve basamak korunur, tek iskonto paneli ve ekleme `pricing.manage`, salt okumada kilitli, kapalı panelin "Yeni …" düğmesi paneli açıyor); portal katalog ✔ (süzgeçler adreste, detaydan dönüş süzgeci koruyor, asgariden az stokta sebep kartta, stok sırasında hizmet sonda); sepet ✔ (sayaç kalem sayısı, satırda birim fiyat, miktar her satırda yazılır, kupon bağlantıda ve kampanya modülüne bağlı, tek ödeme yöntemi bilgi satırı) |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
 
 Ölçüm (F3 sonu): 1.205 test (erp-agent 22, servisler 760, web 423) yeşil; typecheck, lint, build (165 sayfa) yeşil.
+Ölçüm (D5 sipariş detayı): servisler 763, web 427 test yeşil; typecheck, lint, build (166 sayfa) yeşil. Önce/sonra görüntüleri `docs/design/screens/adim-18/` (`*-once.png`).
+Ölçüm (2026-10-05 akşam): servisler 763, web 427 test; typecheck 9/9, lint 8/8. Playwright (`pnpm e2e`) 137 test: 131 geçti, 3 atlandı.
+Ölçüm (D5 ürün formu, 2026-10-05): servisler 776, web 427 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 144 test: 140 geçti, 3 atlandı (gösterim verisinde o ekranın kaydı yok), 1 düştü (yeni testin kendi seçicisi; düzeltilip dosya tek başına 8/8). Kasa testleri `TENANT_DIR` ile geçti; sipariş listesindeki geri tuşu düzeltmesi de bu koşuda geçti.
+Ölçüm (D5 firma formu, 2026-10-05): web 432 test (servis kodu değişmedi); typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 148 test: 145 geçti, 3 atlandı, düşen yok.
+Ölçüm (D5 portal katalog, 2026-10-05): web 438 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 152 test: 149 geçti, 3 atlandı, düşen yok.
+Ölçüm (D5 sepet, 2026-10-05): web 442 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 155 test: 152 geçti, 3 atlandı, düşen yok.
+
+### Kaldığı yer (D5 bitti)
+
+D5 altı ekranın altısı bitti. Son ekran sepet: rota testi
+`apps/web/test/cart-panel.test.ts` (4), önce/sonra `portal-sepet` (adım 18;
+gösterim sepeti `seedDemoCart` ile kuruluyor), Playwright
+`e2e/portal-sepet.spec.ts` (2 test; sepeti kurup sonda boşaltıyor).
+
+Dal `claude/sadelestirme` push edilmedi; main'e birleştirme Said'in onayıyla. Her ekranda aynı yol: "önce"
+görüntüsü (`*-once.png`), değişiklik, servis/rota testi, "sonra" görüntüsü,
+`e2e/<ekran>.spec.ts`, `pnpm e2e` tam koşu (sunucu `TENANT_DIR` ile).
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 
@@ -80,7 +97,18 @@ D2-D4'ten sonra, en çok kullanılan ekrandan başlayarak: sipariş listesi,
 sipariş detayı, ürün formu, firma formu, portal katalog, sepet. Her ekran için
 önce/sonra görüntüsü alınır.
 
-## Kılavuzdan çıkan özellik adayları (Said seçecek)
+## Said'in kararları (2026-10-05)
+
+- **Yapılacak, ilgili ekrana dokunulunca:** ürün tipi (ürün/hizmet: hizmet stok
+  tutmaz, stok ekranlarında yok, sipariş kalemi olabilir) ve fiyat geçmişi (yalnız
+  yönetimde: eski/yeni fiyat, kim, ne zaman) ürün formunda; sipariş satır durumu
+  (irsaliye ve iadeden türetilir, saklanmaz) sipariş detayında.
+- **Yapılmayacak:** muadil/alternatif ürün, kural tabanlı fiyat.
+- **ERP:** F3'ün ERP uçları (ajanın depo kırılımı, siparişin kendi deposuyla
+  yazılması) yapılmıyor. Müşteri entegrasyon isterse onun programına göre
+  kodlanır. Mevcut ajan (Vega) olduğu gibi kalır.
+
+## Kılavuzdan çıkan özellik adayları (2026-10-05 karara bağlandı, yukarıya bakın)
 
 Vega'da olup b2b'de olmayanlar. Sıra öneridir, karar değil.
 

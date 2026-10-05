@@ -359,6 +359,7 @@ export interface AdminProductDetail {
   images: string[];
   vatRate: number;
   isActive: boolean;
+  type: "GOODS" | "SERVICE";
   categoryId: string;
   codes: CustomCodeValues;
   variants: AdminVariantDetail[];
@@ -376,6 +377,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
       images: true,
       vatRate: true,
       isActive: true,
+      type: true,
       categoryId: true,
       ...CUSTOM_CODE_SELECT,
       variants: {
@@ -435,6 +437,7 @@ export async function getProductAdmin(id: string): Promise<AdminProductDetail> {
     images: p.images,
     vatRate: p.vatRate,
     isActive: p.isActive,
+    type: p.type,
     categoryId: p.categoryId,
     codes: customCodeValuesOf(p),
     variants: p.variants.map((v) => ({
@@ -500,6 +503,7 @@ export async function createProduct(input: CreateProductInput) {
       vatRate: input.vatRate,
       categoryId: input.categoryId,
       isActive: input.isActive,
+      type: input.type,
     },
     select: { id: true, name: true, slug: true },
   });
@@ -534,6 +538,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
       ...(input.vatRate !== undefined ? { vatRate: input.vatRate } : {}),
       ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.type !== undefined ? { type: input.type } : {}),
       ...codes,
     },
     select: { id: true, name: true, slug: true, isActive: true },

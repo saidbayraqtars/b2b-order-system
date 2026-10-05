@@ -308,6 +308,7 @@ export function Panel({
   summary,
   /** Hatırlama anahtarı. Verilmezse rota + başlıktan türetiliyor. */
   storageKey,
+  forceOpen = false,
 }: {
   title: string;
   /** Başlığın solunda küçük bir ikon — panelin ne olduğunu bir bakışta söyler. */
@@ -320,13 +321,19 @@ export function Panel({
   defaultOpen?: boolean;
   summary?: ReactNode;
   storageKey?: string;
+  /**
+   * Kapalı paneli o an açık tutar — başlıktaki "Yeni adres" gibi bir düğme
+   * gövdede form açtığında. Yoksa düğme kapalı panelin içinde görünmeyen bir
+   * form açıyordu. Kayıtlı aç/kapa tercihi değişmez.
+   */
+  forceOpen?: boolean;
 }) {
   const pathname = usePathname();
   const { open, toggle } = useOpenState(
     collapsible ? (storageKey ?? `panel:${pathname}:${title}`) : undefined,
     defaultOpen,
   );
-  const shown = collapsible ? open : true;
+  const shown = collapsible ? open || forceOpen : true;
 
   const heading = (
     <h2 className="flex min-w-0 items-center gap-2 text-headline-sm text-ink">
@@ -360,16 +367,18 @@ export function Panel({
           <button
             type="button"
             onClick={toggle}
-            aria-expanded={open}
+            aria-expanded={shown}
             className={cn(
               "flex min-w-0 flex-1 items-center gap-2 rounded text-left",
               "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink-muted",
             )}
           >
-            <DisclosureChevron open={open} />
+            <DisclosureChevron open={shown} />
             {heading}
-            {!open && summary != null && (
-              <span className="truncate text-body-sm text-ink-faint">{summary}</span>
+            {!shown && summary != null && (
+              <span className="truncate text-body-sm text-ink-faint">
+                {summary}
+              </span>
             )}
           </button>
         ) : (
@@ -538,8 +547,13 @@ export function WarnLine({
 /** Başarısız bir işlemin satır içi hata satırı. */
 export function ErrorLine({ error }: { error: unknown }) {
   if (!error) return null;
+  // `role="alert"`: ekran okuyucu hatayı okusun; uçtan uca testler de ekranda
+  // hata satırı kalıp kalmadığını buradan soruyor.
   return (
-    <p className="mt-2 flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-body-sm text-critical">
+    <p
+      role="alert"
+      className="mt-2 flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-body-sm text-critical"
+    >
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
       {typeof error === "string"
         ? error

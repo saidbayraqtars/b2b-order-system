@@ -25,6 +25,43 @@ export const ACCOUNTS = {
 };
 
 /**
+ * Bayi yöneticisinin sepetini bilinen dört kalemle doldurur: teneke, karton,
+ * koli ve hizmet. Sepet sunucuda tutulduğu için ekran görüntüsü ve Playwright
+ * aynı sepeti buradan kuruyor; önce boşaltıyor, yani kaç kez koşarsa koşsun
+ * sonuç aynı. Playwright testi bitince sepeti yeniden boşaltıyor.
+ */
+export const DEMO_CART = [
+  ["GD-YAG-5L", 4],
+  ["KK-30x20-KAHVE", 50],
+  ["GD-SLC-830", 12],
+  ["HZ-NAKLIYE", 1],
+];
+
+export async function seedDemoCart(db) {
+  const user = await db.user.findUnique({
+    where: { email: ACCOUNTS.portal.email },
+    select: { id: true, companyId: true },
+  });
+  if (!user?.companyId) return false;
+  const cart = await db.cart.upsert({
+    where: {
+      companyId_ownerId: { companyId: user.companyId, ownerId: user.id },
+    },
+    create: { companyId: user.companyId, ownerId: user.id },
+    update: {},
+  });
+  await db.cartItem.deleteMany({ where: { cartId: cart.id } });
+  for (const [sku, quantity] of DEMO_CART) {
+    const v = await db.productVariant.findFirst({ where: { sku } });
+    if (!v) return false;
+    await db.cartItem.create({
+      data: { cartId: cart.id, variantId: v.id, quantity },
+    });
+  }
+  return true;
+}
+
+/**
  * Sipariş listesinde en çok kalemi olan sipariş — boş ekran kaydetmemek için.
  *
  * `email` verilirse o hesabın **kendi firmasının** siparişleri arasından
@@ -927,5 +964,172 @@ export const SCREENS = [
       });
       return o && `/orders/${o.id}`;
     },
+  },
+
+  // ── Adım 18: D5 sipariş listesi (önce: *-once.png, elle saklanır) ────────
+  {
+    step: 18,
+    slug: "siparisler",
+    label: "Siparişler — durum sekmeleri ve arama",
+    as: "admin",
+    path: "/admin/siparisler",
+  },
+
+  {
+    step: 18,
+    slug: "siparisler-bekleyen",
+    label: "Siparişler — onay bekleyen sekmesi",
+    as: "admin",
+    path: "/admin/siparisler?durum=bekleyen",
+  },
+
+  {
+    step: 18,
+    slug: "siparisler-panel",
+    label: "Panel — yalnız onay bekleyen siparişler",
+    as: "admin",
+    path: "/admin",
+  },
+
+  {
+    step: 18,
+    slug: "portal-siparis-listesi",
+    label: "Portal siparişler — firma sütunu yok",
+    as: "portal",
+    path: "/portal/orders",
+  },
+
+  // ── Adım 18: D5 sipariş detayı ──────────────────────────────────────────
+  {
+    step: 18,
+    slug: "siparis-detay",
+    label: "Sipariş detayı — satır sevk durumu, boş sütunsuz, formlar düğmede",
+    as: "admin",
+    // Kısmi sevkli sipariş: satır durumunun üç hâli birden görünsün.
+    path: async (db) => {
+      const o = await db.order.findFirst({
+        where: { shipments: { some: {} }, status: "PROCESSING" },
+        select: { id: true },
+      });
+      return o && `/orders/${o.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "portal-siparis-detay",
+    label: "Portal sipariş detayı — sevk edilmiş siparişte iptal yok",
+    as: "portal",
+    path: async (db) => {
+      const o = await db.order.findFirst({
+        where: { shipments: { some: {} }, status: "PROCESSING" },
+        select: { id: true },
+      });
+      return o && `/orders/${o.id}`;
+    },
+  },
+
+  // ── Adım 18: D5 ürün formu (önce: urun-formu-once.png) ──────────────────
+  {
+    step: 18,
+    slug: "urun-formu",
+    label: "Ürün formu — tip seçimi, sessiz Sil, yeni varyant düğmede, fiyat geçmişi",
+    as: "admin",
+    // Fiyat geçmişi olan kalem (seed-gida: GD-YAG-5L): panel boş görünmesin.
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { variants: { some: { priceHistory: { some: {} } } } },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/admin/products/${p.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "urun-formu-hizmet",
+    label: "Ürün formu — hizmet: stok alanları yok",
+    as: "admin",
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { type: "SERVICE" },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/admin/products/${p.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "portal-hizmet",
+    label: "Portal ürün detayı — hizmet \"Tükendi\" değil \"Hizmet\"",
+    as: "portal",
+    path: async (db) => {
+      const p = await db.product.findFirst({
+        where: { type: "SERVICE", isActive: true },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return p && `/portal/urun/${p.id}`;
+    },
+  },
+
+  // ── Adım 18: D5 firma formu (önce: firma-formu-once.png, firma-yeni-once.png)
+  {
+    step: 18,
+    slug: "firma-formu",
+    label: "Firma formu — künye / ticari koşullar, tek iskonto paneli",
+    as: "admin",
+    path: async (db) => {
+      const c = await db.company.findFirst({
+        where: { isActive: true, orders: { some: {} } },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return c && `/admin/companies/${c.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "firma-yeni",
+    label: "Yeni firma — başlık bir kez, sözleşme ayarları gelişmişte",
+    as: "admin",
+    path: "/admin/companies/new",
+  },
+
+  // ── Adım 18: D5 portal katalog (önce: portal-katalog-once.png) ──────────
+  {
+    step: 18,
+    slug: "portal-katalog",
+    label: "Portal katalog — asgariden az stokta sebep kartta",
+    as: "portal",
+    path: "/portal",
+  },
+
+  {
+    step: 18,
+    slug: "portal-katalog-suzgec",
+    label: "Portal katalog — kategori ve sıra adreste",
+    as: "portal",
+    path: async (db) => {
+      const c = await db.category.findFirst({
+        where: { name: "Şarküteri" },
+        select: { id: true },
+      });
+      return c && `/portal?kategori=${c.id}&sirala=stock`;
+    },
+  },
+
+  // ── Adım 18: D5 sepet (önce: portal-sepet-once.png) ─────────────────────
+  // Yol çözülürken gösterim sepeti kuruluyor (seedDemoCart) ve dolu kalıyor.
+  {
+    step: 18,
+    slug: "portal-sepet",
+    label: "Portal sepet — kalem sayacı, yazılabilir miktar, birim fiyat, kupon bağlantıda",
+    as: "portal",
+    path: async (db) => ((await seedDemoCart(db)) ? "/portal" : null),
   },
 ];

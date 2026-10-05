@@ -287,7 +287,14 @@ export async function buildQuote(
       },
       product: {
         // Özel kodlar kampanya hedefi için (ürün özel kodu = X).
-        select: { id: true, name: true, vatRate: true, categoryId: true, ...CUSTOM_CODE_SELECT },
+        select: {
+          id: true,
+          name: true,
+          vatRate: true,
+          categoryId: true,
+          type: true,
+          ...CUSTOM_CODE_SELECT,
+        },
       },
       prices: {
         select: {
@@ -353,7 +360,10 @@ export async function buildQuote(
         { sku: v.sku, unitsPerCase: v.unitsPerCase },
       );
     }
-    const inWarehouse = availability ? availabilityOf(availability, v.id) : null;
+    // Hizmet (nakliye, montaj) stok tutmuyor: ne depo bayrağı ne adet sorulur.
+    const isService = v.product.type === "SERVICE";
+    const inWarehouse =
+      availability && !isService ? availabilityOf(availability, v.id) : null;
     if (warehouse && inWarehouse?.blocked) {
       throw new BusinessError(
         "ORDER_BLOCKED",
@@ -362,7 +372,7 @@ export async function buildQuote(
       );
     }
     const stock = inWarehouse ? inWarehouse.available : qty(v.stock);
-    if (item.quantity > stock) {
+    if (!isService && item.quantity > stock) {
       throw new BusinessError(
         "INSUFFICIENT_STOCK",
         warehouse

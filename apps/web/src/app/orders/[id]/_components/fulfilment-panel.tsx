@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InvoiceView, OpenLine, ShipmentView } from "@repo/services";
@@ -124,11 +124,18 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
         </ul>
 
         {isAdmin && canShip && anythingToShip && (
-          <ShipmentForm
-            orderId={orderId}
-            lines={openLines.filter((l) => l.remainingToShip > 0)}
-            onDone={refresh}
-          />
+          <FormToggle label="Yeni irsaliye">
+            {(close) => (
+              <ShipmentForm
+                orderId={orderId}
+                lines={openLines.filter((l) => l.remainingToShip > 0)}
+                onDone={() => {
+                  close();
+                  refresh();
+                }}
+              />
+            )}
+          </FormToggle>
         )}
       </Panel>
 
@@ -174,15 +181,62 @@ export function FulfilmentPanel({ orderId, role, canShip }: Props) {
         </ul>
 
         {isAdmin && anythingToInvoice && (
-          <InvoiceForm
-            orderId={orderId}
-            uninvoicedShipments={(shipments.data?.shipments ?? []).filter(
-              (s) => !s.invoiceId,
+          <FormToggle label="Yeni fatura">
+            {(close) => (
+              <InvoiceForm
+                orderId={orderId}
+                uninvoicedShipments={(shipments.data?.shipments ?? []).filter(
+                  (s) => !s.invoiceId,
+                )}
+                onDone={() => {
+                  close();
+                  refresh();
+                }}
+              />
             )}
-            onDone={refresh}
-          />
+          </FormToggle>
         )}
       </Panel>
+    </div>
+  );
+}
+
+/**
+ * Formu bir düğmenin arkasında tutar.
+ *
+ * İki form (irsaliye: kalem başına kutu + üç alan, fatura: tarih + belge no)
+ * siparişi her açışta açık duruyordu ve sayfanın yarısını kaplıyordu — ama
+ * siparişe bakmaların çoğu belge kesmek için değil. Düğme panelin yerinde
+ * kalıyor; form ancak istenince açılıyor ve iş bitince kapanıyor.
+ */
+function FormToggle({
+  label,
+  children,
+}: {
+  label: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <div className="mt-4 border-t border-line pt-3">
+        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+          {label}
+        </Button>
+      </div>
+    );
+  }
+  const close = () => setOpen(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={close}
+        className="absolute right-0 top-4 text-xs text-ink-faint transition-colors hover:text-ink"
+      >
+        Vazgeç
+      </button>
+      {children(close)}
     </div>
   );
 }
@@ -400,7 +454,7 @@ function CancelShipmentButton({
   return (
     <>
       <Button
-        variant="danger"
+        variant="dangerQuiet"
         size="sm"
         loading={remove.isPending}
         onClick={() => {
@@ -430,7 +484,7 @@ function CancelInvoiceButton({
   return (
     <>
       <Button
-        variant="danger"
+        variant="dangerQuiet"
         size="sm"
         loading={remove.isPending}
         onClick={() => {

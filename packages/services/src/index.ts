@@ -35,6 +35,7 @@ export * from "./slug";
 export * from "./catalog-admin";
 export * from "./variant-unit";
 export * from "./pricing-admin";
+export * from "./price-history";
 export * from "./ledger";
 export * from "./report-templates";
 export * from "./reports";

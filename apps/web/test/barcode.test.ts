@@ -41,6 +41,7 @@ function product(
     images: [],
     vatRate: 20,
     categoryId: "c1",
+    isService: false,
     variants,
     ...over,
   };

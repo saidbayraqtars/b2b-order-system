@@ -338,7 +338,7 @@ suite("ekranlar: kapı ve sunucu tarafı", () => {
         const target = await visit(component, outsider, page.props);
         // `/hesabim` her role açık; onun dışındakiler bayi personelini portala
         // geri yolluyor. Tarayıcıda bu yönlendirmeyi ara katman yapıyor
-        // (sayfaya hiç gelinmiyor) — ikisi aynı yere gidiyor ve `e2e.mjs`
+        // (sayfaya hiç gelinmiyor) — ikisi aynı yere gidiyor ve `e2e/temel.spec.ts`
         // bunu ayrıca sınıyor.
         // `/hesabim` her role açık; sipariş kabuğu da bayi personeline açık
         // (siparişi veren firma onun firması). Gerisi portala geri yolluyor.

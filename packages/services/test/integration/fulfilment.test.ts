@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@repo/database";
 import { createOrder } from "../../src/order";
-import { changeOrderStatus, getOrderDetail } from "../../src/order-lifecycle";
+import {
+  changeOrderStatus,
+  getOrderDetail,
+  orderLineState,
+} from "../../src/order-lifecycle";
 import { cancelShipment, createShipment, getOpenLines, listShipments } from "../../src/shipment";
 import { cancelInvoice, createInvoice, listInvoices } from "../../src/invoice";
 import { getCompanyAging } from "../../src/ledger";
@@ -300,6 +304,64 @@ suite("shipment + invoice integration", () => {
           { userId: adminId, role: "SUPER_ADMIN", companyId: null },
         ),
       ).rejects.toMatchObject({ code: "INVALID_STATE" });
+    });
+  });
+
+  // D5: satır durumu saklanmıyor, irsaliyeden türetiliyor; sevk başlamış
+  // siparişte iptal düğmesi hiç verilmiyor.
+  describe("satır durumu", () => {
+    const BUYER = () => ({ userId: buyerId, role: "COMPANY_ADMIN" as const, companyId });
+    const ADMIN_CTX = () => ({ userId: adminId, role: "SUPER_ADMIN" as const, companyId: null });
+
+    it("kısmi sevkte satır sayıyla kısmi, sevk edilmeyen bekliyor; iptal verilmez", async () => {
+      const order = await freshOrder();
+      const before = await getOrderDetail(order.orderId, BUYER());
+      expect(before.availableTransitions).toContain("CANCELLED");
+      expect(before.items.every((i) => i.line?.state === "WAITING")).toBe(true);
+
+      const lines = await getOpenLines(order.orderId);
+      const a = lines.find((l) => l.sku.startsWith("FFA"))!;
+      await createShipment(
+        order.orderId,
+        { items: [{ orderItemId: a.orderItemId, quantity: 40 }] },
+        ADMIN,
+      );
+
+      for (const ctx of [BUYER(), ADMIN_CTX()]) {
+        const detail = await getOrderDetail(order.orderId, ctx);
+        expect(detail.availableTransitions).not.toContain("CANCELLED");
+        const byKind = Object.fromEntries(
+          detail.items.map((i) => [i.sku.slice(0, 3), i.line]),
+        );
+        expect(byKind.FFA).toEqual({ state: "PARTIAL", shipped: 40, returned: 0 });
+        expect(byKind.FFB).toEqual({ state: "WAITING", shipped: 0, returned: 0 });
+      }
+    });
+
+    it("irsaliyesiz elle \"Kargoda\"ya çekilen siparişte satırlar gönderilmiş sayılır", async () => {
+      const order = await freshOrder();
+      await changeOrderStatus(order.orderId, { status: "PROCESSING" }, ADMIN_CTX());
+      await changeOrderStatus(order.orderId, { status: "SHIPPED" }, ADMIN_CTX());
+      const detail = await getOrderDetail(order.orderId, ADMIN_CTX());
+      expect(detail.items.map((i) => i.line?.state)).toEqual(["SHIPPED", "SHIPPED"]);
+      expect(detail.items.map((i) => i.line?.shipped)).toEqual(
+        expect.arrayContaining([100, 50]),
+      );
+    });
+
+    it("onaysız ve düşmüş siparişte satır durumu yok; teslim alınan iade öne geçer", () => {
+      const base = { quantity: 6, shipped: 6, returned: 0, anyDespatch: true };
+      expect(orderLineState({ ...base, orderStatus: "PENDING_APPROVAL" })).toBeNull();
+      expect(orderLineState({ ...base, orderStatus: "CANCELLED" })).toBeNull();
+      expect(orderLineState({ ...base, orderStatus: "DELIVERED", returned: 2 })).toEqual({
+        state: "RETURNED",
+        shipped: 6,
+        returned: 2,
+      });
+      // Bir irsaliye varsa sayı irsaliyeden: başlık "Kargoda" dese de.
+      expect(
+        orderLineState({ ...base, orderStatus: "SHIPPED", shipped: 0 })?.state,
+      ).toBe("WAITING");
     });
   });
 

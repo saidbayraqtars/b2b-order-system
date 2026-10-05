@@ -22,10 +22,11 @@
     "hafiza": "node scripts/hafiza-esitle.mjs",
     "hafiza:geri": "node scripts/hafiza-esitle.mjs --geri",
     "shots": "node scripts/screenshots.mjs",
-    "e2e": "node scripts/e2e.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "test": "turbo run test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55",
     "eslint": "^8.57.1",
     "prettier": "^3.3.3",
     "puppeteer-core": "^23",

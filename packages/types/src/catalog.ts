@@ -32,6 +32,24 @@ export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 
 // ── Product ──
 
+export const ProductTypeEnum = z.enum(["GOODS", "SERVICE"]);
+export type ProductType = z.infer<typeof ProductTypeEnum>;
+
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  GOODS: "Ürün",
+  SERVICE: "Hizmet",
+};
+
+/**
+ * Hizmet kaleminin katalog ve sepette "satılabilir adedi".
+ *
+ * Hizmet stok tutmuyor ama istemci (web ve mobil) adedi her yerde üst sınır
+ * olarak kullanıyor: sepete eklerken kırpıyor, "Tükendi" yazıyor. Her ekrana
+ * ayrı "hizmetse sınırsız" dalı yazmak yerine sunucu bu sabiti gönderiyor ve
+ * ekran adedi değil "Hizmet" yazıyor (`isService`).
+ */
+export const SERVICE_STOCK = 999_999;
+
 export const createProductSchema = z.object({
   name: z.string().min(1, "Ürün adı gerekli").max(200),
   slug: slug.optional(),
@@ -45,6 +63,8 @@ export const createProductSchema = z.object({
     .default(20),
   categoryId: z.string().cuid("Kategori seçin"),
   isActive: z.boolean().default(true),
+  /** Ürün mü hizmet mi; hizmet stok tutmaz (Product.type). */
+  type: ProductTypeEnum.default("GOODS"),
   /** Özel kodlar (`code1..code10`); gönderilmeyen yuva değişmez. */
   ...customCodeValuesSchema.shape,
 });

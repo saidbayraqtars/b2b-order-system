@@ -1,5 +1,10 @@
 import { Prisma, prisma } from "@repo/database";
-import type { OrderStatus, PaymentMethod, Role } from "@repo/types";
+import type {
+  OrderLineState,
+  OrderStatus,
+  PaymentMethod,
+  Role,
+} from "@repo/types";
 import { reverseOrderCash } from "./cash";
 import { BusinessError } from "./errors";
 import { lineUnitView, type LineUnitView } from "./variant-unit";
@@ -314,6 +319,58 @@ export interface OrderDetailItem {
   exchangeRate: string;
   /** Paketle sipariş edildiyse künyesi ("2 KOLİ × 100,00 ₺"); yoksa null. */
   unit: LineUnitView | null;
+  /**
+   * Satırın sevk durumu; sipariş henüz onaylanmamışsa ya da düştüyse null.
+   * Bkz. `orderLineState`.
+   */
+  line: OrderLineView | null;
+}
+
+export interface OrderLineView {
+  state: OrderLineState;
+  /** Sevk edilmiş sayılan adet (irsaliyesiz "Kargoda" siparişte tamamı). */
+  shipped: number;
+  /** Teslim alınmış iade; talep aşamasındaki iade sayılmaz. */
+  returned: number;
+}
+
+const LIVE_STATUSES: readonly OrderStatus[] = [
+  "CONFIRMED",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+];
+
+/**
+ * Satır durumu, saklanmadan türetilir (Said, 2026-10-05: "irsaliyeden türet").
+ *
+ * Kaynak irsaliye (`quantityShipped`) ve teslim alınmış iade. Tek istisna: hiç
+ * irsaliyesi olmayan bir sipariş elle "Kargoda"ya çekilebiliyor — o zaman
+ * satır "Bekliyor" dese sipariş başlığıyla çelişirdi; tamamı gönderilmiş
+ * sayılıyor. Bir irsaliye varsa sayı irsaliyeden gelir, başlık ne derse desin.
+ */
+export function orderLineState(input: {
+  orderStatus: OrderStatus;
+  quantity: number;
+  shipped: number;
+  returned: number;
+  /** Siparişte en az bir satır irsaliyeyle çıkmış mı. */
+  anyDespatch: boolean;
+}): OrderLineView | null {
+  if (!LIVE_STATUSES.includes(input.orderStatus)) return null;
+  const markedShipped =
+    !input.anyDespatch &&
+    (input.orderStatus === "SHIPPED" || input.orderStatus === "DELIVERED");
+  const shipped = markedShipped ? input.quantity : input.shipped;
+  const state: OrderLineState =
+    input.returned > 0
+      ? "RETURNED"
+      : shipped <= 0
+        ? "WAITING"
+        : shipped < input.quantity
+          ? "PARTIAL"
+          : "SHIPPED";
+  return { state, shipped, returned: input.returned };
 }
 
 export interface OrderStatusEvent {
@@ -431,6 +488,10 @@ export async function getOrderDetail(
           exchangeRate: true,
           unitName: true,
           unitMultiplier: true,
+          returnItems: {
+            where: { returnRequest: { status: "RECEIVED" } },
+            select: { quantity: true },
+          },
         },
         orderBy: { productName: "asc" },
       },
@@ -452,6 +513,7 @@ export async function getOrderDetail(
   }
 
   const promotions = await listOrderPromotions(o.id);
+  const anyDespatch = o.items.some((i) => i.quantityShipped.gt(0));
 
   return {
     id: o.id,
@@ -503,6 +565,13 @@ export async function getOrderDetail(
       listUnitPrice: i.listUnitPrice?.toFixed(2) ?? null,
       exchangeRate: i.exchangeRate.toFixed(4),
       unit: lineUnitView(i),
+      line: orderLineState({
+        orderStatus: o.status,
+        quantity: qty(i.quantity),
+        shipped: qty(i.quantityShipped),
+        returned: i.returnItems.reduce((n, r) => n + qty(r.quantity), 0),
+        anyDespatch,
+      }),
     })),
     history: o.statusHistory.map((h) => ({
       id: h.id,
@@ -512,10 +581,13 @@ export async function getOrderDetail(
       note: h.note,
       createdAt: h.createdAt.toISOString(),
     })),
+    // Mal çıkmışsa iptal düğmesi hiç gösterilmez: servis zaten reddediyor
+    // (`assertNothingDespatched`), ama düğme kısmi sevkli siparişte müşteriye
+    // de çıkıyor ve basınca hata veriyordu.
     availableTransitions: transitionsFor(
       { id: o.id, orderNumber: o.orderNumber, status: o.status, paymentMethod: o.paymentMethod, grandTotal: o.grandTotal, companyId: o.companyId },
       ctx,
-    ),
+    ).filter((to) => !(to === "CANCELLED" && anyDespatch)),
   };
 }
 

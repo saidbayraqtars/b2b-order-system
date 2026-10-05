@@ -1,5 +1,5 @@
 import { prisma, type Prisma } from "@repo/database";
-import type { CustomCodeKey } from "@repo/types";
+import { SERVICE_STOCK, type CustomCodeKey } from "@repo/types";
 import { BusinessError } from "./errors";
 import { customCodeWhere, listActiveCustomCodeFields } from "./custom-codes";
 import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
@@ -134,6 +134,8 @@ export interface CatalogProduct {
   images: string[];
   vatRate: number;
   categoryId: string;
+  /** Hizmet stok tutmaz: ekran "Tükendi" yerine her zaman satılabilir gösterir. */
+  isService: boolean;
   variants: CatalogVariant[];
 }
 
@@ -182,6 +184,7 @@ const CATALOG_SELECT = {
   images: true,
   vatRate: true,
   categoryId: true,
+  type: true,
   variants: {
     // Pasif varyant katalogda hiç görünmez. Satır silinmiyor çünkü geçmiş
     // siparişler ona bakıyor; ERP'de pasife çekilen kart burada da satılamaz
@@ -228,6 +231,7 @@ type CatalogRow = {
   images: string[];
   vatRate: number;
   categoryId: string;
+  type: "GOODS" | "SERVICE";
   variants: Array<{
     id: string;
     sku: string;
@@ -266,6 +270,7 @@ function toCatalogProduct(
     images: p.images,
     vatRate: p.vatRate,
     categoryId: p.categoryId,
+    isService: p.type === "SERVICE",
     variants: p.variants.map((v) => {
       const base = {
         id: v.id,
@@ -277,7 +282,12 @@ function toCatalogProduct(
         moqUnits: qty(v.moqUnits),
         // Depo modülünde müşterinin deposu; "sipariş alınmasın" kalem stoksuz
         // görünür — müşteriye "bu depodan satılmıyor" demenin sade hâli.
-        stock: stockIn ? sellableIn(availabilityOf(stockIn, v.id)) : qty(v.stock),
+        stock:
+          p.type === "SERVICE"
+            ? SERVICE_STOCK
+            : stockIn
+              ? sellableIn(availabilityOf(stockIn, v.id))
+              : qty(v.stock),
         unit: v.unit,
         quantityScale: v.quantityScale,
         pricingUnit: v.pricingUnit,

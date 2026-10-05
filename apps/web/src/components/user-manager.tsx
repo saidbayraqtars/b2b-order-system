@@ -171,6 +171,7 @@ export function UserManager({
       collapsible={collapsible}
       defaultOpen={false}
       storageKey="user-manager:embedded"
+      forceOpen={creating}
       summary={all.length === 0 ? "yok" : `${all.length} hesap`}
       action={
         <Button size="sm" onClick={() => setCreating((v) => !v)}>

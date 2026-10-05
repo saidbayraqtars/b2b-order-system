@@ -17,9 +17,13 @@ export function GET(_req: NextRequest, { params }: Params) {
 
 // POST /api/admin/companies/:id/discounts — target a category OR a product,
 // never both (resolution is product-over-category).
+//
+// `pricing.manage`, silmeyle aynı kapı: müşteriye özel iskonto bir fiyat
+// kararı. Önce `companies.manage` istiyordu; fiyat yetkisi olmayan bir firma
+// yöneticisi iskonto ekleyebiliyor ama kaldıramıyordu.
 export function POST(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"], "companies.manage");
+    await requireUser(["SUPER_ADMIN"], "pricing.manage");
     const input = await parseBody(req, createCompanyDiscountSchema);
     const discount = await createCompanyDiscount(params.id, input);
     return Response.json({ discount }, { status: 201 });

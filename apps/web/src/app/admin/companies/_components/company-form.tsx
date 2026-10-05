@@ -30,6 +30,8 @@ import {
   TextInput,
 } from "@/components/form";
 import { CollapsibleFieldset } from "@/components/disclosure";
+import { useToast } from "@/components/toast";
+import { Advanced, useAdvancedView } from "@/components/ui-mode";
 import {
   CustomCodeInputs,
   EMPTY_CUSTOM_CODES,
@@ -39,6 +41,11 @@ import {
 } from "@/components/custom-codes";
 
 // Company create / edit. The same form serves both; `company` decides which.
+//
+// İki küme: künye (kim, nasıl ulaşılır) ve ticari koşullar (ne kadar, hangi
+// vadeyle, kimin üstünden). Sözleşme ayarları — ödeme kısıtı, hacim basamağı,
+// asgari sipariş — basit görünümde yalnız doluysa çiziliyor: boş bir
+// kısıtlamayı her firma açılışında göstermek formu iki katına çıkarıyordu.
 
 export interface CompanyFormValues {
   id?: string;
@@ -69,8 +76,19 @@ export interface CompanyFormValues {
   codes: CustomCodeForm;
 }
 
-export function CompanyForm({ company }: { company?: CompanyFormValues }) {
+export function CompanyForm({
+  company,
+  readOnly = false,
+}: {
+  company?: CompanyFormValues;
+  /**
+   * `companies.view` var, `companies.manage` yok: alanlar kilitli, Kaydet yok.
+   * Önce düğme görünüyor ve basınca 403 dönüyordu.
+   */
+  readOnly?: boolean;
+}) {
   const router = useRouter();
+  const { notify } = useToast();
   const editing = Boolean(company?.id);
 
   const [v, setV] = useState<CompanyFormValues>(
@@ -140,11 +158,34 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
     enabled: warehouseMode,
   });
+  // Hacim modülü kapalıyken fiyatlama basamak uygulamıyor; alan burada
+  // durursa ayar işe yarıyormuş gibi görünürdü.
+  const volumeMode = useModuleEnabled("hacim");
   const tiers = useQuery({
     queryKey: ["admin-volume-tiers"],
     queryFn: () =>
       apiGet<{ tiers: VolumeTierRow[] }>("/api/admin/volume-tiers"),
+    enabled: volumeMode,
   });
+
+  // Basit görünümde de çizilen sözleşme ayarları: kayıtlı değer boş değilse.
+  // Kayıtlı değere bakılıyor, yazılana değil — kutuyu boşaltan kullanıcının
+  // alanı elinin altından kaybolmasın.
+  const minOrderInUse = Boolean(company?.minOrderAmount);
+  const paymentInUse =
+    (company?.allowedPaymentMethods.length ?? 0) > 0 ||
+    (company?.paymentTermIds.length ?? 0) > 0;
+  const volumeInUse = company?.volumeDiscountMode === "MANUAL";
+  // Basit görünümde gizlenenler tek satırda adıyla söyleniyor: alanın varlığını
+  // bilmeyen kullanıcı onu aramaz.
+  const advanced = useAdvancedView();
+  const hiddenSettings = advanced
+    ? []
+    : [
+        !minOrderInUse && "asgari sipariş",
+        !paymentInUse && "ödeme kısıtı",
+        volumeMode && !volumeInUse && "hacim basamağı",
+      ].filter((x): x is string => Boolean(x));
 
   const save = useMutation({
     mutationFn: async () => {
@@ -172,15 +213,22 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
         // the whole set — so omitting it would make un-ticking impossible.
         allowedPaymentMethods: v.allowedPaymentMethods,
         paymentTermIds: v.paymentTermIds,
-        volumeDiscountMode: v.volumeDiscountMode,
-        // Cleared deliberately when the mode is AUTO: leaving a stale pin behind
-        // would make the company page claim a rung the pricing path ignores.
-        volumeTierId:
-          v.volumeDiscountMode === "MANUAL" && v.volumeTierId
-            ? v.volumeTierId
-            : editing
-              ? null
-              : undefined,
+        // Hacim modülü kapalıyken gönderilmez (depo gibi): görünmeyen alan
+        // sözleşmeyle atanmış basamağı sessizce silmemeli.
+        ...(volumeMode
+          ? {
+              volumeDiscountMode: v.volumeDiscountMode,
+              // Cleared deliberately when the mode is AUTO: leaving a stale pin
+              // behind would make the company page claim a rung the pricing
+              // path ignores.
+              volumeTierId:
+                v.volumeDiscountMode === "MANUAL" && v.volumeTierId
+                  ? v.volumeTierId
+                  : editing
+                    ? null
+                    : undefined,
+            }
+          : {}),
         // Modül kapalıyken gönderilmez: görünmeyen bir alan kayıtlı depoyu
         // sessizce silmemeli.
         ...(warehouseMode
@@ -199,290 +247,333 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       return created.company.id;
     },
     onSuccess: (id) => {
+      // Düzenlemede sayfa aynı; önce kayıt hiçbir iz bırakmıyordu ve
+      // "kaydetti mi?" diye ikinci kez basılıyordu.
+      if (editing) {
+        notify("Firma kaydedildi");
+        router.refresh();
+        return;
+      }
       router.push(`/admin/companies/${id}`);
       router.refresh();
     },
   });
 
   return (
-    <Panel title={editing ? "Firma bilgileri" : "Yeni firma"}>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="sm:col-span-2">
-          <Label>Firma adı</Label>
-          <TextInput
-            value={v.name}
-            onChange={(e) => set("name", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label hint="10 veya 11 hane">Vergi / TC no</Label>
-          <TextInput
-            value={v.taxNumber}
-            onChange={(e) => set("taxNumber", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label>Vergi dairesi</Label>
-          <TextInput
-            value={v.taxOffice}
-            onChange={(e) => set("taxOffice", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label>E-posta</Label>
-          <TextInput
-            type="email"
-            value={v.email}
-            onChange={(e) => set("email", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label>Telefon</Label>
-          <TextInput
-            value={v.phone}
-            onChange={(e) => set("phone", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label>Kredi limiti</Label>
-          <TextInput
-            type="number"
-            min={0}
-            step="0.01"
-            value={v.creditLimit}
-            onChange={(e) => set("creditLimit", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label hint="yaşlandırma bu değere göre hesaplanır">Vade (gün)</Label>
-          <TextInput
-            type="number"
-            min={0}
-            max={365}
-            value={v.paymentTermDays}
-            onChange={(e) => set("paymentTermDays", e.target.value)}
-          />
-        </label>
-        <label>
-          <Label hint="boş = genel kural, 0 = muaf">Asgari sipariş (₺)</Label>
-          <TextInput
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="genel kural"
-            value={v.minOrderAmount}
-            onChange={(e) => set("minOrderAmount", e.target.value)}
-          />
-        </label>
-        {/* Firma para birimi alanı kaldırıldı: defter TL ve buraya "USD"
+    // Başlık iki hâlde de aynı: yeni firma sayfasının başlığı zaten "Yeni
+    // Firma" ve panel bunu ikinci kez yazıyordu.
+    <Panel title="Firma bilgileri">
+      <fieldset disabled={readOnly} className="contents">
+        <p className="tech-label mb-2">Künye</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="sm:col-span-2">
+            <Label>Firma adı</Label>
+            <TextInput
+              value={v.name}
+              onChange={(e) => set("name", e.target.value)}
+            />
+          </label>
+          <label>
+            <Label hint="10 veya 11 hane">Vergi / TC no</Label>
+            <TextInput
+              value={v.taxNumber}
+              onChange={(e) => set("taxNumber", e.target.value)}
+            />
+          </label>
+          <label>
+            <Label>Vergi dairesi</Label>
+            <TextInput
+              value={v.taxOffice}
+              onChange={(e) => set("taxOffice", e.target.value)}
+            />
+          </label>
+          <label>
+            <Label>E-posta</Label>
+            <TextInput
+              type="email"
+              value={v.email}
+              onChange={(e) => set("email", e.target.value)}
+            />
+          </label>
+          <label>
+            <Label>Telefon</Label>
+            <TextInput
+              value={v.phone}
+              onChange={(e) => set("phone", e.target.value)}
+            />
+          </label>
+        </div>
+
+        <p className="tech-label mb-2 mt-5">Ticari koşullar</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label>
+            <Label>Kredi limiti</Label>
+            <TextInput
+              type="number"
+              min={0}
+              step="0.01"
+              value={v.creditLimit}
+              onChange={(e) => set("creditLimit", e.target.value)}
+            />
+          </label>
+          <label>
+            <Label hint="yaşlandırma buna göre">Vade (gün)</Label>
+            <TextInput
+              type="number"
+              min={0}
+              max={365}
+              value={v.paymentTermDays}
+              onChange={(e) => set("paymentTermDays", e.target.value)}
+            />
+          </label>
+          <Advanced inUse={minOrderInUse}>
+            <label>
+              <Label hint="boş = genel kural, 0 = muaf">
+                Asgari sipariş (₺)
+              </Label>
+              <TextInput
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="genel kural"
+                value={v.minOrderAmount}
+                onChange={(e) => set("minOrderAmount", e.target.value)}
+              />
+            </label>
+          </Advanced>
+          {/* Firma para birimi alanı kaldırıldı: defter TL ve buraya "USD"
             yazmak hiçbir hesabı değiştirmiyor, yalnızca ekstre belgesine
             yanlış bir satır bastırıyordu. Döviz, ürünün liste fiyatında
             (`/admin/products` → fiyat satırı) seçiliyor. */}
-        <label>
-          <Label>Müşteri grubu</Label>
-          <Select
-            value={v.customerGroupId}
-            onChange={(e) => set("customerGroupId", e.target.value)}
-          >
-            <option value="">— yok —</option>
-            {(groups.data?.groups ?? []).map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label>
-          <Label>Plasiyer</Label>
-          <Select
-            value={v.salesRepId}
-            onChange={(e) => set("salesRepId", e.target.value)}
-          >
-            <option value="">— atanmamış —</option>
-            {(reps.data?.salesReps ?? []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {warehouseMode && (warehouses.data?.warehouses.length ?? 0) > 0 && (
           <label>
-            <Label hint="stok buradan düşer">Çıkış deposu</Label>
+            <Label>Müşteri grubu</Label>
             <Select
-              value={v.warehouseId}
-              onChange={(e) => set("warehouseId", e.target.value)}
+              value={v.customerGroupId}
+              onChange={(e) => set("customerGroupId", e.target.value)}
             >
-              <option value="">— varsayılan depo —</option>
-              {(warehouses.data?.warehouses ?? [])
-                .filter((w) => w.isActive || w.id === v.warehouseId)
-                .map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-            </Select>
-          </label>
-        )}
-      </div>
-
-      {codeFields.active.length > 0 && (
-        <CollapsibleFieldset
-          className="mt-5"
-          legend="Özel kodlar"
-          storageKey="company-form:codes"
-          summary={
-            codeFields.active
-              .filter((f) => v.codes[f.key])
-              .map((f) => `${f.label}: ${v.codes[f.key]}`)
-              .join(" · ") || "boş"
-          }
-        >
-          <CustomCodeInputs
-            entity="COMPANY"
-            value={v.codes}
-            onChange={(codes) => set("codes", codes)}
-          />
-        </CollapsibleFieldset>
-      )}
-
-      {/* İki alan kümesi de kapalı başlıyor: firma ekranında günlük iş
-          yukarıdaki künye ve iletişim alanları, bunlar ayda bir dokunulan
-          sözleşme ayarları. İkisi de uzun açıklama paragrafı taşıyor —
-          metin kısaltılmıyor, katlanıyor. */}
-      <CollapsibleFieldset
-        className="mt-5"
-        legend="Ödemede sunulacaklar"
-        storageKey="company-form:payment"
-        summary={
-          v.allowedPaymentMethods.length === 0 && v.paymentTermIds.length === 0
-            ? "kısıtlama yok"
-            : `${v.allowedPaymentMethods.length || "tüm"} yöntem · ${
-                v.paymentTermIds.length || "varsayılan"
-              } vade`
-        }
-      >
-        <p className="mb-2 text-xs text-ink-faint">
-          Ödeme yöntemi — <strong>hiçbiri seçilmezse hepsi sunulur.</strong>{" "}
-          Kısıtlamak istemiyorsanız boş bırakın.
-        </p>
-        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
-          {PaymentMethodEnum.options.map((m) => (
-            <Checkbox
-              key={m}
-              checked={v.allowedPaymentMethods.includes(m)}
-              onChange={() => toggleIn("allowedPaymentMethods", m)}
-              label={<>{PAYMENT_METHOD_LABELS[m]}</>}
-            />
-          ))}
-        </div>
-
-        <p className="mb-2 text-xs text-ink-faint">
-          Vade seçenekleri — boş bırakılırsa müşteriye menü çıkmaz, sipariş
-          yukarıdaki varsayılan vadeyi alır. Tanımlar <strong>Vadeler</strong>{" "}
-          sayfasında yapılır.
-        </p>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {(terms.data?.terms ?? [])
-            .filter((t) => t.isActive || v.paymentTermIds.includes(t.id))
-            .map((t) => (
-              <Checkbox
-                key={t.id}
-                checked={v.paymentTermIds.includes(t.id)}
-                onChange={() => toggleIn("paymentTermIds", t.id)}
-                label={
-                  <>
-                    {t.name}
-                    <span className="ml-1 text-ink-faint">
-                      ({t.days === 0 ? "peşin" : `${t.days}g`})
-                    </span>
-                  </>
-                }
-              />
-            ))}
-          {terms.data?.terms.length === 0 && (
-            <span className="text-body-sm text-ink-faint">
-              Henüz vade tanımı yok.
-            </span>
-          )}
-        </div>
-      </CollapsibleFieldset>
-
-      <CollapsibleFieldset
-        className="mt-5"
-        legend="Hacim iskontosu"
-        storageKey="company-form:volume"
-        summary={VOLUME_DISCOUNT_MODE_LABELS[v.volumeDiscountMode]}
-      >
-        <p className="mb-3 text-xs text-ink-faint">
-          Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı
-          kendiliğinden alır. Elle atadığınızda ciroya hiç bakılmaz —
-          sözleşmeyle söz verilmiş bir oran, düşük geçen bir çeyrekte
-          kaybolmasın diye. Basamak seçmezseniz bu firma hacim iskontosu almaz.
-          Tanımlar <strong>Hacim</strong> sayfasında yapılır.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label>
-            <Label>Belirleme şekli</Label>
-            <Select
-              value={v.volumeDiscountMode}
-              onChange={(e) =>
-                set("volumeDiscountMode", e.target.value as VolumeDiscountMode)
-              }
-            >
-              {VolumeDiscountModeEnum.options.map((m) => (
-                <option key={m} value={m}>
-                  {VOLUME_DISCOUNT_MODE_LABELS[m]}
+              {/* Liste gelene kadar kayıtlı grup "— yok —" görünüyordu. */}
+              <option value="">
+                {groups.data ? "— yok —" : "Yükleniyor…"}
+              </option>
+              {(groups.data?.groups ?? []).map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
                 </option>
               ))}
             </Select>
           </label>
-          {v.volumeDiscountMode === "MANUAL" && (
+          <label>
+            <Label>Plasiyer</Label>
+            <Select
+              value={v.salesRepId}
+              onChange={(e) => set("salesRepId", e.target.value)}
+            >
+              <option value="">
+                {reps.data ? "— atanmamış —" : "Yükleniyor…"}
+              </option>
+              {(reps.data?.salesReps ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {warehouseMode && (warehouses.data?.warehouses.length ?? 0) > 0 && (
             <label>
-              <Label hint="boş = iskonto yok">Basamak</Label>
+              <Label hint="stok buradan düşer">Çıkış deposu</Label>
               <Select
-                value={v.volumeTierId}
-                onChange={(e) => set("volumeTierId", e.target.value)}
+                value={v.warehouseId}
+                onChange={(e) => set("warehouseId", e.target.value)}
               >
-                <option value="">— yok —</option>
-                {(tiers.data?.tiers ?? [])
-                  // A retired rung stays selectable while it is the one in
-                  // force: the customer keeps the rate, and the admin can see
-                  // what that rate is instead of an empty box.
-                  .filter((t) => t.isActive || t.id === v.volumeTierId)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} (%{t.discountPercent})
-                      {t.isActive ? "" : " — pasif"}
+                <option value="">— varsayılan depo —</option>
+                {(warehouses.data?.warehouses ?? [])
+                  .filter((w) => w.isActive || w.id === v.warehouseId)
+                  .map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
                     </option>
                   ))}
               </Select>
             </label>
           )}
         </div>
-      </CollapsibleFieldset>
 
-      <div className="mt-3 flex flex-wrap gap-5">
-        <Checkbox
-          checked={v.requiresOrderApproval}
-          onChange={(e) => set("requiresOrderApproval", e.target.checked)}
-          label="Personel siparişleri yönetici onayı istesin"
-        />
-        <Checkbox
-          checked={v.isActive}
-          onChange={(e) => set("isActive", e.target.checked)}
-          label="Aktif"
-        />
-      </div>
+        {codeFields.active.length > 0 && (
+          <CollapsibleFieldset
+            className="mt-5"
+            legend="Özel kodlar"
+            storageKey="company-form:codes"
+            summary={
+              codeFields.active
+                .filter((f) => v.codes[f.key])
+                .map((f) => `${f.label}: ${v.codes[f.key]}`)
+                .join(" · ") || "boş"
+            }
+          >
+            <CustomCodeInputs
+              entity="COMPANY"
+              value={v.codes}
+              onChange={(codes) => set("codes", codes)}
+            />
+          </CollapsibleFieldset>
+        )}
 
-      <div className="mt-4">
-        <Button
-          disabled={save.isPending || !v.name.trim()}
-          onClick={() => save.mutate()}
-        >
-          {editing ? "Kaydet" : "Firmayı oluştur"}
-        </Button>
-      </div>
+        {/* İki alan kümesi de kapalı başlıyor: firma ekranında günlük iş
+          yukarıdaki künye ve iletişim alanları, bunlar ayda bir dokunulan
+          sözleşme ayarları. İkisi de uzun açıklama paragrafı taşıyor —
+          metin kısaltılmıyor, katlanıyor. */}
+        <Advanced inUse={paymentInUse}>
+          <CollapsibleFieldset
+            className="mt-5"
+            legend="Ödemede sunulacaklar"
+            storageKey="company-form:payment"
+            summary={
+              v.allowedPaymentMethods.length === 0 &&
+              v.paymentTermIds.length === 0
+                ? "kısıtlama yok"
+                : `${v.allowedPaymentMethods.length || "tüm"} yöntem · ${
+                    v.paymentTermIds.length || "varsayılan"
+                  } vade`
+            }
+          >
+            <p className="mb-2 text-xs text-ink-faint">
+              Ödeme yöntemi — <strong>hiçbiri seçilmezse hepsi sunulur.</strong>{" "}
+              Kısıtlamak istemiyorsanız boş bırakın.
+            </p>
+            <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
+              {PaymentMethodEnum.options.map((m) => (
+                <Checkbox
+                  key={m}
+                  checked={v.allowedPaymentMethods.includes(m)}
+                  onChange={() => toggleIn("allowedPaymentMethods", m)}
+                  label={<>{PAYMENT_METHOD_LABELS[m]}</>}
+                />
+              ))}
+            </div>
+
+            <p className="mb-2 text-xs text-ink-faint">
+              Vade seçenekleri — boş bırakılırsa müşteriye menü çıkmaz, sipariş
+              yukarıdaki varsayılan vadeyi alır. Tanımlar{" "}
+              <strong>Vadeler</strong> sayfasında yapılır.
+            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {(terms.data?.terms ?? [])
+                .filter((t) => t.isActive || v.paymentTermIds.includes(t.id))
+                .map((t) => (
+                  <Checkbox
+                    key={t.id}
+                    checked={v.paymentTermIds.includes(t.id)}
+                    onChange={() => toggleIn("paymentTermIds", t.id)}
+                    label={
+                      <>
+                        {t.name}
+                        <span className="ml-1 text-ink-faint">
+                          ({t.days === 0 ? "peşin" : `${t.days}g`})
+                        </span>
+                      </>
+                    }
+                  />
+                ))}
+              {terms.data?.terms.length === 0 && (
+                <span className="text-body-sm text-ink-faint">
+                  Henüz vade tanımı yok.
+                </span>
+              )}
+            </div>
+          </CollapsibleFieldset>
+        </Advanced>
+
+        {volumeMode && (
+          <Advanced inUse={volumeInUse}>
+            <CollapsibleFieldset
+              className="mt-5"
+              legend="Hacim iskontosu"
+              storageKey="company-form:volume"
+              summary={VOLUME_DISCOUNT_MODE_LABELS[v.volumeDiscountMode]}
+            >
+              <p className="mb-3 text-xs text-ink-faint">
+                Otomatikte firma, cirosuyla hak ettiği en yüksek basamağı
+                kendiliğinden alır. Elle atadığınızda ciroya hiç bakılmaz —
+                sözleşmeyle söz verilmiş bir oran, düşük geçen bir çeyrekte
+                kaybolmasın diye. Basamak seçmezseniz bu firma hacim iskontosu
+                almaz. Tanımlar <strong>Hacim</strong> sayfasında yapılır.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  <Label>Belirleme şekli</Label>
+                  <Select
+                    value={v.volumeDiscountMode}
+                    onChange={(e) =>
+                      set(
+                        "volumeDiscountMode",
+                        e.target.value as VolumeDiscountMode,
+                      )
+                    }
+                  >
+                    {VolumeDiscountModeEnum.options.map((m) => (
+                      <option key={m} value={m}>
+                        {VOLUME_DISCOUNT_MODE_LABELS[m]}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                {v.volumeDiscountMode === "MANUAL" && (
+                  <label>
+                    <Label hint="boş = iskonto yok">Basamak</Label>
+                    <Select
+                      value={v.volumeTierId}
+                      onChange={(e) => set("volumeTierId", e.target.value)}
+                    >
+                      <option value="">— yok —</option>
+                      {(tiers.data?.tiers ?? [])
+                        // A retired rung stays selectable while it is the one in
+                        // force: the customer keeps the rate, and the admin can see
+                        // what that rate is instead of an empty box.
+                        .filter((t) => t.isActive || t.id === v.volumeTierId)
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} (%{t.discountPercent})
+                            {t.isActive ? "" : " — pasif"}
+                          </option>
+                        ))}
+                    </Select>
+                  </label>
+                )}
+              </div>
+            </CollapsibleFieldset>
+          </Advanced>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-5">
+          <Checkbox
+            checked={v.requiresOrderApproval}
+            onChange={(e) => set("requiresOrderApproval", e.target.checked)}
+            label="Personel siparişleri yönetici onayı istesin"
+          />
+          <Checkbox
+            checked={v.isActive}
+            onChange={(e) => set("isActive", e.target.checked)}
+            label="Aktif"
+          />
+        </div>
+
+        {hiddenSettings.length > 0 && (
+          <p className="mt-3 text-xs text-ink-faint">
+            Gelişmiş görünümde: {hiddenSettings.join(", ")}.
+          </p>
+        )}
+      </fieldset>
+
+      {!readOnly && (
+        <div className="mt-4">
+          <Button
+            disabled={save.isPending || !v.name.trim()}
+            onClick={() => save.mutate()}
+          >
+            {editing ? "Kaydet" : "Firmayı oluştur"}
+          </Button>
+        </div>
+      )}
       <ErrorLine error={save.error} />
     </Panel>
   );

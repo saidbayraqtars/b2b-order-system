@@ -5,8 +5,8 @@ import { requireUser, withAuthErrors } from "@/lib/guard";
 // DELETE /api/admin/prices/:id — drop one price tier.
 export function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"], "pricing.manage");
-    await deletePrice(params.id);
+    const user = await requireUser(["SUPER_ADMIN"], "pricing.manage");
+    await deletePrice(params.id, user.id);
     return new Response(null, { status: 204 });
   });
 }

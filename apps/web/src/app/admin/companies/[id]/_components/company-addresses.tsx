@@ -14,9 +14,12 @@ import { Badge } from "@/components/ui";
 export function CompanyAddresses({
   companyId,
   addresses,
+  canEdit,
 }: {
   companyId: string;
   addresses: AddressRow[];
+  /** `companies.manage`: ekle, varsayılan yap ve sil yalnız onda çizilir. */
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -80,10 +83,13 @@ export function CompanyAddresses({
       collapsible
       defaultOpen={false}
       summary={addresses.length === 0 ? "yok" : `${addresses.length} adres`}
+      forceOpen={adding}
       action={
-        <Button size="sm" onClick={() => setAdding((v) => !v)}>
-          {adding ? "Vazgeç" : "Yeni adres"}
-        </Button>
+        canEdit && (
+          <Button size="sm" onClick={() => setAdding((v) => !v)}>
+            {adding ? "Vazgeç" : "Yeni adres"}
+          </Button>
+        )
       }
     >
       {adding && (
@@ -201,29 +207,31 @@ export function CompanyAddresses({
                     : "Konum girilmedi — haritada görünmez"}
                 </p>
               </div>
-              <div className="flex gap-1">
-                {!a.isDefault && (
+              {canEdit && (
+                <div className="flex gap-1">
+                  {!a.isDefault && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={makeDefault.isPending}
+                      onClick={() => makeDefault.mutate(a.id)}
+                    >
+                      Varsayılan yap
+                    </Button>
+                  )}
                   <Button
-                    variant="secondary"
+                    variant="dangerQuiet"
                     size="sm"
-                    disabled={makeDefault.isPending}
-                    onClick={() => makeDefault.mutate(a.id)}
+                    disabled={remove.isPending}
+                    onClick={() => {
+                      if (confirm(`"${a.label}" adresi silinsin mi?`))
+                        remove.mutate(a.id);
+                    }}
                   >
-                    Varsayılan yap
+                    Sil
                   </Button>
-                )}
-                <Button
-                  variant="danger"
-                  size="sm"
-                  disabled={remove.isPending}
-                  onClick={() => {
-                    if (confirm(`"${a.label}" adresi silinsin mi?`))
-                      remove.mutate(a.id);
-                  }}
-                >
-                  Sil
-                </Button>
-              </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

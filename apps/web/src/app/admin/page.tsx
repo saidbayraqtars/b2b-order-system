@@ -54,7 +54,7 @@ export default async function AdminDashboard() {
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Panel"
-        subtitle="Son 30 günün özeti, cari hesaplar ve bekleyen siparişler."
+        subtitle="Son 30 günün özeti, onay bekleyen siparişler ve cari hesaplar."
       />
 
       {setup && !setup.ready && (
@@ -95,6 +95,32 @@ export default async function AdminDashboard() {
       )}
 
       <div className="space-y-6">
+        {/* Panoda yalnız onay bekleyenler ve en üstte: panodaki tek iş
+            gerektiren liste bu. Bütün siparişler cari tablosunun altında
+            yüz satır olarak duruyordu; artık kendi ekranlarında. */}
+        {canSeeOrders && (
+          <Panel
+            title="Onay bekleyen siparişler"
+            icon={<ShoppingCart className="h-4 w-4" />}
+            action={
+              <MoreLink href="/admin/siparisler" label="Tüm siparişler" />
+            }
+            bodyClassName="p-0"
+          >
+            <OrdersBoard
+              framed={false}
+              filters={false}
+              group="bekleyen"
+              emptyLabel="Onay bekleyen sipariş yok."
+              canApproveCredit={hasPermission(
+                user.permissions,
+                "orders.approve",
+              )}
+              canPrint={hasPermission(user.permissions, "documents.view")}
+            />
+          </Panel>
+        )}
+
         {canSeeCompanies && (
           <Panel
             title="Cari Hesaplar"
@@ -103,23 +129,6 @@ export default async function AdminDashboard() {
             bodyClassName="p-0"
           >
             <CompaniesTable />
-          </Panel>
-        )}
-
-        {canSeeOrders && (
-          <Panel
-            title="Siparişler"
-            icon={<ShoppingCart className="h-4 w-4" />}
-            bodyClassName="p-0"
-          >
-            <OrdersBoard
-              framed={false}
-              canApproveCredit={hasPermission(
-                user.permissions,
-                "orders.approve",
-              )}
-              canPrint={hasPermission(user.permissions, "documents.view")}
-            />
           </Panel>
         )}
       </div>

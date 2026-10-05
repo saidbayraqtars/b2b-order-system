@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getCompany, getVolumeStatus } from "@repo/services";
+import { getCompany, getVolumeStatus, isModuleEnabled } from "@repo/services";
 import { requirePage } from "@/lib/guard";
 import { formatTRY } from "@/lib/format";
 import { Badge, PageHeader, StatTile } from "@/components/ui";
@@ -22,25 +22,31 @@ export default async function AdminCompanyPage({
 
   // Read live rather than from the company row: under AUTO the rung in force is
   // whatever turnover earns right now, and a form field cannot show that.
-  const volume = await getVolumeStatus(company.id);
+  // Hacim modülü kapalıyken kutu yok: fiyatlama basamak uygulamıyor ve
+  // "Bronz için ₺61.068 kaldı" yazmak olmayan bir hedefi gösterirdi.
+  const volume = (await isModuleEnabled("hacim"))
+    ? await getVolumeStatus(company.id)
+    : null;
 
   // Hacim satırı üç ayrı cümleden kuruluyordu ve hepsi tek paragrafta üst üste
   // biniyordu. Kutunun altına tek bir açıklama satırı düşüyor: hangi basamak,
   // neden o basamak, bir sonrakine ne kaldı.
-  const volumeHint = volume.current
+  const volumeHint = volume?.current
     ? `%${volume.current.percent} · ${volume.current.name}`
     : "yok";
-  const volumeWhy =
-    volume.mode === "MANUAL"
+  const volumeWhy = !volume
+    ? null
+    : volume.mode === "MANUAL"
       ? "elle atanmış"
       : volume.turnover !== null
         ? `son ${volume.windowMonths} ay cirosu ${formatTRY(volume.turnover)}`
         : null;
-  const volumeNext = volume.next
+  const volumeNext = volume?.next
     ? `${volume.next.name} (%${volume.next.percent}) için ${formatTRY(volume.next.remaining)} kaldı`
     : null;
 
   const available = Number(company.availableCredit);
+  const canManage = user.permissions.includes("companies.manage");
 
   return (
     <main className="mx-auto max-w-5xl space-y-6">
@@ -73,7 +79,13 @@ export default async function AdminCompanyPage({
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={
+          volume
+            ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            : "grid gap-3 sm:grid-cols-3"
+        }
+      >
         <StatTile label="Bakiye" value={formatTRY(company.currentBalance)} />
         <StatTile label="Kredi limiti" value={formatTRY(company.creditLimit)} />
         <StatTile
@@ -82,16 +94,19 @@ export default async function AdminCompanyPage({
           tone={available < 0 ? "critical" : "positive"}
           hint={available < 0 ? "limit aşıldı" : "limit içinde"}
         />
-        <StatTile
-          label="Hacim iskontosu"
-          value={volumeHint}
-          hint={
-            [volumeWhy, volumeNext].filter(Boolean).join(" · ") || undefined
-          }
-        />
+        {volume && (
+          <StatTile
+            label="Hacim iskontosu"
+            value={volumeHint}
+            hint={
+              [volumeWhy, volumeNext].filter(Boolean).join(" · ") || undefined
+            }
+          />
+        )}
       </div>
 
       <CompanyForm
+        readOnly={!canManage}
         company={{
           id: company.id,
           name: company.name,
@@ -119,7 +134,11 @@ export default async function AdminCompanyPage({
         }}
       />
 
-      <CompanyAddresses companyId={company.id} addresses={company.addresses} />
+      <CompanyAddresses
+        companyId={company.id}
+        addresses={company.addresses}
+        canEdit={canManage}
+      />
 
       <UserManager
         collapsible
@@ -129,7 +148,10 @@ export default async function AdminCompanyPage({
         grantablePermissions={user.permissions}
       />
 
-      <CompanyDiscounts companyId={company.id} />
+      <CompanyDiscounts
+        companyId={company.id}
+        canEdit={user.permissions.includes("pricing.manage")}
+      />
     </main>
   );
 }

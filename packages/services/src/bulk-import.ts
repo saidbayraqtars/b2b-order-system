@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "@repo/database";
 import { BusinessError } from "./errors";
 import { fitsQuantityScale, formatQuantity, qty, qtySub } from "./quantity";
+import { recordPriceChange } from "./price-history";
 import { postStockMovement } from "./stock-ledger";
 import { parseDecimal, readSpreadsheet, type SheetRow } from "./xlsx-read";
 
@@ -574,7 +575,17 @@ async function applyPrices(
             unitId: null,
             minQuantity: row.minQuantity,
           },
-          select: { id: true },
+          select: { id: true, price: true },
+        });
+
+        await recordPriceChange(tx, {
+          variantId,
+          customerGroupId: row.groupId,
+          minQuantity: row.minQuantity,
+          oldPrice: existing?.price ?? null,
+          newPrice: row.newPrice!,
+          source: "BULK",
+          actorId,
         });
 
         if (existing) {

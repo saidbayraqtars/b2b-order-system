@@ -1,6 +1,7 @@
 import { Prisma, prisma } from "@repo/database";
 import type { PriceChangeStatus } from "@repo/types";
 import { BusinessError } from "./errors";
+import { recordPriceChange } from "./price-history";
 
 // Zamanlı fiyat değişimi — "1 Eylül'den itibaren zam".
 //
@@ -225,6 +226,7 @@ export async function applyDuePriceChanges(
       minQuantity: true,
       price: true,
       currency: true,
+      createdById: true,
     },
   });
 
@@ -242,6 +244,17 @@ export async function applyDuePriceChanges(
             minQuantity: change.minQuantity,
           },
           select: { id: true, price: true, currency: true },
+        });
+
+        await recordPriceChange(tx, {
+          variantId: change.variantId,
+          customerGroupId: change.customerGroupId,
+          minQuantity: change.minQuantity,
+          oldPrice: existing?.price ?? null,
+          newPrice: change.price,
+          currency: change.currency,
+          source: "SCHEDULE",
+          actorId: change.createdById,
         });
 
         if (existing) {

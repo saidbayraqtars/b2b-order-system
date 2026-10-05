@@ -51,8 +51,9 @@ export function normalizeQty(
   return Math.max(0, q);
 }
 
+// Taban birimlerin toplamı ("itemCount") kaldırıldı: teneke, karton ve seferi
+// toplayan bir sayı rozette "67" diye görünüyordu. Rozet satır sayısını yazıyor.
 export interface CartTotals {
-  itemCount: number;
   subtotal: number;
   taxTotal: number;
   grandTotal: number;
@@ -77,11 +78,6 @@ export function cartTotals(lines: CartLine[]): CartTotals {
   }
   const round = (n: number) => Math.round(n * 100) / 100;
   return {
-    // Üç ondalığa yuvarlanıyor: 0,1 + 0,2 rozet üzerinde 0,30000000000000004 olmasın.
-    itemCount: roundToScale(
-      lines.reduce((s, l) => s + l.quantity, 0),
-      3,
-    ),
     subtotal: round(subtotal),
     taxTotal: round(taxTotal),
     grandTotal: round(subtotal + taxTotal),
@@ -196,11 +192,6 @@ export function useCart(companyId: string) {
     lines,
     isLoading: query.isLoading,
     error: query.error as Error | null,
-    // Üç ondalığa yuvarlanıyor: 0,1 + 0,2 rozet üzerinde 0,30000000000000004 olmasın.
-    itemCount: roundToScale(
-      lines.reduce((s, l) => s + l.quantity, 0),
-      3,
-    ),
     isSaving: write.isPending || clearMutation.isPending,
 
     /**

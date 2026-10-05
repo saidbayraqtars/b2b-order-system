@@ -382,6 +382,71 @@ depo satırları boştur, açık gelen modül bütün siparişleri reddederdi.
   depo seçmiyor (C akışı; teklif `warehouse` döndürüyor, satıcı
   `warehouseId` gönderebilir). Bekleyen sipariş listesi toplam stoka bakıyor.
 
+### Ürün tipi: ürün / hizmet (D5, 2026-10-05)
+
+Ürün formunda "Tip" seçimi. **Hizmet** (nakliye, montaj) stok tutmaz:
+
+- Stok 0'dayken satılır; sipariş, iptal ve iade stok defterine hareket
+  yazmaz; teklif ne adet ne depo bayrağı sorar.
+- Stok ekranlarında ve kritik stok listesinde görünmez.
+- Katalog ve sepet adet yerine `SERVICE_STOCK` gönderir, ürün `isService`
+  taşır; ekran "Tükendi" yerine "Hizmet" yazar, koli bilgisini göstermez.
+- Yönetimde hizmetin varyant satırında stok kutusu yok ("hizmet · stok
+  tutulmaz").
+
+### Fiyat geçmişi (D5, 2026-10-05)
+
+Yalnız yönetimde. Fiyat yazan beş yol — elle, toplu (Excel), ERP, zamanlı
+değişim, paket birimi — tek kapıdan (`recordPriceChange`) `PriceHistory`ye
+satır bırakır: eski/yeni fiyat, grup ve birim adı (o anki adıyla), kaynak,
+değiştiren. Aynı fiyatın yeniden yazılması kayıt bırakmaz; yeni açılan satırda
+eski fiyat, silinende yeni fiyat boştur. Ürün sayfasında kapalı başlayan
+"Fiyat geçmişi" paneli (künyede değişiklik sayısı ve son tarih),
+`GET /api/admin/products/:id/price-history`.
+
+### Firma formu sadeleşti (D5, 2026-10-05)
+
+- Form iki küme: **künye** (ad, vergi, iletişim) ve **ticari koşullar**
+  (limit, vade, grup, plasiyer, depo). Yeni firma sayfasında başlık bir kez.
+- Sözleşme ayarları — asgari sipariş, ödeme kısıtı, hacim basamağı — basit
+  görünümde yalnız doluysa çizilir; gizlenenler tek satırda adıyla söylenir.
+- Hacim modülü kapalıyken hacim kutusu ve alanı yok; form hacim alanlarını
+  göndermez, elle atanmış basamak korunur (depo alanıyla aynı kural).
+- Firmaya özel iskonto tek panel ("Yeni iskonto" başlıkta). Ekleme de silme de
+  `pricing.manage` ister — önce ekleme `companies.manage` ile açıktı.
+- Yalnız `companies.view` olan kullanıcıda alanlar kilitli; Kaydet, adres
+  ekle/sil ve iskonto düğmeleri çizilmez.
+- Kapalı paneldeki "Yeni adres" / "Yeni kullanıcı" / "Yeni iskonto" düğmesi
+  paneli açar (`Panel` `forceOpen`); önce görünmeyen bir form açıyordu.
+- Kayıtta "Firma kaydedildi" bildirimi; liste gelene kadar grup ve plasiyer
+  kutusu "Yükleniyor…" der.
+
+### Portal katalog sadeleşti (D5, 2026-10-05)
+
+- Süzgeçler adreste: `?kategori=`, `?ara=`, `?sirala=`, `?stok=1`, `?kod3=`.
+  Yenileyen, bağlantıyı paylaşan aynı listeyi görür; kategori geçmişe yazılır
+  (geri tuşu önceki kategoriye döner), arama/sıra/stok yazılmaz.
+- Ürün detayındaki "Katalog" bağlantısı süzgeçli kataloğa döner (son katalog
+  adresi oturum deposunda; başka firmanınki yok sayılır).
+- Stok asgari siparişten azsa ("14 adet var, en az 24") kart sebebini yazar,
+  kapalı düğmenin ipucu da; detay satırı artık "stok yok" demez. Tek karar
+  noktası `apps/web/src/lib/orderable.ts`.
+- "Stoğa göre" sırada hizmet en başta değil, sonda.
+- Başlık altı "18 ürün · Şarküteri" (firma adı üst şeritte zaten yazıyor).
+
+### Sepet sadeleşti (D5, 2026-10-05)
+
+- Üst şeritteki sepet sayacı kalem sayısı (önce taban birimlerin toplamıydı:
+  4 teneke + 50 karton + 12 koli + 1 sefer = "67").
+- Satırda birim fiyat ("GD-YAG-5L · ₺359,50 / teneke").
+- Miktar her satırda yazılabilir; yazılan koli katına, asgariye ve stoğa
+  oturur (önce yalnız kilo satırında yazılıyordu). Koli katı olmayan miktarı
+  sunucu zaten reddediyor.
+- Kupon kutusu "Kupon kodunuz var mı?" bağlantısının arkasında; kampanya modülü
+  kapalıyken hiç yok. Yer tutucu nötr (önce gösterim verisindeki gerçek kupon
+  "KUPON25" yazıyordu).
+- Tek ödeme yöntemine sınırlı firmada açılır liste yerine bilgi satırı.
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.

@@ -374,6 +374,24 @@ export interface OrderStockLine {
  * bu sistemde "sipariş edilmemiş olan"dır, yoksa aynı son kutu iki müşteriye
  * birden satılırdı.
  */
+/**
+ * Hizmet kalemleri (nakliye, montaj — Product.type = SERVICE). Stok tutmazlar:
+ * sipariş, iptal ve iade defterde hareket yazmaz. Kontrol `postStockMovement`
+ * yerine çağıranlarda, çünkü elle sayım ya da aktarım bir hizmete hareket
+ * yazmaya kalkarsa bunun sessizce yutulması değil görünmesi gerekir.
+ */
+export async function serviceVariantIds(
+  tx: Tx,
+  variantIds: readonly string[],
+): Promise<Set<string>> {
+  if (variantIds.length === 0) return new Set();
+  const rows = await tx.productVariant.findMany({
+    where: { id: { in: [...variantIds] }, product: { type: "SERVICE" } },
+    select: { id: true },
+  });
+  return new Set(rows.map((r) => r.id));
+}
+
 export async function recordOrderStockOut(
   tx: Tx,
   ctx: {
@@ -389,7 +407,12 @@ export async function recordOrderStockOut(
     actorId?: string | null;
   },
 ): Promise<void> {
+  const services = await serviceVariantIds(
+    tx,
+    ctx.lines.map((l) => l.variantId),
+  );
   for (const line of ctx.lines) {
+    if (services.has(line.variantId)) continue;
     // Parti takipli kalemde çıkış tek satır değil: her partiden düşen adet
     // kendi satırını yazar, yoksa "hangi SKT'li mal kime gitti" sorusu bir
     // geri çağırma anında cevapsız kalır.
@@ -477,8 +500,9 @@ export async function recordOrderStockReturn(
   // tamamı ve takipli kurulumda partisiz karşılanmış artık kısım — ve bu adım
   // eklenmeden önce oluşmuş siparişlerin tamamı: onların defterde satırı yok,
   // iptalleri yine de malı geri vermek zorunda.
+  // Hizmet kalemi stoktan hiç düşmedi, geri de verilmez.
   const items = await tx.orderItem.findMany({
-    where: { orderId: ctx.orderId },
+    where: { orderId: ctx.orderId, variant: { product: { type: "GOODS" } } },
     select: { variantId: true, quantity: true },
   });
 

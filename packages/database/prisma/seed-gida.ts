@@ -27,6 +27,7 @@ const CATEGORIES = [
   { name: "Yağ & Sirke", slug: "yag-sirke" },
   { name: "İçecek", slug: "icecek" },
   { name: "Şarküteri", slug: "sarkuteri" },
+  { name: "Hizmetler", slug: "hizmetler" },
 ];
 
 interface SeedVariant {
@@ -57,6 +58,8 @@ interface SeedVariant {
 interface SeedProduct {
   name: string;
   slug: string;
+  /** Hizmet (nakliye) stok tutmaz; yoksa mal. */
+  type?: "GOODS" | "SERVICE";
   brand: string;
   category: string;
   vatRate: number;
@@ -481,6 +484,26 @@ const PRODUCTS: SeedProduct[] = [
       },
     ],
   },
+  {
+    // Hizmet kalemi (D5, 2026-10-05): stoğu yok, katalogda "Hizmet" yazar,
+    // sipariş stok defterine hareket yazmaz. Sepete malla birlikte eklenir.
+    name: "Nakliye (Şehir İçi)",
+    slug: "nakliye-sehir-ici",
+    brand: "Demo Toptan",
+    category: "hizmetler",
+    type: "SERVICE",
+    vatRate: 20,
+    variants: [
+      {
+        sku: "HZ-NAKLIYE",
+        unit: "SEFER",
+        unitsPerCase: 1,
+        moqUnits: 1,
+        price: 750,
+        tracksLots: false,
+      },
+    ],
+  },
 ];
 
 // ─────────────────────────────────────────────
@@ -522,10 +545,17 @@ async function main() {
 
     const product = await prisma.product.upsert({
       where: { slug: p.slug },
-      update: { name: p.name, brand: p.brand, vatRate: p.vatRate, categoryId },
+      update: {
+        name: p.name,
+        brand: p.brand,
+        vatRate: p.vatRate,
+        categoryId,
+        type: p.type ?? "GOODS",
+      },
       create: {
         name: p.name,
         slug: p.slug,
+        type: p.type ?? "GOODS",
         brand: p.brand,
         vatRate: p.vatRate,
         categoryId,
@@ -613,7 +643,74 @@ async function main() {
   }
 
   console.log(`  ${PRODUCTS.length} ürün, ${variantCount} varyant, ${lotCount} parti`);
+
+  const history = await seedPriceHistory();
+  console.log(`  ${history} fiyat geçmişi satırı (GD-YAG-5L)`);
   console.log("Bitti. Vitrin: /portal · Partiler: /admin/stok");
+}
+
+/**
+ * Ürün formundaki "Fiyat geçmişi" paneli boş görünmesin: ayçiçek yağının son
+ * üç ayı. Satırlar bugünkü fiyatla biter (71,90 liste, 64,71 zincir market),
+ * yani geçmiş ile fiyat tablosu birbirini yalanlamaz.
+ *
+ * Idempotent: o kalemin geçmişini silip yeniden yazar. Seed fiyatı tablodan
+ * doğrudan güncellediği için kendi geçmiş satırı yok; buradaki satırlar
+ * servisin (`recordPriceChange`) yazacağı biçimde, tarihi geriye çekilmiş.
+ */
+async function seedPriceHistory(): Promise<number> {
+  const variant = await prisma.productVariant.findUnique({
+    where: { sku: "GD-YAG-5L" },
+    select: { id: true },
+  });
+  if (!variant) return 0;
+  const admin = await prisma.user.findUnique({
+    where: { email: "patron@bayraktar.local" },
+    select: { id: true },
+  });
+  const zincir = await prisma.customerGroup.findFirst({
+    where: { name: "Zincir Market" },
+    select: { name: true },
+  });
+
+  const rows: Array<{
+    daysAgo: number;
+    groupName: string | null;
+    oldPrice: number | null;
+    newPrice: number;
+    source: "MANUAL" | "BULK" | "ERP" | "SCHEDULE";
+    byAdmin: boolean;
+  }> = [
+    { daysAgo: 92, groupName: null, oldPrice: null, newPrice: 64.5, source: "ERP", byAdmin: false },
+    { daysAgo: 47, groupName: null, oldPrice: 64.5, newPrice: 68.9, source: "BULK", byAdmin: true },
+    { daysAgo: 12, groupName: null, oldPrice: 68.9, newPrice: 71.9, source: "SCHEDULE", byAdmin: true },
+  ];
+  if (zincir) {
+    rows.push({
+      daysAgo: 12,
+      groupName: zincir.name,
+      oldPrice: 62.01,
+      newPrice: 64.71,
+      source: "MANUAL",
+      byAdmin: true,
+    });
+  }
+
+  await prisma.priceHistory.deleteMany({ where: { variantId: variant.id } });
+  await prisma.priceHistory.createMany({
+    data: rows.map((r) => ({
+      variantId: variant.id,
+      groupName: r.groupName,
+      minQuantity: 1,
+      oldPrice: r.oldPrice,
+      newPrice: r.newPrice,
+      currency: "TRY",
+      source: r.source,
+      changedById: r.byAdmin ? (admin?.id ?? null) : null,
+      createdAt: dayFromNow(-r.daysAgo),
+    })),
+  });
+  return rows.length;
 }
 
 async function upsertPrice(
