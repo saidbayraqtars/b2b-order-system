@@ -38,7 +38,11 @@ import {
   Wand2,
   ArrowUpCircle,
 } from "lucide-react";
-import { HashtagSquareIcon, WidgetIcon } from "@/components/reicon";
+import {
+  BillListIcon,
+  HashtagSquareIcon,
+  WidgetIcon,
+} from "@/components/reicon";
 import { hasPermission, type ModuleKey, type Permission } from "@repo/types";
 import { SidebarShell, type SidebarGroup } from "@/components/app-sidebar";
 import { useAdvancedView, ViewModeToggle } from "@/components/ui-mode";
@@ -80,6 +84,12 @@ const GROUPS: ReadonlyArray<{ title: string; links: readonly AdminLink[] }> = [
   {
     title: "Satış",
     links: [
+      {
+        href: "/admin/siparisler",
+        label: "Siparişler",
+        icon: BillListIcon,
+        permission: "orders.view",
+      },
       {
         href: "/admin/promotions",
         label: "Kampanyalar",

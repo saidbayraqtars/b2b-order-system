@@ -5,10 +5,41 @@ import {
   CollectionOutcomeEnum,
   OrderStatusEnum,
   PaymentMethodEnum,
+  type OrderStatus,
 } from "./enums";
 import { entityIdSchema } from "./id";
 import { couponCodeSchema } from "./promotion";
 import { quantityInput } from "./quantity";
+
+/**
+ * Sipariş listesinin sekmeleri: dokuz durum yerine kullanıcının sorduğu dört
+ * soru — bekleyen var mı, süren ne, teslim edilen, düşen. Aynı liste hem
+ * API süzgecinde (`?durum=`) hem ekranın sekmelerinde; ayrışırsa sekmenin
+ * sayısı ile altındaki satırlar birbirini tutmaz.
+ */
+export const ORDER_STATUS_GROUPS = {
+  bekleyen: ["PENDING_APPROVAL", "PENDING_CREDIT"],
+  acik: ["CONFIRMED", "PROCESSING", "SHIPPED"],
+  teslim: ["DELIVERED"],
+  iptal: ["CANCELLED", "REJECTED"],
+} as const satisfies Record<string, readonly OrderStatus[]>;
+export type OrderStatusGroup = keyof typeof ORDER_STATUS_GROUPS;
+
+export const ORDER_STATUS_GROUP_LABELS: Record<OrderStatusGroup, string> = {
+  bekleyen: "Onay bekleyen",
+  acik: "Açık",
+  teslim: "Teslim edilen",
+  iptal: "İptal / red",
+};
+
+export function parseOrderStatusGroup(
+  raw: string | null | undefined,
+): OrderStatusGroup | null {
+  // `in` değil: "toString" de nesnede var sayılırdı.
+  return raw && Object.prototype.hasOwnProperty.call(ORDER_STATUS_GROUPS, raw)
+    ? (raw as OrderStatusGroup)
+    : null;
+}
 
 export const cartItemInputSchema = z.object({
   // cuid() değil: içe aktarılan katalogda kimlik Prisma'nın ürettiği biçimde

@@ -6,7 +6,13 @@ import {
   createOrder,
   notifyOrderPlaced,
 } from "@repo/services";
-import { createOrderSchema, OrderStatusEnum } from "@repo/types";
+import {
+  createOrderSchema,
+  ORDER_STATUS_GROUPS,
+  OrderStatusEnum,
+  parseOrderStatusGroup,
+  type OrderStatusGroup,
+} from "@repo/types";
 import {
   InputError,
   requestChannel,
@@ -77,7 +83,8 @@ export function POST(req: NextRequest) {
   });
 }
 
-// GET /api/orders?companyId= — list orders visible to the caller.
+// GET /api/orders?companyId=&durum=&q= — list orders visible to the caller,
+// with per-tab counts for the status groups.
 export function GET(req: NextRequest) {
   return withAuthErrors(async () => {
     const user = await requireUser(ALL_BUYERS, "orders.view");
@@ -106,24 +113,67 @@ export function GET(req: NextRequest) {
         where = { shipments: { some: { courierId: user.id } } };
         break;
     }
-    where = { ...where, ...statusFilter };
+    // Arama: sipariş numarası ya da firma adı. Kapsamla AND'leniyor, birleşmiyor
+    // — plasiyerin `company: { salesRepId }` kapsamı firma adı süzgeciyle aynı
+    // anahtarda ve `...` ile yan yana konunca biri ötekini siliyordu.
+    const q = searchParams.get("q")?.trim().slice(0, 80);
+    const scope: Prisma.OrderWhereInput = q
+      ? {
+          AND: [
+            where,
+            {
+              OR: [
+                { orderNumber: { contains: q, mode: "insensitive" } },
+                { company: { name: { contains: q, mode: "insensitive" } } },
+              ],
+            },
+          ],
+        }
+      : where;
 
-    const orders = await prisma.order.findMany({
-      where,
-      select: {
-        id: true,
-        orderNumber: true,
-        status: true,
-        paymentMethod: true,
-        grandTotal: true,
-        createdAt: true,
-        company: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-        _count: { select: { items: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
-    return Response.json({ orders });
+    // `durum` sekme grubu (bekleyen, açık…); `status` tek durum — mobil onu
+    // gönderiyor. Sekme sayıları grup süzgecinden önceki kapsamdan: "Onay
+    // bekleyen 4" yazısı, başka sekmedeyken de doğru kalmalı.
+    const group = parseOrderStatusGroup(searchParams.get("durum"));
+    const listWhere: Prisma.OrderWhereInput = group
+      ? { AND: [scope, { status: { in: [...ORDER_STATUS_GROUPS[group]] } }] }
+      : { AND: [scope, statusFilter] };
+
+    const [orders, byStatus] = await Promise.all([
+      prisma.order.findMany({
+        where: listWhere,
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          paymentMethod: true,
+          grandTotal: true,
+          createdAt: true,
+          company: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+          _count: { select: { items: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.order.groupBy({ by: ["status"], where: scope, _count: true }),
+    ]);
+
+    const counts: Record<OrderStatusGroup | "tumu", number> = {
+      tumu: 0,
+      bekleyen: 0,
+      acik: 0,
+      teslim: 0,
+      iptal: 0,
+    };
+    for (const row of byStatus) {
+      counts.tumu += row._count;
+      for (const [key, statuses] of Object.entries(ORDER_STATUS_GROUPS)) {
+        if ((statuses as readonly string[]).includes(row.status)) {
+          counts[key as OrderStatusGroup] += row._count;
+        }
+      }
+    }
+    return Response.json({ orders, counts });
   });
 }

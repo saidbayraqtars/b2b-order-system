@@ -31,3 +31,6 @@ export const HashtagSquareIcon = reicon("it/hashtag-square");
 
 /** Modüller: dört parçalı ızgara. */
 export const WidgetIcon = reicon("settings/widget");
+
+/** Siparişler: satırlı fatura. */
+export const BillListIcon = reicon("money/bill-list");

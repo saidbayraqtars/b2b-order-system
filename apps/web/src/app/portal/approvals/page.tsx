@@ -32,7 +32,15 @@ export default async function ApprovalsPage() {
           title="Sipariş Onayları"
           subtitle="Onay bekleyen siparişleri buradan geçirin ya da reddedin"
         />
-        <OrdersBoard canApproveCredit={isSuper} />
+        {/* Başlık "onay bekleyen" diyordu, liste firmanın bütün geçmişini
+            döküyordu. Firma sütunu yalnız birden çok firma görene. */}
+        <OrdersBoard
+          canApproveCredit={isSuper}
+          filters={false}
+          group="bekleyen"
+          showCompany={isSuper}
+          emptyLabel="Onay bekleyen sipariş yok."
+        />
       </div>
     </PortalNav>
   );

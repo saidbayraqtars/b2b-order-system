@@ -928,4 +928,37 @@ export const SCREENS = [
       return o && `/orders/${o.id}`;
     },
   },
+
+  // ── Adım 18: D5 sipariş listesi (önce: *-once.png, elle saklanır) ────────
+  {
+    step: 18,
+    slug: "siparisler",
+    label: "Siparişler — durum sekmeleri ve arama",
+    as: "admin",
+    path: "/admin/siparisler",
+  },
+
+  {
+    step: 18,
+    slug: "siparisler-bekleyen",
+    label: "Siparişler — onay bekleyen sekmesi",
+    as: "admin",
+    path: "/admin/siparisler?durum=bekleyen",
+  },
+
+  {
+    step: 18,
+    slug: "siparisler-panel",
+    label: "Panel — yalnız onay bekleyen siparişler",
+    as: "admin",
+    path: "/admin",
+  },
+
+  {
+    step: 18,
+    slug: "portal-siparis-listesi",
+    label: "Portal siparişler — firma sütunu yok",
+    as: "portal",
+    path: "/portal/orders",
+  },
 ];
