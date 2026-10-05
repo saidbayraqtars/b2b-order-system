@@ -9,7 +9,9 @@ import { formatQuantity, formatTRY } from "@/lib/format";
 import { isFractional, quantityStep } from "@/lib/quantity";
 import { mediaSrc, mediaSrcSet } from "@/lib/media";
 import { CurrencyNote } from "@/components/currency-note";
+import { orderBlock, orderBlockLabel } from "@/lib/orderable";
 import { cn } from "@/lib/utils";
+import { useCatalogReturnHref } from "../../../_components/catalog-return";
 
 // Ürün detayı — vitrinin teknik kimliği: sol tarafta görsel, sağda künye ve
 // varyant tablosu. Toptan siparişte asıl iş varyant tablosunda dönüyor, o
@@ -31,13 +33,14 @@ export function ProductDetail({
   categoryName: string | null;
 }) {
   const [activeImage, setActiveImage] = useState(0);
+  const catalogHref = useCatalogReturnHref(companyId);
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
 
   return (
     <div>
       <nav className="flex items-center gap-2 py-4">
         <Link
-          href={`/portal?companyId=${encodeURIComponent(companyId)}`}
+          href={catalogHref}
           className="tech-label flex items-center gap-1.5 transition-colors hover:text-ink"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -184,7 +187,8 @@ function VariantRow({
   const [qty, setLocalQty] = useState(step);
 
   const priced = v.netUnitPrice !== null;
-  const orderable = priced && v.stock >= v.moqUnits;
+  const block = orderBlock(v);
+  const orderable = block === null;
   const lineTotal = unit
     ? Number(unit.netUnitPrice ?? 0) * qty
     : priced
@@ -249,7 +253,11 @@ function VariantRow({
             : priced
               ? formatTRY(v.netUnitPrice!)
               : "—"}
-          {unit && <span className="ml-1 text-[10px] font-normal text-ink-faint">/ {unit.name}</span>}
+          {unit && (
+            <span className="ml-1 text-[10px] font-normal text-ink-faint">
+              / {unit.name}
+            </span>
+          )}
         </p>
         {/* Dövizle listelenen ürünün orijinal fiyatı — karttakiyle aynı not.
             Tahsil edilen tutar her zaman yukarıdaki TL. */}
@@ -290,7 +298,9 @@ function VariantRow({
             value={qty}
             onChange={(e) => setLocalQty(Number(e.target.value))}
             onBlur={() =>
-              setLocalQty(unit ? Math.max(1, Math.round(qty)) : normalizeQty(v, qty))
+              setLocalQty(
+                unit ? Math.max(1, Math.round(qty)) : normalizeQty(v, qty),
+              )
             }
             aria-label={`${variantLabel(v)} ${unit ? unit.name.toLocaleLowerCase("tr") : "adet"}`}
             className="h-8 w-20 rounded border border-line bg-panel px-2 text-right text-xs tabular-nums text-ink outline-none transition-colors hover:border-line-strong focus:border-ink-muted"
@@ -317,9 +327,9 @@ function VariantRow({
           </button>
         </div>
       ) : (
-        <span className="tech-label">
-          {priced ? "stok yok" : "fiyat tanımsız"}
-        </span>
+        // Stok asgarinin altındayken burada "stok yok" yazıyordu; satırın
+        // solunda "STK 14" dururken.
+        <span className="tech-label">{block && orderBlockLabel(block, v)}</span>
       )}
     </div>
   );

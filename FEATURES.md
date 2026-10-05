@@ -421,6 +421,19 @@ eski fiyat, silinende yeni fiyat boştur. Ürün sayfasında kapalı başlayan
 - Kayıtta "Firma kaydedildi" bildirimi; liste gelene kadar grup ve plasiyer
   kutusu "Yükleniyor…" der.
 
+### Portal katalog sadeleşti (D5, 2026-10-05)
+
+- Süzgeçler adreste: `?kategori=`, `?ara=`, `?sirala=`, `?stok=1`, `?kod3=`.
+  Yenileyen, bağlantıyı paylaşan aynı listeyi görür; kategori geçmişe yazılır
+  (geri tuşu önceki kategoriye döner), arama/sıra/stok yazılmaz.
+- Ürün detayındaki "Katalog" bağlantısı süzgeçli kataloğa döner (son katalog
+  adresi oturum deposunda; başka firmanınki yok sayılır).
+- Stok asgari siparişten azsa ("14 adet var, en az 24") kart sebebini yazar,
+  kapalı düğmenin ipucu da; detay satırı artık "stok yok" demez. Tek karar
+  noktası `apps/web/src/lib/orderable.ts`.
+- "Stoğa göre" sırada hizmet en başta değil, sonda.
+- Başlık altı "18 ürün · Şarküteri" (firma adı üst şeritte zaten yazıyor).
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.

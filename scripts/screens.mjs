@@ -1062,4 +1062,27 @@ export const SCREENS = [
     as: "admin",
     path: "/admin/companies/new",
   },
+
+  // ── Adım 18: D5 portal katalog (önce: portal-katalog-once.png) ──────────
+  {
+    step: 18,
+    slug: "portal-katalog",
+    label: "Portal katalog — asgariden az stokta sebep kartta",
+    as: "portal",
+    path: "/portal",
+  },
+
+  {
+    step: 18,
+    slug: "portal-katalog-suzgec",
+    label: "Portal katalog — kategori ve sıra adreste",
+    as: "portal",
+    path: async (db) => {
+      const c = await db.category.findFirst({
+        where: { name: "Şarküteri" },
+        select: { id: true },
+      });
+      return c && `/portal?kategori=${c.id}&sirala=stock`;
+    },
+  },
 ];

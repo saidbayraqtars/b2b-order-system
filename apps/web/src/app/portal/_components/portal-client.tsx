@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ScanLine, Search, ShoppingCart } from "lucide-react";
 import type { CatalogProduct, CategoryNode, PageBlock } from "@repo/services";
 import type { Permission, Role } from "@repo/types";
@@ -22,6 +23,7 @@ import {
 } from "@/components/category-tree";
 import { ProductCard } from "./product-card";
 import { CartPanel } from "./cart-panel";
+import { CATALOG_RETURN_KEY } from "./catalog-return";
 
 interface Props {
   companyId: string;
@@ -75,6 +77,10 @@ const SORTS = {
 } as const;
 type SortKey = keyof typeof SORTS;
 
+function parseSort(value: string | null): SortKey {
+  return value && value in SORTS ? (value as SortKey) : "name";
+}
+
 /** Kartta gösterilen fiyat gibi: en düşük satılabilir birim fiyat. */
 function minPrice(p: CatalogProduct): number {
   const prices = p.variants
@@ -87,6 +93,15 @@ function minPrice(p: CatalogProduct): number {
 
 function totalStock(p: CatalogProduct): number {
   return p.variants.reduce((s, v) => s + v.stock, 0);
+}
+
+/**
+ * "Stoğa göre" sırası. Hizmetin stoğu 999.999 diye geliyor (stok tutmuyor,
+ * hiç tükenmiyor) ve sıranın en başına oturuyordu; stoğu olmayan bir kalem
+ * olarak en sona gidiyor.
+ */
+function stockRank(p: CatalogProduct): number {
+  return p.isService ? -1 : totalStock(p);
 }
 
 /**
@@ -163,34 +178,107 @@ export function PortalClient({
       Number(on.get("PRODUCT_GRID")?.params.columns) || 3
     ] ?? "xl:grid-cols-3";
 
-  const [search, setSearch] = useState("");
+  // Süzgeçler adreste (`?kategori=&ara=&sirala=&stok=1&kod3=`): ürüne girip
+  // geri dönen, sayfayı yenileyen ya da bağlantıyı paylaşan aynı listeyi
+  // görüyor. Önce bileşen durumundaydı ve detaydan dönüş süzgeci siliyordu.
+  // Kategori geçmişe yazılıyor (`push`, geri tuşu önceki kategoriye döner);
+  // arama, sıra, stok ve kod yazılmıyor (`replace`).
+  const router = useRouter();
+  const pathname = usePathname();
+  const urlParams = useSearchParams();
+  const setUrlParams = (
+    changes: Record<string, string | null>,
+    mode: "push" | "replace",
+  ) => {
+    const next = new URLSearchParams(urlParams.toString());
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    const qs = next.toString();
+    const href = qs ? `${pathname}?${qs}` : pathname;
+    if (mode === "push") router.push(href, { scroll: false });
+    else router.replace(href, { scroll: false });
+  };
+
+  const categoryId = urlParams.get("kategori");
+  const sort = parseSort(urlParams.get("sirala"));
+  const inStockOnly = urlParams.get("stok") === "1";
+  // Özel kod süzgeçleri: yalnızca yönetimin "katalogda göster" dediği alanlar.
+  // Adreste API'nin anahtarıyla (`kod3`), durumda alanın adıyla (`code3`).
+  const codeFilters = useMemo(() => {
+    const out: Record<string, string> = {};
+    urlParams.forEach((value, key) => {
+      const m = /^kod(\d+)$/.exec(key);
+      if (m && value) out[`code${m[1]}`] = value;
+    });
+    return out;
+  }, [urlParams]);
+  const setCategoryId = (id: string | null) =>
+    setUrlParams({ kategori: id }, "push");
+  const setSort = (next: SortKey) =>
+    setUrlParams({ sirala: next === "name" ? null : next }, "replace");
+  const setInStockOnly = (on: boolean) =>
+    setUrlParams({ stok: on ? "1" : null }, "replace");
+  const setCodeFilter = (key: string, value: string) =>
+    setUrlParams({ [key.replace(/^code/, "kod")]: value || null }, "replace");
+
   // Okuyucu 13 haneyi tek seferde yazar. Kutu her tuşta sunucuya gitseydi bir
   // okutma bir istek değil on üç istek olurdu; liste gecikmeli terimi izliyor,
-  // Enter ise beklemeden kendi sorgusunu yapıyor.
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("name");
-  const [inStockOnly, setInStockOnly] = useState(false);
-  // Özel kod süzgeçleri: yalnızca yönetimin "katalogda göster" dediği alanlar.
-  const [codeFilters, setCodeFilters] = useState<Record<string, string>>({});
+  // Enter ise beklemeden kendi sorgusunu yapıyor. Kutudaki yazı yerelde,
+  // yazmak durunca adrese (`ara`) gidiyor.
+  const debouncedSearch = urlParams.get("ara") ?? "";
+  const [search, setSearch] = useState(debouncedSearch);
+  // Geri tuşu adresi değiştirince kutu da izlesin. Yazılanın kırpılmışı
+  // adresle aynıysa dokunulmuyor — yoksa duraklayan kullanıcının son
+  // boşluğu silinirdi.
+  useEffect(() => {
+    setSearch((prev) =>
+      prev.trim() === debouncedSearch ? prev : debouncedSearch,
+    );
+  }, [debouncedSearch]);
   const codeFilterOptions = useQuery({
     queryKey: ["catalog-code-filters"],
     queryFn: () =>
-      apiGet<{ filters: Array<{ key: string; label: string; values: string[] }> }>(
-        "/api/catalog/code-filters",
-      ),
+      apiGet<{
+        filters: Array<{ key: string; label: string; values: string[] }>;
+      }>("/api/catalog/code-filters"),
     staleTime: 5 * 60_000,
   });
-  const hasCodeFilter = Object.values(codeFilters).some(Boolean);
+  const filtered = Boolean(
+    debouncedSearch ||
+    categoryId ||
+    inStockOnly ||
+    Object.values(codeFilters).some(Boolean),
+  );
   const [scanNotice, setScanNotice] = useState<ScanNotice | null>(null);
   const [scanning, setScanning] = useState(false);
   const { itemCount, add } = useCart(companyId);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 250);
+    if (search.trim() === debouncedSearch) return;
+    const timer = setTimeout(
+      () => setUrlParams({ ara: search.trim() || null }, "replace"),
+      250,
+    );
     return () => clearTimeout(timer);
-  }, [search]);
+    // setUrlParams her çizimde yeni; tetik yazı ve adres.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, debouncedSearch]);
+
+  // Ürün detayındaki "Katalog" bağlantısı buraya, süzgeçleriyle dönsün.
+  useEffect(() => {
+    try {
+      const qs = urlParams.toString();
+      window.sessionStorage.setItem(
+        CATALOG_RETURN_KEY,
+        qs ? `${pathname}?${qs}` : pathname,
+      );
+    } catch {
+      // Gizli sekmede yazılamayabilir; bağlantı süzgeçsiz katalogu açar.
+    }
+  }, [pathname, urlParams]);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
@@ -231,7 +319,8 @@ export function PortalClient({
         setScanNotice({
           kind: "warn",
           text:
-            (hit.unit ? hit.unit.netUnitPrice : hit.variant.netUnitPrice) === null
+            (hit.unit ? hit.unit.netUnitPrice : hit.variant.netUnitPrice) ===
+            null
               ? `${label}: fiyat tanımsız, sepete eklenmedi`
               : `${label}: yeterli stok yok, sepete eklenmedi`,
         });
@@ -297,7 +386,7 @@ export function PortalClient({
         sorted.sort((a, b) => minPrice(b) - minPrice(a));
         break;
       case "stock":
-        sorted.sort((a, b) => totalStock(b) - totalStock(a));
+        sorted.sort((a, b) => stockRank(b) - stockRank(a));
         break;
       default:
         sorted.sort((a, b) => a.name.localeCompare(b.name, "tr"));
@@ -367,7 +456,14 @@ export function PortalClient({
           subtitle={
             catalogQuery.isLoading
               ? "Yükleniyor…"
-              : `${companyName} için ${products.length} ürün listeleniyor`
+              : // Firma adı üst şeritte yazıyor; burada ikinci kez değil, seçili
+                // kategori — ürüne girip dönen nerede olduğunu görsün.
+                [
+                  `${products.length} ürün`,
+                  categoryId ? categoryNames.get(categoryId) : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
           }
           actions={
             showSearch ? (
@@ -385,9 +481,7 @@ export function PortalClient({
                     size="sm"
                     aria-label={f.label}
                     value={codeFilters[f.key] ?? ""}
-                    onChange={(e) =>
-                      setCodeFilters((prev) => ({ ...prev, [f.key]: e.target.value }))
-                    }
+                    onChange={(e) => setCodeFilter(f.key, e.target.value)}
                     className="w-auto"
                   >
                     <option value="">{f.label}: hepsi</option>
@@ -482,19 +576,25 @@ export function PortalClient({
             ) : products.length === 0 ? (
               <EmptyState
                 label={
-                  search || categoryId || hasCodeFilter
+                  filtered
                     ? "Bu süzgeçle ürün bulunamadı."
                     : "Katalogda ürün yok."
                 }
                 action={
-                  search || categoryId || hasCodeFilter ? (
+                  filtered ? (
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={() => {
                         setSearch("");
-                        setCategoryId(null);
-                        setCodeFilters({});
+                        const cleared: Record<string, null> = {
+                          ara: null,
+                          kategori: null,
+                          stok: null,
+                        };
+                        for (const key of Object.keys(codeFilters))
+                          cleared[key.replace(/^code/, "kod")] = null;
+                        setUrlParams(cleared, "push");
                       }}
                     >
                       Süzgeci temizle
