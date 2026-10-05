@@ -23,13 +23,35 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
 | F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
-| D5 ekran ekran | sürüyor — 2/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok). Sırada ürün formu (+ ürün tipi, fiyat geçmişi), firma formu, portal katalog, sepet |
+| D5 ekran ekran | sürüyor — 2/6 + 3. ekran yarım: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok). **Ürün formu yarım (2026-10-05):** ürün tipi ve fiyat geçmişi şema + servis + ekranda var, servis testi, "sonra" görüntüsü ve e2e testi yok — kaldığı yer aşağıda. Sonra firma formu, portal katalog, sepet |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
 
 Ölçüm (F3 sonu): 1.205 test (erp-agent 22, servisler 760, web 423) yeşil; typecheck, lint, build (165 sayfa) yeşil.
 Ölçüm (D5 sipariş detayı): servisler 763, web 427 test yeşil; typecheck, lint, build (166 sayfa) yeşil. Önce/sonra görüntüleri `docs/design/screens/adim-18/` (`*-once.png`).
+Ölçüm (2026-10-05 akşam): servisler 763, web 427 test; typecheck 9/9, lint 8/8. Playwright (`pnpm e2e`) 137 test: 131 geçti, 3 atlandı.
+
+### Kaldığı yer (ürün formu, 3/6)
+
+Yapıldı (commit "ürün tipi ve fiyat geçmişi"): `Product.type` (GOODS/SERVICE) +
+`PriceHistory` tablosu, göç `20261005180000_product_type_price_history`; hizmet
+stoktan düşmez (sipariş, iptal, iade), teklif stok sormaz, stok ekranlarında yok,
+katalog/sepette adet `SERVICE_STOCK`; fiyat yazan beş yol (`pricing-admin`,
+`bulk-import`, `erp-ingest`, `price-schedule`, `variant-unit`) `recordPriceChange`
+çağırıyor; ürün formunda Tip seçimi, sessiz Sil, yeni varyant formu düğmede,
+"Fiyat geçmişi" paneli, `GET /api/admin/products/:id/price-history`.
+
+Sıradaki adımlar, bu sırayla:
+1. Servis testi `packages/services/test/integration/product-type-price-history.test.ts`:
+   hizmet stok 0'da satılır, defter hareketi yok, iptal/iade dokunmaz, stok
+   listesinde yok, katalogda `isService`; fiyat geçmişi elle/paket/zamanlı yolda
+   yazılıyor, aynı fiyatta yazılmıyor, silmede `newPrice` null.
+2. Gösterim verisine bir hizmet ürünü (Nakliye) ve birkaç fiyat değişikliği;
+   "sonra" görüntüsü `urun-formu` (adım 18), önce: `urun-formu-once.png`.
+3. `e2e/urun-formu.spec.ts`: tip seçimi, yeni varyant aç/kapa, fiyat geçmişi
+   paneli; ardından `pnpm e2e` tam koşu (sunucu `TENANT_DIR` ile).
+4. Hafıza notu `b2b-sadelestirme` + günlük, sonra 4/6 firma formu.
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 

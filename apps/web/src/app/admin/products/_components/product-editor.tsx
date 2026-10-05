@@ -5,6 +5,7 @@ import type { AdminProductDetail } from "@repo/services";
 import { apiGet } from "@/lib/fetcher";
 import { LoadingState } from "@/components/ui";
 import { ErrorLine } from "@/components/form";
+import { PriceHistoryPanel } from "./price-history-panel";
 import { ProductForm } from "./product-form";
 import { VariantList } from "./variant-list";
 
@@ -30,7 +31,12 @@ export function ProductEditor({ productId }: { productId: string }) {
       {/* Remount the form when the loaded product changes so its local state
           starts from the fresh values rather than the previous product's. */}
       <ProductForm key={product.id} product={product} />
-      <VariantList productId={product.id} variants={product.variants} />
+      <VariantList
+        productId={product.id}
+        variants={product.variants}
+        isService={product.type === "SERVICE"}
+      />
+      <PriceHistoryPanel productId={product.id} />
     </div>
   );
 }

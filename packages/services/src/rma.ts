@@ -14,7 +14,7 @@ import {
 import { BusinessError } from "./errors";
 import { round2, ZERO } from "./money";
 import { assertQuantityScale, formatQuantity, qty, qtyAdd, qtySub } from "./quantity";
-import { postStockMovement } from "./stock-ledger";
+import { postStockMovement, serviceVariantIds } from "./stock-ledger";
 
 // İade (RMA).
 //
@@ -556,7 +556,11 @@ async function receiveInTx(
 
     // Hasarlı mal stoka girmez ama bedeli yine alacak yazılır: müşteri malı
     // iade etti, kırık olması bizim ile kargonun arasındaki bir mesele.
-    if (condition === "RESELLABLE" && quantity > 0) {
+    if (
+      condition === "RESELLABLE" &&
+      quantity > 0 &&
+      !(await serviceVariantIds(tx, [item.variantId])).has(item.variantId)
+    ) {
       await postStockMovement(tx, {
         variantId: item.variantId,
         direction: "IN",

@@ -263,6 +263,7 @@ model User {
   commissionPlans         CommissionPlan[]   @relation("CommissionPlanReps")
   reconciliationsSent     Reconciliation[]   @relation("ReconciliationCreatedBy")
   reconciliationsAnswered Reconciliation[]   @relation("ReconciliationRespondedBy")
+  priceHistory            PriceHistory[]
   /// Bu hesabı doğuran başvuru (varsa). Tekil: bir başvuru bir hesap açar.
   originApplication       DealerApplication? @relation("DealerApplicationUser")
 
@@ -537,6 +538,11 @@ model Category {
   @@index([parentId])
 }
 
+enum ProductType {
+  GOODS
+  SERVICE
+}
+
 model Product {
   id          String   @id @default(cuid())
   name        String
@@ -546,6 +552,11 @@ model Product {
   images      String[] // URL list
   vatRate     Int      @default(20) // KDV % (TR: 1 / 10 / 20). Used for taxTotal calc.
   isActive    Boolean  @default(true)
+
+  /// Ürün mü hizmet mi (D5, 2026-10-05). Hizmet (nakliye, montaj) stok
+  /// tutmaz: defter hareket yazmaz, sipariş stok sormaz, stok ekranlarında
+  /// görünmez. Siparişe kalem olarak girer, fiyatlanır, faturalanır.
+  type ProductType @default(GOODS)
 
   /// Özel kodlar (Vega'nın KOD1..KOD21 deseni, kılavuz §64). Etiketi ve
   /// seçenek listesi `CustomCodeField`'da durur; değer burada, düz kolon
@@ -670,6 +681,7 @@ model ProductVariant {
 
   prices       Price[]
   priceChanges ScheduledPriceChange[]
+  priceHistory PriceHistory[]
   orderItems   OrderItem[]
   cartItems    CartItem[]
   stocks       VariantStock[]
@@ -975,6 +987,46 @@ model Price {
 
   @@unique([variantId, customerGroupId, unitId, minQuantity])
   @@index([variantId])
+}
+
+/// Fiyat geçmişi (D5, 2026-10-05): her fiyat satırı değişikliği bir kayıt.
+///
+/// Yalnız yönetimde görünür (Said'in kararı). Kim, ne zaman, hangi yoldan
+/// (elle, toplu, ERP, zamanlı, paket birimi) değiştirdi. Ekle-only.
+///
+/// Grup ve birim **ad olarak** saklanıyor, kimlik olarak değil: grup silinse
+/// ya da yeniden adlansa da geçmiş okunur kalmalı ve `Price` satırının
+/// kendisi silinebiliyor (fiyat kaldırıldı = `newPrice` null).
+model PriceHistory {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  /// null = liste fiyatı (gruba özel değil).
+  groupName   String?
+  /// null = taban birim.
+  unitName    String?
+  minQuantity Int               @default(1)
+  /// null = fiyat satırı yeni açıldı.
+  oldPrice    Decimal?          @db.Decimal(12, 2)
+  /// null = fiyat satırı silindi.
+  newPrice    Decimal?          @db.Decimal(12, 2)
+  currency    String            @default("TRY")
+  source      PriceChangeSource
+
+  changedById String?
+  changedBy   User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([variantId, createdAt])
+}
+
+enum PriceChangeSource {
+  MANUAL // yönetimde fiyat düzenleyici
+  BULK // toplu güncelleme / Excel
+  ERP // ERP köprüsü fiyat eşitlemesi
+  SCHEDULE // zamanlı fiyat değişimi uygulandı
+  UNIT // paket birimi fiyatı
 }
 
 /// Zamanlı fiyat değişimi — "1 Eylül'den itibaren zam".

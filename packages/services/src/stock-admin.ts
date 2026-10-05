@@ -216,6 +216,8 @@ export async function listStockLevels(
   const rows = await prisma.productVariant.findMany({
     where: {
       isActive: true,
+      // Hizmet stok tutmuyor; "kaç adet var" sorusunun cevabı onda yok.
+      product: { type: "GOODS" },
       ...(search
         ? {
             OR: [
@@ -338,6 +340,7 @@ export async function listLowStock(limit = 100): Promise<
     JOIN "Product" p ON p."id" = v."productId"
     WHERE v."minStock" IS NOT NULL
       AND v."isActive" = true
+      AND p."type" = 'GOODS'
       AND v."stock" <= v."minStock"
     ORDER BY (v."stock" - v."minStock") ASC
     LIMIT ${limit}

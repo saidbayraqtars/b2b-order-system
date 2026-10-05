@@ -108,8 +108,8 @@ export function ProductDetail({
             <Spec label="Varyant" value={String(product.variants.length)} />
             <Spec
               label="Toplam stok"
-              value={String(totalStock)}
-              muted={totalStock === 0}
+              value={product.isService ? "Hizmet" : String(totalStock)}
+              muted={!product.isService && totalStock === 0}
             />
             <Spec label="KDV" value={`%${product.vatRate}`} last />
           </dl>
@@ -122,6 +122,7 @@ export function ProductDetail({
                 variant={v}
                 companyId={companyId}
                 first={i === 0}
+                isService={product.isService}
               />
             ))}
           </div>
@@ -161,10 +162,13 @@ function VariantRow({
   variant: v,
   companyId,
   first,
+  isService,
 }: {
   variant: CatalogVariant;
   companyId: string;
   first: boolean;
+  /** Hizmet: adet yerine "HİZMET" yazılır (stok tutmaz). */
+  isService: boolean;
 }) {
   const { lines, setQty } = useCart(companyId);
   const inCart = lines.find((l) => l.variantId === v.id);
@@ -218,8 +222,14 @@ function VariantRow({
 
       <div className="text-right text-[11px] tabular-nums text-ink-faint">
         <p>
-          STK {formatQuantity(v.stock)}
-          {v.unit && isFractional(v) ? ` ${v.unit}` : ""}
+          {isService ? (
+            "HİZMET"
+          ) : (
+            <>
+              STK {formatQuantity(v.stock)}
+              {v.unit && isFractional(v) ? ` ${v.unit}` : ""}
+            </>
+          )}
         </p>
         <p>KOL {v.unitsPerCase}</p>
         {v.units.map((u) => (

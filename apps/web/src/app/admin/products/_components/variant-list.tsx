@@ -37,13 +37,20 @@ const EMPTY_VARIANT = {
 export function VariantList({
   productId,
   variants,
+  isService = false,
 }: {
   productId: string;
   variants: AdminVariantDetail[];
+  /** Hizmet stok tutmaz: stok alanları çizilmez (Product.type). */
+  isService?: boolean;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState(EMPTY_VARIANT);
+  // Yeni varyant formu bir düğmenin arkasında: on iki alanlık açık bir form,
+  // ürünün kendisinden daha çok yer kaplıyordu. Varyantı olmayan üründe
+  // açık başlar — orada yapılacak tek iş o.
+  const [adding, setAdding] = useState(variants.length === 0);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["admin", "product", productId] });
@@ -68,6 +75,7 @@ export function VariantList({
       }),
     onSuccess: () => {
       setDraft(EMPTY_VARIANT);
+      setAdding(false);
       invalidate();
     },
   });
@@ -108,9 +116,11 @@ export function VariantList({
                 <span className="text-body-sm text-ink-muted">
                   {[v.color, v.size].filter(Boolean).join(" / ") || "—"}
                 </span>
-                <span className="text-xs text-ink-faint">
-                  koli {v.unitsPerCase} · min {formatQuantity(v.moqUnits)}
-                </span>
+                {!isService && (
+                  <span className="text-xs text-ink-faint">
+                    koli {v.unitsPerCase} · min {formatQuantity(v.moqUnits)}
+                  </span>
+                )}
                 <span
                   className={`text-xs ${
                     v.prices.length === 0 ? "text-caution" : "text-ink-faint"
@@ -127,16 +137,24 @@ export function VariantList({
                 )}
 
                 <div className="ml-auto flex items-center gap-2">
-                  <Label>Stok</Label>
-                  <StockInput
-                    value={v.stock}
-                    pending={update.isPending}
-                    onCommit={(stock) =>
-                      update.mutate({ id: v.id, body: { stock } })
-                    }
-                  />
+                  {isService ? (
+                    <span className="text-xs text-ink-faint">
+                      hizmet · stok tutulmaz
+                    </span>
+                  ) : (
+                    <>
+                      <Label>Stok</Label>
+                      <StockInput
+                        value={v.stock}
+                        pending={update.isPending}
+                        onCommit={(stock) =>
+                          update.mutate({ id: v.id, body: { stock } })
+                        }
+                      />
+                    </>
+                  )}
                   <Button
-                    variant="danger"
+                    variant="dangerQuiet"
                     size="sm"
                     disabled={remove.isPending}
                     title={
@@ -178,123 +196,154 @@ export function VariantList({
       <ErrorLine error={update.error} />
       <ErrorLine error={remove.error} />
 
-      <div className="mt-4 rounded border border-dashed border-line-strong p-3">
-        <p className="tech-label mb-2">Yeni varyant</p>
-        <div className="grid gap-2 sm:grid-cols-4">
-          <div>
-            <Label>SKU</Label>
-            <TextInput
-              value={draft.sku}
-              onChange={(e) => setDraft({ ...draft, sku: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Barkod</Label>
-            <TextInput
-              value={draft.barcode}
-              onChange={(e) => setDraft({ ...draft, barcode: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Renk</Label>
-            <TextInput
-              value={draft.color}
-              onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Beden / Ebat</Label>
-            <TextInput
-              value={draft.size}
-              onChange={(e) => setDraft({ ...draft, size: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Koli içi adet</Label>
-            <TextInput
-              value={draft.unitsPerCase}
-              inputMode="numeric"
-              onChange={(e) =>
-                setDraft({ ...draft, unitsPerCase: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <Label>Min. sipariş</Label>
-            <TextInput
-              value={draft.moqUnits}
-              inputMode="decimal"
-              onChange={(e) => setDraft({ ...draft, moqUnits: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Stok</Label>
-            <TextInput
-              value={draft.stock}
-              inputMode="decimal"
-              onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label hint="ADET, KG, KOLİ…">Birim</Label>
-            <TextInput
-              value={draft.unit}
-              onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label hint="Kilo, metre: ondalık">Miktar</Label>
-            <Select
-              value={draft.quantityScale}
-              onChange={(e) =>
-                setDraft({ ...draft, quantityScale: e.target.value })
-              }
-            >
-              {QUANTITY_SCALE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label hint="Müşteriye gösterilmez">Alış fiyatı</Label>
-            <TextInput
-              value={draft.costPrice}
-              inputMode="decimal"
-              onChange={(e) =>
-                setDraft({ ...draft, costPrice: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
-            <TextInput
-              value={draft.minStock}
-              inputMode="decimal"
-              onChange={(e) => setDraft({ ...draft, minStock: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Raf kodu</Label>
-            <TextInput
-              value={draft.shelfCode}
-              onChange={(e) =>
-                setDraft({ ...draft, shelfCode: e.target.value })
-              }
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              disabled={!draft.sku.trim() || create.isPending}
-              onClick={() => create.mutate()}
-            >
-              Varyant ekle
-            </Button>
-          </div>
+      {!adding ? (
+        <div className="mt-4">
+          <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+            Yeni varyant
+          </Button>
         </div>
-        <ErrorLine error={create.error} />
-      </div>
+      ) : (
+        <div className="mt-4 rounded border border-dashed border-line-strong p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="tech-label">Yeni varyant</p>
+            {variants.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="text-xs text-ink-faint transition-colors hover:text-ink"
+              >
+                Vazgeç
+              </button>
+            )}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div>
+              <Label>SKU</Label>
+              <TextInput
+                value={draft.sku}
+                onChange={(e) => setDraft({ ...draft, sku: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Barkod</Label>
+              <TextInput
+                value={draft.barcode}
+                onChange={(e) => setDraft({ ...draft, barcode: e.target.value })}
+              />
+            </div>
+            {/* Renk/beden ve depo alanları gelişmiş görünümde: basit kurulumda
+                bir kalem SKU, barkod, birim ve (üründe) stokla açılıyor. */}
+            <Advanced>
+              <div>
+                <Label>Renk</Label>
+                <TextInput
+                  value={draft.color}
+                  onChange={(e) => setDraft({ ...draft, color: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Beden / Ebat</Label>
+                <TextInput
+                  value={draft.size}
+                  onChange={(e) => setDraft({ ...draft, size: e.target.value })}
+                />
+              </div>
+            </Advanced>
+            <div>
+              <Label>Koli içi adet</Label>
+              <TextInput
+                value={draft.unitsPerCase}
+                inputMode="numeric"
+                onChange={(e) =>
+                  setDraft({ ...draft, unitsPerCase: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Min. sipariş</Label>
+              <TextInput
+                value={draft.moqUnits}
+                inputMode="decimal"
+                onChange={(e) => setDraft({ ...draft, moqUnits: e.target.value })}
+              />
+            </div>
+            {!isService && (
+              <div>
+                <Label>Stok</Label>
+                <TextInput
+                  value={draft.stock}
+                  inputMode="decimal"
+                  onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
+                />
+              </div>
+            )}
+            <div>
+              <Label hint="ADET, KG, KOLİ…">Birim</Label>
+              <TextInput
+                value={draft.unit}
+                onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label hint="Kilo, metre: ondalık">Miktar</Label>
+              <Select
+                value={draft.quantityScale}
+                onChange={(e) =>
+                  setDraft({ ...draft, quantityScale: e.target.value })
+                }
+              >
+                {QUANTITY_SCALE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label hint="Müşteriye gösterilmez">Alış fiyatı</Label>
+              <TextInput
+                value={draft.costPrice}
+                inputMode="decimal"
+                onChange={(e) =>
+                  setDraft({ ...draft, costPrice: e.target.value })
+                }
+              />
+            </div>
+            {!isService && (
+              <Advanced>
+                <div>
+                  <Label hint="Altına düşünce uyarılır">Kritik stok</Label>
+                  <TextInput
+                    value={draft.minStock}
+                    inputMode="decimal"
+                    onChange={(e) =>
+                      setDraft({ ...draft, minStock: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Raf kodu</Label>
+                  <TextInput
+                    value={draft.shelfCode}
+                    onChange={(e) =>
+                      setDraft({ ...draft, shelfCode: e.target.value })
+                    }
+                  />
+                </div>
+              </Advanced>
+            )}
+            <div className="flex items-end">
+              <Button
+                disabled={!draft.sku.trim() || create.isPending}
+                onClick={() => create.mutate()}
+              >
+                Varyant ekle
+              </Button>
+            </div>
+          </div>
+          <ErrorLine error={create.error} />
+        </div>
+      )}
     </Panel>
   );
 }

@@ -58,6 +58,7 @@ function stockNote(product: CatalogProduct): {
   label: string;
   tone: "positive" | "caution" | "critical";
 } {
+  if (product.isService) return { label: "Hizmet", tone: "positive" };
   const total = roundToScale(
     product.variants.reduce((s, v) => s + v.stock, 0),
     3,

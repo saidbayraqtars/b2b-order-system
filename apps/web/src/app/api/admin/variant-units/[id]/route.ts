@@ -10,9 +10,9 @@ type Params = { params: { id: string } };
 // değişse de geçmiş siparişin künyesi değişmez: satır kendi çarpanını taşır.
 export function PATCH(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"], "products.manage");
+    const user = await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, updateVariantUnitSchema);
-    const unit = await updateVariantUnit(params.id, input);
+    const unit = await updateVariantUnit(params.id, input, user.id);
     return Response.json({ unit });
   });
 }

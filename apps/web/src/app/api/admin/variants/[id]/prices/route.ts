@@ -19,9 +19,9 @@ export function GET(_req: NextRequest, { params }: Params) {
 // re-posting the same tier updates its amount rather than erroring.
 export function POST(req: NextRequest, { params }: Params) {
   return withAuthErrors(async () => {
-    await requireUser(["SUPER_ADMIN"], "products.manage");
+    const user = await requireUser(["SUPER_ADMIN"], "products.manage");
     const input = await parseBody(req, upsertPriceSchema);
-    const price = await upsertPrice(params.id, input);
+    const price = await upsertPrice(params.id, input, user.id);
     return Response.json({ price }, { status: price.created ? 201 : 200 });
   });
 }

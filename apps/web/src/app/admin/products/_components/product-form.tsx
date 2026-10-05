@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminCategoryRow, AdminProductDetail } from "@repo/services";
-import { VAT_RATES } from "@repo/types";
+import {
+  PRODUCT_TYPE_LABELS,
+  VAT_RATES,
+  type ProductType,
+} from "@repo/types";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/fetcher";
 import {
   Button,
@@ -33,6 +37,7 @@ interface FormState {
   description: string;
   images: string;
   isActive: boolean;
+  type: ProductType;
   codes: CustomCodeForm;
 }
 
@@ -45,6 +50,7 @@ function initialState(product?: AdminProductDetail): FormState {
     description: product?.description ?? "",
     images: (product?.images ?? []).join("\n"),
     isActive: product?.isActive ?? true,
+    type: product?.type ?? "GOODS",
     codes: customCodeForm(product?.codes),
   };
 }
@@ -76,6 +82,7 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
       .map((s) => s.trim())
       .filter(Boolean),
     isActive: form.isActive,
+    type: form.type,
     ...customCodePayload(form.codes, codeFields.all),
   });
 
@@ -126,11 +133,17 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
 
         <div>
           <Label>Kategori</Label>
+          {/* Liste gelene kadar "Yükleniyor…": seçenekler yokken seçili
+              kategori "Seçin…" görünüyordu ve kayıtlı ürün kategorisiz
+              sanılıyordu (ekran görüntüsü yakaladı). */}
           <Select
             value={form.categoryId}
+            disabled={categories.isLoading}
             onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
           >
-            <option value="">Seçin…</option>
+            <option value="">
+              {categories.isLoading ? "Yükleniyor…" : "Seçin…"}
+            </option>
             {categoryOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -163,6 +176,22 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
             {VAT_RATES.map((r) => (
               <option key={r} value={r}>
                 %{r}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div>
+          <Label hint="hizmet stok tutmaz">Tip</Label>
+          <Select
+            value={form.type}
+            onChange={(e) =>
+              setForm({ ...form, type: e.target.value as ProductType })
+            }
+          >
+            {(Object.keys(PRODUCT_TYPE_LABELS) as ProductType[]).map((t) => (
+              <option key={t} value={t}>
+                {PRODUCT_TYPE_LABELS[t]}
               </option>
             ))}
           </Select>
@@ -211,9 +240,13 @@ export function ProductForm({ product }: { product?: AdminProductDetail }) {
         >
           {save.isPending ? "Kaydediliyor…" : "Kaydet"}
         </Button>
+        {/* Sil sağda ve sessiz: dolu kırmızı düğme "Kaydet"in hemen yanında,
+            formun asıl eyleminden daha çok bakılıyordu. Onay penceresi
+            ağırlığı taşıyor. */}
         {product && (
           <Button
-            variant="danger"
+            variant="dangerQuiet"
+            className="ml-auto"
             disabled={remove.isPending}
             onClick={() => {
               if (confirm(`"${product.name}" ürünü silinsin mi?`))

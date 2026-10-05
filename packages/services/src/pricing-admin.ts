@@ -8,6 +8,7 @@ import type {
 } from "@repo/types";
 import { BusinessError } from "./errors";
 import { Dec, round2 } from "./money";
+import { recordPriceChange } from "./price-history";
 import type { AdminPriceRow } from "./catalog-admin";
 
 // Write side of the price resolution implemented in pricing.ts. A price row is
@@ -146,7 +147,11 @@ export async function deleteCustomerGroup(id: string): Promise<void> {
 }
 
 
-export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
+export async function upsertPrice(
+  variantId: string,
+  input: UpsertPriceInput,
+  actorId: string | null = null,
+) {
   const variant = await prisma.productVariant.findUnique({
     where: { id: variantId },
     select: { id: true },
@@ -175,7 +180,7 @@ export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
       unitId: null,
       minQuantity: input.minQuantity,
     },
-    select: { id: true },
+    select: { id: true, price: true },
   });
 
   const row = existing
@@ -195,6 +200,17 @@ export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
         select: { id: true, minQuantity: true, price: true, currency: true },
       });
 
+  await recordPriceChange(prisma, {
+    variantId,
+    customerGroupId: groupId,
+    minQuantity: input.minQuantity,
+    oldPrice: existing?.price ?? null,
+    newPrice: price,
+    currency: input.currency,
+    source: "MANUAL",
+    actorId,
+  });
+
   return {
     id: row.id,
     minQuantity: row.minQuantity,
@@ -204,12 +220,35 @@ export async function upsertPrice(variantId: string, input: UpsertPriceInput) {
   };
 }
 
-export async function deletePrice(id: string): Promise<void> {
+export async function deletePrice(
+  id: string,
+  actorId: string | null = null,
+): Promise<void> {
   const found = await prisma.price.findUnique({
     where: { id },
-    select: { id: true },
+    select: {
+      id: true,
+      variantId: true,
+      customerGroupId: true,
+      unitId: true,
+      minQuantity: true,
+      price: true,
+      currency: true,
+    },
   });
   if (!found) throw new BusinessError("PRICE_NOT_FOUND", "Fiyat kaydı bulunamadı");
+  // Önce geçmiş: satır silinince birim adı da ona bağlı sorguyla bulunamaz.
+  await recordPriceChange(prisma, {
+    variantId: found.variantId,
+    customerGroupId: found.customerGroupId,
+    unitId: found.unitId,
+    minQuantity: found.minQuantity,
+    oldPrice: found.price,
+    newPrice: null,
+    currency: found.currency,
+    source: "MANUAL",
+    actorId,
+  });
   await prisma.price.delete({ where: { id } });
 }
 
