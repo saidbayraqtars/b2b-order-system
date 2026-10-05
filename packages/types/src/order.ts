@@ -41,6 +41,20 @@ export function parseOrderStatusGroup(
     : null;
 }
 
+/**
+ * Sipariş satırının sevk durumu. Saklanmaz, irsaliye ve teslim alınmış
+ * iadeden türetilir (`orderLineState`, @repo/services): elle değiştirilebilen
+ * bir alan irsaliyeyle çelişebilirdi.
+ */
+export type OrderLineState = "WAITING" | "PARTIAL" | "SHIPPED" | "RETURNED";
+
+export const ORDER_LINE_STATE_LABELS: Record<OrderLineState, string> = {
+  WAITING: "Bekliyor",
+  PARTIAL: "Kısmi",
+  SHIPPED: "Gönderildi",
+  RETURNED: "İade",
+};
+
 export const cartItemInputSchema = z.object({
   // cuid() değil: içe aktarılan katalogda kimlik Prisma'nın ürettiği biçimde
   // değil ve o kontrol 2.654 ürünü sipariş edilemez yapıyordu — bkz. id.ts.

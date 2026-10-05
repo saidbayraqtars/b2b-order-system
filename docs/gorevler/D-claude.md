@@ -23,13 +23,13 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
 | F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
-| D5 ekran ekran | sürüyor — 1/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde). Sırada sipariş detayı, ürün formu, firma formu, portal katalog, sepet |
+| D5 ekran ekran | sürüyor — 2/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok). Sırada ürün formu (+ ürün tipi, fiyat geçmişi), firma formu, portal katalog, sepet |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
 
 Ölçüm (F3 sonu): 1.205 test (erp-agent 22, servisler 760, web 423) yeşil; typecheck, lint, build (165 sayfa) yeşil.
-Ölçüm (D5 sipariş listesi): web 427 test yeşil; typecheck, lint, build (166 sayfa) yeşil. Önce/sonra görüntüleri `docs/design/screens/adim-18/` (`*-once.png`).
+Ölçüm (D5 sipariş detayı): servisler 763, web 427 test yeşil; typecheck, lint, build (166 sayfa) yeşil. Önce/sonra görüntüleri `docs/design/screens/adim-18/` (`*-once.png`).
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 
@@ -81,7 +81,18 @@ D2-D4'ten sonra, en çok kullanılan ekrandan başlayarak: sipariş listesi,
 sipariş detayı, ürün formu, firma formu, portal katalog, sepet. Her ekran için
 önce/sonra görüntüsü alınır.
 
-## Kılavuzdan çıkan özellik adayları (Said seçecek)
+## Said'in kararları (2026-10-05)
+
+- **Yapılacak, ilgili ekrana dokunulunca:** ürün tipi (ürün/hizmet: hizmet stok
+  tutmaz, stok ekranlarında yok, sipariş kalemi olabilir) ve fiyat geçmişi (yalnız
+  yönetimde: eski/yeni fiyat, kim, ne zaman) ürün formunda; sipariş satır durumu
+  (irsaliye ve iadeden türetilir, saklanmaz) sipariş detayında.
+- **Yapılmayacak:** muadil/alternatif ürün, kural tabanlı fiyat.
+- **ERP:** F3'ün ERP uçları (ajanın depo kırılımı, siparişin kendi deposuyla
+  yazılması) yapılmıyor. Müşteri entegrasyon isterse onun programına göre
+  kodlanır. Mevcut ajan (Vega) olduğu gibi kalır.
+
+## Kılavuzdan çıkan özellik adayları (2026-10-05 karara bağlandı, yukarıya bakın)
 
 Vega'da olup b2b'de olmayanlar. Sıra öneridir, karar değil.
 

@@ -961,4 +961,34 @@ export const SCREENS = [
     as: "portal",
     path: "/portal/orders",
   },
+
+  // ── Adım 18: D5 sipariş detayı ──────────────────────────────────────────
+  {
+    step: 18,
+    slug: "siparis-detay",
+    label: "Sipariş detayı — satır sevk durumu, boş sütunsuz, formlar düğmede",
+    as: "admin",
+    // Kısmi sevkli sipariş: satır durumunun üç hâli birden görünsün.
+    path: async (db) => {
+      const o = await db.order.findFirst({
+        where: { shipments: { some: {} }, status: "PROCESSING" },
+        select: { id: true },
+      });
+      return o && `/orders/${o.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "portal-siparis-detay",
+    label: "Portal sipariş detayı — sevk edilmiş siparişte iptal yok",
+    as: "portal",
+    path: async (db) => {
+      const o = await db.order.findFirst({
+        where: { shipments: { some: {} }, status: "PROCESSING" },
+        select: { id: true },
+      });
+      return o && `/orders/${o.id}`;
+    },
+  },
 ];
