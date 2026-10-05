@@ -538,8 +538,13 @@ export function WarnLine({
 /** Başarısız bir işlemin satır içi hata satırı. */
 export function ErrorLine({ error }: { error: unknown }) {
   if (!error) return null;
+  // `role="alert"`: ekran okuyucu hatayı okusun; uçtan uca testler de ekranda
+  // hata satırı kalıp kalmadığını buradan soruyor.
   return (
-    <p className="mt-2 flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-body-sm text-critical">
+    <p
+      role="alert"
+      className="mt-2 flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-body-sm text-critical"
+    >
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
       {typeof error === "string"
         ? error

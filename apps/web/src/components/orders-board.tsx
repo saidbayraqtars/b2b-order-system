@@ -123,8 +123,8 @@ export function OrdersBoard({
   framed?: boolean;
   /**
    * Durum sekmeleri ve arama kutusu. İkisi de adreste (`?durum=`, `?ara=`):
-   * geri tuşu süzgeci geri getiriyor ve ekran görüntüsü betiği bir sekmeyi
-   * düğmeye basmadan çekebiliyor. Panodaki kısa liste süzgeçsiz.
+   * sekmede geri tuşu bir önceki sekmeye dönüyor ve ekran görüntüsü betiği
+   * bir sekmeyi düğmeye basmadan çekebiliyor. Panodaki kısa liste süzgeçsiz.
    */
   filters?: boolean;
   /** Süzgeçsiz listede sabit grup — panoda "onay bekleyen". */
@@ -147,12 +147,22 @@ export function OrdersBoard({
     : (group ?? "tumu");
   const search = filters ? (urlParams.get("ara") ?? "") : "";
 
-  const setUrlParam = (key: string, value: string | null) => {
+  // Sekme geçmişe yazılıyor (`push`): geri tuşu bir önceki sekmeye dönsün.
+  // Arama yazılmıyor (`replace`): her durak bir geçmiş satırı olurdu.
+  // İlk sürüm ikisini de `replace` ile yazıyordu ve geri tuşu kullanıcıyı
+  // listeden tamamen çıkarıyordu — Playwright testi yakaladı.
+  const setUrlParam = (
+    key: string,
+    value: string | null,
+    mode: "push" | "replace",
+  ) => {
     const next = new URLSearchParams(urlParams.toString());
     if (value) next.set(key, value);
     else next.delete(key);
     const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const href = qs ? `${pathname}?${qs}` : pathname;
+    if (mode === "push") router.push(href, { scroll: false });
+    else router.replace(href, { scroll: false });
   };
 
   // Kutu her tuşta adresi değiştirmiyor: her harf bir istek olurdu. Yazı
@@ -162,7 +172,7 @@ export function OrdersBoard({
   useEffect(() => {
     if (!filters || draft.trim() === search) return;
     const timer = setTimeout(
-      () => setUrlParam("ara", draft.trim() || null),
+      () => setUrlParam("ara", draft.trim() || null, "replace"),
       400,
     );
     return () => clearTimeout(timer);
@@ -238,7 +248,7 @@ export function OrdersBoard({
             value={tab}
             onChange={(next) => {
               setSelected([]);
-              setUrlParam("durum", next === "tumu" ? null : next);
+              setUrlParam("durum", next === "tumu" ? null : next, "push");
             }}
             items={TAB_KEYS.map((key) => ({
               key,

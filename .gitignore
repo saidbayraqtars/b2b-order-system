@@ -75,3 +75,8 @@ docs/hafiza/
 
 # AI devir notlari (sunucu/erisim bilgisi icerir)
 AI-DEVIR-NOTLARI.md
+
+# Playwright: oturum dosyaları (gösterim hesabının çerezi) ve sonuçlar
+e2e/.auth/
+test-results/
+playwright-report/
