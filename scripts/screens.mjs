@@ -1038,4 +1038,28 @@ export const SCREENS = [
       return p && `/portal/urun/${p.id}`;
     },
   },
+
+  // ── Adım 18: D5 firma formu (önce: firma-formu-once.png, firma-yeni-once.png)
+  {
+    step: 18,
+    slug: "firma-formu",
+    label: "Firma formu — künye / ticari koşullar, tek iskonto paneli",
+    as: "admin",
+    path: async (db) => {
+      const c = await db.company.findFirst({
+        where: { isActive: true, orders: { some: {} } },
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
+      return c && `/admin/companies/${c.id}`;
+    },
+  },
+
+  {
+    step: 18,
+    slug: "firma-yeni",
+    label: "Yeni firma — başlık bir kez, sözleşme ayarları gelişmişte",
+    as: "admin",
+    path: "/admin/companies/new",
+  },
 ];

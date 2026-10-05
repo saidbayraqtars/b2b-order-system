@@ -23,7 +23,7 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
 | F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
-| D5 ekran ekran | sürüyor — 3/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok); ürün formu ✔ (ürün tipi ürün/hizmet — hizmet stok tutmaz; fiyat geçmişi beş yoldan, kapalı panel; sessiz Sil, yeni varyant formu düğmede). Sırada firma formu, portal katalog, sepet |
+| D5 ekran ekran | sürüyor — 4/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok); ürün formu ✔ (ürün tipi ürün/hizmet — hizmet stok tutmaz; fiyat geçmişi beş yoldan, kapalı panel; sessiz Sil, yeni varyant formu düğmede); firma formu ✔ (künye / ticari koşullar, sözleşme ayarları basit görünümde yalnız doluysa, hacim modülü kapalıyken alan yok ve basamak korunur, tek iskonto paneli ve ekleme `pricing.manage`, salt okumada kilitli, kapalı panelin "Yeni …" düğmesi paneli açıyor). Sırada portal katalog, sepet |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
@@ -32,16 +32,15 @@ D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 Ölçüm (D5 sipariş detayı): servisler 763, web 427 test yeşil; typecheck, lint, build (166 sayfa) yeşil. Önce/sonra görüntüleri `docs/design/screens/adim-18/` (`*-once.png`).
 Ölçüm (2026-10-05 akşam): servisler 763, web 427 test; typecheck 9/9, lint 8/8. Playwright (`pnpm e2e`) 137 test: 131 geçti, 3 atlandı.
 Ölçüm (D5 ürün formu, 2026-10-05): servisler 776, web 427 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 144 test: 140 geçti, 3 atlandı (gösterim verisinde o ekranın kaydı yok), 1 düştü (yeni testin kendi seçicisi; düzeltilip dosya tek başına 8/8). Kasa testleri `TENANT_DIR` ile geçti; sipariş listesindeki geri tuşu düzeltmesi de bu koşuda geçti.
+Ölçüm (D5 firma formu, 2026-10-05): web 432 test (servis kodu değişmedi); typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 148 test: 145 geçti, 3 atlandı, düşen yok.
 
-### Kaldığı yer (4/6 firma formu)
+### Kaldığı yer (5/6 portal katalog)
 
-Ürün formu (3/6) bitti: servis testi
-`packages/services/test/integration/product-type-price-history.test.ts` (13),
-gösterim verisi `seed-gida.ts` (hizmet "Nakliye (Şehir İçi)" + GD-YAG-5L'nin
-fiyat geçmişi), "sonra" görüntüleri `urun-formu`, `urun-formu-hizmet`,
-`portal-hizmet` (adım 18), Playwright `e2e/urun-formu.spec.ts` (4 test).
+Firma formu (4/6) bitti: rota testi `apps/web/test/company-form.test.ts` (5),
+önce/sonra görüntüleri `firma-formu`, `firma-yeni` (adım 18), Playwright
+`e2e/firma-formu.spec.ts` (3 test).
 
-Sıradaki: firma formu → portal katalog → sepet. Her ekranda aynı yol: "önce"
+Sıradaki: portal katalog → sepet. Her ekranda aynı yol: "önce"
 görüntüsü (`*-once.png`), değişiklik, servis/rota testi, "sonra" görüntüsü,
 `e2e/<ekran>.spec.ts`, `pnpm e2e` tam koşu (sunucu `TENANT_DIR` ile).
 

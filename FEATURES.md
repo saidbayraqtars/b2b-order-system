@@ -404,6 +404,23 @@ eski fiyat, silinende yeni fiyat boştur. Ürün sayfasında kapalı başlayan
 "Fiyat geçmişi" paneli (künyede değişiklik sayısı ve son tarih),
 `GET /api/admin/products/:id/price-history`.
 
+### Firma formu sadeleşti (D5, 2026-10-05)
+
+- Form iki küme: **künye** (ad, vergi, iletişim) ve **ticari koşullar**
+  (limit, vade, grup, plasiyer, depo). Yeni firma sayfasında başlık bir kez.
+- Sözleşme ayarları — asgari sipariş, ödeme kısıtı, hacim basamağı — basit
+  görünümde yalnız doluysa çizilir; gizlenenler tek satırda adıyla söylenir.
+- Hacim modülü kapalıyken hacim kutusu ve alanı yok; form hacim alanlarını
+  göndermez, elle atanmış basamak korunur (depo alanıyla aynı kural).
+- Firmaya özel iskonto tek panel ("Yeni iskonto" başlıkta). Ekleme de silme de
+  `pricing.manage` ister — önce ekleme `companies.manage` ile açıktı.
+- Yalnız `companies.view` olan kullanıcıda alanlar kilitli; Kaydet, adres
+  ekle/sil ve iskonto düğmeleri çizilmez.
+- Kapalı paneldeki "Yeni adres" / "Yeni kullanıcı" / "Yeni iskonto" düğmesi
+  paneli açar (`Panel` `forceOpen`); önce görünmeyen bir form açıyordu.
+- Kayıtta "Firma kaydedildi" bildirimi; liste gelene kadar grup ve plasiyer
+  kutusu "Yükleniyor…" der.
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.
