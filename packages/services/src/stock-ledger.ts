@@ -379,6 +379,12 @@ export async function recordOrderStockOut(
   ctx: {
     orderId: string;
     orderNumber: string;
+    /**
+     * Çıkış deposu ("depo" modülü açıkken). Verilirse depo satırı da düşer.
+     * Depo satırı da eksiye inebilir, toplamla aynı sebeple: kontrol
+     * `buildQuote`ta yapıldı, iki eşzamanlı sipariş son adedi paylaşabilir.
+     */
+    warehouseId?: string | null;
     lines: readonly OrderStockLine[];
     actorId?: string | null;
   },
@@ -398,6 +404,7 @@ export async function recordOrderStockOut(
           ? `Sipariş ${ctx.orderNumber} · parti ${allocation.lotCode}`
           : `Sipariş ${ctx.orderNumber}`,
         orderId: ctx.orderId,
+        warehouseId: ctx.warehouseId ?? null,
         lotId: allocation.lotId,
         recordedById: ctx.actorId ?? null,
         allowNegative: true,
@@ -424,6 +431,15 @@ export async function recordOrderStockReturn(
 ): Promise<void> {
   const label = ctx.reason === "CANCELLED" ? "iptali" : "reddi";
 
+  // Mal çıktığı depoya döner. Siparişin deposu bugünkü modül ayarına değil,
+  // sipariş anına aittir: modül sonradan kapatılsa da düşülen depo satırı
+  // geri dolmalı, yoksa o depo kalıcı olarak eksik kalırdı.
+  const order = await tx.order.findUnique({
+    where: { id: ctx.orderId },
+    select: { warehouseId: true },
+  });
+  const warehouseId = order?.warehouseId ?? null;
+
   // Parti takipli mal, **çıktığı** partiye geri döner. Bunu sipariş satırından
   // türetmek mümkün değil: satır kaç adet olduğunu bilir, hangi SKT'li kutunun
   // ayrıldığını bilmez. Defterin çıkış satırları bilir.
@@ -435,7 +451,7 @@ export async function recordOrderStockReturn(
       lotId: { not: null },
       reversedBy: null,
     },
-    select: { id: true, variantId: true, quantity: true, lotId: true },
+    select: { id: true, variantId: true, quantity: true, lotId: true, warehouseId: true },
   });
 
   const returnedByVariant = new Map<string, number>();
@@ -447,6 +463,7 @@ export async function recordOrderStockReturn(
       source: "ORDER_CANCEL",
       description: `Sipariş ${ctx.orderNumber} ${label}`,
       orderId: ctx.orderId,
+      warehouseId: out.warehouseId,
       lotId: out.lotId,
       recordedById: ctx.actorId ?? null,
     });
@@ -480,6 +497,7 @@ export async function recordOrderStockReturn(
       source: "ORDER_CANCEL",
       description: `Sipariş ${ctx.orderNumber} ${label}`,
       orderId: ctx.orderId,
+      warehouseId,
       recordedById: ctx.actorId ?? null,
     });
   }

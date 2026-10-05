@@ -243,6 +243,7 @@ export function OrderDetailView({
           ) : (
             <p className="text-ink-muted">Sevkiyat adresi seçilmemiş.</p>
           )}
+          {o.warehouse && <Row label="Çıkış deposu" value={o.warehouse.name} />}
           {o.carrier && <Row label="Kargo" value={o.carrier} />}
           {o.trackingNumber && (
             <Row label="Takip no" value={o.trackingNumber} />

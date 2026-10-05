@@ -106,6 +106,7 @@ async function buildOrder(
     isSeller,
     couponCode: input.couponCode,
     shippingFee,
+    warehouseId: input.warehouseId ?? null,
     items: input.items,
   });
   const { company, subtotal, discountTotal, promotionTotal, taxTotal, grandTotal } =
@@ -195,6 +196,8 @@ async function buildOrder(
         ? { shippingAddress: { connect: { id: input.shippingAddressId } } }
         : {}),
       note: input.note ?? null,
+      // Teklifin seçtiği depo, aynen: stok kontrolü ona karşı yapıldı.
+      ...(quote.warehouse ? { warehouse: { connect: { id: quote.warehouse.id } } } : {}),
       source: ctx.source ?? "WEB",
       couponCode: quote.coupon,
       subtotal,
@@ -225,6 +228,7 @@ async function buildOrder(
   await recordOrderStockOut(tx, {
     orderId: order.id,
     orderNumber: order.orderNumber,
+    warehouseId: quote.warehouse?.id ?? null,
     lines: stockLines,
     actorId: ctx.createdById,
   });

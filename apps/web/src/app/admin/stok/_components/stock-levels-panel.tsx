@@ -1,17 +1,19 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   StockLevelRow,
   StockMovementRow,
   WarehouseRow,
 } from "@repo/services";
 import { STOCK_MOVEMENT_SOURCE_LABELS } from "@repo/types";
-import { apiGet } from "@/lib/fetcher";
+import { apiGet, apiPatch } from "@/lib/fetcher";
+import { useModuleEnabled } from "@/lib/use-modules";
 import { ShowMore, useVisibleSlice } from "@/components/show-more";
 import {
   Button,
+  Checkbox,
   ErrorLine,
   Label,
   Panel,
@@ -77,12 +79,21 @@ export function StockLevelsPanel() {
   });
 
   const page = useVisibleSlice(levels.data?.levels ?? [], RENDER_STEP);
+  const warehouseMode = useModuleEnabled("depo");
+  const warehouse = (warehouses.data?.warehouses ?? []).find(
+    (w) => w.id === warehouseId,
+  );
 
   // Boş sütun çizilmiyor. Kritik seviye ve raf kodu isteğe bağlı alanlar;
   // hiçbir ürüne girilmemişse tablo iki sütun boyunca "—" basıyordu — bilgi
   // değil, göz yoran boşluk.
+  //
+  // Depo seçiliyken "Kritik" o deponun eşiği: merkezde 500 adet dururken
+  // şubede 3 kaldığını toplamın eşiği göstermez.
   const rows = levels.data?.levels ?? [];
-  const hasCritical = rows.some((r) => r.minStock !== null);
+  const criticalOf = (r: StockLevelRow) =>
+    warehouseId ? r.warehouseMinStock : r.minStock;
+  const hasCritical = rows.some((r) => criticalOf(r) !== null);
   const hasShelf = rows.some((r) => r.shelfCode !== null);
   const columns =
     4 + (warehouseId ? 1 : 0) + (hasCritical ? 1 : 0) + (hasShelf ? 1 : 0);
@@ -168,8 +179,11 @@ export function StockLevelsPanel() {
               />
             ) : (
               page.visible.map((row) => {
-                const critical =
-                  row.minStock !== null && row.stock <= row.minStock;
+                const threshold = criticalOf(row);
+                const amount = warehouseId
+                  ? (row.warehouseOnHand ?? 0)
+                  : row.stock;
+                const critical = threshold !== null && amount <= threshold;
                 const open = openVariantId === row.variantId;
                 return (
                   <Fragment key={row.variantId}>
@@ -177,7 +191,11 @@ export function StockLevelsPanel() {
                       <Td>{row.productName}</Td>
                       <Td className="tech-num">{row.sku}</Td>
                       <Td align="right" numeric>
-                        <span className={critical ? "text-critical" : ""}>
+                        <span
+                          className={
+                            critical && !warehouseId ? "text-critical" : ""
+                          }
+                        >
                           {formatQuantity(row.stock)}
                         </span>{" "}
                         <span className="text-xs text-ink-faint">
@@ -186,12 +204,19 @@ export function StockLevelsPanel() {
                       </Td>
                       {warehouseId && (
                         <Td align="right" numeric>
-                          {row.warehouseOnHand ?? 0}
+                          {row.warehouseBlocked && (
+                            <span className="mr-2">
+                              <Badge tone="warning">Sipariş kapalı</Badge>
+                            </span>
+                          )}
+                          <span className={critical ? "text-critical" : ""}>
+                            {formatQuantity(row.warehouseOnHand ?? 0)}
+                          </span>
                         </Td>
                       )}
                       {hasCritical && (
                         <Td align="right" numeric muted>
-                          {row.minStock ?? "—"}
+                          {threshold !== null ? formatQuantity(threshold) : "—"}
                         </Td>
                       )}
                       {hasShelf && <Td muted>{row.shelfCode ?? "—"}</Td>}
@@ -210,6 +235,14 @@ export function StockLevelsPanel() {
                     {open && (
                       <tr>
                         <Td colSpan={columns} className="bg-sunken">
+                          {warehouse && (
+                            <WarehouseSettings
+                              row={row}
+                              warehouseId={warehouse.id}
+                              warehouseName={warehouse.name}
+                              warehouseMode={warehouseMode}
+                            />
+                          )}
                           <VariantLedger variantId={row.variantId} />
                         </Td>
                       </tr>
@@ -235,6 +268,74 @@ export function StockLevelsPanel() {
         </div>
       )}
     </Panel>
+  );
+}
+
+/**
+ * Bir kalemin seçili depodaki ayarı: kritik seviye ve "sipariş alınmasın".
+ *
+ * Miktar burada yok, bilerek: miktar yalnız defterden (sayım, giriş,
+ * aktarım) değişir. Bayrak "depo" modülü kapalıyken kaydedilebilir ama
+ * işlemez — ekran bunu söylüyor, yoksa işaretleyen kişi siparişin neden
+ * hâlâ geçtiğini aramaya başlardı.
+ */
+function WarehouseSettings({
+  row,
+  warehouseId,
+  warehouseName,
+  warehouseMode,
+}: {
+  row: StockLevelRow;
+  warehouseId: string;
+  warehouseName: string;
+  warehouseMode: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [minStock, setMinStock] = useState(
+    row.warehouseMinStock !== null ? String(row.warehouseMinStock) : "",
+  );
+  const [blockOrders, setBlockOrders] = useState(row.warehouseBlocked);
+
+  const save = useMutation({
+    mutationFn: () =>
+      apiPatch("/api/admin/stock", {
+        variantId: row.variantId,
+        warehouseId,
+        minStock:
+          minStock.trim() === "" ? null : Number(minStock.replace(",", ".")),
+        blockOrders,
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["stock-levels"] }),
+  });
+
+  return (
+    <div className="mb-3 flex flex-wrap items-end gap-3 border-b border-line pb-3">
+      <div>
+        <Label htmlFor={`wh-min-${row.variantId}`} hint={warehouseName}>
+          Kritik seviye
+        </Label>
+        <TextInput
+          id={`wh-min-${row.variantId}`}
+          size="sm"
+          inputMode="decimal"
+          value={minStock}
+          placeholder="yok"
+          onChange={(e) => setMinStock(e.target.value)}
+          className="w-28"
+        />
+      </div>
+      <Checkbox
+        checked={blockOrders}
+        onChange={(e) => setBlockOrders(e.target.checked)}
+        label="Bu depodan sipariş alınmasın"
+        hint={warehouseMode ? undefined : "(depo modülü kapalı — işlemez)"}
+      />
+      <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+        Kaydet
+      </Button>
+      <ErrorLine error={save.error} />
+    </div>
   );
 }
 

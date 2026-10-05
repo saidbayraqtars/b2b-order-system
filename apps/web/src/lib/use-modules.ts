@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { ModuleKey } from "@repo/types";
+import { MODULES, type ModuleKey } from "@repo/types";
 import { apiGet } from "@/lib/fetcher";
 
 /**
@@ -18,4 +18,19 @@ export function useDisabledModules(): readonly ModuleKey[] {
     staleTime: 60_000,
   });
   return query.data?.disabled ?? [];
+}
+
+/**
+ * Tek modül açık mı. Liste yüklenene kadar modülün **kendi varsayılanı**
+ * geçerli: kapalı başlayan `depo` modülünün alanları yüklenirken bir an
+ * görünüp kaybolmamalı.
+ */
+export function useModuleEnabled(key: ModuleKey): boolean {
+  const query = useQuery({
+    queryKey: ["modules", "disabled"],
+    queryFn: () => apiGet<{ disabled: ModuleKey[] }>("/api/modules"),
+    staleTime: 60_000,
+  });
+  if (!query.data) return MODULES[key].defaultEnabled ?? true;
+  return !query.data.disabled.includes(key);
 }

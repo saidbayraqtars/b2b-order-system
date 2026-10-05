@@ -22,13 +22,13 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | D3 menü 6 başlık, D4 basit/gelişmiş görünüm | ✔ `38d62bd` |
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
-| F3 depo bazlı kritik seviye | sırada |
+| F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın" |
 | D5 ekran ekran | sırada |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
 
-Ölçüm: 1.191 test (erp-agent 22, servisler 751, web 418) yeşil.
+Ölçüm (F3 sonu): 1.205 test (erp-agent 22, servisler 760, web 423) yeşil; typecheck, lint, build (165 sayfa) yeşil.
 
 ## D1 — Özel kodlar (önce bu; B akışı buna bağlı)
 

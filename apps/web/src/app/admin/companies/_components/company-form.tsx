@@ -8,6 +8,7 @@ import type {
   CustomerGroupRow,
   PaymentTermRow,
   VolumeTierRow,
+  WarehouseRow,
 } from "@repo/services";
 import {
   PAYMENT_METHOD_LABELS,
@@ -18,6 +19,7 @@ import {
   type VolumeDiscountMode,
 } from "@repo/types";
 import { apiGet, apiPatch, apiPost } from "@/lib/fetcher";
+import { useModuleEnabled } from "@/lib/use-modules";
 import {
   Button,
   Checkbox,
@@ -61,6 +63,8 @@ export interface CompanyFormValues {
   volumeDiscountMode: VolumeDiscountMode;
   /** Only read under MANUAL; empty there means "no hacim discount at all". */
   volumeTierId: string;
+  /** Çıkış deposu ("depo" modülü); boş = kurulumun varsayılanı. */
+  warehouseId: string;
   /** Özel kodlar — bölge, segment, kanal… */
   codes: CustomCodeForm;
 }
@@ -87,6 +91,7 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       paymentTermIds: [],
       volumeDiscountMode: "AUTO",
       volumeTierId: "",
+      warehouseId: "",
       codes: { ...EMPTY_CUSTOM_CODES },
     },
   );
@@ -125,6 +130,15 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
       apiGet<{ salesReps: { id: string; name: string }[] }>(
         "/api/admin/sales-reps",
       ),
+  });
+  // Depo seçimi yalnız "depo" modülü açıkken anlamlı: kapalıyken sipariş depo
+  // bilmiyor ve alan yalnızca kafa karıştırırdı.
+  const warehouseMode = useModuleEnabled("depo");
+  const warehouses = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: () =>
+      apiGet<{ warehouses: WarehouseRow[] }>("/api/admin/warehouses"),
+    enabled: warehouseMode,
   });
   const tiers = useQuery({
     queryKey: ["admin-volume-tiers"],
@@ -167,6 +181,11 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             : editing
               ? null
               : undefined,
+        // Modül kapalıyken gönderilmez: görünmeyen bir alan kayıtlı depoyu
+        // sessizce silmemeli.
+        ...(warehouseMode
+          ? { warehouseId: v.warehouseId || (editing ? null : undefined) }
+          : {}),
         ...customCodePayload(v.codes, codeFields.all),
       };
       if (editing) {
@@ -287,6 +306,24 @@ export function CompanyForm({ company }: { company?: CompanyFormValues }) {
             ))}
           </Select>
         </label>
+        {warehouseMode && (warehouses.data?.warehouses.length ?? 0) > 0 && (
+          <label>
+            <Label hint="stok buradan düşer">Çıkış deposu</Label>
+            <Select
+              value={v.warehouseId}
+              onChange={(e) => set("warehouseId", e.target.value)}
+            >
+              <option value="">— varsayılan depo —</option>
+              {(warehouses.data?.warehouses ?? [])
+                .filter((w) => w.isActive || w.id === v.warehouseId)
+                .map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+            </Select>
+          </label>
+        )}
       </div>
 
       {codeFields.active.length > 0 && (

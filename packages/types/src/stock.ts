@@ -34,6 +34,24 @@ export const warehouseSchema = z.object({
 });
 export type WarehouseInput = z.infer<typeof warehouseSchema>;
 
+/**
+ * Bir kalemin bir depodaki ayarı: kritik seviye ve "sipariş alınmasın".
+ * Miktar burada yok — o yalnızca defterden (sayım, giriş, aktarım) değişir.
+ */
+export const warehouseStockSettingsSchema = z
+  .object({
+    variantId: z.string().cuid(),
+    warehouseId: z.string().cuid(),
+    /** null = kritik seviye yok. */
+    minStock: quantityInput({ allowZero: true }).nullable().optional(),
+    blockOrders: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.minStock !== undefined || v.blockOrders !== undefined,
+    "Güncellenecek alan yok",
+  );
+export type WarehouseStockSettingsBody = z.infer<typeof warehouseStockSettingsSchema>;
+
 export const manualStockMovementSchema = z.object({
   variantId: z.string().cuid(),
   warehouseId: z.string().cuid().optional(),

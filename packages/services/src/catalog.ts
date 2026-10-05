@@ -6,6 +6,14 @@ import { convertPriceRows, currentRates, type RateMap } from "./exchange-rate";
 import { resolvePrice, type DiscountRow } from "./pricing";
 import { qty } from "./quantity";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
+import {
+  availabilityOf,
+  loadWarehouseAvailability,
+  resolveOrderWarehouse,
+  sellableIn,
+  type OrderWarehouse,
+  type WarehouseAvailability,
+} from "./warehouse-stock";
 
 // ── Company pricing context (loaded once per request) ──
 
@@ -21,6 +29,12 @@ export interface CompanyPricingContext {
    * kurunu kullanması, listede iki ürünün farklı kurdan görünmemesi demek.
    */
   rates: RateMap;
+  /**
+   * Bu müşterinin siparişinin düşeceği depo ("depo" modülü açıkken). Katalog
+   * stoğu bu deponun satılabilir adedini gösterir: toplamı göstermek, sepette
+   * "Samsun deposunda yetersiz stok" hatasıyla biten bir "stokta var" olurdu.
+   */
+  warehouse: OrderWarehouse | null;
 }
 
 export async function loadCompanyPricingContext(
@@ -33,6 +47,7 @@ export async function loadCompanyPricingContext(
       customerGroupId: true,
       volumeDiscountMode: true,
       volumeTierId: true,
+      warehouseId: true,
       discounts: {
         select: {
           categoryId: true,
@@ -49,12 +64,17 @@ export async function loadCompanyPricingContext(
     });
   }
   const rates = await currentRates();
+  const warehouse = await resolveOrderWarehouse(prisma, {
+    companyWarehouseId: company.warehouseId,
+    isSeller: false,
+  });
 
   return {
     companyId: company.id,
     customerGroupId: company.customerGroupId,
     discounts: company.discounts,
     rates,
+    warehouse,
     // Once per request, not once per line: the rung is a property of the
     // customer, and a catalogue page of 24 products would otherwise aggregate
     // the same turnover 24 times.
@@ -236,6 +256,7 @@ type CatalogRow = {
 function toCatalogProduct(
   p: CatalogRow,
   ctx: CompanyPricingContext,
+  stockIn: Map<string, WarehouseAvailability> | null,
 ): CatalogProduct {
   return {
     id: p.id,
@@ -254,7 +275,9 @@ function toCatalogProduct(
         size: v.size,
         unitsPerCase: v.unitsPerCase,
         moqUnits: qty(v.moqUnits),
-        stock: qty(v.stock),
+        // Depo modülünde müşterinin deposu; "sipariş alınmasın" kalem stoksuz
+        // görünür — müşteriye "bu depodan satılmıyor" demenin sade hâli.
+        stock: stockIn ? sellableIn(availabilityOf(stockIn, v.id)) : qty(v.stock),
         unit: v.unit,
         quantityScale: v.quantityScale,
         pricingUnit: v.pricingUnit,
@@ -380,7 +403,21 @@ export async function listCatalog(
     orderBy: { name: "asc" },
   });
 
-  return products.map((p) => toCatalogProduct(p, ctx));
+  const stockIn = await warehouseStockFor(ctx, products);
+  return products.map((p) => toCatalogProduct(p, ctx, stockIn));
+}
+
+/** Depo modülü açıksa listedeki kalemlerin o depodaki adedi; kapalıysa null. */
+async function warehouseStockFor(
+  ctx: CompanyPricingContext,
+  products: ReadonlyArray<{ variants: ReadonlyArray<{ id: string }> }>,
+): Promise<Map<string, WarehouseAvailability> | null> {
+  if (!ctx.warehouse) return null;
+  return loadWarehouseAvailability(
+    prisma,
+    ctx.warehouse.id,
+    products.flatMap((p) => p.variants.map((v) => v.id)),
+  );
 }
 
 /**
@@ -396,7 +433,8 @@ export async function getCatalogProduct(
     where: { id: productId, isActive: true },
     select: CATALOG_SELECT,
   });
-  return product ? toCatalogProduct(product, ctx) : null;
+  if (!product) return null;
+  return toCatalogProduct(product, ctx, await warehouseStockFor(ctx, [product]));
 }
 
 // ── Category tree ──

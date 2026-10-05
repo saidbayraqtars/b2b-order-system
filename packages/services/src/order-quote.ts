@@ -31,6 +31,13 @@ import {
   normalizeCoupon,
 } from "./promotion";
 import { resolveVolumeDiscount, type ResolvedVolumeDiscount } from "./volume-discount";
+import {
+  availabilityOf,
+  loadWarehouseAvailability,
+  resolveOrderWarehouse,
+  type OrderWarehouse,
+  type WarehouseAvailability,
+} from "./warehouse-stock";
 
 // Pricing a cart is one calculation, used twice: the buyer previews it from the
 // portal, then places the order and the same numbers get frozen into the
@@ -52,6 +59,8 @@ export interface QuoteInput {
   /** Freight, excl. VAT. Seller-side only — a buyer cannot price its own delivery. */
   shippingFee?: number | string;
   shippingVatRate?: number;
+  /** Çıkış deposu — yalnız satıcı seçer ("depo" modülü açıkken; bkz. warehouse-stock.ts). */
+  warehouseId?: string | null;
   /**
    * `quantity` her zaman **taban birimde** (2 koli × 12 = 24). `unitId`
    * satırın paket birimidir; verilirse miktar o paketin tam katı olmalı.
@@ -180,6 +189,11 @@ export interface OrderQuote {
   minimum: MinimumCheck;
   /** Bu sipariş hangi gün çıkar — kesim saati tanımlıysa. */
   despatch: DespatchPromise;
+  /**
+   * Çıkış deposu. Null: "depo" modülü kapalı (ya da hiç aktif depo yok) ve
+   * stok toplamdan kontrol edildi. Sipariş bunu aynen yazar.
+   */
+  warehouse: OrderWarehouse | null;
 }
 
 /**
@@ -214,6 +228,7 @@ export async function buildQuote(
       allowedPaymentMethods: true,
       volumeDiscountMode: true,
       volumeTierId: true,
+      warehouseId: true,
       paymentTerms: {
         where: { isActive: true },
         select: { id: true, name: true, days: true },
@@ -287,6 +302,22 @@ export async function buildQuote(
   });
   const vmap = new Map(variants.map((v) => [v.id, v]));
 
+  // Stok hangi sayıya karşı kontrol ediliyor: modül açıksa çıkış deposunun
+  // satılabilir adedi, kapalıysa toplam. Teklif ve sipariş aynı yoldan geçtiği
+  // için sepetin "var" dediği depo, siparişin düştüğü depodur.
+  const warehouse = await resolveOrderWarehouse(client, {
+    companyWarehouseId: company.warehouseId,
+    requestedId: input.warehouseId ?? null,
+    isSeller: input.isSeller ?? false,
+  });
+  const availability = warehouse
+    ? await loadWarehouseAvailability(
+        client,
+        warehouse.id,
+        variants.map((v) => v.id),
+      )
+    : null;
+
   // 1. Price every line and check what the catalogue demands of it.
   const lines: QuotedLine[] = [];
   for (const item of input.items) {
@@ -322,12 +353,22 @@ export async function buildQuote(
         { sku: v.sku, unitsPerCase: v.unitsPerCase },
       );
     }
-    const stock = qty(v.stock);
+    const inWarehouse = availability ? availabilityOf(availability, v.id) : null;
+    if (warehouse && inWarehouse?.blocked) {
+      throw new BusinessError(
+        "ORDER_BLOCKED",
+        `${v.sku}: ${warehouse.name} deposundan sipariş alınmıyor`,
+        { sku: v.sku, warehouseId: warehouse.id },
+      );
+    }
+    const stock = inWarehouse ? inWarehouse.available : qty(v.stock);
     if (item.quantity > stock) {
       throw new BusinessError(
         "INSUFFICIENT_STOCK",
-        `${v.sku}: yetersiz stok (${formatQuantity(stock)}${v.unit ? ` ${v.unit}` : ""})`,
-        { sku: v.sku, stock },
+        warehouse
+          ? `${v.sku}: ${warehouse.name} deposunda yetersiz stok (${formatQuantity(stock)}${v.unit ? ` ${v.unit}` : ""})`
+          : `${v.sku}: yetersiz stok (${formatQuantity(stock)}${v.unit ? ` ${v.unit}` : ""})`,
+        { sku: v.sku, stock, warehouseId: warehouse?.id ?? null },
       );
     }
 
@@ -442,6 +483,7 @@ export async function buildQuote(
         customerGroupId: company.customerGroupId,
         discounts: company.discounts,
         volumeDiscountPercent: volumePercent,
+        warehouseId: warehouse?.id ?? null,
         // A gift of something already in the cart must not eat the stock the
         // paid line is holding.
         reserved: lines.reduce<Map<string, number>>((map, l) => {
@@ -535,6 +577,7 @@ export async function buildQuote(
       companyMinimum: company.minOrderAmount,
     }),
     despatch: despatchPromise(policy),
+    warehouse,
   };
 }
 
@@ -566,6 +609,8 @@ async function priceGifts(
     }>;
     /** Same rung as the paid lines — a gift is valued at what the customer pays. */
     volumeDiscountPercent: Prisma.Decimal | null;
+    /** Çıkış deposu: hediye de oradan verilir, "sipariş alınmasın" kalem verilmez. */
+    warehouseId: string | null;
     reserved: Map<string, number>;
   },
 ): Promise<PricedGift[]> {
@@ -597,6 +642,9 @@ async function priceGifts(
   });
   const vmap = new Map(variants.map((v) => [v.id, v]));
   const giftRates = await currentRatesTx(client, undefined);
+  const giftStock: Map<string, WarehouseAvailability> | null = params.warehouseId
+    ? await loadWarehouseAvailability(client, params.warehouseId, [...vmap.keys()])
+    : null;
 
   const out: PricedGift[] = [];
   const taken = new Map(params.reserved);
@@ -605,8 +653,10 @@ async function priceGifts(
     const v = vmap.get(gift.variantId);
     if (!v) continue; // withdrawn from the catalogue since the campaign was written
 
+    const inWarehouse = giftStock ? availabilityOf(giftStock, v.id) : null;
+    if (inWarehouse?.blocked) continue; // bu depodan verilmiyor
     const already = taken.get(v.id) ?? 0;
-    const available = qtySub(v.stock, already);
+    const available = qtySub(inWarehouse ? inWarehouse.available : v.stock, already);
     const quantity = Math.min(gift.quantity, Math.max(0, available));
     if (quantity === 0) continue;
 
@@ -736,6 +786,8 @@ export interface OrderQuoteView {
   minimum: MinimumCheck;
   /** Bu sipariş hangi gün çıkar; `cutoffHour` null ise ekran bir şey yazmıyor. */
   despatch: DespatchPromise;
+  /** Çıkış deposu; null = depo modülü kapalı, stok toplamdan. */
+  warehouse: OrderWarehouse | null;
 }
 
 /** Price a cart for the portal without touching stock, orders or the ledger. */
@@ -794,5 +846,6 @@ export async function quoteOrder(input: QuoteInput): Promise<OrderQuoteView> {
       : null,
     minimum: quote.minimum,
     despatch: quote.despatch,
+    warehouse: quote.warehouse,
   };
 }

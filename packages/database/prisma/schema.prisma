@@ -321,6 +321,12 @@ model Company {
   /// existing customers keep working without a data migration.
   allowedPaymentMethods PaymentMethod[] @default([])
 
+  /// Bu müşterinin siparişlerinin çıktığı depo ("depo" modülü açıkken). Boşsa
+  /// kurulumun varsayılan deposu. Şubeli toptancıda Samsun'daki bayi Samsun
+  /// deposunun stoğunu görür ve siparişi oradan düşer.
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
   /// The vade options offered to this customer at checkout. Empty = no choice:
   /// the order silently takes `paymentTermDays` above, which is how every
   /// order behaved before terms existed.
@@ -731,6 +737,10 @@ model Warehouse {
 
   stocks    VariantStock[]
   movements StockMovement[]
+  /// Bu depodan çıkan siparişler ("depo" modülü açıkken).
+  orders    Order[]
+  /// Siparişleri bu depodan çıkan müşteriler.
+  companies Company[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -751,6 +761,17 @@ model VariantStock {
   onHand   Decimal @default(0) @db.Decimal(14, 3)
   reserved Decimal @default(0) @db.Decimal(14, 3)
 
+  /// Bu depodaki kritik seviye (Vega `TBLSTOKENVANTER.KRITIKSEVIYE`). Eldeki
+  /// bunun altına ya da eşitine düşünce satır kritik stok listesine girer.
+  /// Varyanttaki `minStock` toplam içindir; ikisi ayrı, çünkü merkezde 500
+  /// adet dururken şubede 3 adet kaldığını yalnızca depo satırı gösterir.
+  minStock    Decimal? @db.Decimal(14, 3)
+  /// "Sipariş alınmasın" (Vega `SIPARISALINMASIN`): kalem bu depodan
+  /// satılmaz. Stok sayısına dokunmaz; bu depodan beslenen müşteri kalemi
+  /// katalogda stoksuz görür, sipariş reddedilir. Yalnızca "depo" modülü
+  /// açıkken anlamlı — kapalıyken sipariş depo seçmiyor.
+  blockOrders Boolean  @default(false)
+
   erpSyncedAt DateTime?
   updatedAt   DateTime  @updatedAt
 
@@ -766,9 +787,10 @@ model VariantStock {
 ///
 /// Bakiye kuralı `VariantStock` ile aynı: `onHand` defterin bakiyesidir,
 /// `postStockMovement` dışında hiçbir yerde değişmez. Depo kırılımı bilerek
-/// yok — sipariş bir depo seçmiyor, parti seçiyor; partiyi ayrıca depoya
-/// bölmek, kullanılmayan bir kırılım uğruna eşsizliği (aynı parti kodu iki
-/// depoda iki satır) bozardı.
+/// yok: partiyi depoya bölmek eşsizliği (aynı parti kodu iki depoda iki
+/// satır) bozardı. "Depo" modülü açıkken sipariş bir depodan düşer ama FEFO
+/// partiyi yine bütün partiler arasından seçer — çok depolu ve partili
+/// kurulumda parti, deposu bilinmeyen bir kırılım olarak kalır.
 model StockLot {
   id        String         @id @default(cuid())
   variantId String
@@ -838,9 +860,9 @@ model StockMovement {
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  /// Hangi depo. Boş olabilir: tek depolu kurulumda depo kavramı hiç
-  /// kullanılmıyor ve sipariş satırı bir depo seçmiyor. Depo adı verilen
-  /// hareket ayrıca `VariantStock` kırılımını da oynatır.
+  /// Hangi depo. Boş olabilir: "depo" modülü kapalı kurulumda sipariş depo
+  /// seçmiyor ve ERP yalnız toplamı gönderiyor. Depo adı verilen hareket
+  /// ayrıca `VariantStock` kırılımını da oynatır.
   warehouseId String?
   warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
@@ -1558,6 +1580,14 @@ model Order {
 
   note String?
 
+  /// Çıkış deposu: stok bu depodan düştü, iptal ve iade buraya döner.
+  ///
+  /// Boşsa sipariş depo bilmeden girildi ("depo" modülü kapalıydı) ve yalnız
+  /// toplam stoktan düştü. Modül sonradan açılıp kapansa da siparişin deposu
+  /// değişmez: malı geri veren yol, bugünkü ayara değil, çıktığı yere bakar.
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
   /// Hangi kanaldan girildi. **Sunucu karar veriyor**, istemci söylemiyor:
   /// tarayıcı kendini telefon ilan edemez (bkz. `requestChannel`, ziyaret
   /// kaydındaki kuralın aynısı).
@@ -1602,6 +1632,7 @@ model Order {
   @@index([companyId])
   @@index([createdById])
   @@index([status])
+  @@index([warehouseId])
 }
 
 // Audit trail of every status change, including the initial one at creation.

@@ -354,6 +354,34 @@ barkodu ve isteğe bağlı fiyatı vardır (Vega `TBLBIRIMLEREX`).
   ekrandan girilmiyor, ERP'den geliyor. Excel içe aktarımı birim taşımıyor
   (B akışı).
 
+### Depo bazlı stok (F3, 2026-10-05)
+
+"Depo bazlı stok" modülü (Ayarlar → Modüller) açıkken sipariş bir depodan
+düşer. Modül **kapalı başlar**: ERP'si yalnız toplam stok gönderen kurulumda
+depo satırları boştur, açık gelen modül bütün siparişleri reddederdi.
+
+- **Çıkış deposu:** satıcının seçtiği → müşterinin deposu (firma formunda
+  "Çıkış deposu") → kurulumun varsayılan deposu. Müşteri depo seçemez
+  (gönderirse 403). Pasif müşteri deposu varsayılana düşer.
+- **Kontrol ve düşüş:** teklif ve sipariş o deponun satılabilir adedine
+  (eldeki − rezerve) bakar; satırı olmayan depo "mal yok" sayılır. Sipariş
+  depo satırını ve toplamı birlikte düşer, siparişe deposu yazılır.
+- **İptal ve iade** malı siparişin çıktığı depoya geri verir, modül sonradan
+  kapatılsa bile.
+- **Katalog ve sepet** müşterinin deposunun adedini gösterir.
+- **Kritik seviye ve "sipariş alınmasın"** depo × kalem bazında (Vega
+  `TBLSTOKENVANTER.KRITIKSEVIYE`, `SIPARISALINMASIN`). Stok ekranında depo
+  seçilince "Kritik" sütunu o deponun eşiğini gösterir, satır açılınca ikisi
+  düzenlenir (`PATCH /api/admin/stock`). Bayraklı kalem o depodan satılmaz
+  (409 `ORDER_BLOCKED`), katalogda stoksuz görünür; satıcı başka depodan
+  satabilir.
+- Sipariş detayında "Çıkış deposu" satırı.
+- **Açık:** ERP ajanı stoku depo kırılımıyla göndermiyor (yalnız toplam);
+  ERP'li kurulumda modül ancak ajan depo kırılımı gönderince açılmalı. Parti
+  (lot) depoya bölünmüyor: FEFO bütün partilerden seçer. Mobil uygulama
+  depo seçmiyor (C akışı; teklif `warehouse` döndürüyor, satıcı
+  `warehouseId` gönderebilir). Bekleyen sipariş listesi toplam stoka bakıyor.
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.

@@ -110,6 +110,7 @@ export default async function AdminCompanyPage({
           paymentTermIds: company.paymentTerms.map((t) => t.id),
           volumeDiscountMode: company.volumeDiscountMode,
           volumeTierId: company.volumeTier?.id ?? "",
+          warehouseId: company.warehouse?.id ?? "",
           // Sunucu bileşeni: istemci modülündeki yardımcı burada çağrılamıyor,
           // dönüşüm satır içinde.
           codes: Object.fromEntries(

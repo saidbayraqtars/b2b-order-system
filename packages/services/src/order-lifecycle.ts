@@ -351,6 +351,8 @@ export interface OrderDetail {
   /** Campaigns that were applied when the order was placed. */
   promotions: OrderPromotionRow[];
   note: string | null;
+  /** Çıkış deposu; null = sipariş depo bilmeden girildi (depo modülü kapalıydı). */
+  warehouse: { code: string; name: string } | null;
   carrier: string | null;
   trackingNumber: string | null;
   createdAt: string;
@@ -396,6 +398,7 @@ export async function getOrderDetail(
       volumeDiscountPercent: true,
       couponCode: true,
       note: true,
+      warehouse: { select: { code: true, name: true } },
       carrier: true,
       trackingNumber: true,
       createdAt: true,
@@ -470,6 +473,7 @@ export async function getOrderDetail(
     couponCode: o.couponCode,
     promotions,
     note: o.note,
+    warehouse: o.warehouse,
     carrier: o.carrier,
     trackingNumber: o.trackingNumber,
     createdAt: o.createdAt.toISOString(),

@@ -1,6 +1,7 @@
 import { prisma } from "@repo/database";
 import type { SetCartInput, UpsertCartItemInput } from "@repo/types";
 import { loadCompanyPricingContext } from "./catalog";
+import { availabilityOf, loadWarehouseAvailability, sellableIn } from "./warehouse-stock";
 import { BusinessError } from "./errors";
 import { convertPriceRows } from "./exchange-rate";
 import { resolvePrice } from "./pricing";
@@ -140,6 +141,15 @@ export async function getCart(
   if (!cart) return { companyId, ...EMPTY };
 
   const ctx = await loadCompanyPricingContext(companyId);
+  // Depo modülünde sepet de müşterinin deposunun adedini gösterir — katalogla
+  // ve siparişin kontrol ettiği sayıyla aynı.
+  const stockIn = ctx.warehouse
+    ? await loadWarehouseAvailability(
+        prisma,
+        ctx.warehouse.id,
+        cart.items.map((i) => i.variant.id),
+      )
+    : null;
 
   const stale: string[] = [];
   const lines: CartLineView[] = [];
@@ -190,7 +200,7 @@ export async function getCart(
       size: v.size,
       unitsPerCase: v.unitsPerCase,
       moqUnits: qty(v.moqUnits),
-      stock: qty(v.stock),
+      stock: stockIn ? sellableIn(availabilityOf(stockIn, v.id)) : qty(v.stock),
       unit: v.unit,
       quantityScale: v.quantityScale,
       vatRate: v.product.vatRate,

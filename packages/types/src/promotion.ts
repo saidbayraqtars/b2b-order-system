@@ -87,6 +87,8 @@ export const quoteOrderSchema = z.object({
   couponCode: couponCodeSchema.optional(),
   /** Freight, so a seller-side preview can show a shipping campaign working. */
   shippingFee: z.number().min(0).max(1_000_000).optional(),
+  /** Çıkış deposu; sipariş şemasıyla aynı kural (order.ts). */
+  warehouseId: entityIdSchema.nullish(),
   items: z
     .array(
       z.object({

@@ -183,6 +183,10 @@ export interface StockLevelRow {
   shelfCode: string | null;
   /** Depo süzgeci verildiyse o deponun adedi; verilmediyse null. */
   warehouseOnHand: number | null;
+  /** Depo süzgeci verildiyse o depodaki kritik seviye. */
+  warehouseMinStock: number | null;
+  /** Depo süzgeci verildiyse: bu depodan "sipariş alınmasın" mı. */
+  warehouseBlocked: boolean;
   erpSyncedAt: string | null;
 }
 
@@ -190,7 +194,10 @@ export interface StockLevelFilter {
   /** SKU / barkod / ürün adı. */
   q?: string;
   warehouseId?: string;
-  /** Yalnızca kritik eşiğin altındakiler. */
+  /**
+   * Yalnızca kritik eşiğin altındakiler. Depo verildiyse **o deponun** eşiği
+   * ve adedi, verilmediyse varyantın toplam eşiği.
+   */
   lowOnly?: boolean;
   limit?: number;
 }
@@ -220,7 +227,18 @@ export async function listStockLevels(
             ],
           }
         : {}),
-      ...(filter.lowOnly ? { minStock: { not: null } } : {}),
+      ...(filter.lowOnly
+        ? filter.warehouseId
+          ? {
+              stocks: {
+                some: {
+                  warehouseId: filter.warehouseId,
+                  minStock: { not: null },
+                },
+              },
+            }
+          : { minStock: { not: null } }
+        : {}),
     },
     orderBy: [{ product: { name: "asc" } }, { sku: "asc" }],
     take: Math.min(filter.limit ?? 100, 500),
@@ -239,32 +257,53 @@ export async function listStockLevels(
         ? {
             stocks: {
               where: { warehouseId: filter.warehouseId },
-              select: { onHand: true },
+              select: { onHand: true, minStock: true, blockOrders: true },
             },
           }
         : {}),
     },
   });
 
-  return rows
-    .map((r) => ({
-      variantId: r.id,
-      sku: r.sku,
-      barcode: r.barcode,
-      productName: r.product.name,
-      stock: qty(r.stock),
-      minStock: qtyOrNull(r.minStock),
-      unit: r.unit,
-      quantityScale: r.quantityScale,
-      shelfCode: r.shelfCode,
-      warehouseOnHand: filter.warehouseId
-        ? qty((r as { stocks?: Array<{ onHand: Prisma.Decimal }> }).stocks?.[0]?.onHand)
-        : null,
-      erpSyncedAt: r.erpSyncedAt?.toISOString() ?? null,
-    }))
-    // Eşiğin altında olma koşulu SQL'de kolonlar arası karşılaştırma isterdi;
-    // liste zaten `minStock` olanlarla sınırlandığı için burada eleniyor.
-    .filter((r) => !filter.lowOnly || (r.minStock !== null && r.stock <= r.minStock));
+  type WarehouseCell = {
+    onHand: Prisma.Decimal;
+    minStock: Prisma.Decimal | null;
+    blockOrders: boolean;
+  };
+  return (
+    rows
+      .map((r) => {
+        const cell = filter.warehouseId
+          ? ((r as { stocks?: WarehouseCell[] }).stocks?.[0] ?? null)
+          : null;
+        return {
+          variantId: r.id,
+          sku: r.sku,
+          barcode: r.barcode,
+          productName: r.product.name,
+          stock: qty(r.stock),
+          minStock: qtyOrNull(r.minStock),
+          unit: r.unit,
+          quantityScale: r.quantityScale,
+          shelfCode: r.shelfCode,
+          warehouseOnHand: filter.warehouseId ? qty(cell?.onHand) : null,
+          warehouseMinStock: qtyOrNull(cell?.minStock),
+          warehouseBlocked: cell?.blockOrders ?? false,
+          erpSyncedAt: r.erpSyncedAt?.toISOString() ?? null,
+        };
+      })
+      // Eşiğin altında olma koşulu SQL'de kolonlar arası karşılaştırma isterdi;
+      // liste zaten eşiği olanlarla sınırlandığı için burada eleniyor.
+      .filter((r) => {
+        if (!filter.lowOnly) return true;
+        if (filter.warehouseId) {
+          return (
+            r.warehouseMinStock !== null &&
+            (r.warehouseOnHand ?? 0) <= r.warehouseMinStock
+          );
+        }
+        return r.minStock !== null && r.stock <= r.minStock;
+      })
+  );
 }
 
 /**

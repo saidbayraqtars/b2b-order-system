@@ -608,6 +608,8 @@ const BUSINESS_STATUS: Record<BusinessErrorCode, number> = {
   INVALID_QUANTITY: 422,
   UNIT_NOT_FOUND: 404,
   DUPLICATE_UNIT: 409,
+  // Depo satırında "sipariş alınmasın" — yetersiz stok ile aynı aile.
+  ORDER_BLOCKED: 409,
   STOCK_MOVEMENT_NOT_FOUND: 404,
   LOT_NOT_FOUND: 404,
   LOT_CODE_TAKEN: 409,

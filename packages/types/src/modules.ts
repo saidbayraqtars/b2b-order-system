@@ -38,6 +38,7 @@ export const ModuleKeyEnum = z.enum([
   "basvuru",
   "etiket",
   "duyuru",
+  "depo",
 ]);
 export type ModuleKey = z.infer<typeof ModuleKeyEnum>;
 
@@ -53,6 +54,12 @@ export interface ModuleDef {
   paths?: readonly string[];
   /** Kapalıyken fiyat hesabı da değişir — ekranda ayrıca söylenir. */
   affectsPricing?: boolean;
+  /**
+   * Hiç ayarlanmamış kurulumda açık mı. Varsayılan `true`: modül tablosundan
+   * önce kurulmuş sistemde hiçbir ekran kaybolmamalı. `false` olan modül
+   * davranış değiştirir ve bilerek açılır (bkz. `depo`).
+   */
+  defaultEnabled?: boolean;
 }
 
 export const MODULES: Record<ModuleKey, ModuleDef> = {
@@ -141,6 +148,18 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
     label: "Duyurular",
     description: "Portalda ve mobilde gösterilen duyurular.",
     permissions: ["announcements.manage"],
+  },
+  // Ekran değil davranış: açıkken sipariş müşterinin deposundan düşer, stok
+  // kontrolü o deponun adedine bakar, depo başına "sipariş alınmasın" işler.
+  // Kapalı başlar: ERP'si yalnız toplam gönderen kurulumda depo satırları
+  // boştur ve açık gelen modül bütün siparişleri reddederdi. Kendine ait izni
+  // yok — depoları `stock.manage` yönetiyor, o izin stok ekranının da izni.
+  depo: {
+    label: "Depo bazlı stok",
+    description:
+      'Sipariş müşterinin deposundan düşer; stok kontrolü, iptal ve iade o depoya bakar. Depo başına kritik seviye ve "sipariş alınmasın". Depo adetleri tutulmuyorsa açmayın.',
+    permissions: [],
+    defaultEnabled: false,
   },
 };
 

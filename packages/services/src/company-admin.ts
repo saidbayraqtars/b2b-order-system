@@ -52,6 +52,8 @@ export interface CompanyRow {
    * force is whatever turnover earns, which `getVolumeStatus` answers live.
    */
   volumeTier: { id: string; name: string; discountPercent: string } | null;
+  /** Siparişlerin çıktığı depo; null = kurulumun varsayılanı. */
+  warehouse: { id: string; code: string; name: string } | null;
   counts: { orders: number; users: number; addresses: number };
   /** Özel kodlar — bölge, segment, kanal… (`code1..code10`). */
   codes: CustomCodeValues;
@@ -101,6 +103,7 @@ const companySelect = {
   },
   volumeDiscountMode: true,
   volumeTier: { select: { id: true, name: true, discountPercent: true } },
+  warehouse: { select: { id: true, code: true, name: true } },
   _count: { select: { orders: true, members: true, addresses: true } },
   ...CUSTOM_CODE_SELECT,
 } satisfies Prisma.CompanySelect;
@@ -126,6 +129,7 @@ function toRow(c: CompanyPayload): CompanyRow {
     allowedPaymentMethods: c.allowedPaymentMethods,
     paymentTerms: c.paymentTerms,
     volumeDiscountMode: c.volumeDiscountMode,
+    warehouse: c.warehouse,
     volumeTier: c.volumeTier
       ? {
           id: c.volumeTier.id,
@@ -209,7 +213,17 @@ async function assertReferences(input: {
   salesRepId?: string | null;
   paymentTermIds?: string[];
   volumeTierId?: string | null;
+  warehouseId?: string | null;
 }): Promise<void> {
+  if (input.warehouseId) {
+    const warehouse = await prisma.warehouse.findUnique({
+      where: { id: input.warehouseId },
+      select: { isActive: true },
+    });
+    if (!warehouse?.isActive) {
+      throw new BusinessError("WAREHOUSE_NOT_FOUND", "Depo bulunamadı ya da pasif");
+    }
+  }
   if (input.volumeTierId) {
     const tier = await prisma.volumeTier.findUnique({
       where: { id: input.volumeTierId },
@@ -293,6 +307,7 @@ export async function createCompany(
       allowedPaymentMethods: input.allowedPaymentMethods,
       volumeDiscountMode: input.volumeDiscountMode,
       volumeTierId: input.volumeTierId ?? null,
+      warehouseId: input.warehouseId ?? null,
       ...(input.paymentTermIds.length > 0
         ? { paymentTerms: { connect: input.paymentTermIds.map((id) => ({ id })) } }
         : {}),
@@ -358,6 +373,7 @@ export async function updateCompany(
         ? { volumeDiscountMode: input.volumeDiscountMode }
         : {}),
       ...(input.volumeTierId !== undefined ? { volumeTierId: input.volumeTierId } : {}),
+      ...(input.warehouseId !== undefined ? { warehouseId: input.warehouseId } : {}),
     },
     select: companySelect,
   });

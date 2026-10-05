@@ -42,6 +42,13 @@ export const createOrderSchema = z.object({
    * like the term was granted. Reps and admins negotiate, so they may set it.
    */
   paymentTermDays: z.number().int().min(0).max(365).optional(),
+  /**
+   * Çıkış deposu ("depo" modülü açıkken). Yalnız satıcı tarafı seçer —
+   * plasiyerin araç deposu gibi. Alıcı gönderirse vade gibi reddedilir.
+   * Teklif şeması (`quoteOrderSchema`) aynı alanı taşımalı: ayrışırsa sepet
+   * bir depodan, sipariş başka depodan hesaplanır.
+   */
+  warehouseId: entityIdSchema.nullish(),
   items: z.array(cartItemInputSchema).min(1, "Sepet boş olamaz"),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

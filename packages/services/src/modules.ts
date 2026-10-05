@@ -10,6 +10,8 @@ import { auditActor, recordAudit, type AuditContext } from "./audit";
 //
 // Satır yoksa modül **açık**: bu tablo eklenmeden önce kurulmuş bir sistem
 // yükseltildiğinde hiçbir ekran kaybolmamalı. Kapatmak bilinçli bir hamle.
+// Tek istisna davranış değiştiren modül (`defaultEnabled: false`, ör. `depo`):
+// o satırı yokken kapalıdır ve bilerek açılır.
 //
 // Her istekte okunuyor (izin kapısı buna bakıyor), bu yüzden süreç içinde 5 sn
 // önbellekte. Principal önbelleğiyle aynı sınır: çok süreçli bir kurulumda
@@ -22,12 +24,14 @@ let cache: { at: number; disabled: ModuleKey[] } | null = null;
 export async function getDisabledModules(): Promise<ModuleKey[]> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.disabled;
   const rows = await prisma.installationModule.findMany({
-    where: { enabled: false },
-    select: { key: true },
+    select: { key: true, enabled: true },
   });
-  const known = new Set<string>(MODULE_KEYS);
+  const stored = new Map(rows.map((r) => [r.key, r.enabled]));
   // Kaldırılmış bir modülün satırı kalmışsa yok sayılır — hiçbir izni yok.
-  const disabled = rows.map((r) => r.key).filter((k): k is ModuleKey => known.has(k));
+  // Satırı olmayan modül kendi varsayılanını alır (çoğu açık, `depo` kapalı).
+  const disabled = MODULE_KEYS.filter(
+    (k) => !(stored.get(k) ?? MODULES[k].defaultEnabled ?? true),
+  );
   cache = { at: Date.now(), disabled };
   return disabled;
 }

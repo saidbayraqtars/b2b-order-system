@@ -87,6 +87,8 @@ export const createCompanySchema = z.object({
   /** AUTO earns the hacim tier from turnover; MANUAL pins `volumeTierId`. */
   volumeDiscountMode: VolumeDiscountModeEnum.default("AUTO"),
   volumeTierId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
+  /** Siparişlerin çıktığı depo ("depo" modülü); boş = kurulumun varsayılanı. */
+  warehouseId: z.string().cuid().optional().or(z.literal("").transform(() => undefined)),
   /** Özel kodlar (`code1..code10`): bölge, segment, kanal… */
   ...customCodeValuesSchema.shape,
 });
@@ -118,6 +120,8 @@ export const updateCompanySchema = z
     volumeDiscountMode: VolumeDiscountModeEnum.optional(),
     /** Nullable: clearing the pin under MANUAL is how the ladder is turned off. */
     volumeTierId: z.string().cuid().nullable().optional(),
+    /** Nullable: boşaltmak "kurulumun varsayılan deposu" demek. */
+    warehouseId: z.string().cuid().nullable().optional(),
     ...customCodeValuesSchema.shape,
   })
   .refine((v) => Object.keys(v).length > 0, "Güncellenecek alan yok");

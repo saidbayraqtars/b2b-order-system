@@ -394,7 +394,7 @@ async function actInTx(
       companyId: true,
       orderId: true,
       creditTransactionId: true,
-      order: { select: { orderNumber: true, paymentMethod: true } },
+      order: { select: { orderNumber: true, paymentMethod: true, warehouseId: true } },
       items: {
         select: {
           id: true,
@@ -458,7 +458,7 @@ type LoadedReturn = {
   rmaNumber: string;
   companyId: string;
   orderId: string;
-  order: { orderNumber: string; paymentMethod: string };
+  order: { orderNumber: string; paymentMethod: string; warehouseId: string | null };
   items: Array<{
     id: string;
     orderItemId: string;
@@ -564,6 +564,9 @@ async function receiveInTx(
         source: "RETURN",
         description: `İade ${request.rmaNumber} — sipariş ${request.order.orderNumber}`,
         orderId: request.orderId,
+        // Sağlam mal siparişin çıktığı depoya döner (depo modülü kapalıyken
+        // sipariş deposuzdu, iade de yalnız toplama girer).
+        warehouseId: request.order.warehouseId,
         // Parti bilerek boş: geri gelen kutunun hangi partiden çıktığını
         // kimse bilmiyor ve tahmin etmek, SKT takibini sessizce yalan yapardı.
         lotId: null,
