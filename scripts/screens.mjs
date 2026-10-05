@@ -25,6 +25,43 @@ export const ACCOUNTS = {
 };
 
 /**
+ * Bayi yöneticisinin sepetini bilinen dört kalemle doldurur: teneke, karton,
+ * koli ve hizmet. Sepet sunucuda tutulduğu için ekran görüntüsü ve Playwright
+ * aynı sepeti buradan kuruyor; önce boşaltıyor, yani kaç kez koşarsa koşsun
+ * sonuç aynı. Playwright testi bitince sepeti yeniden boşaltıyor.
+ */
+export const DEMO_CART = [
+  ["GD-YAG-5L", 4],
+  ["KK-30x20-KAHVE", 50],
+  ["GD-SLC-830", 12],
+  ["HZ-NAKLIYE", 1],
+];
+
+export async function seedDemoCart(db) {
+  const user = await db.user.findUnique({
+    where: { email: ACCOUNTS.portal.email },
+    select: { id: true, companyId: true },
+  });
+  if (!user?.companyId) return false;
+  const cart = await db.cart.upsert({
+    where: {
+      companyId_ownerId: { companyId: user.companyId, ownerId: user.id },
+    },
+    create: { companyId: user.companyId, ownerId: user.id },
+    update: {},
+  });
+  await db.cartItem.deleteMany({ where: { cartId: cart.id } });
+  for (const [sku, quantity] of DEMO_CART) {
+    const v = await db.productVariant.findFirst({ where: { sku } });
+    if (!v) return false;
+    await db.cartItem.create({
+      data: { cartId: cart.id, variantId: v.id, quantity },
+    });
+  }
+  return true;
+}
+
+/**
  * Sipariş listesinde en çok kalemi olan sipariş — boş ekran kaydetmemek için.
  *
  * `email` verilirse o hesabın **kendi firmasının** siparişleri arasından
@@ -1084,5 +1121,15 @@ export const SCREENS = [
       });
       return c && `/portal?kategori=${c.id}&sirala=stock`;
     },
+  },
+
+  // ── Adım 18: D5 sepet (önce: portal-sepet-once.png) ─────────────────────
+  // Yol çözülürken gösterim sepeti kuruluyor (seedDemoCart) ve dolu kalıyor.
+  {
+    step: 18,
+    slug: "portal-sepet",
+    label: "Portal sepet — kalem sayacı, yazılabilir miktar, birim fiyat, kupon bağlantıda",
+    as: "portal",
+    path: async (db) => ((await seedDemoCart(db)) ? "/portal" : null),
   },
 ];

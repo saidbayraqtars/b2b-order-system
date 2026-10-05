@@ -23,7 +23,7 @@ Dal `claude/ozel-kod` ve devamı, klasör `D:\projeler\b2b-claude`,
 | F1 kesirli stok | ✔ `2e16988` — 15 miktar kolonu Decimal(14,3), varyanta `quantityScale` (0 = adet), API'de miktar sayı kalıyor |
 | F2 çoklu birim | ✔ 2026-10-05 — `VariantUnit` (çarpan, barkod, fiyat); miktar taban birimde, paket fiyatı 6 ondalıkla iner; ERP `/api/erp/units` |
 | F3 depo bazlı stok + kritik seviye | ✔ 2026-10-05 — "depo" modülü (kapalı başlar); sipariş müşterinin deposundan düşer, iptal/iade oraya döner; depo başına kritik seviye ve "sipariş alınmasın"; ekranlar `docs/design/screens/adim-18/` |
-| D5 ekran ekran | sürüyor — 5/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok); ürün formu ✔ (ürün tipi ürün/hizmet — hizmet stok tutmaz; fiyat geçmişi beş yoldan, kapalı panel; sessiz Sil, yeni varyant formu düğmede); firma formu ✔ (künye / ticari koşullar, sözleşme ayarları basit görünümde yalnız doluysa, hacim modülü kapalıyken alan yok ve basamak korunur, tek iskonto paneli ve ekleme `pricing.manage`, salt okumada kilitli, kapalı panelin "Yeni …" düğmesi paneli açıyor); portal katalog ✔ (süzgeçler adreste, detaydan dönüş süzgeci koruyor, asgariden az stokta sebep kartta, stok sırasında hizmet sonda). Sırada sepet |
+| D5 ekran ekran | bitti — 6/6: sipariş listesi ✔ (yönetimde kendi ekranı `/admin/siparisler`, durum sekmeleri + arama adreste, pano yalnız onay bekleyen, toplu fiş gelişmiş görünümde); sipariş detayı ✔ (satır sevk durumu irsaliyeden türetilir, boş iskonto/kampanya sütunu yok, irsaliye/fatura formu düğmenin arkasında, sevk başlamışsa iptal düğmesi yok); ürün formu ✔ (ürün tipi ürün/hizmet — hizmet stok tutmaz; fiyat geçmişi beş yoldan, kapalı panel; sessiz Sil, yeni varyant formu düğmede); firma formu ✔ (künye / ticari koşullar, sözleşme ayarları basit görünümde yalnız doluysa, hacim modülü kapalıyken alan yok ve basamak korunur, tek iskonto paneli ve ekleme `pricing.manage`, salt okumada kilitli, kapalı panelin "Yeni …" düğmesi paneli açıyor); portal katalog ✔ (süzgeçler adreste, detaydan dönüş süzgeci koruyor, asgariden az stokta sebep kartta, stok sırasında hizmet sonda); sepet ✔ (sayaç kalem sayısı, satırda birim fiyat, miktar her satırda yazılır, kupon bağlantıda ve kampanya modülüne bağlı, tek ödeme yöntemi bilgi satırı) |
 
 D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 `claude/coklu-birim` dalında.
@@ -34,14 +34,16 @@ D1-F1 main'e birleşti: `2955b58` (2026-10-04), push edildi. Sonraki iş
 Ölçüm (D5 ürün formu, 2026-10-05): servisler 776, web 427 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 144 test: 140 geçti, 3 atlandı (gösterim verisinde o ekranın kaydı yok), 1 düştü (yeni testin kendi seçicisi; düzeltilip dosya tek başına 8/8). Kasa testleri `TENANT_DIR` ile geçti; sipariş listesindeki geri tuşu düzeltmesi de bu koşuda geçti.
 Ölçüm (D5 firma formu, 2026-10-05): web 432 test (servis kodu değişmedi); typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 148 test: 145 geçti, 3 atlandı, düşen yok.
 Ölçüm (D5 portal katalog, 2026-10-05): web 438 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 152 test: 149 geçti, 3 atlandı, düşen yok.
+Ölçüm (D5 sepet, 2026-10-05): web 442 test; typecheck 9/9, lint 8/8, build yeşil. Playwright tam koşu 155 test: 152 geçti, 3 atlandı, düşen yok.
 
-### Kaldığı yer (6/6 sepet)
+### Kaldığı yer (D5 bitti)
 
-Portal katalog (5/6) bitti: birim testi `apps/web/test/orderable.test.ts` (6),
-önce/sonra görüntüleri `portal-katalog`, `portal-katalog-suzgec` (adım 18),
-Playwright `e2e/portal-katalog.spec.ts` (3 test).
+D5 altı ekranın altısı bitti. Son ekran sepet: rota testi
+`apps/web/test/cart-panel.test.ts` (4), önce/sonra `portal-sepet` (adım 18;
+gösterim sepeti `seedDemoCart` ile kuruluyor), Playwright
+`e2e/portal-sepet.spec.ts` (2 test; sepeti kurup sonda boşaltıyor).
 
-Sıradaki: sepet (son ekran). Her ekranda aynı yol: "önce"
+Dal `claude/sadelestirme` push edilmedi; main'e birleştirme Said'in onayıyla. Her ekranda aynı yol: "önce"
 görüntüsü (`*-once.png`), değişiklik, servis/rota testi, "sonra" görüntüsü,
 `e2e/<ekran>.spec.ts`, `pnpm e2e` tam koşu (sunucu `TENANT_DIR` ile).
 

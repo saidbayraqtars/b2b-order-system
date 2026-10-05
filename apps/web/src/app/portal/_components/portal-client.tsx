@@ -253,7 +253,7 @@ export function PortalClient({
   );
   const [scanNotice, setScanNotice] = useState<ScanNotice | null>(null);
   const [scanning, setScanning] = useState(false);
-  const { itemCount, add } = useCart(companyId);
+  const { lines: cartLines, add } = useCart(companyId);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -424,9 +424,15 @@ export function PortalClient({
         ) : undefined
       }
       right={
-        <span className="flex items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-semibold tabular-nums text-on-accent">
-          <ShoppingCart className="h-3.5 w-3.5" />
-          {itemCount}
+        // Kalem sayısı, sepet panelinin başlığıyla aynı. Önce taban birimlerin
+        // toplamıydı: 4 teneke + 50 karton + 1 sefer = "67" — hiçbir şey.
+        <span
+          title={`Sepette ${cartLines.length} kalem`}
+          aria-label={`Sepette ${cartLines.length} kalem`}
+          className="flex items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-semibold tabular-nums text-on-accent"
+        >
+          <ShoppingCart className="h-3.5 w-3.5" aria-hidden />
+          {cartLines.length}
         </span>
       }
     >

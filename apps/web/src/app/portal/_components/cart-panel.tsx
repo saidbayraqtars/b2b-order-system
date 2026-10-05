@@ -15,6 +15,7 @@ import { formatQuantity, formatTRY } from "@/lib/format";
 import { isFractional, parseQuantity } from "@/lib/quantity";
 import { CurrencyNote } from "@/components/currency-note";
 import { apiGet, apiPost } from "@/lib/fetcher";
+import { useModuleEnabled } from "@/lib/use-modules";
 import {
   Button,
   ErrorLine,
@@ -33,11 +34,17 @@ const STATUS_MESSAGE: Record<string, string> = {
 };
 
 export function CartPanel({ companyId }: { companyId: string }) {
-  const { lines, inc, dec, setQty, setUnit, remove, clear, isLoading } = useCart(companyId);
+  const { lines, inc, dec, setQty, setUnit, remove, clear, isLoading } =
+    useCart(companyId);
   const localTotals = cartTotals(lines);
 
   const [couponDraft, setCouponDraft] = useState("");
   const [coupon, setCoupon] = useState<string | null>(null);
+  // Kupon kutusu bir bağlantının arkasında: müşterilerin çoğunun kuponu yok ve
+  // kutu her sepette özetin üçte birini kaplıyordu. Kampanya modülü kapalıyken
+  // hiç yok — sunucu o hâlde her kuponu "geçersiz" sayıyor.
+  const campaigns = useModuleEnabled("kampanya");
+  const [couponOpen, setCouponOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("OPEN_ACCOUNT");
   const [termId, setTermId] = useState("");
 
@@ -117,6 +124,7 @@ export function CartPanel({ companyId }: { companyId: string }) {
       clear();
       setCoupon(null);
       setCouponDraft("");
+      setCouponOpen(false);
     },
   });
 
@@ -171,7 +179,13 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     <p className="truncate text-body-sm font-medium text-ink">
                       {l.productName}
                     </p>
-                    <p className="tech-label truncate">{l.sku}</p>
+                    {/* Birim fiyat SKU'nun yanında: satırda yalnız toplam
+                        vardı ve "4 teneke ₺1.438" neyin kaç olduğunu
+                        söylemiyordu. */}
+                    <p className="tech-label truncate">
+                      {l.sku}
+                      {unitPriceLabel(l) && ` · ${unitPriceLabel(l)}`}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -193,24 +207,31 @@ export function CartPanel({ companyId }: { companyId: string }) {
                     >
                       <Minus className="h-3 w-3" />
                     </StepButton>
-                    {lineFactor(l) ? (
-                      // Paketli satır paket sayısını gösterir; taban birim
-                      // karşılığı birim seçicinin altında.
-                      <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
-                        {formatQuantity(l.quantity / lineFactor(l)!)}
-                      </span>
-                    ) : isFractional(l) ? (
-                      <FractionalQuantity
-                        key={l.quantity}
-                        value={l.quantity}
-                        unit={l.unit}
-                        onCommit={(q) => setQty(l.variantId, q)}
-                      />
-                    ) : (
-                      <span className="w-12 border-y border-line py-1 text-center text-xs tabular-nums text-ink">
-                        {l.quantity}
-                      </span>
-                    )}
+                    {/* Her satırda miktar yazılabiliyor. Önce yalnız kilo
+                        satırında yazılıyordu; 25'lik kolide 500 karton için
+                        yirmi kez artıya basmak gerekiyordu. Paketli satır
+                        paket sayısını gösterir. Yazılan, koli katına ve
+                        stoğa oturtulur (normalizeQty). */}
+                    <QuantityInput
+                      key={`${l.quantity}:${l.unitId ?? ""}`}
+                      value={
+                        lineFactor(l) ? l.quantity / lineFactor(l)! : l.quantity
+                      }
+                      decimal={!lineFactor(l) && isFractional(l)}
+                      label={`${l.productName} miktarı${
+                        lineFactor(l)
+                          ? ""
+                          : l.unit && isFractional(l)
+                            ? ` (${l.unit})`
+                            : ""
+                      }`}
+                      onCommit={(q) =>
+                        setQty(
+                          l.variantId,
+                          lineFactor(l) ? Math.round(q) * lineFactor(l)! : q,
+                        )
+                      }
+                    />
                     <StepButton
                       label="Artır"
                       onClick={() => inc(l.variantId)}
@@ -253,7 +274,13 @@ export function CartPanel({ companyId }: { companyId: string }) {
           </header>
 
           <div className="flex flex-col gap-3 p-4">
-            {methods.length > 0 && (
+            {/* Tek yöntem seçim değil, bilgi: açılır liste yerine satır. */}
+            {methods.length === 1 && (
+              <p className="text-xs text-ink-muted">
+                Ödeme: <span className="text-ink">{methods[0]!.label}</span>
+              </p>
+            )}
+            {methods.length > 1 && (
               <div>
                 <Label htmlFor="cart-method">Ödeme yöntemi</Label>
                 <Select
@@ -292,41 +319,58 @@ export function CartPanel({ companyId }: { companyId: string }) {
               </div>
             )}
 
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Label htmlFor="cart-coupon">Kupon kodu</Label>
-                <TextInput
-                  id="cart-coupon"
-                  size="sm"
-                  value={couponDraft}
-                  onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
-                  placeholder="KUPON25"
-                  disabled={coupon !== null}
-                  className="tabular-nums"
-                />
-              </div>
-              {coupon === null ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={couponDraft.trim().length < 3}
-                  onClick={() => setCoupon(couponDraft.trim())}
+            {campaigns &&
+              (coupon === null && !couponOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setCouponOpen(true)}
+                  className="self-start text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
                 >
-                  Uygula
-                </Button>
+                  Kupon kodunuz var mı?
+                </button>
               ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setCoupon(null);
-                    setCouponDraft("");
-                  }}
-                >
-                  Kaldır
-                </Button>
-              )}
-            </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="cart-coupon">Kupon kodu</Label>
+                    {/* Yer tutucu nötr: önce "KUPON25" yazıyordu — gösterim
+                        verisindeki gerçek kupon, her müşteriye. */}
+                    <TextInput
+                      id="cart-coupon"
+                      size="sm"
+                      value={couponDraft}
+                      onChange={(e) =>
+                        setCouponDraft(e.target.value.toUpperCase())
+                      }
+                      placeholder="Kod"
+                      disabled={coupon !== null}
+                      autoFocus={coupon === null}
+                      className="tabular-nums"
+                    />
+                  </div>
+                  {coupon === null ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={couponDraft.trim().length < 3}
+                      onClick={() => setCoupon(couponDraft.trim())}
+                    >
+                      Uygula
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setCoupon(null);
+                        setCouponDraft("");
+                        setCouponOpen(false);
+                      }}
+                    >
+                      Kaldır
+                    </Button>
+                  )}
+                </div>
+              ))}
 
             <ErrorLine error={quote.isError ? quote.error : null} />
 
@@ -436,16 +480,11 @@ export function CartPanel({ companyId }: { companyId: string }) {
   );
 }
 
-/** Adet kutusunun iki ucundaki düğme — üçü tek bir kutu gibi görünsün diye. */
-/**
- * Kilo/metre satırında miktar yazılabiliyor: artı/eksi bir birim ilerliyor ama
- * 0,75 kg ancak yazılarak girilir. Kutudan çıkınca (ya da Enter) sepete gider;
- * sunucu yanıtı ölçeğe yuvarlanmış miktarı geri yazar.
- */
 /** Satır tutarı: paketli satır paket fiyatıyla, öbürü birim fiyatıyla. */
 function lineNet(l: CartLine): number {
   const factor = lineFactor(l);
-  if (factor && l.packageNetPrice) return Number(l.packageNetPrice) * (l.quantity / factor);
+  if (factor && l.packageNetPrice)
+    return Number(l.packageNetPrice) * (l.quantity / factor);
   return Number(l.netUnitPrice ?? 0) * l.quantity;
 }
 
@@ -485,37 +524,62 @@ function UnitSelect({
   );
 }
 
-function FractionalQuantity({
+/**
+ * Satırın miktar kutusu. Artı/eksi bir koli (ya da paket) ilerliyor; kutuya
+ * yazılan sayı çıkınca (ya da Enter) sepete gider ve koli katına, asgariye ve
+ * stoğa oturtulmuş miktar geri yazılır. Kilo satırında ondalık girilebilir
+ * (0,75 kg).
+ */
+function QuantityInput({
   value,
-  unit,
+  decimal,
+  label,
   onCommit,
 }: {
   value: number;
-  unit: string | null;
+  decimal: boolean;
+  label: string;
   onCommit: (quantity: number) => void;
 }) {
   const [draft, setDraft] = useState(formatQuantity(value));
   const commit = () => {
     const n = parseQuantity(draft);
-    if (Number.isFinite(n) && n !== value) onCommit(n);
-    else setDraft(formatQuantity(value));
+    if (Number.isFinite(n) && n > 0 && n !== value) onCommit(n);
+    // Kutu her hâlde kayıtlı miktara döner. Yazılan koli katına oturup eski
+    // miktara eşit çıkarsa (50'lik satıra 30 → yine 50) satır değişmiyor ve
+    // kutu yeniden kurulmuyordu: ekranda "30" kalıyordu. Miktar değiştiyse
+    // anahtar değişir ve kutu yeni değerle yeniden kurulur.
+    setDraft(formatQuantity(value));
   };
   return (
     <input
       type="text"
-      inputMode="decimal"
+      inputMode={decimal ? "decimal" : "numeric"}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
+      onFocus={(e) => e.target.select()}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
       }}
-      aria-label={`Miktar${unit ? ` (${unit})` : ""}`}
-      className="w-16 border-y border-line bg-panel py-1 text-center text-xs tabular-nums text-ink outline-none focus:border-ink-muted"
+      aria-label={label}
+      className="h-7 w-14 border-y border-line bg-panel text-center text-xs tabular-nums text-ink outline-none focus:border-ink-muted"
     />
   );
 }
 
+/** "₺359,50 / teneke" — paketli satırda paketin fiyatı. */
+function unitPriceLabel(l: CartLine): string | null {
+  const factor = lineFactor(l);
+  if (factor && l.packageNetPrice) {
+    const unit = l.units.find((u) => u.id === l.unitId);
+    return `${formatTRY(Number(l.packageNetPrice))} / ${(unit?.name ?? "paket").toLocaleLowerCase("tr")}`;
+  }
+  if (l.netUnitPrice === null) return null;
+  return `${formatTRY(Number(l.netUnitPrice))} / ${(l.unit ?? "adet").toLocaleLowerCase("tr")}`;
+}
+
+/** Miktar kutusunun iki ucundaki düğme — üçü tek bir kutu gibi görünsün diye. */
 function StepButton({
   label,
   onClick,

@@ -434,6 +434,19 @@ eski fiyat, silinende yeni fiyat boştur. Ürün sayfasında kapalı başlayan
 - "Stoğa göre" sırada hizmet en başta değil, sonda.
 - Başlık altı "18 ürün · Şarküteri" (firma adı üst şeritte zaten yazıyor).
 
+### Sepet sadeleşti (D5, 2026-10-05)
+
+- Üst şeritteki sepet sayacı kalem sayısı (önce taban birimlerin toplamıydı:
+  4 teneke + 50 karton + 12 koli + 1 sefer = "67").
+- Satırda birim fiyat ("GD-YAG-5L · ₺359,50 / teneke").
+- Miktar her satırda yazılabilir; yazılan koli katına, asgariye ve stoğa
+  oturur (önce yalnız kilo satırında yazılıyordu). Koli katı olmayan miktarı
+  sunucu zaten reddediyor.
+- Kupon kutusu "Kupon kodunuz var mı?" bağlantısının arkasında; kampanya modülü
+  kapalıyken hiç yok. Yer tutucu nötr (önce gösterim verisindeki gerçek kupon
+  "KUPON25" yazıyordu).
+- Tek ödeme yöntemine sınırlı firmada açılır liste yerine bilgi satırı.
+
 ## 8. Raporlama (Adım 8)
 
 Tümü tek tarih aralığıyla çalışır; sekme değiştirmek pencereyi değiştirmez.
